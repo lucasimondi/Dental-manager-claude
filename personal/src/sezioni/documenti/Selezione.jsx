@@ -13,7 +13,7 @@ import { Miniatura } from '../../Miniatura.jsx';
 import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaCestino, IconaCondividi, IconaEmail, IconaChat } from '../../Icone.jsx';
 
 const RILEVANZA = { alta: 'Importante', normale: 'Normale', bassa: 'Poco utile' };
-const MAX_CONDIVISI = 10;
+const MAX_CONDIVISI = 20; // MIA-SALUTE: Mail / WhatsApp e PDF unico in tutti gli elenchi
 const MODO_KEY = 'poliedron-personal-elenco';
 const leggiModo = () => { try { return localStorage.getItem(MODO_KEY) || 'griglia'; } catch { return 'griglia'; } };
 
@@ -93,7 +93,7 @@ function VoceDocumento({ doc, modo, selezione, onApri, onSeleziona }) {
 }
 
 /* ---------- elenco con selezione e azioni di massa ---------- */
-export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione, maxCondivisi = MAX_CONDIVISI, invio = false, titoloInvio = 'Documenti', selezioneIniziale = false }) {
+export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione, maxCondivisi = MAX_CONDIVISI, invio = true, titoloInvio = 'Documenti', selezioneIniziale = false }) {
   const { apri, esegui, aggiorna, mostra, fascicoli, impostazioni } = ctx;
   const [modo, setModoStato] = useState(leggiModo);
   const [selezione, setSelezione] = useState(selezioneIniziale ? new Set() : null); // Set di id, o null fuori dalla selezione

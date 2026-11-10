@@ -115,3 +115,25 @@ test('UI wiring: Mail/WhatsApp buttons, single PDF option, scan and crop entries
   assert.match(p('Aggiungi.jsx'), /opzioni: \{ \.\.\.opzioni, descrizione/);
   assert.match(p('Aggiungi.jsx'), /<Ritaglio /);
 });
+
+// --- terza richiesta: un solo strumento «Scansiona o allega» per tutti i documenti ---
+import { pdfDaElementi } from '../personal/src/lib/pdfUnico.js';
+test('Scansiona o allega: photos and PDFs in list order become one PDF', async () => {
+  const pdfDi = async (n) => { const d = await PDFDocument.create(); for (let i = 0; i < n; i++) d.addPage(); return d.save(); };
+  const comeF = (b) => ({ arrayBuffer: async () => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) });
+  const { unisciPdf } = await import('../personal/src/pdf/operazioni.js');
+  let chiamate = 0;
+  const creaPdf = async (foto) => { chiamate += 1; return comeF(await pdfDi(foto.length)); };
+  const f = await pdfDaElementi([{ tipo: 'foto' }, { tipo: 'foto' }, { tipo: 'pdf', file: comeF(await pdfDi(3)) }, { tipo: 'foto' }], 'Referto ecografia', { creaPdf, unisciPdf });
+  assert.equal(f.name, 'Referto ecografia.pdf'); assert.equal(chiamate, 2);
+  assert.equal((await PDFDocument.load(await f.arrayBuffer())).getPageCount(), 6);
+  await assert.rejects(pdfDaElementi([], 'x', { creaPdf, unisciPdf }), /almeno/);
+});
+test('one tool everywhere: + Documento, Carica and lists use it; Mail/WhatsApp on every list and document', () => {
+  const p = (f) => readFileSync(new URL(`../personal/src/${f}`, import.meta.url), 'utf8');
+  assert.match(p('lib/ingressi.js'), /export const LIVELLI_AGGIUNGI = \['spesa', 'foto'\];/);
+  assert.match(p('sezioni/documenti/Carica.jsx'), /if \(!fileIniziale && opzioni\.fascicolo !== 'foto_video'\) sostituisci\(\{ tipo: 'scansione', opzioni \}\)/);
+  assert.match(p('sezioni/documenti/Selezione.jsx'), /invio = true/);
+  assert.match(p('sezioni/documenti/Documento.jsx'), /<BottoniInvio doc=\{doc\}/);
+  assert.match(p('sezioni/personali/Personali.jsx'), /invia\('whatsapp'\)/);
+});

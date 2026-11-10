@@ -34,6 +34,6 @@ export const documenti = {
     salute: { titolo: 'La mia salute ed esami', render: (p, { ctx }) => <PaginaSalute ctx={ctx} /> },
     'modifica-immagine': { titolo: 'Ritaglia e converti', modulo: true, render: (p, { ctx, sostituisci }) => <PaginaModificaImmagine id={p.id} pdf={!!p.pdf} ctx={ctx} sostituisci={sostituisci} /> },
     carica: { titolo: 'Archivia un documento', modulo: true, render: (p, { ctx, sostituisci }) => <PaginaCarica opzioni={p.opzioni || {}} file={p.file} ctx={ctx} sostituisci={sostituisci} /> },
-    scansione: { titolo: 'Scansiona', modulo: true, render: (p, { ctx, sostituisci }) => <PaginaScansione ctx={ctx} opzioni={p.opzioni} sostituisci={sostituisci} /> },
+    scansione: { titolo: 'Scansiona o allega', modulo: true, render: (p, { ctx, sostituisci }) => <PaginaScansione ctx={ctx} opzioni={p.opzioni} sostituisci={sostituisci} /> },
   },
 };

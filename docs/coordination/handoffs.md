@@ -4596,3 +4596,8 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Branch `ccr-4c3499b4-9jnuow`. Files: personal/src/{Ritaglio.jsx (new), lib/pdfUnico.js (new), lib/scansione.js, lib/condividi.js (urlInvio, inviaCon), Aggiungi.jsx, Icone.jsx (IconaTaglia), personal.css, sezioni/documenti/{ModificaImmagine.jsx (new), Salute.jsx, Selezione.jsx, Documento.jsx, index.jsx}}, tests/personalMiaSalute.test.mjs, tests/visual/personal-salute.{html,fixture.jsx,mjs}.
 - Database: none. Tests 1639/1639; Personal build; Chromium personal-salute PASS. Rollback: revert the commit.
 - Limits: a web app cannot open WhatsApp or Mail directly with attachments; both buttons open the phone share sheet (then tap Mail or WhatsApp). PDF crop is not offered (PDFs keep Firma/Modifica/Pagine). Real-phone check pending.
+
+## Handoff — MIA-SALUTE «Scansiona o allega» unico (2026-11-10) — Claude Code
+- Branch `ccr-4c3499b4-9jnuow`. Files: personal/src/{Aggiungi.jsx, ui.jsx (BottoniInvio), personal.css, lib/{ingressi.js,pdfUnico.js}, sezioni/documenti/{Carica.jsx,Documento.jsx,Salute.jsx,Selezione.jsx,index.jsx}, sezioni/personali/Personali.jsx}, tests (personalMiaSalute, appUnica, personalConti, personalPdf, visual/personal-salute).
+- Database: none. Tests 1641/1641; build; Chromium PASS. Rollback: revert the commit (the old + → Documento sub-menu comes back).
+- Behaviour change: + → Documento no longer shows Scansiona / Scatta foto / Carica file / Apri e firma un PDF; one screen does all. Quick actions in Oggi (Scansiona, Foto) unchanged. Real-phone check pending.

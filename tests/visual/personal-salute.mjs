@@ -25,11 +25,19 @@ try {
   await drag('.pp-rm-se', -box.width / 6, -box.height / 8);
   await page.getByRole('button', { name: 'Fatto' }).click();
   await page.locator('.pp-ritaglio').waitFor({ state: 'detached' });
-  await page.getByRole('button', { name: /Crea PDF/ }).click();
+  // A PDF from «PDF e file» joins the same list: one PDF with 2 pages.
+  const pdfIn = await PDFDocument.create(); pdfIn.addPage([595, 842]);
+  await page.locator('input[type=file]').nth(2).setInputFiles({ name: 'esame.pdf', mimeType: 'application/pdf', buffer: Buffer.from(await pdfIn.save()) });
+  await page.locator('.pp-scansione-pdf').waitFor();
+  await page.waitForFunction(() => [...document.querySelectorAll('button')].some((b) => /Archivia il PDF \(2/.test(b.textContent) && !b.disabled));
+  await page.getByRole('button', { name: 'WhatsApp' }).click();
+  await page.waitForFunction(() => window.saluteTest.condivisi.length === 1);
+  await page.screenshot({ path: `${out}/scansione.png` });
+  await page.getByRole('button', { name: /Archivia il PDF/ }).click();
   await page.waitForFunction(() => window.saluteTest.pagina);
   const r = await page.evaluate(() => window.saluteTest.pagina);
   assert.equal(r.tipo, 'carica'); assert.equal(r.opzioni.salute, true); assert.equal(r.opzioni.persona, 'Persona Test');
-  const pdf = await PDFDocument.load(Uint8Array.from(r.bytes)); assert.equal(pdf.getPageCount(), 1);
+  const pdf = await PDFDocument.load(Uint8Array.from(r.bytes)); assert.equal(pdf.getPageCount(), 2);
   // Cropped image (≈400×600 of 600×800) is embedded; check its pixel size.
   const img = [...pdf.context.enumerateIndirectObjects()].map(([, o]) => o).find((o) => o?.dict?.get?.(pdf.context.obj('Subtype'))?.toString() === '/Image');
   const w = img.dict.get(pdf.context.obj('Width')).asNumber(); const h = img.dict.get(pdf.context.obj('Height')).asNumber();
@@ -43,8 +51,7 @@ try {
     return { nome: r.file.name, esclusi: r.esclusi, bytes: Array.from(new Uint8Array(await r.file.arrayBuffer())), P: !!P };
   }, foto);
   assert.equal(pagine.nome, 'Referti.pdf'); assert.deepEqual(pagine.esclusi, ['fattura.xml']);
-  assert.equal((await PDFDocument.load(Uint8Array.from(pagine.bytes))).getPageCount(), 2);
-  await page.screenshot({ path: `${out}/scansione.png` });
+  assert.equal((await PDFDocument.load(Uint8Array.from(pagine.bytes))).getPageCount(), 3);
   assert.deepEqual(errors, []);
   console.log('personal-salute PASS', `${w}×${h}`);
 } finally { await browser?.close(); server.kill(); }

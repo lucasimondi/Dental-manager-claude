@@ -872,3 +872,7 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-ritaglio .pp-bottone { background: #1f7a4d; color: #fff; opacity: 1; }
 .pp-ritaglio-testa .pp-icona-bottone { background: rgba(255, 255, 255, .16); color: #fff; }
 .pp-ritaglio-testa span, .pp-ritaglio-testa .pp-testo-link { color: #fff; }
+.pp-sorgenti-rapide { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+.pp-sorgenti-rapide .pp-bottone { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 64px; padding: 8px 4px; font-size: 14px; }
+.pp-scansione-pdf { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; aspect-ratio: 3 / 4; padding: 10px; background: #e4e7ec; color: var(--pp-blu); text-align: center; font-size: 12px; word-break: break-word; }
+.pp-invio-documento { margin: 10px 0; }

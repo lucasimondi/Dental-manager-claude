@@ -1,6 +1,7 @@
 // DOCK-PER-TE passo 3 — gli ingressi del tasto + (selettori di file) e dove porta ciascuno.
 // Ogni selettore si apre con il gesto dell'utente; il file scelto apre la pagina giusta.
-export const LIVELLI_AGGIUNGI = ['documento', 'spesa', 'foto'];
+// MIA-SALUTE (PO 2026-11-10): Documento apre subito l'unico strumento «Scansiona o allega».
+export const LIVELLI_AGGIUNGI = ['spesa', 'foto'];
 export const INGRESSI = {
   fotocamera: { accept: 'image/*', capture: 'environment', pagina: (file) => ({ tipo: 'carica', file, opzioni: { autoInvia: true } }) },
   libreria: { accept: 'image/*', pagina: (file) => ({ tipo: 'carica', file, opzioni: { autoInvia: true } }) },
@@ -12,6 +13,7 @@ export const INGRESSI = {
 };
 // Pagine aperte direttamente da una voce del + (senza selettore).
 export const PAGINE_AGGIUNGI = {
+  documento: { tipo: 'scansione' },
   scansiona: { tipo: 'scansione' },
   pdf: { tipo: 'pdf' },
   spesaManuale: { tipo: 'spesaRicevuta' },
@@ -23,7 +25,7 @@ export const PAGINE_AGGIUNGI = {
   appuntamento: { tipo: 'evento', cosa: 'appuntamento' },
 };
 // Il + dello Studio (Per te) arriva con ?aggiungi=…: si legge una volta e si toglie dall'indirizzo.
-const DA_INDIRIZZO = [...LIVELLI_AGGIUNGI, 'nota', 'password', 'spesaManuale', 'pdf'];
+const DA_INDIRIZZO = ['documento', ...LIVELLI_AGGIUNGI, 'nota', 'password', 'spesaManuale', 'pdf'];
 export function voceDaIndirizzo(win = globalThis) {
   const url = new URL(win.location.href), voce = url.searchParams.get('aggiungi');
   if (!voce) return null;

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { eliminaDocumento, documentoCompleto, impostaPortafoglio, eCaricato, conEmail, nelPortafoglio, aggiornaDocumento, cestinaSuDrive } from '../../lib/archivio.js';
 import { euro } from '../../lib/coreArchivio.js';
-import { colore, dataBreve, titoloDoc, tokenSessione, Vuoto, Sezione, Gruppo, ConfermaElimina, BottoneCondividi } from '../../ui.jsx';
+import { colore, dataBreve, titoloDoc, tokenSessione, Vuoto, Sezione, Gruppo, ConfermaElimina, BottoneCondividi, BottoniInvio } from '../../ui.jsx';
 import { DocumentoIntero } from './DocumentoIntero.jsx';
 import { CodiciDocumento } from './CodiciDocumento.jsx';
 import { avvisoDocumento, dataScadenza, salvaValidita, storicoPersonale, archiviaPersonale } from '../../lib/portafoglio.js';
@@ -38,6 +38,7 @@ export function PaginaDocumento({ id, ctx, chiudi }) {
         ? <div className="pp-azioni pp-azioni-pdf"><button className="pp-bottone" onClick={() => setIntero('firma')}>Firma</button><button className="pp-bottone pp-bottone-chiaro" onClick={() => setIntero('modifica')}>Modifica</button><button className="pp-bottone pp-bottone-chiaro" onClick={() => setIntero('pagine')}>Pagine</button><button className="pp-bottone pp-bottone-chiaro" onClick={() => setIntero(true)}>Apri</button></div>
         : <div className="pp-azioni pp-azioni-pdf"><button className="pp-bottone" onClick={() => setIntero(true)}>Apri a tutto schermo</button>
           {eImmagine(doc) && doc.drive_file_id && doc.fascicolo !== 'clinico_pazienti' && <button className="pp-bottone pp-bottone-chiaro" onClick={() => apri({ tipo: 'modifica-immagine', id: doc.id, pdf: true })}>Ritaglia · PDF</button>}</div>}
+      {(doc.drive_file_id || doc.drive_url) && <BottoniInvio doc={doc} mostra={mostra} />}
       {avviso && <p className={'pp-validita '+avviso.stato}>{avviso.testo} · {dataBreve(avviso.data)}</p>}
       <div className="pp-dettaglio-testa" style={{ '--c': colore(doc.fascicolo) }}>
         <span className="pp-etichetta">{doc.tipo_documento || fascicoli.find((f) => f.codice === doc.fascicolo)?.nome || doc.fascicolo}</span>

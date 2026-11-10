@@ -26,3 +26,19 @@ export async function unisciInPdf(files, titolo = 'Documenti', strumenti = {}) {
   const bytes = await unisciPdf(pezzi);
   return { file: new File([bytes], nomePdf(titolo), { type: 'application/pdf' }), esclusi };
 }
+
+// «Scansiona o allega»: pagine già elaborate (foto: url JPEG + misure) e PDF interi, nell'ordine
+// della lista, diventano un solo PDF. Le foto vicine finiscono in un'unica passata di jsPDF.
+export async function pdfDaElementi(elementi, titolo = 'Documento', strumenti = {}) {
+  const { creaPdf = (await import('./scansione.js')).creaPdf,
+    unisciPdf = (await import('../pdf/operazioni.js')).unisciPdf } = strumenti;
+  if (!elementi.length) throw new Error('Aggiungi almeno una pagina o un file.');
+  const pezzi = []; let foto = [];
+  const chiudiFoto = async () => { if (!foto.length) return; const f = await creaPdf(foto, titolo); pezzi.push(new Uint8Array(await f.arrayBuffer())); foto = []; };
+  for (const e of elementi) {
+    if (e.tipo === 'pdf') { await chiudiFoto(); pezzi.push(new Uint8Array(await e.file.arrayBuffer())); } else foto.push(e);
+  }
+  await chiudiFoto();
+  const bytes = pezzi.length === 1 && elementi.every((e) => e.tipo !== 'pdf') ? pezzi[0] : await unisciPdf(pezzi);
+  return new File([bytes], nomePdf(titolo), { type: 'application/pdf' });
+}
