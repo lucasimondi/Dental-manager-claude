@@ -1,3 +1,10 @@
+# Current task — SCAN-ICONA (2026-11-10)
+- OWNER Claude Code; branch `ccr-9c70a578-a2q1cs` restarted from master fb49879 (PR296 merged).
+- AUTHORIZATION PO 2026-11-10: "Fammi una icona apposita puoi ? Fammi vedere tre proposte pro"; after the three proposals (A Gemma, B Firma, C Essenziale): "B".
+- SCOPE: Scan icon replaced with proposal B «Firma» (dark background, white tilted sheet, green scan line, gold signature): public/scan-{180,192,512}.png, scan-maskable-512.png (drawing at 80% for the Android safe zone); scan manifests splash/theme colours dark (#0b0e15 / #1d2433). No code, schema or data change.
+- VALIDATION Node tests; build.
+- STATUS PR; task-specific "Mergia" required. Installed Android icons update by themselves (WebAPK refresh); on iPhone remove and re-add.
+
 # Current task — SCAN-HOME (2026-11-10)
 - OWNER Claude Code; branch `ccr-9c70a578-a2q1cs` from master 143496c (PR295 merged).
 - AUTHORIZATION PO 2026-11-10: "Prendi lo strumento Scan di poliedra e creami una scorciatoia da mettere su home che possa scansionare documenti e allegare foto, che sia anche un gestore PDF semplice con possibilità di firma su schermo".
