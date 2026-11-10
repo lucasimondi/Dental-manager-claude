@@ -4614,3 +4614,7 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 ## Handoff — SCAN-AGENDA-FIX (2026-11-10) — Claude Code
 - PR298 merged as 7803d5c (production dpl_9vd1iBNLMnxo62V4bcUSDka7xd4K READY, scan manifest verified). Branch `ccr-9c70a578-a2q1cs`. Files: vite.config.js, tests/personalScan.test.mjs, coordination docs.
 - Database: none. Rollback: revert the commit.
+
+## Handoff — SCAN-PDF (2026-11-10) — Claude Code
+- PR300 merged as 93e4522 (production dpl_14pfvJ6scuwzBbvRLhHr7F8fB2ny READY; sw.js denylist with /scan verified). Branch `ccr-9c70a578-a2q1cs`. Files: public/scan*.webmanifest, public/{poliedron/scan,scan}/sw-notifiche.js (new), personal/src/pdf/ingresso.js, personal/src/scan/Scan.jsx, tests/personalScan.test.mjs.
+- Database: none. Rollback: revert the commit.

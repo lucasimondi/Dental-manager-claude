@@ -13,6 +13,7 @@ import { IMPOSTAZIONI_PREDEFINITE, leggiImpostazioni, salvaImpostazioni } from '
 import { indirizzoPersonal, strumentoDaIndirizzo } from '../lib/scan.js';
 import { pagina, titoloPagina, eModulo } from '../sezioni/index.js';
 import { IconaScansiona, IconaFile } from '../Icone.jsx';
+import { useIngressoPdf } from '../pdf/useIngressoPdf.js';
 
 // «Metti sulla Home»: Chrome/Android offre l'installazione, su iPhone si spiega il gesto.
 function useInstalla() {
@@ -68,7 +69,18 @@ export function Scan({ email }) {
   }, []);
   // Il resto di Personal (sezioni, chat) si apre nell'app Personal.
   const vai = useCallback((sezione) => { window.location.href = indirizzoPersonal(sezione); }, []);
-  useEffect(() => { if (strumentoDaIndirizzo() === 'pdf') apri({ tipo: 'pdf' }); }, [apri]);
+  // SCAN-PDF: «Condividi → Scan» (Android) e «Apri con → Scan» (computer) aprono il PDF nel gestore.
+  useIngressoPdf(apri, setErrore);
+  useEffect(() => {
+    const coda = window.launchQueue;
+    let daFile = false;
+    if (coda?.setConsumer) coda.setConsumer(async (p) => {
+      if (!p?.files?.length) return;
+      daFile = true;
+      try { apri({ tipo: 'pdf', files: await Promise.all(p.files.map((h) => h.getFile())) }); } catch (e) { setErrore(e.message); }
+    });
+    if (strumentoDaIndirizzo() === 'pdf') setTimeout(() => { if (!daFile) apri({ tipo: 'pdf' }); }, 0);
+  }, [apri]);
 
   const salvaImp = useCallback(async (nuove) => {
     setImpostazioni(nuove);
