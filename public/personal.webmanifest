@@ -35,5 +35,31 @@
         }
       ]
     }
-  }
+  },
+  "shortcuts": [
+    {
+      "name": "Scansiona o allega",
+      "short_name": "Scansiona",
+      "url": "/poliedron/personal/?aggiungi=documento",
+      "icons": [
+        {
+          "src": "/scan-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "PDF e firma",
+      "short_name": "Firma PDF",
+      "url": "/poliedron/personal/?aggiungi=pdf",
+      "icons": [
+        {
+          "src": "/scan-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
 }

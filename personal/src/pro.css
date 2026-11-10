@@ -119,3 +119,10 @@
 .pp-aggiungi .pp-aggiungi-icona { width: 36px; height: 36px; border-radius: 10px; color: var(--pp-blu); background: var(--pp-blu-chiaro); }
 /* Moduli: titolo breve in alto, contenuto che scorre, Salva sempre raggiungibile. */
 .pp-pagina-corpo > .pp-bottone-largo:not(.pp-bottone-chiaro):last-of-type { position: sticky; bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 3; box-shadow: 0 10px 24px color-mix(in srgb, var(--pp-inchiostro) 18%, transparent); }
+
+/* SCAN-HOME (PO 2026-11-10): l'app «Scan» della Home — solo lo scanner, niente dock né tasto +. */
+.pp-app.pp-scan { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+.pp-scan-strumenti { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-bottom: 14px; border-radius: 14px; background: var(--pp-superficie); border: 1px solid var(--pp-linea); }
+.pp-scan-strumento { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 8px; border: 0; border-radius: 10px; background: transparent; color: var(--pp-inchiostro); font: inherit; font-size: 15px; font-weight: 650; cursor: pointer; }
+.pp-scan-strumento.attivo { background: var(--pp-blu); color: var(--pp-sfondo); }
+.pp-scan-installa { margin-top: 18px; }

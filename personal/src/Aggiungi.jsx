@@ -7,6 +7,7 @@ import { pdfDaElementi, tipoFile } from './lib/pdfUnico.js';
 import { inviaCon } from './lib/condividi.js';
 import { Segmenti } from './ui.jsx';
 import { Ritaglio } from './Ritaglio.jsx';
+import { eScan, indirizzoScan } from './lib/scan.js';
 import {
   IconaFotocamera, IconaFile, IconaPortafoglio, IconaCalendario, IconaEuro, IconaChiudi, IconaScansiona, IconaFoto,
   IconaNuvola, IconaRuota, IconaCestino, IconaTaglia, IconaEmail, IconaChat, IconaNote, IconaLucchetto, IconaIndietro,
@@ -216,6 +217,7 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {} }) {
       )}
       {lavoro && !pagine.length && <p className="pp-riga-meta"><span className="pp-rotella" /> {lavoro}</p>}
       <button className="pp-testo-link" onClick={() => sostituisci({ tipo: 'pdf' })}>Solo firmare o modificare un PDF, senza archiviarlo</button>
+      {!eScan() && <a className="pp-testo-link" href={indirizzoScan()} target="_blank" rel="noreferrer">Metti «Scan» sulla schermata Home</a>}
       {taglia && <Ritaglio src={taglia.url} iniziale={pagine[taglia.i]?.ritaglio} onFatto={ritaglia} onAnnulla={() => setTaglia(null)} />}
     </>
   );

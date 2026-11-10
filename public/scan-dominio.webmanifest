@@ -1,0 +1,21 @@
+{
+  "name": "Poliedron Scan",
+  "short_name": "Scan",
+  "description": "Scansiona documenti, allega foto e PDF, firma un PDF sullo schermo",
+  "id": "/scan/",
+  "start_url": "/scan/",
+  "scope": "/scan/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f2f4f7",
+  "theme_color": "#1f7a4d",
+  "icons": [
+    { "src": "/scan-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/scan-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/scan-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Scansiona o allega", "short_name": "Scansiona", "url": "/scan/", "icons": [{ "src": "/scan-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "PDF e firma", "short_name": "Firma PDF", "url": "/scan/?strumento=pdf", "icons": [{ "src": "/scan-192.png", "sizes": "192x192", "type": "image/png" }] }
+  ]
+}

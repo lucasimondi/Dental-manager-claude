@@ -20,6 +20,8 @@ import { IMPOSTAZIONI_PREDEFINITE, leggiImpostazioni, salvaImpostazioni } from '
 import { saluto, VISTA_KEY, leggiVista, tokenSessione } from './ui.jsx';
 import { differito } from './Differito.jsx';
 const FoglioAggiungi = differito(() => import('./Aggiungi.jsx'), 'FoglioAggiungi');
+const Scan = differito(() => import('./scan/Scan.jsx'), 'Scan'); // SCAN-HOME: l'app «Scan» della Home
+import { eScan } from './lib/scan.js';
 import { INGRESSI, PAGINE_AGGIUNGI, LIVELLI_AGGIUNGI, voceDaIndirizzo } from './lib/ingressi.js';
 import { Accesso, NuovaPassword } from './Accesso.jsx';
 import { DOCK, DOCK_DOPO, sezione, pagina, titoloPagina, eModulo } from './sezioni/index.js';
@@ -178,5 +180,6 @@ export default function App() {
   }, []);
   if (sessione === undefined) return null;
   if (recupero && sessione) return <NuovaPassword onFatto={() => setRecupero(false)} />;
-  return sessione ? <Archivio email={sessione.user?.email} /> : <Accesso />;
+  if (!sessione) return <Accesso />;
+  return eScan() ? <Scan email={sessione.user?.email} /> : <Archivio email={sessione.user?.email} />;
 }

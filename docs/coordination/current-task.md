@@ -1,3 +1,10 @@
+# Current task — SCAN-HOME (2026-11-10)
+- OWNER Claude Code; branch `ccr-9c70a578-a2q1cs` from master 143496c (PR295 merged).
+- AUTHORIZATION PO 2026-11-10: "Prendi lo strumento Scan di poliedra e creami una scorciatoia da mettere su home che possa scansionare documenti e allegare foto, che sia anche un gestore PDF semplice con possibilità di firma su schermo".
+- SCOPE: «Scan», installable Home app = the Personal bundle opened on `/poliedron/scan/` (`/scan/` on personal.poliedrasoft.it), own manifest (`public/scan.webmanifest`, `scan-dominio.webmanifest`), own green icon (`public/scan-*.png`), name «Scan». Opens straight on «Scansiona o allega» (Scatta · Foto · PDF e file → one PDF, crop/rotate, Mail · WhatsApp · Archivia); «PDF e firma» opens the existing PDF manager (sign with the finger, text, drawing, pages); no dock, no +. Same login/session as Personal; archive uses the same Carica page, scanner resets after archiving. «Metti Scan sulla Home» (beforeinstallprompt on Android, hint on iPhone) inside Scan; link «Metti «Scan» sulla schermata Home» under the scanner in Personal. Manifest shortcuts (long-press icon): Personal → Scansiona o allega / PDF e firma; Scan → same. vercel.json rewrites for the four Scan paths. personal/src/lib/scan.js, personal/src/scan/Scan.jsx (new), App.jsx, main.jsx, index.html, Aggiungi.jsx, pro.css. No schema, RLS or data change.
+- VALIDATION 1646/1646 Node tests (new tests/personalScan.test.mjs); build; Chromium Pixel 7 `tests/visual/personal-scan.mjs` PASS.
+- STATUS pushed; PR on request; task-specific "Mergia" required. After deploy: open `/poliedron/scan/` in Chrome on the phone → «Metti Scan sulla Home» (or menu → Installa app).
+
 # Current task — MIA-SALUTE (2026-11-10)
 - OWNER Claude Code; branch `ccr-4c3499b4-9jnuow` from master c6d8dc9 (PR293 merged).
 - AUTHORIZATION PO 2026-11-10: "In documenti personali crea sezione mia salute ed esami, prendi tutte le cose che riguardano me nelle foto referti ecc e mettili lì che si possano mandare anche tutti insieme selezionandoli".

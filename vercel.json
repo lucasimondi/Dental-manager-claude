@@ -25,6 +25,22 @@
       "destination": "/personal/index.html"
     },
     {
+      "source": "/poliedron/scan",
+      "destination": "/personal/index.html"
+    },
+    {
+      "source": "/poliedron/scan/",
+      "destination": "/personal/index.html"
+    },
+    {
+      "source": "/scan",
+      "destination": "/personal/index.html"
+    },
+    {
+      "source": "/scan/",
+      "destination": "/personal/index.html"
+    },
+    {
       "source": "/poliedron/archivio",
       "destination": "/archivio/index.html"
     },
