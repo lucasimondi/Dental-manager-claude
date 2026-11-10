@@ -138,3 +138,7 @@
 .patient-record-legacy[data-dental-home="true"] .patient-clean-edit span { display:none; }
 
 .patient-dental-orientation { margin:10px 0 0; color:#6c8597; font-size:9px; text-align:center; }
+/* PO 2026-11-10: tasto «Eseguito» sulle prestazioni da fare del dente selezionato. */
+.patient-dental-home .patient-dental-done-button { flex-shrink:0; min-height:44px; padding:0 14px; border:1.5px solid #348c6b; border-radius:10px; background:#fff; color:#24745c; font:inherit; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; }
+.patient-dental-home .patient-dental-done-button:hover { background:#f0faf6; }
+.patient-dental-home .patient-dental-done-button:active { background:#348c6b; color:#fff; }

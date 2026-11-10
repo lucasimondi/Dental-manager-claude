@@ -1,3 +1,9 @@
+# Current task — DENTE-ESEGUITO (2026-11-10)
+- OWNER Claude Code; branch `claude/agenda-settimana-testo-capo-p38lb1` restarted from master c6d8dc9 (replaces the PR294 redesign, rejected by the PO: "A me piace come era prima").
+- AUTHORIZATION PO 2026-11-10: "partiamo da modifica solo così: metti il tasto eseguito quando clicco il dente per aprire le prestazioni senza modificare altro".
+- SCOPE (PatientDentalOverview only): tapping a tooth that has pending treatments switches the list to «Da eseguire»; each pending row gets a «✓ Eseguito» button that marks the voce done with the canonical markTreatmentItemCompleted (eseguita + dataEsec today) and saves through setPlans (passed from SchedaPaz). Everything else unchanged. No data model change.
+- VALIDATION Node tests; Studio build; Chromium 390×844 and 1280×900 on real SchedaPaz: tap 36 → 2 pending rows with «Eseguito» → tap → voce saved as done with today's date.
+- STATUS PR open; task-specific "Mergia" required.
 # Current task — MIA-SALUTE (2026-11-10)
 - OWNER Claude Code; branch `ccr-4c3499b4-9jnuow` from master c6d8dc9 (PR293 merged).
 - AUTHORIZATION PO 2026-11-10: "In documenti personali crea sezione mia salute ed esami, prendi tutte le cose che riguardano me nelle foto referti ecc e mettili lì che si possano mandare anche tutti insieme selezionandoli".
