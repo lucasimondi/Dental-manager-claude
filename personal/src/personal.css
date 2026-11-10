@@ -876,3 +876,14 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-sorgenti-rapide .pp-bottone { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 64px; padding: 8px 4px; font-size: 14px; }
 .pp-scansione-pdf { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; aspect-ratio: 3 / 4; padding: 10px; background: #e4e7ec; color: var(--pp-blu); text-align: center; font-size: 12px; word-break: break-word; }
 .pp-invio-documento { margin: 10px 0; }
+
+/* ACQUISISCI-UNICO — tasto fotocamera sopra il «+»; scelta della destinazione e paziente dello studio. */
+.pp-acquisisci { --acquisisci-colore: var(--pp-blu); right: max(18px, calc((100vw - 640px) / 2 + 18px)); --acquisisci-bottom: calc(88px + 56px + 12px + env(safe-area-inset-bottom)); }
+.pp-app:has(.pp-barra-selezione) .pp-acquisisci { display: none; }
+.pp-elenco-pazienti { display: flex; flex-direction: column; border: 1px solid var(--pp-linea); border-radius: 12px; overflow: hidden; margin: -4px 0 12px; }
+.pp-riga-paziente { min-height: 46px; padding: 0 14px; text-align: left; border: 0; border-bottom: 1px solid var(--pp-linea); background: transparent; font: inherit; font-size: 15px; color: inherit; cursor: pointer; }
+.pp-riga-paziente:last-child { border-bottom: 0; }
+.pp-paziente-scelto { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 46px; }
+.pp-chip-tipi { display: flex; flex-wrap: wrap; gap: 6px; }
+.pp-chip-tipi button { min-height: 40px; padding: 0 12px; border-radius: 20px; border: 1px solid var(--pp-linea); background: transparent; color: inherit; font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.pp-chip-tipi button.attivo { background: var(--pp-blu); border-color: var(--pp-blu); color: #fff; }

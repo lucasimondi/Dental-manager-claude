@@ -1,3 +1,10 @@
+# Current task — ACQUISISCI-UNICO (2026-11-10)
+- OWNER Claude Code; branch `claude/agenda-settimana-testo-capo-p38lb1` from master 62d6d83 (PR294 merged).
+- AUTHORIZATION PO 2026-11-10: "Il tasto acquisizione deve essere unico e flottante mettilo in basso a destra come più, poi da lì decido dove archiviare se in personale o studio (paziente ad esempio)"; choice "Separato, sopra il «+»".
+- SCOPE: shared/acquisisci/TastoAcquisisci (round camera button, bottom right). Personal: above the «+» on every section, opens «Scansiona o allega» (PaginaScansione); «Archivia» → PaginaCarica with «Dove archiviare: Personale | Studio · paziente»; Studio branch (ArchiviaStudio) searches studio patients (cercaPazienti) and saves through the new `archiviaDocumentoStudio` in personal/src/lib/studio.js (same acquisisciDocumento as Studio, studio session already saved, studio RLS; file never read or analysed). This widens what Personal writes on the studio project to `documenti_studio` + bucket `documenti-studio` (PO request). documentiStudio.js moved to shared/documenti (src/lib re-exports) so Personal does not import Studio code. Studio: button bottom right above the mobile dock on every page (not in chat), opens «Acquisisci documento» with «Studio · paziente | Personale»; Personale uses Personal's caricaDocumento with the archive session already saved by Personal (src/lib/archiviaPersonale.js); without it, a clear message and no write. Other existing acquisition entries are unchanged. No schema/RLS change.
+- VALIDATION 1646 Node tests; Studio and Personal builds; Chromium 390×844 fixture: button above the «+» (Personal) / above the dock (Studio), destination choice in both, «non collegato» states.
+- STATUS PR open; task-specific "Mergia" required.
+
 # Current task — DENTE-ESEGUITO (2026-11-10)
 - OWNER Claude Code; branch `claude/agenda-settimana-testo-capo-p38lb1` restarted from master c6d8dc9 (replaces the PR294 redesign, rejected by the PO: "A me piace come era prima").
 - AUTHORIZATION PO 2026-11-10: "partiamo da modifica solo così: metti il tasto eseguito quando clicco il dente per aprire le prestazioni senza modificare altro".
