@@ -16,7 +16,7 @@ test('lo stesso tasto in Studio e Personal, sopra il «+» e sopra il dock', () 
 test('Personal: dopo lo scatto si sceglie Personale o Studio · paziente', () => {
   const carica = read('personal/src/sezioni/documenti/Carica.jsx');
   assert.match(carica, /opzioni\.destinazione && <div className="pp-campo"><span>Dove archiviare<\/span><Segmenti voci=\{\[\['personale', 'Personale'\], \['studio', 'Studio · paziente'\]\]\}/);
-  assert.match(read('personal/src/sezioni/documenti/ArchiviaStudio.jsx'), /archiviaDocumentoStudio\(\{ file, titolo, tipo, pazienteId: paziente\?\.id \|\| null \}\)/);
+  assert.match(read('personal/src/sezioni/documenti/ArchiviaStudio.jsx'), /archiviaDocumentoStudio\(\{ file, titolo, tipo, tag, pazienteId: paziente\?\.id \|\| null \}\)/);
   // L'unica scrittura di Personal sui documenti dello studio è in lib/studio.js, con la stessa funzione di Studio.
   const studio = read('personal/src/lib/studio.js');
   assert.match(studio, /export async function archiviaDocumentoStudio/);
@@ -26,7 +26,7 @@ test('Personal: dopo lo scatto si sceglie Personale o Studio · paziente', () =>
 test('Studio: «Acquisisci documento» dal tasto offre anche il personale, senza nuovo accesso', () => {
   const acq = read('src/components/AcquisisciDocumento.jsx');
   assert.match(acq, /\[\['studio', 'Studio · paziente'\], \['personale', 'Personale'\]\]/);
-  assert.match(acq, /if \(dove === 'personale'\) \{ const r = await archiviaInPersonale\(file, titolo\);/);
+  assert.match(acq, /if \(dove === 'personale'\) \{ const r = await archiviaInPersonale\(file, titolo, tag\);/);
   const pers = read('src/lib/archiviaPersonale.js');
   assert.match(pers, /Archivio personale non collegato/);
   assert.match(pers, /caricaDocumento\(\{ token: s\.access_token, \.\.\.pronto, descrizione \}\)/);

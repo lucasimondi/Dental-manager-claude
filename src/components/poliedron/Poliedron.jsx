@@ -1044,7 +1044,10 @@ export default function Poliedron({
           is this same instance portalled into `chatHost`, not a second
           agent. Hidden while already on Chat, where the header owns the
           surface and everything is read by definition. */}
-      {page !== 'chat' && (
+      {/* ACQUISISCI-UNICO (PO 2026-11-10: "Togli l'icona della campanella perché copre il più di
+          acquisizione"): sul telefono la campanella non c'è più; la Chat resta raggiungibile dal centro
+          del dock. Su computer resta in alto a destra. */}
+      {page !== 'chat' && !isMobile && (
         <PoliedronBell
           variant={isMobile ? 'mobile' : 'desktop'}
           unreadCount={unreadCount}

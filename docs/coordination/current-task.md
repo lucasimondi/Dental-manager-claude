@@ -1,3 +1,11 @@
+# Current task — DOCUMENTI-TAG (2026-11-10)
+- OWNER Claude Code; branch `claude/agenda-settimana-testo-capo-p38lb1` from master fb49879 (PR297 merged).
+- AUTHORIZATION PO 2026-11-10: "Togli l'icona della campanella perché copre il più di acquisizione, inoltre nei file da allegare inserisci anche foto, e altri file che possono essere utili tipo doc ecc, metti la possibilità dei tag così la ricerca diventa più semplice e possibilità di aggiungere il tipo cioè etichette tipo".
+- SCOPE: (1) Poliedron bell hidden on phone (it sat exactly on the acquisition button); desktop unchanged, Chat still from the dock centre. (2) Studio «Acquisisci documento»: Scatta · Foto (gallery) · PDF, Word, Excel…; documenti studio accept doc/docx/xls/xlsx/odt/ods/txt/rtf/csv (mime also from extension). (3) Shared TipoETag: suggested types + «+ Nuovo tipo» (free label, 1-40 chars) and free tags (max 20, normalised lowercase), recent ones kept on the device as suggestions; used in Studio (Studio and Personale destinations) and Personal (Archivia: tags for the personal archive, Studio · paziente: type + tags). Personal archive tags are merged into the existing `documenti.tag`.
+- DATABASE: migration 20261110190000_documenti_studio_tag_tipi.sql (DentalManager): documenti_studio.tag text[] (≤20) + GIN index + UPDATE grant; tipo CHECK widened to free 1-40 chars (old 7 values still valid); mime CHECK and bucket allowed_mime_types widened to Office/OpenDocument/text/CSV; cerca_documenti_studio also searches tags (same signature, SECURITY INVOKER). Additive, idempotent, RLS unchanged. NOT applied yet: apply with apply_migration right after "Mergia" (before that, custom types/Office files fail with a clear error; tags are only sent when present).
+- VALIDATION 1652 Node tests incl. PGlite tests/documentiTagDatabase.test.mjs (old row valid, docx + custom type + tags, search by tag, checks, other studio isolated, idempotent); Studio and Personal builds; Chromium 390×844: three sources, new type, tag chips in Studio and Personal.
+- STATUS PR open; task-specific "Mergia" required, then apply the migration.
+
 # Current task — SCAN-AGENDA-FIX (2026-11-10)
 - OWNER Claude Code; branch `ccr-9c70a578-a2q1cs` from master 7803d5c (PR298 merged).
 - REPORT PO 2026-11-10: "Mi apre l'agenda" (opening Scan).
