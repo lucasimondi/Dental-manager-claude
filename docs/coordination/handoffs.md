@@ -4584,3 +4584,10 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Tests 1628/1628; both builds OK.
 - Risks: titles by content still blocked by the Anthropic credit (5290 queued) and Gemini free quota; Drive files shared with Luca but owned by others are not indexed ('me' in owners).
 - Next: PO "Mergia" → merge, `clasp push -f` from master; PO tops up Anthropic credit and runs `riprovaErrori` to let analysis rename the 5290 + Drive documents.
+
+## Handoff — MIA-SALUTE (2026-11-10) — Claude Code
+- Branch `ccr-4c3499b4-9jnuow`. Files: personal/src/lib/salute.js (new), personal/src/sezioni/documenti/{Salute.jsx (new),index.jsx,Selezione.jsx,Carica.jsx}, personal/src/sezioni/personali/Personali.jsx, personal/src/Icone.jsx (IconaCuore), personal/src/lib/condividi.js, tests/personalMiaSalute.test.mjs.
+- Database: no schema change; 14 `documenti` rows updated (tag `mia_salute` appended, persona set where empty). Rollback: revert the PR; rows: `update documenti set tag = array_remove(tag,'mia_salute') where 'mia_salute' = any(tag)`.
+- Tests 1635/1635; Personal build OK.
+- Not included (uncertain owner, still «da analizzare»): 2023 «Notifica prescrizione specialistica» (studio medico Corso Nizza), 2017 «RapportoVisMedica» (Germano Giraudo); Luca can add them from the selection → Altro.
+- Next: PO review on the phone; PR + "Mergia" on request.

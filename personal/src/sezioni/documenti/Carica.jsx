@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { caricaDocumento, pagamentoDaDocumento } from '../../lib/archivio.js';
 import { catalogaFoto } from '../../lib/foto.js';
+import { mettiInSalute } from '../../lib/salute.js';
 import { preparaFile as preparaCaricamento } from '../../lib/file.js';
 import { tokenSessione } from '../../ui.jsx';
 import { IconaFotocamera, IconaFile, IconaScansiona } from '../../Icone.jsx';
@@ -39,6 +40,8 @@ export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) 
       if (verifica.error || !verifica.data) {
         throw new Error('Il file potrebbe essere stato salvato su Drive, ma non risulta nell’archivio. Non ripetere il caricamento: verifica prima per evitare duplicati.');
       }
+      // Da La mia salute: il documento resta lì anche se la lettura cambia categoria.
+      if (r.id && opzioni.salute) await mettiInSalute(archivioDb, r.id).catch(() => {});
       aggiorna();
       // Da Conti: il documento diventa (o si collega a) un pagamento da fare.
       if (r.id && (opzioni.pagamento || opzioni.pagamentoId)) {

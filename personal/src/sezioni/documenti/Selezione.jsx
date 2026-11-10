@@ -5,6 +5,7 @@ import { archivioDb } from '../../lib/supabasePersonal.js';
 import { aggiornaDocumenti, eliminaDocumenti, portafoglioDocumenti, cestinaSuDrive, eCaricato, daDrive } from '../../lib/archivio.js';
 import { euro } from '../../lib/coreArchivio.js';
 import { caricaCartelle } from '../../lib/cartelle.js';
+import { impostaSalute } from '../../lib/salute.js';
 import { preparaFile, comeFile, condividi } from '../../lib/condividi.js';
 import { colore, dataBreve, titoloDoc, Gruppo, ConfermaElimina, tokenSessione } from '../../ui.jsx';
 import { Miniatura } from '../../Miniatura.jsx';
@@ -91,7 +92,7 @@ function VoceDocumento({ doc, modo, selezione, onApri, onSeleziona }) {
 }
 
 /* ---------- elenco con selezione e azioni di massa ---------- */
-export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione }) {
+export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione, maxCondivisi = MAX_CONDIVISI }) {
   const { apri, esegui, aggiorna, mostra, fascicoli, impostazioni } = ctx;
   const [modo, setModoStato] = useState(leggiModo);
   const [selezione, setSelezione] = useState(null); // Set di id, o null fuori dalla selezione
@@ -116,7 +117,7 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione }) {
   const chiaveScelti = ids.slice().sort().join(',');
   useEffect(() => {
     const daPreparare = scelti.filter((d) => d.drive_file_id && d.fascicolo !== 'clinico_pazienti');
-    if (!daPreparare.length || daPreparare.length > MAX_CONDIVISI) { setPronti(null); return undefined; }
+    if (!daPreparare.length || daPreparare.length > maxCondivisi) { setPronti(null); return undefined; }
     let vivo = true;
     setPronti(null);
     (async () => {
@@ -127,7 +128,7 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione }) {
       } catch { if (vivo) setPronti({ chiave: chiaveScelti, file: [], errore: true }); }
     })();
     return () => { vivo = false; };
-  }, [chiaveScelti]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [chiaveScelti, maxCondivisi]); // eslint-disable-line react-hooks/exhaustive-deps
   const condividiScelti = async () => {
     if (!pronti || pronti.chiave !== chiaveScelti) return;
     try {
@@ -136,7 +137,7 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione }) {
       else if (r === 'non_disponibile') mostra('Condivisione non disponibile su questo dispositivo');
     } catch (e) { mostra(e.message); }
   };
-  const statoCondividi = !ids.length ? null : ids.length > MAX_CONDIVISI ? `Al massimo ${MAX_CONDIVISI}` : !pronti || pronti.chiave !== chiaveScelti ? 'Preparo…' : pronti.errore ? 'Non disponibile' : null;
+  const statoCondividi = !ids.length ? null : ids.length > maxCondivisi ? `Al massimo ${maxCondivisi}` : !pronti || pronti.chiave !== chiaveScelti ? 'Preparo…' : pronti.errore ? 'Non disponibile' : null;
   const fatto = (msg) => { setFoglio(null); setSelezione(null); aggiorna(); onCambiato?.(); mostra(msg); };
   const cambia = (campi, msg) => esegui(async () => { await aggiornaDocumenti(archivioDb, ids, campi); fatto(msg); });
 
@@ -162,11 +163,14 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione }) {
       { id: 'importanza', nome: 'Importanza', meta: 'importante, normale, poco utile' },
       { id: 'personali_si', nome: 'Aggiungi ai Personali' },
       { id: 'personali_no', nome: 'Togli dai Personali' },
+      { id: 'salute_si', nome: 'Aggiungi a La mia salute', meta: 'referti, esami e ricette tuoi' },
+      { id: 'salute_no', nome: 'Togli da La mia salute' },
       { id: 'persona', nome: 'Assegna a una persona' },
     ], scegli: (id) => {
       if (id === 'persona') { setFoglio('persona'); return; }
       if (id === 'importanza') { setFoglio('importanza'); return; }
       if (id === 'ente') { cambia({ ente: '' }, 'Tolti dalla cartella'); return; }
+      if (id === 'salute_si' || id === 'salute_no') { esegui(async () => { await impostaSalute(archivioDb, scelti, id === 'salute_si'); fatto(id === 'salute_si' ? 'Aggiunti a La mia salute' : 'Tolti da La mia salute'); }); return; }
       esegui(async () => { await portafoglioDocumenti(archivioDb, scelti, id === 'personali_si'); fatto(id === 'personali_si' ? 'Aggiunti ai Personali' : 'Tolti dai Personali'); });
     } },
   };

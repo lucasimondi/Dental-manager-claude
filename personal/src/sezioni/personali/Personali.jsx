@@ -7,7 +7,7 @@ import { documentoDaPersonal, avvisoDocumento } from '../../lib/portafoglio.js';
 import { preparaFile, comeFile, condividi, scaricaDocumento } from '../../lib/condividi.js';
 import { dataBreve, titoloDoc, Sezione, Chips, tokenSessione } from '../../ui.jsx';
 import { Miniatura } from '../../Miniatura.jsx';
-import { IconaPiu } from '../../Icone.jsx';
+import { IconaPiu, IconaFreccia, IconaCuore } from '../../Icone.jsx';
 
 export function VistaPersonali({ctx}) {
   const {esegui,apri,versione,impostazioni}=ctx;
@@ -30,6 +30,7 @@ export function VistaPersonali({ctx}) {
   if(!docs)return null;
   return <>
     <Chips voci={[["tutti","Tutti"],...categorie.map(c=>[c.id,c.nome])]} attiva={scheda} onScegli={setScheda}/>
+    <button className="pp-invito pp-invito-salute" onClick={()=>apri({tipo:'salute'})}><IconaCuore size={22}/><span><strong>La mia salute ed esami</strong><br/>Referti, esami e ricette: selezionali e inviali insieme</span><IconaFreccia size={16}/></button>
     <p className="pp-riga-meta">Seleziona carta d'identità e codice fiscale per inviarli insieme.</p>
     {persone.map(persona=>{
       const elenco=attivi.filter(d=>d._persona===persona&&(scheda==='tutti'||d._cat===scheda));

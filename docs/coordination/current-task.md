@@ -1,3 +1,11 @@
+# Current task — MIA-SALUTE (2026-11-10)
+- OWNER Claude Code; branch `ccr-4c3499b4-9jnuow` from master c6d8dc9 (PR293 merged).
+- AUTHORIZATION PO 2026-11-10: "In documenti personali crea sezione mia salute ed esami, prendi tutte le cose che riguardano me nelle foto referti ecc e mettili lì che si possano mandare anche tutti insieme selezionandoli".
+- SCOPE: Documenti → Personali shows «La mia salute ed esami» (page `salute` of Documenti, sezioni/documenti/Salute.jsx). Membership (personal/src/lib/salute.js): tag `mia_salute`, or `sanitario_famiglia` with persona = first person of Impostazioni; tag `non_mia_salute` removes; `clinico_pazienti` never. Chips by type (referti ed esami, ricette, fatture e spese, altro), multi-select with «Tutti» and Condividi up to 20 files in one share sheet (ElencoSelezionabile `maxCondivisi`, share cache 12→24). «Aggiungi referto o esame» uploads with persona + sanitario_famiglia and tags the new row. Selection Altro: «Aggiungi a / Togli da La mia salute». No schema, RLS or migration change.
+- DATA (PO request, additive): 14 of Luca's documents (Oct–Nov 2026: Dott. Lussignoli e-prescriptions incl. EGDS, ecografia, esami sangue, breath test, pantoprazolo; ASL CN1 request photo; Lilium visit report photo + invoice) got tag `mia_salute` and persona «Luca Simondi». Family documents (Isa Bergese, Roberto Simondi) not included.
+- VALIDATION 1635/1635 Node tests (new tests/personalMiaSalute.test.mjs); Personal build.
+- STATUS pushed; PR on request; task-specific "Mergia" required.
+
 # Current task — DOCUMENTI-DRIVE (2026-11-09)
 - OWNER Claude Code; branch `claude/personal-documents-search-t56hee` from master 2111e66 (PR292).
 - AUTHORIZATION PO 2026-11-09: "Deve esserci la sezione documenti in parte personale dove trovo tutti i documenti che ci sono su drive, organizzati bene con i titoli giusti e inerenti al contenuto, e devo poterli trovare attraverso la barra ricerca".
