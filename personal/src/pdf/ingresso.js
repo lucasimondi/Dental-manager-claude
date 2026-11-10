@@ -1,6 +1,9 @@
 // Dedicated Personal worker, same script/scope as notifications. Never register at '/'.
 export const SHARE_CACHE = 'personal-pdf-incoming-v1';
 export function ambitoPersonal(path = globalThis.location?.pathname || '/personal/') {
+  // SCAN-PDF: Scan riceve i PDF condivisi nel proprio ambito (Condividi → Scan).
+  if (/^\/poliedron\/scan(\/|$)/.test(path)) return '/poliedron/scan/';
+  if (/^\/scan(\/|$)/.test(path)) return '/scan/';
   return path.startsWith('/poliedron/personal') ? '/poliedron/personal/' : '/personal/';
 }
 export async function registraIngresso(nav = globalThis.navigator, path) {

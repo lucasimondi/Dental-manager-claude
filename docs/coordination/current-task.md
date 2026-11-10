@@ -1,3 +1,10 @@
+# Current task — SCAN-PDF (2026-11-10)
+- OWNER Claude Code; branch `ccr-9c70a578-a2q1cs` from master 93e4522 (PR300 merged).
+- AUTHORIZATION PO 2026-11-10: "Metti anche che quando si deve aprire un file PDF posso scegliere Scan".
+- SCOPE: Scan manifests get `share_target` (POST `?receive-pdf=1`, PDF and images → Android «Condividi → Scan») and `file_handlers` (PDF, «Apri con → Scan» where the browser supports it: Chrome/Edge on computer). Personal worker reused in Scan's scope (`public/poliedron/scan/sw-notifiche.js`, `public/scan/sw-notifiche.js` = importScripts of `/personal/sw-notifiche.js`); `ambitoPersonal` returns the Scan scope; Scan.jsx reads `?pdf-share=` (useIngressoPdf) and `launchQueue` and opens the PDF manager. Files stay on the device until the user shares or archives. Android «Apri con» for web apps is not available (needs a native app): PRODUCT_OWNER_DECISION_REQUIRED only if a native wrapper is wanted.
+- VALIDATION 1654/1654 Node tests; build; Chromium: Scan's worker registered on /poliedron/scan/, multipart POST to the share target → redirect `?pdf-share=<id>` with the file in the temporary cache; personal-scan visual PASS.
+- STATUS PR; task-specific "Mergia" required. Installed Scan gets «Condividi» after Android refreshes the app (or reinstall).
+
 # Current task — DOCUMENTI-TAG (2026-11-10)
 - OWNER Claude Code; branch `claude/agenda-settimana-testo-capo-p38lb1` from master fb49879 (PR297 merged).
 - AUTHORIZATION PO 2026-11-10: "Togli l'icona della campanella perché copre il più di acquisizione, inoltre nei file da allegare inserisci anche foto, e altri file che possono essere utili tipo doc ecc, metti la possibilità dei tag così la ricerca diventa più semplice e possibilità di aggiungere il tipo cioè etichette tipo".

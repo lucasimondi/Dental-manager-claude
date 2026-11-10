@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
+import { ambitoPersonal } from '../personal/src/pdf/ingresso.js';
 import { eScan, indirizzoScan, indirizzoPersonal, strumentoDaIndirizzo, identitaScan } from '../personal/src/lib/scan.js';
 
 test('Scan: riconosce i suoi indirizzi', () => {
@@ -63,4 +64,22 @@ test('Scan: il service worker dello Studio non risponde su /scan/ con la pagina 
   const deny = cfg.match(/navigateFallbackDenylist: \[(.*)\]/)[1];
   assert.match(deny, /\\\/scan/);
   assert.match(cfg, /\/\^\\\/scan\(\\\/\|\$\)\/\.test\(url\.pathname\)/);
+});
+
+test('Scan: riceve i PDF da Condividi e da Apri con', () => {
+  assert.equal(ambitoPersonal('/poliedron/scan/'), '/poliedron/scan/');
+  assert.equal(ambitoPersonal('/scan/'), '/scan/');
+  assert.equal(ambitoPersonal('/poliedron/personal/'), '/poliedron/personal/');
+  for (const [file, base] of [['public/scan.webmanifest', '/poliedron/scan/'], ['public/scan-dominio.webmanifest', '/scan/']]) {
+    const m = JSON.parse(readFileSync(file, 'utf8'));
+    assert.equal(m.share_target.action, `${base}?receive-pdf=1`);
+    assert.equal(m.share_target.method, 'POST');
+    assert.deepEqual(m.share_target.params.files[0].accept, ['application/pdf', 'image/*']);
+    assert.ok(m.share_target.action.startsWith(m.scope));
+    assert.deepEqual(m.file_handlers[0].accept, { 'application/pdf': ['.pdf'] });
+    assert.match(readFileSync(`public${base}sw-notifiche.js`, 'utf8'), /importScripts\('\/personal\/sw-notifiche\.js'\)/);
+  }
+  const scan = readFileSync('personal/src/scan/Scan.jsx', 'utf8');
+  assert.match(scan, /useIngressoPdf\(apri, setErrore\)/);
+  assert.match(scan, /launchQueue/);
 });
