@@ -4610,3 +4610,7 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 ## Handoff — SCAN-ICONA (2026-11-10) — Claude Code
 - Branch `ccr-9c70a578-a2q1cs` from master fb49879. Files: public/scan-*.png, public/scan.webmanifest, public/scan-dominio.webmanifest, coordination docs. PR296 merged as fb49879 (production deployment dpl_4upm8jccqMz8g452AYKYLqchmqXe READY; /poliedron/scan/ and /scan.webmanifest verified).
 - Database: none. Rollback: revert the commit (previous green icon returns).
+
+## Handoff — SCAN-AGENDA-FIX (2026-11-10) — Claude Code
+- PR298 merged as 7803d5c (production dpl_9vd1iBNLMnxo62V4bcUSDka7xd4K READY, scan manifest verified). Branch `ccr-9c70a578-a2q1cs`. Files: vite.config.js, tests/personalScan.test.mjs, coordination docs.
+- Database: none. Rollback: revert the commit.

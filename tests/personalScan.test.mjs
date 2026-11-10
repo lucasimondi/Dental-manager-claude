@@ -57,3 +57,10 @@ test('Scan: scorciatoie di Personal e app senza dock', () => {
   assert.doesNotMatch(scan, /pp-schede|pp-fab/);
   assert.match(readFileSync('personal/index.html', 'utf8'), /scan\(/);
 });
+
+test('Scan: il service worker dello Studio non risponde su /scan/ con la pagina dello Studio', () => {
+  const cfg = readFileSync('vite.config.js', 'utf8');
+  const deny = cfg.match(/navigateFallbackDenylist: \[(.*)\]/)[1];
+  assert.match(deny, /\\\/scan/);
+  assert.match(cfg, /\/\^\\\/scan\(\\\/\|\$\)\/\.test\(url\.pathname\)/);
+});
