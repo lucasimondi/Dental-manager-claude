@@ -4601,3 +4601,8 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Branch `ccr-4c3499b4-9jnuow`. Files: personal/src/{Aggiungi.jsx, ui.jsx (BottoniInvio), personal.css, lib/{ingressi.js,pdfUnico.js}, sezioni/documenti/{Carica.jsx,Documento.jsx,Salute.jsx,Selezione.jsx,index.jsx}, sezioni/personali/Personali.jsx}, tests (personalMiaSalute, appUnica, personalConti, personalPdf, visual/personal-salute).
 - Database: none. Tests 1641/1641; build; Chromium PASS. Rollback: revert the commit (the old + → Documento sub-menu comes back).
 - Behaviour change: + → Documento no longer shows Scansiona / Scatta foto / Carica file / Apri e firma un PDF; one screen does all. Quick actions in Oggi (Scansiona, Foto) unchanged. Real-phone check pending.
+
+## Handoff — SCAN-HOME (2026-11-10) — Claude Code
+- Branch `ccr-9c70a578-a2q1cs` from master 143496c. Files: personal/src/{lib/scan.js (new), scan/Scan.jsx (new), App.jsx, main.jsx, Aggiungi.jsx, pro.css}, personal/index.html, public/{scan.webmanifest, scan-dominio.webmanifest, scan-180/192/512/maskable-512.png (new), personal.webmanifest, personal-dominio.webmanifest (shortcuts)}, vercel.json (rewrites), tests/personalScan.test.mjs, tests/visual/personal-scan.{html,fixture.jsx,mjs}.
+- Database: none. Tests 1646/1646; build OK; Chromium personal-scan PASS. Rollback: revert the commit (installed Scan icons then open the Studio app; remove them from the Home).
+- Risks: real-phone install check pending (Android Chrome install from /poliedron/scan/, iPhone «Aggiungi alla schermata Home»); Scan shares login with Personal (same origin storage).

@@ -15,7 +15,8 @@
 <title>Poliedron Personal</title>
 <script>
   // Sul dominio proprio l'app vive su /personal/: manifest con start_url e scope di quell'indirizzo.
-  if (location.hostname === 'personal.poliedrasoft.it') document.addEventListener('DOMContentLoaded', function () {
+  // SCAN-HOME: su /scan/ il manifest è quello di Scan (lo imposta src/main.jsx).
+  if (location.hostname === 'personal.poliedrasoft.it' && !/^\/(poliedron\/)?scan(\/|$)/.test(location.pathname)) document.addEventListener('DOMContentLoaded', function () {
     var l = document.querySelector('link[rel="manifest"]'); if (l) l.href = '/personal-dominio.webmanifest';
   });
 </script>
