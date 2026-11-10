@@ -10,6 +10,7 @@ import { avvisoDocumento, dataScadenza, salvaValidita, storicoPersonale, archivi
 import { IconaPratiche, IconaFreccia, IconaApri, IconaEmail, IconaStella, IconaCestino, IconaChat } from '../../Icone.jsx';
 
 /* ---------- pagine ---------- */
+const eImmagine = (doc) => /^image\//.test(doc.mime_type || '') || /\.(jpe?g|png|heic|heif|webp)$/i.test(doc.nome_file_originale || '');
 const ePdf = (doc) => doc.mime_type === 'application/pdf' || /\.pdf$/i.test(doc.nome_file_originale || '');
 export function PaginaDocumento({ id, ctx, chiudi }) {
   const { esegui, aggiorna, mostra, apri, impostazioni, fascicoli } = ctx;
@@ -35,7 +36,8 @@ export function PaginaDocumento({ id, ctx, chiudi }) {
       {/* DOCK-PER-TE passo 2: le azioni sul PDF stanno nel documento, non in una sezione a parte. */}
       {ePdf(doc)
         ? <div className="pp-azioni pp-azioni-pdf"><button className="pp-bottone" onClick={() => setIntero('firma')}>Firma</button><button className="pp-bottone pp-bottone-chiaro" onClick={() => setIntero('modifica')}>Modifica</button><button className="pp-bottone pp-bottone-chiaro" onClick={() => setIntero('pagine')}>Pagine</button><button className="pp-bottone pp-bottone-chiaro" onClick={() => setIntero(true)}>Apri</button></div>
-        : <button className="pp-bottone" onClick={() => setIntero(true)}>Apri a tutto schermo</button>}
+        : <div className="pp-azioni pp-azioni-pdf"><button className="pp-bottone" onClick={() => setIntero(true)}>Apri a tutto schermo</button>
+          {eImmagine(doc) && doc.drive_file_id && doc.fascicolo !== 'clinico_pazienti' && <button className="pp-bottone pp-bottone-chiaro" onClick={() => apri({ tipo: 'modifica-immagine', id: doc.id, pdf: true })}>Ritaglia · PDF</button>}</div>}
       {avviso && <p className={'pp-validita '+avviso.stato}>{avviso.testo} · {dataBreve(avviso.data)}</p>}
       <div className="pp-dettaglio-testa" style={{ '--c': colore(doc.fascicolo) }}>
         <span className="pp-etichetta">{doc.tipo_documento || fascicoli.find((f) => f.codice === doc.fascicolo)?.nome || doc.fascicolo}</span>

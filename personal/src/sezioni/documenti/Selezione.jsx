@@ -6,10 +6,11 @@ import { aggiornaDocumenti, eliminaDocumenti, portafoglioDocumenti, cestinaSuDri
 import { euro } from '../../lib/coreArchivio.js';
 import { caricaCartelle } from '../../lib/cartelle.js';
 import { impostaSalute } from '../../lib/salute.js';
-import { preparaFile, comeFile, condividi } from '../../lib/condividi.js';
+import { preparaFile, comeFile, condividi, inviaCon } from '../../lib/condividi.js';
+import { unisciInPdf } from '../../lib/pdfUnico.js';
 import { colore, dataBreve, titoloDoc, Gruppo, ConfermaElimina, tokenSessione } from '../../ui.jsx';
 import { Miniatura } from '../../Miniatura.jsx';
-import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaCestino, IconaCondividi } from '../../Icone.jsx';
+import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaCestino, IconaCondividi, IconaEmail, IconaChat } from '../../Icone.jsx';
 
 const RILEVANZA = { alta: 'Importante', normale: 'Normale', bassa: 'Poco utile' };
 const MAX_CONDIVISI = 10;
@@ -92,15 +93,16 @@ function VoceDocumento({ doc, modo, selezione, onApri, onSeleziona }) {
 }
 
 /* ---------- elenco con selezione e azioni di massa ---------- */
-export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione, maxCondivisi = MAX_CONDIVISI }) {
+export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione, maxCondivisi = MAX_CONDIVISI, invio = false, titoloInvio = 'Documenti', selezioneIniziale = false }) {
   const { apri, esegui, aggiorna, mostra, fascicoli, impostazioni } = ctx;
   const [modo, setModoStato] = useState(leggiModo);
-  const [selezione, setSelezione] = useState(null); // Set di id, o null fuori dalla selezione
+  const [selezione, setSelezione] = useState(selezioneIniziale ? new Set() : null); // Set di id, o null fuori dalla selezione
   const [foglio, setFoglio] = useState(null);
   const [conferma, setConferma] = useState(false);
   const [avanzamento, setAvanzamento] = useState(null);
   const [cartelle, setCartelle] = useState(null);
   const [pronti, setPronti] = useState(null); // { chiave, file } dei documenti scelti, per Condividi
+  const [unico, setUnico] = useState(false); // MIA-SALUTE: unisci i documenti scelti in un solo PDF
   const setModo = (m) => { setModoStato(m); try { localStorage.setItem(MODO_KEY, m); } catch { /* facoltativo */ } };
   useEffect(() => { setSelezione((s) => (s ? new Set([...s].filter((id) => elenco.some((d) => d.id === id))) : s)); }, [elenco]);
 
@@ -114,21 +116,34 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione, max
   const scelti = elenco.filter((d) => selezione?.has(d.id));
   // Condividi più file: si preparano mentre li scegli, perché iOS apre il foglio solo se parte
   // subito dal tocco (massimo 10 file, mai i clinici: lo script non li manda all'anteprima).
-  const chiaveScelti = ids.slice().sort().join(',');
+  const chiaveScelti = (invio ? ids : ids.slice().sort()).join(',') + (unico ? '|pdf' : '');
   useEffect(() => {
-    const daPreparare = scelti.filter((d) => d.drive_file_id && d.fascicolo !== 'clinico_pazienti');
+    // Con l'invio (La mia salute) i file seguono l'ordine in cui li hai toccati: è l'ordine delle pagine del PDF unico.
+    const ordinati = invio ? ids.map((id) => elenco.find((d) => d.id === id)).filter(Boolean) : scelti;
+    const daPreparare = ordinati.filter((d) => d.drive_file_id && d.fascicolo !== 'clinico_pazienti');
     if (!daPreparare.length || daPreparare.length > maxCondivisi) { setPronti(null); return undefined; }
     let vivo = true;
     setPronti(null);
     (async () => {
       try {
         const token = await tokenSessione();
-        const file = await Promise.all(daPreparare.map((d) => preparaFile(d.drive_file_id, token).then(comeFile)));
-        if (vivo) setPronti({ chiave: chiaveScelti, file });
+        let file = await Promise.all(daPreparare.map((d) => preparaFile(d.drive_file_id, token).then(comeFile)));
+        let esclusi = [];
+        if (unico) { const r = await unisciInPdf(file, titoloInvio); file = [r.file]; esclusi = r.esclusi; }
+        if (vivo) setPronti({ chiave: chiaveScelti, file, esclusi });
       } catch { if (vivo) setPronti({ chiave: chiaveScelti, file: [], errore: true }); }
     })();
     return () => { vivo = false; };
   }, [chiaveScelti, maxCondivisi]); // eslint-disable-line react-hooks/exhaustive-deps
+  const inviaScelti = async (canale) => {
+    if (!pronti || pronti.chiave !== chiaveScelti) return;
+    try {
+      const titolo = scelti.length === 1 ? titoloDoc(scelti[0]) : `${titoloInvio} (${scelti.length})`;
+      const r = await inviaCon(canale, { titolo, files: pronti.file, links: scelti.map((d) => d.drive_url).filter(Boolean) });
+      if (r === 'non_disponibile') mostra('Invio non disponibile su questo dispositivo');
+      else if (pronti.esclusi?.length) mostra(`Non uniti nel PDF: ${pronti.esclusi.join(', ')}`);
+    } catch (e) { mostra(e.message); }
+  };
   const condividiScelti = async () => {
     if (!pronti || pronti.chiave !== chiaveScelti) return;
     try {
@@ -214,13 +229,22 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione, max
             : conferma ? (
               <ConfermaElimina n={ids.length} onNo={() => setConferma(false)} onSi={elimina} />
             ) : (
+              <>
+              {invio && <>
+                <div className="pp-invio-salute">
+                  <button disabled={!ids.length || !!statoCondividi} onClick={() => inviaScelti('mail')}><IconaEmail size={18} /><span>{statoCondividi || 'Mail'}</span></button>
+                  <button className="pp-whatsapp" disabled={!ids.length || !!statoCondividi} onClick={() => inviaScelti('whatsapp')}><IconaChat size={18} /><span>{statoCondividi || 'WhatsApp'}</span></button>
+                </div>
+                <label className="pp-invio-opzione"><input type="checkbox" checked={unico} onChange={(e) => setUnico(e.target.checked)} />Unisci in un solo PDF (nell'ordine in cui li tocchi)</label>
+              </>}
               <div className="pp-barra-selezione-azioni">
-                <button disabled={!ids.length || !!statoCondividi} onClick={condividiScelti}><IconaCondividi size={18} /><span>{statoCondividi || 'Condividi'}</span></button>
+                {!invio && <button disabled={!ids.length || !!statoCondividi} onClick={condividiScelti}><IconaCondividi size={18} /><span>{statoCondividi || 'Condividi'}</span></button>}
                 <button disabled={!ids.length} onClick={() => { esegui(async () => setCartelle(await caricaCartelle(archivioDb))); setFoglio('cartella'); }}><IconaDocumenti size={18} /><span>Cartella</span></button>
                 <button disabled={!ids.length} onClick={() => setFoglio('sposta')}><IconaStella size={18} /><span>Categoria</span></button>
                 <button disabled={!ids.length} onClick={() => setFoglio('altro')}><span className="pp-tre-punti">•••</span><span>Altro</span></button>
                 <button disabled={!ids.length} className="pp-rosso" onClick={() => setConferma(true)}><IconaCestino size={18} /><span>Elimina</span></button>
               </div>
+              </>
             )}
         </div>
       )}

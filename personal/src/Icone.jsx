@@ -10,6 +10,7 @@ export const IconaDocumenti = (p) => <Svg {...p} tipo="documenti"><path d="M3 7a
 export const IconaPortafoglio = (p) => <Svg {...p} tipo="conti"><rect x="3" y="6" width="18" height="13" rx="2.5" /><path d="M3 10h18" /><path d="M16 14.5h2" /><path d="M6 6V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" /></Svg>;
 export const IconaPratiche = (p) => <Svg {...p} tipo="legal"><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8.5 7V5a1.5 1.5 0 0 1 1.5-1.5h4A1.5 1.5 0 0 1 15.5 5v2" /><path d="M3 12.5h18" /></Svg>;
 export const IconaCuore = (p) => <Svg {...p} tipo="salute"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" /><path d="M8.5 12h2l1-2 1.5 4 1-2h1.5" /></Svg>;
+export const IconaTaglia = (p) => <Svg {...p} tipo="taglia"><path d="M6 2v14a2 2 0 0 0 2 2h14" /><path d="M18 22V8a2 2 0 0 0-2-2H2" /></Svg>;
 export const IconaPiu = (p) => <Svg {...p} tipo="piu"><path d="M12 5v14M5 12h14" /></Svg>;
 export const IconaCerca = (p) => <Svg {...p} tipo="cerca"><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" /></Svg>;
 export const IconaChiudi = (p) => <Svg {...p} tipo="chiudi"><path d="M6 6l12 12M18 6 6 18" /></Svg>;

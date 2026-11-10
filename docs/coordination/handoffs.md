@@ -4591,3 +4591,8 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Tests 1635/1635; Personal build OK.
 - Not included (uncertain owner, still «da analizzare»): 2023 «Notifica prescrizione specialistica» (studio medico Corso Nizza), 2017 «RapportoVisMedica» (Germano Giraudo); Luca can add them from the selection → Altro.
 - Next: PO review on the phone; PR + "Mergia" on request.
+
+## Handoff — MIA-SALUTE follow-up (2026-11-10) — Claude Code
+- Branch `ccr-4c3499b4-9jnuow`. Files: personal/src/{Ritaglio.jsx (new), lib/pdfUnico.js (new), lib/scansione.js, lib/condividi.js (urlInvio, inviaCon), Aggiungi.jsx, Icone.jsx (IconaTaglia), personal.css, sezioni/documenti/{ModificaImmagine.jsx (new), Salute.jsx, Selezione.jsx, Documento.jsx, index.jsx}}, tests/personalMiaSalute.test.mjs, tests/visual/personal-salute.{html,fixture.jsx,mjs}.
+- Database: none. Tests 1639/1639; Personal build; Chromium personal-salute PASS. Rollback: revert the commit.
+- Limits: a web app cannot open WhatsApp or Mail directly with attachments; both buttons open the phone share sheet (then tap Mail or WhatsApp). PDF crop is not offered (PDFs keep Firma/Modifica/Pagine). Real-phone check pending.

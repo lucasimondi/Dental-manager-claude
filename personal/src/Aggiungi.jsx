@@ -4,9 +4,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { elaboraPagina, creaPdf } from './lib/scansione.js';
 import { Segmenti } from './ui.jsx';
+import { Ritaglio } from './Ritaglio.jsx';
 import {
   IconaFotocamera, IconaFile, IconaPortafoglio, IconaCalendario, IconaEuro, IconaChiudi, IconaScansiona, IconaFoto,
-  IconaNuvola, IconaRuota, IconaCestino, IconaPiu, IconaNote, IconaLucchetto, IconaIndietro,
+  IconaNuvola, IconaRuota, IconaCestino, IconaTaglia, IconaPiu, IconaNote, IconaLucchetto, IconaIndietro,
 } from './Icone.jsx';
 
 // DOCK-PER-TE passo 3 (PO 2026-11-08): + → Per te con Documento, Spesa, Foto, Nota e Password;
@@ -84,12 +85,13 @@ export function FoglioAggiungi({ onScegli, onChiudi, iniziale = null }) {
 }
 
 /* ---------- scansione ---------- */
-export function PaginaScansione({ ctx, sostituisci }) {
+export function PaginaScansione({ ctx, sostituisci, opzioni = {} }) {
   const { mostra } = ctx;
   const [pagine, setPagine] = useState([]); // { file, rotazione, url, larghezza, altezza }
   const [modo, setModo] = useState('documento');
   const [lavoro, setLavoro] = useState(null);
   const [nome, setNome] = useState('');
+  const [taglia, setTaglia] = useState(null); // { i, url } pagina da ritagliare
   const scatto = useRef(null);
   const galleria = useRef(null);
 
@@ -100,7 +102,7 @@ export function PaginaScansione({ ctx, sostituisci }) {
     (async () => {
       setLavoro('Miglioro le pagine…');
       const nuove = [];
-      for (const p of pagine) nuove.push({ ...p, ...(await elaboraPagina(p.file, { modo, rotazione: p.rotazione })) });
+      for (const p of pagine) nuove.push({ ...p, ...(await elaboraPagina(p.file, { modo, rotazione: p.rotazione, ritaglio: p.ritaglio })) });
       if (vivo) { setPagine(nuove); setLavoro(null); }
     })().catch(() => setLavoro(null));
     return () => { vivo = false; };
@@ -121,7 +123,15 @@ export function PaginaScansione({ ctx, sostituisci }) {
     const p = pagine[i];
     const rotazione = (p.rotazione + 90) % 360;
     const r = await elaboraPagina(p.file, { modo, rotazione });
-    setPagine((xs) => xs.map((x, j) => (j === i ? { ...x, rotazione, ...r } : x)));
+    setPagine((xs) => xs.map((x, j) => (j === i ? { ...x, rotazione, ritaglio: null, ...r } : x)));
+  };
+  // MIA-SALUTE: ritaglio della pagina sull'immagine intera (ruotata), poi si rielabora.
+  const apriRitaglio = async (i) => { const p = pagine[i]; const r = await elaboraPagina(p.file, { modo: 'originale', rotazione: p.rotazione }); setTaglia({ i, url: r.url }); };
+  const ritaglia = async (ritaglio) => {
+    const { i } = taglia; setTaglia(null);
+    const p = pagine[i];
+    const r = await elaboraPagina(p.file, { modo, rotazione: p.rotazione, ritaglio });
+    setPagine((xs) => xs.map((x, j) => (j === i ? { ...x, ritaglio, ...r } : x)));
   };
   const togli = (i) => setPagine((xs) => xs.filter((_, j) => j !== i));
   const sposta = (i, d) => setPagine((xs) => { const a = [...xs]; const [x] = a.splice(i, 1); a.splice(i + d, 0, x); return a; });
@@ -129,7 +139,7 @@ export function PaginaScansione({ ctx, sostituisci }) {
     setLavoro('Creo il PDF…');
     try {
       const pdf = await creaPdf(pagine, nome || `Scansione ${new Date().toLocaleDateString('it-IT')}`);
-      sostituisci({ tipo: 'carica', file: pdf, opzioni: { descrizione: nome } });
+      sostituisci({ tipo: 'carica', file: pdf, opzioni: { ...opzioni, descrizione: nome || opzioni.descrizione || '' } });
     } catch (e) { mostra(`PDF non creato: ${e.message}`); setLavoro(null); }
   };
 
@@ -146,6 +156,7 @@ export function PaginaScansione({ ctx, sostituisci }) {
             <figcaption>
               <span>{i + 1}</span>
               <button aria-label={`Ruota pagina ${i + 1}`} onClick={() => ruota(i)}><IconaRuota size={18} /></button>
+              <button aria-label={`Ritaglia pagina ${i + 1}`} onClick={() => apriRitaglio(i)}><IconaTaglia size={18} /></button>
               {i > 0 && <button aria-label={`Sposta prima la pagina ${i + 1}`} onClick={() => sposta(i, -1)}>‹</button>}
               {i < pagine.length - 1 && <button aria-label={`Sposta dopo la pagina ${i + 1}`} onClick={() => sposta(i, 1)}>›</button>}
               <button aria-label={`Togli pagina ${i + 1}`} onClick={() => togli(i)}><IconaCestino size={18} /></button>
@@ -168,6 +179,7 @@ export function PaginaScansione({ ctx, sostituisci }) {
         </>
       )}
       {lavoro && !pagine.length && <p className="pp-riga-meta"><span className="pp-rotella" /> {lavoro}</p>}
+      {taglia && <Ritaglio src={taglia.url} iniziale={pagine[taglia.i]?.ritaglio} onFatto={ritaglia} onAnnulla={() => setTaglia(null)} />}
     </>
   );
 }
