@@ -1,3 +1,11 @@
+# Current task — SCAN-AGENDA-FIX (2026-11-10)
+- OWNER Claude Code; branch `ccr-9c70a578-a2q1cs` from master 7803d5c (PR298 merged).
+- REPORT PO 2026-11-10: "Mi apre l'agenda" (opening Scan).
+- CAUSE: the Studio service worker (scope `/`, Workbox navigateFallback) answered `/scan/` (personal.poliedrasoft.it) with the Studio index.html → agenda; `/poliedron`, `/personal`, `/archivio` were excluded, `/scan` was not. The server (Vercel rewrite) was already correct (verified on deployment dpl_9vd1iBNLMnxo62V4bcUSDka7xd4K).
+- FIX: vite.config.js — `/^\/scan(\/|$)/` in navigateFallbackDenylist and in the NetworkFirst app-shell rule; test in tests/personalScan.test.mjs. No data change.
+- VALIDATION Node tests; build (dist/sw.js denylist contains /scan).
+- STATUS PR; task-specific "Mergia" required. After deploy the phone may need one reload of Scan for the new service worker to take over.
+
 # Current task — SCAN-ICONA (2026-11-10)
 - OWNER Claude Code; branch `ccr-9c70a578-a2q1cs` restarted from master fb49879 (PR296 merged).
 - AUTHORIZATION PO 2026-11-10: "Fammi una icona apposita puoi ? Fammi vedere tre proposte pro"; after the three proposals (A Gemma, B Firma, C Essenziale): "B".
