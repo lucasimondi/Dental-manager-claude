@@ -2796,3 +2796,6 @@ html .pol-modal-sheet.agenda-appointment-menu-sheet.appointment-workspace-sheet 
   .pol-modal-sheet :is(input, select, textarea) { min-width: 0; max-width: 100%; box-sizing: border-box; }
   .pol-modal-content { overflow-x: hidden; }
 }
+/* DOCUMENTI-TAG: Scatta · Foto · PDF, Word, Excel… */
+.acquisisci-sorgenti.acquisisci-sorgenti-tre{grid-template-columns:repeat(3,minmax(0,1fr))}
+.acquisisci-nota{font-size:13px;color:var(--text-secondary);margin:4px 0 10px;line-height:1.45}

@@ -237,8 +237,8 @@ export async function datiLavoro(da, a) {
 // ACQUISISCI-UNICO (PO 2026-11-10: "da lì decido dove archiviare se in personale o studio (paziente)"):
 // unica scrittura di Personal sui documenti dello studio. Stessa funzione di Studio, sessione dello
 // studio già salvata, RLS dello studio. Il file non viene letto né analizzato.
-export async function archiviaDocumentoStudio({ file, titolo, tipo, pazienteId = null }) {
+export async function archiviaDocumentoStudio({ file, titolo, tipo, tag = [], pazienteId = null }) {
   const sessione = await sessioneStudio();
   if (!sessione) throw new Error('Studio non collegato: accedi allo studio da Impostazioni.');
-  return acquisisciDocumento(studioDb, { studioId: studioDellaSessione(sessione), file, titolo, tipo, pazienteId });
+  return acquisisciDocumento(studioDb, { studioId: studioDellaSessione(sessione), file, titolo, tipo, tag, pazienteId });
 }

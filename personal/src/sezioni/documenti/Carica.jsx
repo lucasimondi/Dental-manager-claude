@@ -9,6 +9,7 @@ import { tokenSessione } from '../../ui.jsx';
 import { IconaFotocamera, IconaFile, IconaScansiona } from '../../Icone.jsx';
 import { Segmenti } from '../../ui.jsx';
 import { ArchiviaStudio } from './ArchiviaStudio.jsx';
+import TipoETag, { ricordaTipoETag } from '../../../../shared/documenti/TipoETag.jsx';
 
 export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) {
   const { aggiorna, mostra, impostazioni, fascicoli } = ctx;
@@ -23,6 +24,7 @@ export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) 
   const [stato, setStato] = useState(null);
   // ACQUISISCI-UNICO: dal tasto unico si sceglie dove archiviare (Personale o Studio · paziente).
   const [dove, setDove] = useState('personale');
+  const [tag, setTag] = useState([]); // DOCUMENTI-TAG: tag per trovarlo dopo
   const fotocamera = useRef(null);
   const archivio = useRef(null);
   const autoAvviato = useRef(false);
@@ -43,6 +45,12 @@ export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) 
       const verifica = await archivioDb.from('documenti').select('id').eq('id', r.id).maybeSingle();
       if (verifica.error || !verifica.data) {
         throw new Error('Il file potrebbe essere stato salvato su Drive, ma non risulta nell’archivio. Non ripetere il caricamento: verifica prima per evitare duplicati.');
+      }
+      // DOCUMENTI-TAG: i tag scelti si aggiungono a quelli che l'archivio mette da solo.
+      if (r.id && tag.length) {
+        const { data: d } = await archivioDb.from('documenti').select('tag').eq('id', r.id).maybeSingle();
+        await archivioDb.from('documenti').update({ tag: [...new Set([...(d?.tag || []), ...tag])] }).eq('id', r.id);
+        ricordaTipoETag(null, tag);
       }
       // Da La mia salute: il documento resta lì anche se la lettura cambia categoria.
       if (r.id && opzioni.salute) await mettiInSalute(archivioDb, r.id).catch(() => {});
@@ -118,6 +126,7 @@ export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) 
           </select>
         </label>
       </div>
+      <TipoETag tag={tag} onTag={setTag} />
       <label className="pp-campo"><span>Fascicolo</span>
         <select className="pp-select" value={fascicolo} onChange={(e) => setFascicolo(e.target.value)}>
           <option value="">Scegli in automatico</option>

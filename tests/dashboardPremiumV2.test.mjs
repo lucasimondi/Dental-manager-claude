@@ -145,7 +145,8 @@ test('the bell itself still owns no notification engine — the count is supplie
 });
 
 test('the bell opens the SAME single Poliedron — now its persistent Chat page — carrying the real unread count, never a second agent', () => {
-  assert.match(poliedronSrc, /\{page !== 'chat' && \(\s*<PoliedronBell/);
+  // PO 2026-11-10 (ACQUISISCI-UNICO): sul telefono la campanella copriva il tasto di acquisizione: solo su computer.
+  assert.match(poliedronSrc, /\{page !== 'chat' && !isMobile && \(\s*<PoliedronBell/);
   assert.match(poliedronSrc, /variant=\{isMobile \? 'mobile' : 'desktop'\}/);
   assert.match(poliedronSrc, /unreadCount=\{unreadCount\}/);
   assert.match(poliedronSrc, /onOpenChat=\{\(\) => setPage\('chat'\)\}/);

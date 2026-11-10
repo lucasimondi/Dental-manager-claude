@@ -1,0 +1,16 @@
+/* DOCUMENTI-TAG — tipo e tag dei documenti, uguale in Studio e Personal. */
+.doc-etichette { display: grid; gap: 12px; margin: 4px 0 12px; min-width: 0; }
+.doc-etichette-campo { display: grid; gap: 6px; min-width: 0; }
+.doc-etichette-campo > span { font-size: 12px; font-weight: 700; color: var(--text-secondary, #5b7083); }
+.doc-etichette-chips, .doc-etichette-suggeriti { display: flex; flex-wrap: wrap; gap: 6px; }
+.doc-etichette-chips button, .doc-etichette-suggeriti button { min-height: 40px; padding: 0 12px; border-radius: 20px; border: 1px solid #d5dfe8; background: #fff; color: #18334a; font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.doc-etichette-chips button.attivo { background: var(--brand-primary, #1F63B5); border-color: var(--brand-primary, #1F63B5); color: #fff; }
+.doc-etichette-chips .doc-etichette-nuovo { border-style: dashed; color: var(--brand-primary, #1F63B5); }
+.doc-etichette-scrivi { display: inline-flex; gap: 6px; align-items: center; }
+.doc-etichette-scrivi input { min-height: 40px; width: 150px; padding: 0 10px; border: 1px solid #9cc4e0; border-radius: 10px; font: inherit; font-size: 14px; }
+.doc-etichette-tag { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 46px; padding: 4px 6px; border: 1px solid #d5dfe8; border-radius: 12px; background: #fff; }
+.doc-etichette-tag input { flex: 1; min-width: 120px; min-height: 36px; border: 0; outline: 0; background: transparent; font: inherit; font-size: 14.5px; color: inherit; }
+.doc-etichette-tag-chip { display: inline-flex; align-items: center; gap: 2px; min-height: 30px; padding: 0 4px 0 10px; border-radius: 15px; background: #e8f1f9; color: #18557f; font-size: 13px; font-weight: 600; }
+.doc-etichette-tag-chip button { width: 26px; height: 26px; border: 0; border-radius: 13px; background: transparent; color: inherit; font-size: 16px; cursor: pointer; }
+.doc-etichette-suggeriti button { min-height: 34px; font-size: 12.5px; color: #5b7083; }
+@media (prefers-color-scheme: dark) { .pp-app .doc-etichette-chips button:not(.attivo), .pp-app .doc-etichette-tag, .pp-app .doc-etichette-suggeriti button { background: transparent; color: inherit; border-color: #2c3445; } }
