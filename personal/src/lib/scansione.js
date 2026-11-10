@@ -3,6 +3,28 @@
 // Le funzioni sui pixel sono pure (lavorano su un array RGBA) e quindi testabili.
 const LATO_MAX = 2000;
 
+// Ritaglio normalizzato: dentro l'immagine e mai più piccolo del 5% per lato.
+export const RITAGLIO_INTERO = { x: 0, y: 0, w: 1, h: 1 };
+const MIN = 0.05;
+const tra = (v, a, b) => Math.max(a, Math.min(b, v));
+export function limitaRitaglio({ x, y, w, h }) {
+  const lw = tra(w, MIN, 1); const lh = tra(h, MIN, 1);
+  return { x: tra(x, 0, 1 - lw), y: tra(y, 0, 1 - lh), w: lw, h: lh };
+}
+// Sposta un angolo ('nw', 'ne', 'sw', 'se') o tutto il riquadro ('centro') di dx, dy (frazioni).
+export function muoviRitaglio(r, maniglia, dx, dy) {
+  if (maniglia === 'centro') return limitaRitaglio({ ...r, x: r.x + dx, y: r.y + dy });
+  let x1 = r.x; let y1 = r.y; let x2 = r.x + r.w; let y2 = r.y + r.h;
+  if (maniglia.includes('w')) x1 = tra(x1 + dx, 0, x2 - MIN); else x2 = tra(x2 + dx, x1 + MIN, 1);
+  if (maniglia.includes('n')) y1 = tra(y1 + dy, 0, y2 - MIN); else y2 = tra(y2 + dy, y1 + MIN, 1);
+  return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+}
+export function rettangoloPixel(r, larghezza, altezza) {
+  const { x, y, w, h } = limitaRitaglio(r);
+  const px = Math.round(x * larghezza); const py = Math.round(y * altezza);
+  return { x: px, y: py, w: Math.max(1, Math.min(larghezza - px, Math.round(w * larghezza))), h: Math.max(1, Math.min(altezza - py, Math.round(h * altezza))) };
+}
+
 const luce = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b;
 
 // Livelli: il 2% più scuro diventa nero, il 2% più chiaro bianco (carta grigia → bianca).
@@ -37,7 +59,8 @@ export function migliora(px, modo) {
 }
 
 // Foto → canvas ridotto, ruotato e migliorato → JPEG.
-export async function elaboraPagina(file, { modo = 'documento', rotazione = 0 } = {}) {
+// MIA-SALUTE: `ritaglio` ({x, y, w, h} da 0 a 1, sull'immagine già ruotata) taglia i bordi.
+export async function elaboraPagina(file, { modo = 'documento', rotazione = 0, ritaglio = null } = {}) {
   const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
   const scala = Math.min(1, LATO_MAX / Math.max(bitmap.width, bitmap.height));
   const w = Math.round(bitmap.width * scala);
@@ -51,12 +74,20 @@ export async function elaboraPagina(file, { modo = 'documento', rotazione = 0 } 
   c.rotate((giro * Math.PI) / 180);
   c.drawImage(bitmap, -w / 2, -h / 2, w, h);
   c.setTransform(1, 0, 0, 1, 0, 0);
-  if (modo !== 'originale') {
-    const dati = c.getImageData(0, 0, canvas.width, canvas.height);
-    migliora(dati.data, modo);
-    c.putImageData(dati, 0, 0);
+  let tela = canvas;
+  const taglio = ritaglio && rettangoloPixel(ritaglio, canvas.width, canvas.height);
+  if (taglio && (taglio.w < canvas.width || taglio.h < canvas.height)) {
+    tela = document.createElement('canvas');
+    tela.width = taglio.w; tela.height = taglio.h;
+    tela.getContext('2d', { willReadFrequently: true }).drawImage(canvas, taglio.x, taglio.y, taglio.w, taglio.h, 0, 0, taglio.w, taglio.h);
   }
-  return { url: canvas.toDataURL('image/jpeg', 0.82), larghezza: canvas.width, altezza: canvas.height };
+  if (modo !== 'originale') {
+    const ct = tela.getContext('2d', { willReadFrequently: true });
+    const dati = ct.getImageData(0, 0, tela.width, tela.height);
+    migliora(dati.data, modo);
+    ct.putImageData(dati, 0, 0);
+  }
+  return { url: tela.toDataURL('image/jpeg', 0.85), larghezza: tela.width, altezza: tela.height };
 }
 
 // Pagine → PDF A4 (verticale o orizzontale secondo la foto), immagine centrata con margine.

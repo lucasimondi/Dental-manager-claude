@@ -4,8 +4,8 @@ import { archivioDb } from './lib/supabasePersonal.js';
 import { eCaricato, daDrive } from './lib/archivio.js';
 import { euro } from './lib/coreArchivio.js';
 import { useEffect, useState } from 'react';
-import { preparaFile, comeFile, condividi } from './lib/condividi.js';
-import { IconaFreccia, IconaPratiche, IconaCondividi } from './Icone.jsx';
+import { preparaFile, comeFile, condividi, inviaCon } from './lib/condividi.js';
+import { IconaFreccia, IconaPratiche, IconaCondividi, IconaEmail, IconaChat } from './Icone.jsx';
 import { Miniatura } from './Miniatura.jsx';
 
 /* ---------- utilità ---------- */
@@ -210,4 +210,29 @@ export function BottoneCondividi({ doc, piccolo = false, mostra }) {
     );
   }
   return <button className="pp-bottone pp-bottone-chiaro" onClick={tocca}><IconaCondividi size={18} /> Condividi</button>;
+}
+
+// MIA-SALUTE: Mail e WhatsApp per un documento (file pronto prima del tocco; senza, il link a Drive).
+export function BottoniInvio({ doc, mostra }) {
+  const [file, setFile] = useState(null);
+  useEffect(() => {
+    setFile(null);
+    if (!doc?.drive_file_id || doc.fascicolo === 'clinico_pazienti') return undefined;
+    let vivo = true;
+    tokenSessione().then((t) => preparaFile(doc.drive_file_id, t)).then((f) => { if (vivo) setFile(comeFile(f)); }).catch(() => {});
+    return () => { vivo = false; };
+  }, [doc?.drive_file_id, doc?.fascicolo]);
+  const invia = async (canale) => {
+    try {
+      const r = await inviaCon(canale, { titolo: titoloDoc(doc), files: file ? [file] : [], links: doc.drive_url ? [doc.drive_url] : [] });
+      if (r === 'non_disponibile') mostra?.('Invio non disponibile su questo dispositivo');
+    } catch (e) { mostra?.(`Invio non riuscito: ${e.message}`); }
+  };
+  const attesa = !file && doc?.drive_file_id && doc.fascicolo !== 'clinico_pazienti';
+  return (
+    <div className="pp-invio-salute pp-invio-documento">
+      <button disabled={attesa} onClick={() => invia('mail')}><IconaEmail size={18} /> {attesa ? 'Preparo…' : 'Mail'}</button>
+      <button className="pp-whatsapp" disabled={attesa} onClick={() => invia('whatsapp')}><IconaChat size={18} /> {attesa ? 'Preparo…' : 'WhatsApp'}</button>
+    </div>
+  );
 }

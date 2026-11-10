@@ -5,7 +5,7 @@
 // dal tocco, non dopo un download.
 import { anteprimaFile } from './archivio.js';
 
-const MAX_IN_MEMORIA = 12; // anche più documenti scelti insieme (POL-VITA-016)
+const MAX_IN_MEMORIA = 24; // anche più documenti scelti insieme (POL-VITA-016; fino a 20 da La mia salute)
 const memoria = new Map(); // drive_file_id → Promise<{ nome, mime, dati }>
 
 export function preparaFile(driveFileId, token) {
@@ -53,4 +53,29 @@ export function scaricaDocumento(file) {
   const url=URL.createObjectURL(file);
   const a=document.createElement('a');a.href=url;a.download=file.name;a.click();
   setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+
+// MIA-SALUTE (PO 2026-11-10): tasti «Mail» e «WhatsApp». Con i file si apre il foglio di
+// condivisione del telefono (l'unico modo web per allegare file: lì si tocca Mail o WhatsApp);
+// senza, si apre la mail nuova o WhatsApp con i link agli originali su Drive. Mai invii automatici.
+export function urlInvio(canale, { titolo = 'Documenti', links = [] }) {
+  const testo = [titolo, ...links].filter(Boolean).join('\n');
+  return canale === 'whatsapp'
+    ? `https://wa.me/?text=${encodeURIComponent(testo)}`
+    : `mailto:?subject=${encodeURIComponent(titolo)}&body=${encodeURIComponent(testo)}`;
+}
+
+export async function inviaCon(canale, { titolo, files = [], links = [] }, nav = globalThis.navigator, apriUrl = (u) => globalThis.open?.(u, '_blank')) {
+  try {
+    if (files.length && nav?.canShare?.({ files })) {
+      await nav.share({ files, title: titolo });
+      return 'files';
+    }
+  } catch (e) {
+    if (e?.name === 'AbortError') return 'annullato';
+    throw e;
+  }
+  if (!links.length) return 'non_disponibile';
+  apriUrl(urlInvio(canale, { titolo, links }));
+  return 'link';
 }

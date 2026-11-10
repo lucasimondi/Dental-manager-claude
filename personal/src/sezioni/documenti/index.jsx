@@ -8,6 +8,8 @@ const PaginaRicerca = differito(() => import('./Ricerca.jsx'), 'PaginaRicerca');
 const PaginaDocumento = differito(() => import('./Documento.jsx'), 'PaginaDocumento');
 const PaginaPratica = differito(() => import('./Pratica.jsx'), 'PaginaPratica');
 const PaginaPdf = differito(() => import('../../pdf/PaginaPdf.jsx'), 'PaginaPdf');
+const PaginaSalute = differito(() => import('./Salute.jsx'), 'PaginaSalute');
+const PaginaModificaImmagine = differito(() => import('./ModificaImmagine.jsx'), 'PaginaModificaImmagine');
 const PaginaCarica = differito(() => import('./Carica.jsx'), 'PaginaCarica');
 const PaginaCartella = differito(() => import('./Cartelle.jsx'), 'PaginaCartella');
 const PaginaSuggerimenti = differito(() => import('./Cartelle.jsx'), 'PaginaSuggerimenti');
@@ -29,7 +31,9 @@ export const documenti = {
     pratica: { titolo: 'Pratica', render: (p, { ctx }) => <PaginaPratica p={p.p} ctx={ctx} /> },
     elenco: { render: (p, { ctx }) => <PaginaRicerca carica={p.carica} ctx={ctx} /> },
     ricerca: { render: (p, { ctx }) => <PaginaRicerca filtri={p.filtri} sezione={p.sezione} ctx={ctx} /> },
+    salute: { titolo: 'La mia salute ed esami', render: (p, { ctx }) => <PaginaSalute ctx={ctx} /> },
+    'modifica-immagine': { titolo: 'Ritaglia e converti', modulo: true, render: (p, { ctx, sostituisci }) => <PaginaModificaImmagine id={p.id} pdf={!!p.pdf} ctx={ctx} sostituisci={sostituisci} /> },
     carica: { titolo: 'Archivia un documento', modulo: true, render: (p, { ctx, sostituisci }) => <PaginaCarica opzioni={p.opzioni || {}} file={p.file} ctx={ctx} sostituisci={sostituisci} /> },
-    scansione: { titolo: 'Scansiona', modulo: true, render: (p, { ctx, sostituisci }) => <PaginaScansione ctx={ctx} sostituisci={sostituisci} /> },
+    scansione: { titolo: 'Scansiona o allega', modulo: true, render: (p, { ctx, sostituisci }) => <PaginaScansione ctx={ctx} opzioni={p.opzioni} sostituisci={sostituisci} /> },
   },
 };

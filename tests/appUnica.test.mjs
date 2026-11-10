@@ -108,7 +108,9 @@ test('DOCK-PER-TE passo 3: + → Per te (Documento, Spesa, Foto, Nota, Password)
   const agenda = read('src/components/Agenda.jsx');
   assert.match(agenda, /\['documento', 'Documento', '#5D6979'\], \['spesa', 'Spesa', '#A8323E'\], \['foto', 'Foto', '#C23D78'\]\][^\n]*aggiungiPerTe\(id\)/);
   const foglio = read('personal/src/Aggiungi.jsx');
-  for (const v of ['Scansiona', 'Scatta foto', 'Carica file', 'Apri e firma un PDF', 'Scansiona scontrino', 'Foto o file', 'Inserimento manuale', 'Fotocamera', 'Galleria']) assert.match(foglio, new RegExp(`'${v}'`));
+  // MIA-SALUTE (PO 2026-11-10): Documento = un solo strumento «Scansiona o allega» (Scatta · Foto · PDF e file).
+  assert.match(foglio, /Scatta<\/button>/); assert.match(foglio, /> Foto<\/button>/); assert.match(foglio, /PDF e file<\/button>/); assert.match(foglio, /Solo firmare o modificare un PDF/);
+  for (const v of ['Scansiona scontrino', 'Foto o file', 'Inserimento manuale', 'Fotocamera', 'Galleria']) assert.match(foglio, new RegExp(`'${v}'`));
   const app = read('personal/src/App.jsx');
   assert.match(app, /voceDaIndirizzo\(\)/);
   const ingressi = read('personal/src/lib/ingressi.js');

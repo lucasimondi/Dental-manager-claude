@@ -59,8 +59,8 @@ test('DOCK-PER-TE passo 2: le azioni PDF stanno nel documento, nessuna sezione P
  assert.match(readFileSync('personal/src/pdf/GestorePdf.jsx','utf8'),/strumento === 'firma'\) setSignatureOpen\(true\)/);
  assert.doesNotMatch(readFileSync('personal/src/sezioni/agenda/AgendaGriglia.jsx','utf8'),/PDF e firma/);
  assert.doesNotMatch(readFileSync('personal/src/sezioni/altro/index.jsx','utf8'),/'pdf'/);
- // passo 3: aprire un PDF dal telefono sta in + → Documento → «Apri e firma un PDF».
- assert.match(readFileSync('personal/src/Aggiungi.jsx','utf8'),/\['pdf', 'Apri e firma un PDF'/);
+ // MIA-SALUTE: aprire un PDF senza archiviarlo sta dentro «Scansiona o allega» (+ → Documento).
+ assert.match(readFileSync('personal/src/Aggiungi.jsx','utf8'),/sostituisci\(\{ tipo: 'pdf' \}\)\}>Solo firmare o modificare un PDF/);
 });
 test('DOCK-PER-TE passo 2: documenti personali come filtro di Documenti; si parte dall\'agenda', () => {
  const d=readFileSync('personal/src/sezioni/documenti/Documenti.jsx','utf8');

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { caricaDocumento, pagamentoDaDocumento } from '../../lib/archivio.js';
 import { catalogaFoto } from '../../lib/foto.js';
+import { mettiInSalute } from '../../lib/salute.js';
 import { preparaFile as preparaCaricamento } from '../../lib/file.js';
 import { tokenSessione } from '../../ui.jsx';
 import { IconaFotocamera, IconaFile, IconaScansiona } from '../../Icone.jsx';
@@ -39,6 +40,8 @@ export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) 
       if (verifica.error || !verifica.data) {
         throw new Error('Il file potrebbe essere stato salvato su Drive, ma non risulta nell’archivio. Non ripetere il caricamento: verifica prima per evitare duplicati.');
       }
+      // Da La mia salute: il documento resta lì anche se la lettura cambia categoria.
+      if (r.id && opzioni.salute) await mettiInSalute(archivioDb, r.id).catch(() => {});
       aggiorna();
       // Da Conti: il documento diventa (o si collega a) un pagamento da fare.
       if (r.id && (opzioni.pagamento || opzioni.pagamentoId)) {
@@ -60,6 +63,12 @@ export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) 
     }
   };
 
+  // MIA-SALUTE: senza un file già scelto si passa all'unico strumento «Scansiona o allega»
+  // (le foto e i video degli album restano qui, con i loro selettori).
+  useEffect(() => {
+    if (!fileIniziale && opzioni.fascicolo !== 'foto_video') sostituisci({ tipo: 'scansione', opzioni });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Le foto scelte dalle azioni rapide vengono archiviate senza ulteriori tocchi.
   // Il ref impedisce invii duplicati anche con effetti React rieseguiti.
   useEffect(() => {
@@ -73,8 +82,9 @@ export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) 
       <input ref={fotocamera} type="file" accept="image/*" capture="environment" hidden onChange={(e) => scegli(e.target.files[0])} />
       <input ref={archivio} type="file" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.odt,.ods,.txt,.rtf,.heic,.heif" hidden onChange={(e) => scegli(e.target.files[0])} />
       {!file ? (
-        <div className="pp-sorgenti">
-          <button className="pp-sorgente" onClick={() => sostituisci({ tipo: 'scansione', opzioni })}><IconaScansiona size={28} /><span>Scansiona</span></button>
+        opzioni.fascicolo !== 'foto_video' ? (
+          <button className="pp-bottone pp-bottone-largo" onClick={() => sostituisci({ tipo: 'scansione', opzioni })}><IconaScansiona size={20} /> Scansiona o allega</button>
+        ) : <div className="pp-sorgenti">
           <button className="pp-sorgente" onClick={() => fotocamera.current.click()}><IconaFotocamera size={28} /><span>Scatta una foto</span></button>
           <button className="pp-sorgente pp-sorgente-larga" onClick={() => archivio.current.click()}><IconaFile size={28} /><span>Foto, PDF o file da iCloud, Drive e altre app</span></button>
         </div>
