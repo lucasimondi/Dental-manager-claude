@@ -169,7 +169,9 @@ test('app: Conti in Altro, dock compatto, + con tutte le aggiunte e chiusura', (
   assert.match(app, /leggiVista\(\) === 'pagamenti' \? 'conti'/);
   assert.match(readFileSync('personal/src/Pagina.jsx', 'utf8'), /className="pp-chiudi-pagina"/);
   // DOCK-PER-TE passo 3: + → Per te (Documento, Spesa, Foto, Nota, Password) con le loro scelte.
-  for (const voce of ['documento', 'spesa', 'foto', 'nota', 'password', 'scansiona', 'fotocamera', 'file', 'pdf', 'spesaScontrino', 'spesaFile', 'spesaManuale', 'fotoCamera', 'fotoGalleria', 'personale', 'incasso', 'pagamento', 'evento']) {
+  // MIA-SALUTE (PO 2026-11-10): Documento apre subito l'unico strumento «Scansiona o allega» (niente sottomenu).
+  assert.match(readFileSync('personal/src/lib/ingressi.js', 'utf8'), /documento: \{ tipo: 'scansione' \}/);
+  for (const voce of ['documento', 'spesa', 'foto', 'nota', 'password', 'spesaScontrino', 'spesaFile', 'spesaManuale', 'fotoCamera', 'fotoGalleria', 'personale', 'incasso', 'pagamento', 'evento']) {
     assert.match(aggiungi, new RegExp(`\\['${voce}',`), voce);
   }
   assert.match(readFileSync('personal/src/lib/ingressi.js', 'utf8'), /capture: 'environment'/);

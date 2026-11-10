@@ -4,10 +4,10 @@ import { archivioDb } from '../../lib/supabasePersonal.js';
 import { documentiPersonali } from '../../lib/archivio.js';
 import { categoriaDi, personaDi } from '../../lib/impostazioni.js';
 import { documentoDaPersonal, avvisoDocumento } from '../../lib/portafoglio.js';
-import { preparaFile, comeFile, condividi, scaricaDocumento } from '../../lib/condividi.js';
+import { preparaFile, comeFile, inviaCon, scaricaDocumento } from '../../lib/condividi.js';
 import { dataBreve, titoloDoc, Sezione, Chips, tokenSessione } from '../../ui.jsx';
 import { Miniatura } from '../../Miniatura.jsx';
-import { IconaPiu } from '../../Icone.jsx';
+import { IconaPiu, IconaFreccia, IconaCuore, IconaEmail, IconaChat } from '../../Icone.jsx';
 
 export function VistaPersonali({ctx}) {
   const {esegui,apri,versione,impostazioni}=ctx;
@@ -26,10 +26,11 @@ export function VistaPersonali({ctx}) {
     (async()=>{try{const token=await tokenSessione();const fs=await Promise.all(selected.map(d=>preparaFile(d.drive_file_id,token).then(comeFile)));if(active)setFiles({key,fs});}catch{if(active)setFiles({key,error:true});}})();
     return()=>{active=false;};
   },[key,docs]); // Selected originals are prepared before the share gesture.
-  const invia=async()=>{try{const result=await condividi({titolo:'Documenti personali',files:files.fs});if(result==='non_disponibile')ctx.mostra('Scegli Scarica sul documento, poi allega da Download o Drive nella tua app mail.');}catch(e){ctx.mostra(e.message);}};
+  const invia=async(canale)=>{try{const result=await inviaCon(canale,{titolo:'Documenti personali',files:files.fs,links:attivi.filter(d=>scelti.includes(d.id)).map(d=>d.drive_url).filter(Boolean)});if(result==='non_disponibile')ctx.mostra('Scegli Scarica sul documento, poi allega da Download o Drive nella tua app mail.');}catch(e){ctx.mostra(e.message);}};
   if(!docs)return null;
   return <>
     <Chips voci={[["tutti","Tutti"],...categorie.map(c=>[c.id,c.nome])]} attiva={scheda} onScegli={setScheda}/>
+    <button className="pp-invito pp-invito-salute" onClick={()=>apri({tipo:'salute'})}><IconaCuore size={22}/><span><strong>La mia salute ed esami</strong><br/>Referti, esami e ricette: selezionali e inviali insieme</span><IconaFreccia size={16}/></button>
     <p className="pp-riga-meta">Seleziona carta d'identità e codice fiscale per inviarli insieme.</p>
     {persone.map(persona=>{
       const elenco=attivi.filter(d=>d._persona===persona&&(scheda==='tutti'||d._cat===scheda));
@@ -50,7 +51,7 @@ export function VistaPersonali({ctx}) {
     })}
     {scelti.length>0&&<div className="pp-personal-invio" role="region" aria-label="Invia documenti insieme">
       <strong>{scelti.length} documenti selezionati</strong>
-      <button className="pp-bottone" disabled={!files||files.key!==key||files.error} onClick={invia}>{!files?'Preparo i file…':'Invia insieme · Mail / WhatsApp'}</button>
+      <div className="pp-invio-salute"><button disabled={!files||files.key!==key||files.error} onClick={()=>invia('mail')}><IconaEmail size={18}/> {!files?'Preparo…':'Mail'}</button><button className="pp-whatsapp" disabled={!files||files.key!==key||files.error} onClick={()=>invia('whatsapp')}><IconaChat size={18}/> {!files?'Preparo…':'WhatsApp'}</button></div>
       {files?.error&&<p role="alert">File non disponibili. Riprova dalla scheda del documento.</p>}
       {files?.fs?.map((file,i)=><button key={i} className="pp-testo-link" onClick={()=>scaricaDocumento(file)}>Scarica {file.name}</button>)}
       <button className="pp-testo-link" onClick={()=>setScelti([])}>Annulla selezione</button>
