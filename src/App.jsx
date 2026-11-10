@@ -1,3 +1,4 @@
+import TastoAcquisisci from '../shared/acquisisci/TastoAcquisisci.jsx';
 import { appointmentPatientAction } from './lib/appointmentQuickHub.js';
 import PatientAgendaLayer from './components/PatientAgendaLayer.jsx';
 import { persistPatientAgendaBooking } from './lib/patientAgendaBooking.js';
@@ -977,7 +978,8 @@ export default function App() {
             {page === 'poliedron' && <PoliedronHub patients={patients} plans={plans} appointments={appointments} payments={payments} implants={implants} studioId={session?.user?.app_metadata?.studio_id} isStudioAdmin={isStudioAdmin} features={features} studioMembership={studioMembership} si={studioInfo} onOpenPaz={goSchedaPaz} onNavigate={setPage} />}
             {page === 'archivio' && <ArchivioDocs studioId={session?.user?.app_metadata?.studio_id} patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} initialFiltroTipo={archivioFiltroTipoHint} />}
             {page === 'note' && <NotePage key={noteScrivi} scriviSubito={noteScrivi > 0} db={supabase} studioId={session?.user?.app_metadata?.studio_id} />}
-            {acquisisciAperto && <Suspense fallback={null}><AcquisisciDocumento db={supabase} studioId={session?.user?.app_metadata?.studio_id} patients={patients} onClose={() => setAcquisisciAperto(false)} /></Suspense>}
+            {acquisisciAperto && <Suspense fallback={null}><AcquisisciDocumento conDestinazione db={supabase} studioId={session?.user?.app_metadata?.studio_id} patients={patients} onClose={() => setAcquisisciAperto(false)} /></Suspense>}
+            {!acquisisciAperto && page !== 'chat' && <TastoAcquisisci className="studio-acquisisci" onClick={() => setAcquisisciAperto(true)} />}
             {page === 'studio' && <AltroPage titolo="Studio" gruppi={gruppiStudio()} piede={[{ id: 'set', nome: 'Impostazioni e account', icona: 'impostazioni', fai: () => setPage('set') }]} />}
             {(page === 'perte' || page === 'altro') && <AltroPage titolo="Per te" gruppi={gruppiPerTe()} piede={[{ id: 'set', nome: 'Impostazioni e account', icona: 'impostazioni', fai: () => setPage('set') }]} />}
             {page === 'password' && <PasswordPage key={passwordNuova} nuovaSubito={passwordNuova > 0} db={supabase} studioId={session?.user?.app_metadata?.studio_id} cercaIniziale={passwordQuery} />}

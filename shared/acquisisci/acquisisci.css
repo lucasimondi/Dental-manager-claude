@@ -1,0 +1,14 @@
+/* ACQUISISCI-UNICO — tasto flottante in basso a destra, sopra il «+». Ogni app ne fissa l'altezza. */
+.tasto-acquisisci { position: fixed; z-index: 30; right: max(16px, env(safe-area-inset-right)); bottom: var(--acquisisci-bottom, calc(88px + env(safe-area-inset-bottom)));
+  width: 52px; height: 52px; padding: 0; border: 1.5px solid color-mix(in srgb, var(--acquisisci-colore, #1F63B5) 35%, transparent); border-radius: 50%;
+  display: grid; place-items: center; cursor: pointer; background: #fff; color: var(--acquisisci-colore, #1F63B5);
+  box-shadow: 0 6px 18px rgba(15, 34, 51, .18); transition: transform .12s ease; -webkit-tap-highlight-color: transparent; }
+.tasto-acquisisci svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+.tasto-acquisisci:active { transform: scale(.92); }
+.tasto-acquisisci:focus-visible { outline: 2px solid var(--acquisisci-colore, #1F63B5); outline-offset: 3px; }
+@media (prefers-color-scheme: dark) { .tasto-acquisisci { background: #1b2230; } }
+@media (prefers-reduced-motion: reduce) { .tasto-acquisisci { transition: none; } }
+/* Studio: in basso a destra, sopra il dock su telefono. Nascosto sotto le finestre aperte. */
+.studio-acquisisci { --acquisisci-colore: var(--brand-primary, #1F63B5); --acquisisci-bottom: 28px; right: 28px; }
+.app-shell--mobile .studio-acquisisci { right: 16px; --acquisisci-bottom: calc(var(--pol-mobile-dock-bottom, 12px) + var(--pol-mobile-dock-height, 64px) + 14px + env(safe-area-inset-bottom, 0px)); }
+body.pol-modale-aperto .tasto-acquisisci { visibility: hidden !important; pointer-events: none !important; }

@@ -10,6 +10,7 @@
 // (studio_id del token) limita ogni lettura e scrittura allo studio dell'utente.
 import { createClient } from '@supabase/supabase-js';
 import { rigaImpegno, rigaAppuntamento } from './agenda.js';
+import { acquisisciDocumento } from '../../../shared/documenti/documentiStudio.js';
 import { CHIAVE_SCOLLEGATO, chiaveSessione, leggiSessioneSalvata } from './sessioneCondivisa.js';
 
 export { CHIAVE_SCOLLEGATO };
@@ -231,4 +232,13 @@ export async function datiLavoro(da, a) {
     tutte(() => studioDb.from('spese').select('data, importo, ricorrente, frequenza, data_fine').eq('ricorrente', true).order('id')),
   ]);
   return { pagamenti, esterni, spese: [...spese, ...ricorrenti] };
+}
+
+// ACQUISISCI-UNICO (PO 2026-11-10: "da lì decido dove archiviare se in personale o studio (paziente)"):
+// unica scrittura di Personal sui documenti dello studio. Stessa funzione di Studio, sessione dello
+// studio già salvata, RLS dello studio. Il file non viene letto né analizzato.
+export async function archiviaDocumentoStudio({ file, titolo, tipo, pazienteId = null }) {
+  const sessione = await sessioneStudio();
+  if (!sessione) throw new Error('Studio non collegato: accedi allo studio da Impostazioni.');
+  return acquisisciDocumento(studioDb, { studioId: studioDellaSessione(sessione), file, titolo, tipo, pazienteId });
 }
