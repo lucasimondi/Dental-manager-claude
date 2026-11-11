@@ -6,7 +6,6 @@ import IncassoModal from './IncassoModal.jsx';
 import PdfView from './PdfView.jsx';
 
 const calcTot = planTotals;
-};
 
 const STATO_LABEL = { attivo: 'In attesa', accettato: 'Accettato', rifiutato: 'Non accettato' };
 const STATO_COLOR = { attivo: C.war, accettato: C.acc, rifiutato: C.dan };
