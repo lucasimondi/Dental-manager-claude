@@ -39,6 +39,7 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
   const [editingVoce, setEditingVoce] = useState(null); // { planId, index }
   const [editVoceForm, setEditVoceForm] = useState({ prestazione: '', dente: '', prezzo: '' });
   const [quickOffer, setQuickOffer] = useState(null); // { planId, itemIndex }
+  const [confermaVoce, setConfermaVoce] = useState(null); // { planId, index, messaggio } — conferma nella pagina
   const [incassoPrefill, setIncassoPrefill] = useState(null);
   const [pdfPlan, setPdfPlan] = useState(null);
 
@@ -108,9 +109,14 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
     setIncassoPrefill({ pazienteId: String(pl.pazienteId), lockedPianoId: pl.id, importo: importoDefault > 0 ? String(importoDefault) : '', nota: v.prestazione, pianoContext: { atteso: tot, giaPagato } });
   };
 
-  const removeItemFromPlan = (plan, index) => {
-    if (!confirm(treatmentItemRemovalMessage(plan, index, totalePagatoPiano(plan.id)))) return;
-    setPlans((current) => current.map((candidate) => (String(candidate.id) !== String(plan.id) ? candidate : removeTreatmentItem(candidate, index))));
+  // PIANI-ELIMINA (PO 2026-11-11): conferma nella pagina, non window.confirm — nell'app Android
+  // (WebView senza WebChromeClient) confirm() risponde sempre «no» e la prestazione non si cancellava.
+  const removeItemFromPlan = (plan, index) => setConfermaVoce({ planId: plan.id, index, messaggio: treatmentItemRemovalMessage(plan, index, totalePagatoPiano(plan.id)) });
+  const confermaRimozione = () => {
+    const { planId, index } = confermaVoce || {};
+    setConfermaVoce(null);
+    if (planId == null) return;
+    setPlans((current) => current.map((candidate) => (String(candidate.id) !== String(planId) ? candidate : removeTreatmentItem(candidate, index))));
   };
 
   const openEditVoce = (plan, index) => { const v = plan.voci[index]; setEditVoceForm({ prestazione: v.prestazione, dente: v.dente || '', prezzo: String(v.prezzo) }); setEditingVoce({ planId: plan.id, index }); };
@@ -301,12 +307,22 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
                               </div>
                             </div>
                           )}
+                          {confermaVoce && String(confermaVoce.planId) === String(pl.id) && confermaVoce.index === i ? (
+                            <div role="alertdialog" aria-label={`Rimuovere ${v.prestazione}?`} style={{ marginTop: 8, padding: 10, borderRadius: 9, border: `1.5px solid ${C.dan}`, background: C.danL }}>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: C.dan, lineHeight: 1.4 }}>{confermaVoce.messaggio}</div>
+                              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                                <button onClick={() => setConfermaVoce(null)} style={{ flex: 1, minHeight: 40, borderRadius: 8, border: `1.5px solid ${C.brd}`, background: '#fff', color: C.txm, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Annulla</button>
+                                <button onClick={confermaRimozione} style={{ flex: 1, minHeight: 40, borderRadius: 8, border: 'none', background: C.dan, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Elimina</button>
+                              </div>
+                            </div>
+                          ) : (
                           <div style={{ display: 'flex', gap: 5, marginTop: 8, flexWrap: 'wrap' }}>
                             <button onClick={() => toggleEseguita(pl, i)} style={{ flex: '1 1 90px', padding: '6px 0', borderRadius: 7, border: `1.5px solid ${v.eseguita ? C.suc : C.brd}`, background: v.eseguita ? '#fff' : C.bg, color: v.eseguita ? C.suc : C.txm, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>{v.eseguita ? '✓ Eseguita' : '○ Segna eseguita'}</button>
                             <button onClick={() => openEditVoce(pl, i)} style={{ flex: '0 0 auto', padding: '6px 10px', borderRadius: 7, border: 'none', background: '#EDE9FE', color: C.pur, fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="edit" s={12} c={C.pur} />Modifica</button>
                             <button onClick={() => removeItemFromPlan(pl, i)} style={{ flex: '0 0 auto', padding: '6px 10px', borderRadius: 7, border: 'none', background: C.danL, color: C.dan, fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="del" s={12} c={C.dan} />Elimina</button>
                             <button onClick={() => openIncassoVoce(pl, v, tot)} style={{ flex: '0 0 auto', padding: '6px 10px', borderRadius: 7, border: 'none', background: C.priL, color: C.pri, fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Ic n="eur" s={12} c={C.pri} />Incassato</button>
                           </div>
+                          )}
                           {quickOffer?.planId === pl.id && quickOffer?.itemIndex === i && v.eseguita && (
                             <label className="plan-quick-payment-offer">
                               <input type="checkbox" onChange={(event) => { if (event.target.checked) openIncassoVoce(pl, v, tot); }} /> Registra incasso adesso
