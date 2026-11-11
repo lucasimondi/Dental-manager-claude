@@ -37,10 +37,11 @@ test('il + apre «Crea» in Studio e in Personal; ogni voce apre subito il suo m
   assert.match(read('shared/password/PasswordPage.jsx'), /useState\(nuovaSubito\)/);
 });
 
-test('DOCK-PER-TE: Agenda · Documenti · Poliedron · Studio · Per te, in Studio e in Personal', () => {
+// DOCK-PAZIENTI (PO 2026-11-11): in Studio Pazienti prende il posto di Documenti; Personal invariato.
+test('DOCK-PER-TE: Agenda · Pazienti · Poliedron · Studio · Per te in Studio; Personal invariato', () => {
   const dock = read('src/components/poliedron/PoliedronMobileDock.jsx');
   assert.doesNotMatch(dock, /__personal__|agendaDestination|id: 'altro'|id: 'note'/);
-  assert.match(dock, /\{ id: 'agenda'[^\n]*\n\s*\{ id: 'archivio'[^\n]*\n\s*\{ id: '__poliedron__'[^\n]*\n\s*\{ id: 'studio', label: 'Studio'[^\n]*\n\s*\{ id: 'perte', label: 'Per te'/);
+  assert.match(dock, /\{ id: 'agenda'[^\n]*\n\s*\{ id: 'paz', label: 'Pazienti'[^\n]*\n\s*\{ id: '__poliedron__'[^\n]*\n\s*\{ id: 'studio', label: 'Studio'[^\n]*\n\s*\{ id: 'perte', label: 'Per te'/);
   const pApp = read('personal/src/App.jsx');
   assert.match(pApp, /href=\{sectionDestination\('studio', 'studio'\)\}[^\n]*<span>Studio<\/span>/);
   assert.match(pApp, /<span>Per te<\/span>/);

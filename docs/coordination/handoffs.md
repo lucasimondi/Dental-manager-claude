@@ -4677,3 +4677,11 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Branch `ccr-b7a5a599-0pxser` from master 9443547. Files: src/components/PianoDrillDown.jsx, tests/prestazioniElimina.test.mjs, tests/visual/piani-elimina.{html,fixture.jsx}, coordination docs.
 - Database: none. Tests 1679/1679; build OK; Chromium fixture PASS. Rollback: revert the commit.
 - Open: other `confirm()` calls elsewhere in the app still have the Android WebView limitation (a native fix is a WebChromeClient with onJsConfirm in android/agenda MainActivity.java + new APK).
+
+## Handoff — PIANI-ELIMINA merged (2026-11-11) — Claude Code
+- PR307 squash-merged as 36548b2; production dpl_Fv2Y4TesdixT1f8jfGUGSGciZgPV READY.
+
+## Handoff — DOCUMENTI-CATEGORIE + DOCK-PAZIENTI (2026-11-11) — Claude Code
+- Branch `ccr-b7a5a599-0pxser` from master 36548b2. Files: personal/src/lib/impostazioni.js, personal/src/sezioni/{personali/Personali.jsx, documenti/Carica.jsx, impostazioni/Impostazioni.jsx}, src/lib/archiviaPersonale.js, src/components/{AcquisisciDocumento.jsx, ArchivioDocs.jsx, poliedron/PoliedronMobileDock.jsx}, tests (new documentiCategorie; updated acquisisciUnico, appUnica, mobileHomeRound2, poliedronAdaptive).
+- Database: none. Tests 1684/1684; both builds OK. Rollback: revert the commit.
+- Open: patient scheda does not list documenti_studio acquired for that patient (they are in Studio → Documenti).

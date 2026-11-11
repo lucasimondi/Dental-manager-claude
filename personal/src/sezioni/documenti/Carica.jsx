@@ -9,6 +9,7 @@ import { tokenSessione } from '../../ui.jsx';
 import { IconaFotocamera, IconaFile, IconaScansiona } from '../../Icone.jsx';
 import { Segmenti } from '../../ui.jsx';
 import { ArchiviaStudio } from './ArchiviaStudio.jsx';
+import { categorieConUso } from '../../lib/impostazioni.js';
 import TipoETag, { ricordaTipoETag } from '../../../../shared/documenti/TipoETag.jsx';
 
 export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) {
@@ -25,6 +26,7 @@ export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) 
   // ACQUISISCI-UNICO: dal tasto unico si sceglie dove archiviare (Personale o Studio · paziente).
   const [dove, setDove] = useState('personale');
   const [tag, setTag] = useState([]); // DOCUMENTI-TAG: tag per trovarlo dopo
+  const [nuovoTipo, setNuovoTipo] = useState('');
   const fotocamera = useRef(null);
   const archivio = useRef(null);
   const autoAvviato = useRef(false);
@@ -40,7 +42,7 @@ export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) 
     try {
       const pronto = await preparaCaricamento(file);
       setStato({ invio: true, testo: nonAnalizzare ? 'Salvo su Drive…' : 'Salvo su Drive e leggo il documento…' });
-      const r = await caricaDocumento({ token: await tokenSessione(), ...pronto, descrizione, fascicolo, portafoglio: tieni, nonAnalizzare: opzioni.soloArchiviazione || nonAnalizzare, persona, categoria });
+      const r = await caricaDocumento({ token: await tokenSessione(), ...pronto, descrizione, fascicolo, portafoglio: tieni, nonAnalizzare: opzioni.soloArchiviazione || nonAnalizzare, persona, categoria: categoria === '__nuovo' ? (nuovoTipo.trim() || null) : categoria });
       setStato({ invio: true, testo: 'Verifico il documento nell’archivio…' });
       const verifica = await archivioDb.from('documenti').select('id').eq('id', r.id).maybeSingle();
       if (verifica.error || !verifica.data) {
@@ -120,10 +122,14 @@ export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) 
           </select>
         </label>
         <label className="pp-campo"><span>Tipo</span>
-          <select className="pp-select" value={categoria} onChange={(e) => setCategoria(e.target.value)}>
-            <option value="">Nessuno</option>
-            {impostazioni.categorie.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-          </select>
+          {/* DOCUMENTI-CATEGORIE (PO 2026-11-11): tutti i tipi, più «Nuovo tipo…» scritto a mano. */}
+          {categoria === '__nuovo'
+            ? <input autoFocus value={nuovoTipo} maxLength={40} placeholder="Es. Bolletta acqua" aria-label="Nuovo tipo" onChange={(e) => setNuovoTipo(e.target.value)} onBlur={() => { if (!nuovoTipo.trim()) setCategoria(''); }} />
+            : <select className="pp-select" value={categoria} onChange={(e) => { setNuovoTipo(''); setCategoria(e.target.value); }}>
+              <option value="">Nessuno</option>
+              {categorieConUso(impostazioni.categorie, categoria ? [{ categoria }] : []).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              <option value="__nuovo">+ Nuovo tipo…</option>
+            </select>}
         </label>
       </div>
       <TipoETag tag={tag} onTag={setTag} />

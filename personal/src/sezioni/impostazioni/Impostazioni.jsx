@@ -82,8 +82,8 @@ export function PaginaImpostazioni({ ctx, email }) {
         <p className="pp-riga-meta pp-spiegazione">Le schede della sezione Personali.</p>
         <ListaModificabile
           voci={categorie}
-          onTogli={(id) => salvaImp({ ...impostazioni, categorie: categorie.filter((c) => c.id !== id) })}
-          onAggiungi={(nome) => salvaImp({ ...impostazioni, categorie: [...categorie, { id: slug(nome), nome, parole: [nome.toLowerCase()] }] })}
+          onTogli={(id) => salvaImp({ ...impostazioni, categorie: categorie.filter((c) => c.id !== id), categorieTolte: [...(impostazioni.categorieTolte || []), id] })}
+          onAggiungi={(nome) => salvaImp({ ...impostazioni, categorie: [...categorie, { id: slug(nome), nome, parole: [nome.toLowerCase()] }], categorieTolte: (impostazioni.categorieTolte || []).filter((t) => t !== slug(nome)) })}
           segnaposto="Es. Tessera elettorale"
         />
       </Sezione>

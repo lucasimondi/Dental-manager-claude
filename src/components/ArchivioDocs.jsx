@@ -12,6 +12,8 @@ const AcquisisciDocumento = React.lazy(() => import('./AcquisisciDocumento.jsx')
 // POL-UI-005: one icon per document type instead of emoji (📄🧾💊🩸📋✉️📖📝✍️) —
 // shared across the filter chips, list rows and edit-modal title below.
 const TIPO_ICON = { fattura: 'receipt', rimborso: 'bank', ricetta: 'pill', esami: 'drop', certificato: 'clip', lettera: 'mail', protocollo: 'book', vuoto: 'file', consenso: 'edit' };
+// DOCUMENTI-CATEGORIE: anche i tipi nuovi hanno un nome leggibile (mai l'id grezzo).
+const nomeTipo = (t) => TIPO_LABEL[t] || String(t || 'Altro').replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 const TIPO_LABEL = { ...Object.fromEntries(TIPI_DOCUMENTO.map(t => [t.id, t.nome])), fattura: 'Fatture', rimborso: 'Rimborsi', ricetta: 'Ricette', esami: 'Esami', certificato: 'Certificati', lettera: 'Lettere', protocollo: 'Protocolli', vuoto: 'Liberi', consenso: 'Consensi' };
 
 // POL-AI-002A §20 — Poliedron's "ric"/"fat" direct commands land here
@@ -73,7 +75,7 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
     setCaricamentoAnteprima(null);
     if (!data?.pdf_base64) { alert('PDF non disponibile'); return; }
     const filename = nomeFileDaNome(doc.paziente_nome);
-    const titolo = doc.tabella === 'documenti_fiscali' ? `${doc.tipo === 'fattura' ? 'Fattura' : 'Rimborso'} n. ${doc.numero}` : (doc.titolo || doc.tipo);
+    const titolo = doc.tabella === 'documenti_fiscali' ? `${doc.tipo === 'fattura' ? 'Fattura' : 'Rimborso'} n. ${doc.numero}` : (doc.titolo || nomeTipo(doc.tipo));
     setDocInVisualizzazione({ titolo, dataUrl: data.pdf_base64, filename });
   };
 
@@ -209,7 +211,7 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
               const attivo = filtroTipo === t;
               return (
                 <button key={t} onClick={() => setFiltroTipo(attivo ? 'tutti' : t)} className={`pol-tab${attivo ? ' is-active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 5, background: attivo ? C.pri : C.sur, color: attivo ? '#fff' : C.txm, border: `1.5px solid ${attivo ? C.pri : C.brd}` }}>
-                  <Ic n={TIPO_ICON[t] || 'file'} s={12} c={attivo ? '#fff' : C.txm} />{TIPO_LABEL[t] || t} ({n})
+                  <Ic n={TIPO_ICON[t] || 'file'} s={12} c={attivo ? '#fff' : C.txm} />{nomeTipo(t)} ({n})
                 </button>
               );
             })}
@@ -253,7 +255,7 @@ export default function ArchivioDocs({ patients, onApriDocFiscale, onApriDocMedi
           const isFattura = doc.tipo === 'fattura';
           const coloreAccento = isFiscale ? (isFattura ? C.pri : C.pur) : C.acc;
           const iconaEtichetta = TIPO_ICON[doc.tipo] || 'file';
-          const testoEtichetta = isFiscale ? `${isFattura ? 'Fattura' : 'Rimborso'} n° ${doc.numero}` : (doc.titolo || doc.tipo);
+          const testoEtichetta = isFiscale ? `${isFattura ? 'Fattura' : 'Rimborso'} n° ${doc.numero}` : (doc.titolo || nomeTipo(doc.tipo));
           const caricandoAnteprima = caricamentoAnteprima === key;
           return (
             <Crd key={key} style={{ border: isSel ? `2px solid ${C.pri}` : `1px solid ${C.brd}`, background: isSel ? C.priL : '#fff', borderLeft: `4px solid ${coloreAccento}` }}>

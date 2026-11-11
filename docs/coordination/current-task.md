@@ -1,3 +1,11 @@
+# Current task — DOCUMENTI-CATEGORIE + DOCK-PAZIENTI (2026-11-11)
+- OWNER Claude Code; branch `ccr-b7a5a599-0pxser` restarted from master 36548b2 (PR307 merged).
+- AUTHORIZATION PO 2026-11-11: "I documenti che scannerizzo o allego se non sono del tipo di documento che va già in documenti si perde, metti le varie categorie in più in documenti, documenti inoltre non serve lì in dock, non saprei cosa mettere"; answers: fix both paths (Studio and Personale); dock replacement «no preference» → recommended Pazienti.
+- CAUSE: Personal → Documenti → Personali listed only documents with one of 4 categories (Carta d'identità, Codice fiscale, Patente, Passaporto) AND a known person; the «Tipo» picker offered only those 4; from Studio «Acquisisci → Personale» the chosen type was not saved at all. Studio Documenti showed custom types with their raw id. (Migration documenti_studio_tag_tipi verified applied in production, read-only list_migrations.)
+- SCOPE: personal/src/lib/impostazioni.js — 9 more categories (Libretto auto, Assicurazione, Contratto, Garanzia, Certificato, Referto, Ricevuta, Fattura, Altro), merged into saved settings unless removed by hand (`categorieTolte`, kept by Impostazioni), `categorieConUso` adds categories already used on documents. Personali: documents without a known person under «Altri documenti», chips for used categories. Carica: all categories + «+ Nuovo tipo…». Studio Acquisisci → Personale: type picker, saved as `categoria`. ArchivioDocs: readable names for any type. Studio dock: Pazienti replaces Documenti (Documenti still in Studio, Per te, search); Personal dock unchanged. No schema/RLS/migration; Code.gs unchanged (already stores `categoria`).
+- VALIDATION 1684/1684 Node tests (new tests/documentiCategorie.test.mjs; dock/acquisisci tests updated); Studio and Personal builds. No browser check of Personali (needs the personal archive session).
+- STATUS pushed; PR on request; task-specific "Mergia" required.
+
 # Current task — PIANI-ELIMINA (2026-11-11)
 - OWNER Claude Code; branch `ccr-b7a5a599-0pxser` restarted from master 9443547 (PR306 and PR302 merged).
 - AUTHORIZATION PO 2026-11-11: "Si e mergia" (to: fix the Piani deletion like Denti e cure).

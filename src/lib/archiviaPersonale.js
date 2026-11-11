@@ -8,12 +8,14 @@ export async function sessioneArchivioPersonale() {
   try { const db = await archivio(); return (await db.auth.getSession()).data?.session || null; } catch { return null; }
 }
 
-export async function archiviaInPersonale(file, descrizione = '', tag = []) {
+// DOCUMENTI-CATEGORIE (PO 2026-11-11): il tipo scelto diventa la categoria del documento personale,
+// così compare in Documenti → Personali invece di perdersi.
+export async function archiviaInPersonale(file, descrizione = '', tag = [], categoria = null) {
   const s = await sessioneArchivioPersonale();
   if (!s?.access_token) throw new Error('Archivio personale non collegato: apri Personal una volta su questo telefono, poi riprova.');
   const [{ preparaFile }, { caricaDocumento }] = await Promise.all([import('../../personal/src/lib/file.js'), import('../../personal/src/lib/archivio.js')]);
   const pronto = await preparaFile(file);
-  const r = await caricaDocumento({ token: s.access_token, ...pronto, descrizione });
+  const r = await caricaDocumento({ token: s.access_token, ...pronto, descrizione, categoria: categoria || null });
   // DOCUMENTI-TAG: i tag scelti si aggiungono a quelli dell'archivio (stessa colonna `tag` usata da Personal).
   if (r?.id && tag?.length) {
     const db = await archivio();

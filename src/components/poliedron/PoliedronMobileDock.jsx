@@ -35,16 +35,16 @@ import PoliedronOrb from './PoliedronOrb.jsx';
 /* DOCK-PER-TE (PO 2026-11-08): «Altro» era troppo generico. Agenda · Documenti · Poliedron ·
    Studio · Per te: consultare (Agenda, Documenti), chiedere (Poliedron al centro), lavoro dello
    studio (Studio) e vita personale (Per te: spese, documenti personali, foto, note, diario…). */
+/* DOCK-PAZIENTI (PO 2026-11-11: "documenti inoltre non serve lì in dock"): al posto di Documenti
+   c'è Pazienti; Documenti resta in Studio, in Per te e nella ricerca. */
 export const MOBILE_DOCK_ITEMS = Object.freeze([
   { id: 'agenda', label: 'Agenda', icon: 'cal' },
-  { id: 'archivio', label: 'Documenti', icon: 'folder' },
+  { id: 'paz', label: 'Pazienti', icon: 'pz' },
   { id: '__poliedron__', label: 'Poliedron', icon: null },
   { id: 'studio', label: 'Studio', icon: 'brief' },
   { id: 'perte', label: 'Per te', icon: 'user' },
 ]);
-export const mobileDockItems = ({ archivio = true } = {}) => MOBILE_DOCK_ITEMS.map((item) => (
-  item.id === 'archivio' && !archivio ? { id: 'paz', label: 'Pazienti', icon: 'pz' } : item
-));
+export const mobileDockItems = () => MOBILE_DOCK_ITEMS;
 
 export default function PoliedronMobileDock({ page, setPage, open, onToggle, panelId, positionLocked, archivio = true }) {
   return (

@@ -26,9 +26,9 @@ test('Personal: dopo lo scatto si sceglie Personale o Studio · paziente', () =>
 test('Studio: «Acquisisci documento» dal tasto offre anche il personale, senza nuovo accesso', () => {
   const acq = read('src/components/AcquisisciDocumento.jsx');
   assert.match(acq, /\[\['studio', 'Studio · paziente'\], \['personale', 'Personale'\]\]/);
-  assert.match(acq, /if \(dove === 'personale'\) \{ const r = await archiviaInPersonale\(file, titolo, tag\);/);
+  assert.match(acq, /if \(dove === 'personale'\) \{ const r = await archiviaInPersonale\(file, titolo, tag, tipo\);/);
   const pers = read('src/lib/archiviaPersonale.js');
   assert.match(pers, /Archivio personale non collegato/);
-  assert.match(pers, /caricaDocumento\(\{ token: s\.access_token, \.\.\.pronto, descrizione \}\)/);
+  assert.match(pers, /caricaDocumento\(\{ token: s\.access_token, \.\.\.pronto, descrizione, categoria: categoria \|\| null \}\)/);
   assert.match(read('src/lib/documentiStudio.js'), /export \* from '\.\.\/\.\.\/shared\/documenti\/documentiStudio\.js'/);
 });

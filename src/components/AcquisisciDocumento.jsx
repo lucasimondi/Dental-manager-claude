@@ -30,7 +30,7 @@ export default function AcquisisciDocumento({ db, studioId, patients = [], onClo
   const salva = async () => {
     setSalvando(true); setErrore('');
     try {
-      if (dove === 'personale') { const r = await archiviaInPersonale(file, titolo, tag); ricordaTipoETag(null, tag); onSaved?.({ personale: true, ...r }); onClose(); return; }
+      if (dove === 'personale') { const r = await archiviaInPersonale(file, titolo, tag, tipo); ricordaTipoETag(tipo, tag); onSaved?.({ personale: true, ...r }); onClose(); return; }
       const doc = await acquisisciDocumento(db, { studioId, file, titolo, tipo, tag, pazienteId: paziente?.id }); ricordaTipoETag(tipo, tag); onSaved?.(doc); onClose();
     }
     catch (e) { setErrore(e.message); } finally { setSalvando(false); }
@@ -52,8 +52,8 @@ export default function AcquisisciDocumento({ db, studioId, patients = [], onClo
       </Fld>}
       {file && <p className="acquisisci-file" aria-live="polite">{file.name} · {(file.size / 1024 / 1024).toFixed(1)} MB</p>}
       <Fld label="Titolo"><Inp aria-label="Titolo del documento" value={titolo} maxLength={200} onChange={(e) => setTitolo(e.target.value)} placeholder="Es. Referto panoramica" /></Fld>
-      {dove === 'personale' ? <p className="acquisisci-nota">{personaleCollegato === false ? 'Archivio personale non collegato: apri Personal una volta su questo telefono.' : 'Va nel tuo archivio personale (Drive, «Archivio personale/Caricati»): titolo e cartella si scelgono in automatico.'}</p> : null}
-      {dove === 'personale' ? <TipoETag tag={tag} onTag={setTag} /> : <>
+      {dove === 'personale' ? <p className="acquisisci-nota">{personaleCollegato === false ? 'Archivio personale non collegato: apri Personal una volta su questo telefono.' : 'Va nel tuo archivio personale (Drive, «Archivio personale/Caricati»): lo trovi in Documenti → Personali sotto il tipo scelto.'}</p> : null}
+      {dove === 'personale' ? <TipoETag tipo={tipo} onTipo={setTipo} tag={tag} onTag={setTag} /> : <>
       <TipoETag tipo={tipo} onTipo={setTipo} tag={tag} onTag={setTag} />
       <Fld label="Paziente (facoltativo)">
         {paziente

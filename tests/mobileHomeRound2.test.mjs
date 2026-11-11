@@ -553,7 +553,9 @@ test('DOCK: structure, order, destinations and geometry are unchanged; only the 
   // Chat resta raggiungibile da campanella e pannello Poliedron, Pazienti e Home dalla ricerca.
   assert.match(dockSrc, /\{ id: 'agenda', label: 'Agenda', icon: 'cal' \}/);
   assert.match(dockSrc, /\{ id: '__poliedron__', label: 'Poliedron', icon: null \}/);
-  assert.match(dockSrc, /\{ id: 'archivio', label: 'Documenti', icon: 'folder' \}/);
+  // DOCK-PAZIENTI (PO 2026-11-11): Documenti lascia il dock, al suo posto Pazienti.
+  assert.match(dockSrc, /\{ id: 'paz', label: 'Pazienti', icon: 'pz' \}/);
+  assert.doesNotMatch(dockSrc, /\{ id: 'archivio', label: 'Documenti'/);
   // DOCK-PER-TE (PO 2026-11-08): Agenda · Documenti · Poliedron · Studio · Per te.
   assert.match(dockSrc, /\{ id: 'studio', label: 'Studio', icon: 'brief' \}/);
   assert.match(dockSrc, /\{ id: 'perte', label: 'Per te', icon: 'user' \}/);

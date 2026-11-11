@@ -6,6 +6,21 @@ import { CATEGORIE_SPESA, CATEGORIE_INCASSO } from './conti.js';
 
 const CHIAVE = 'personal';
 
+// DOCUMENTI-CATEGORIE (PO 2026-11-11: "I documenti che scannerizzo o allego se non sono del tipo di
+// documento che va già in documenti si perde, metti le varie categorie in più in documenti"):
+// più tipi pronti; si aggiungono anche a impostazioni già salvate, tranne quelli tolti a mano.
+export const ALTRE_CATEGORIE = Object.freeze([
+  { id: 'libretto_auto', nome: 'Libretto auto', parole: ['libretto di circolazione', 'carta di circolazione', 'libretto auto'] },
+  { id: 'assicurazione', nome: 'Assicurazione', parole: ['polizza', 'assicurazione'] },
+  { id: 'contratto', nome: 'Contratto', parole: ['contratto'] },
+  { id: 'garanzia', nome: 'Garanzia', parole: ['garanzia', 'scontrino di garanzia'] },
+  { id: 'certificato', nome: 'Certificato', parole: ['certificato'] },
+  { id: 'referto', nome: 'Referto', parole: ['referto'] },
+  { id: 'ricevuta', nome: 'Ricevuta', parole: ['ricevuta'] },
+  { id: 'fattura', nome: 'Fattura', parole: ['fattura'] },
+  { id: 'altro', nome: 'Altro', parole: [] },
+]);
+
 export const IMPOSTAZIONI_PREDEFINITE = Object.freeze({
   persone: ['Luca Simondi', 'Martina Simondi', 'Giulia Simondi'],
   categorie: [
@@ -13,6 +28,7 @@ export const IMPOSTAZIONI_PREDEFINITE = Object.freeze({
     { id: 'codice_fiscale', nome: 'Codice fiscale', parole: ['codice fiscale', 'tessera sanitaria', 'tesserino fiscale'] },
     { id: 'patente', nome: 'Patente', parole: ['patente'] },
     { id: 'passaporto', nome: 'Passaporto', parole: ['passaporto'] },
+    ...ALTRE_CATEGORIE,
   ],
   sezioni: [
     { id: 'bollette', nome: 'Bollette', fascicoli: ['utenze'], parole: ['bolletta'] },
@@ -34,9 +50,11 @@ export function normalizza(valore) {
   const base = copia(IMPOSTAZIONI_PREDEFINITE);
   const unici = (xs) => [...new Map(xs.map((x) => [x.id ?? x, x])).values()];
   const persone = Array.isArray(v.persone) ? unici(v.persone.map(testo).filter(Boolean)) : base.persone;
-  const categorie = Array.isArray(v.categorie)
+  const categorieTolte = Array.isArray(v.categorieTolte) ? [...new Set(v.categorieTolte.map(testo).filter(Boolean))] : [];
+  const salvate = Array.isArray(v.categorie)
     ? unici(v.categorie.filter((c) => c && testo(c.nome)).map((c) => ({ id: c.id || slug(c.nome), nome: testo(c.nome), parole: (c.parole || []).map(testo).filter(Boolean) })))
     : base.categorie;
+  const categorie = [...salvate, ...copia(ALTRE_CATEGORIE).filter((c) => !salvate.some((s) => s.id === c.id) && !categorieTolte.includes(c.id))];
   const sezioni = Array.isArray(v.sezioni)
     ? unici(v.sezioni.filter((s) => s && testo(s.nome)).map((s) => ({
       id: s.id || slug(s.nome), nome: testo(s.nome),
@@ -48,7 +66,7 @@ export function normalizza(valore) {
     ? unici(v.etichette.filter((e) => e && testo(e.nome)).map((e) => ({ id: e.id || slug(e.nome), nome: testo(e.nome), colore: colore(e.colore) })))
     : base.etichette;
   const elenco = (xs, predefiniti) => (Array.isArray(xs) && xs.length ? [...new Set(xs.map(testo).filter(Boolean))] : [...predefiniti]);
-  return { persone, categorie, sezioni, etichette, categorieSpesa: elenco(v.categorieSpesa, base.categorieSpesa), categorieIncasso: elenco(v.categorieIncasso, base.categorieIncasso) };
+  return { persone, categorie, categorieTolte, sezioni, etichette, categorieSpesa: elenco(v.categorieSpesa, base.categorieSpesa), categorieIncasso: elenco(v.categorieIncasso, base.categorieIncasso) };
 }
 
 export async function leggiImpostazioni(db) {
@@ -63,6 +81,15 @@ export async function salvaImpostazioni(db, impostazioni) {
     .upsert({ chiave: CHIAVE, valore, aggiornato_il: new Date().toISOString() }, { onConflict: 'chiave' });
   if (error) throw new Error(error.message);
   return valore;
+}
+
+// Le categorie delle impostazioni più quelle già usate sui documenti (es. un tipo scelto in Studio,
+// «Radiografia»): così ogni documento con una categoria ha sempre un posto dove vederlo.
+const NOMI_STUDIO = { documento: 'Documento', fattura_fornitore: 'Fattura fornitore', preventivo: 'Preventivo', consenso: 'Consenso' };
+export const nomeCategoria = (id) => NOMI_STUDIO[id] || (testo(id).replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()));
+export function categorieConUso(categorie, docs = []) {
+  const extra = [...new Set((docs || []).map((d) => testo(d?.categoria)).filter(Boolean))].filter((id) => !categorie.some((c) => c.id === id));
+  return [...categorie, ...extra.map((id) => ({ id, nome: nomeCategoria(id), parole: [] }))];
 }
 
 // Documenti personali: categoria e persona scelte da Luca; se mancano, dedotte dal testo.
