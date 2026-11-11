@@ -19,3 +19,9 @@
 .pdf-saved{display:flex;flex-direction:column;align-items:center;gap:6px}
 .pdf-manager .pdf-saved{min-height:96px}
 @media(max-width:390px){.pdf-manager .pdf-header{padding:6px 8px}.pdf-manager .pdf-header small{display:none}}
+
+.pdf-page-thumb{width:44px;height:60px;object-fit:contain;background:#eef3f5;border:1px solid #d5dfe8;flex-shrink:0;margin:4px}.pdf-filename{display:grid;gap:6px;font-weight:600}.pdf-filename input{width:100%;min-width:0}.pdf-manager .pdf-primary,.pdf-manager button[aria-pressed=true]{background:#146c55;border-color:#146c55}
+
+.pdf-manager .pdf-status{position:relative;z-index:30}
+/* SCAN-PDF-MANAGER — schede Firma · Sigla · Data, peso del file. */
+.pdf-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.pdf-manager .pdf-tabs button[aria-selected=true]{background:#185b82;color:#fff;border-color:#185b82}.pdf-peso{font-size:13px;color:#536778}

@@ -872,6 +872,18 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-ritaglio .pp-bottone { background: #1f7a4d; color: #fff; opacity: 1; }
 .pp-ritaglio-testa .pp-icona-bottone { background: rgba(255, 255, 255, .16); color: #fff; }
 .pp-ritaglio-testa span, .pp-ritaglio-testa .pp-testo-link { color: #fff; }
+.pp-angoli-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.pp-angoli-ombra { fill: rgba(0, 0, 0, .5); }
+.pp-angoli-bordo { fill: none; stroke: #6fd49b; stroke-width: 2.5px; }
+.pp-angoli-errore { stroke: #ff6b6b; }
+.pp-angoli-maniglia { position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px; padding: 0; border-radius: 50%; background: rgba(255, 255, 255, .92); border: 3px solid #1f7a4d; touch-action: none; cursor: grab; }
+.pp-angoli-maniglia:focus-visible { outline: 3px solid #6fd49b; outline-offset: 2px; }
+.pp-angoli-scelte { display: inline-flex; gap: 14px; }
+.pp-angoli-avviso { margin: 0; color: #ffb4b4; font-size: 14px; text-align: center; }
+.pp-scan-auto { position: absolute; left: 6px; top: 6px; padding: 2px 7px; border-radius: 999px; background: rgba(31, 122, 77, .92); color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; }
+.pp-scansione-pagina { position: relative; }
+.scan-opzioni { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 6px 0 10px; font-size: 14px; }
+.scan-opzioni label { display: inline-flex; align-items: center; gap: 6px; }
 .pp-sorgenti-rapide { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
 .pp-sorgenti-rapide .pp-bottone { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 64px; padding: 8px 4px; font-size: 14px; }
 .pp-scansione-pdf { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; aspect-ratio: 3 / 4; padding: 10px; background: #e4e7ec; color: var(--pp-blu); text-align: center; font-size: 12px; word-break: break-word; }
@@ -887,3 +899,7 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-chip-tipi { display: flex; flex-wrap: wrap; gap: 6px; }
 .pp-chip-tipi button { min-height: 40px; padding: 0 12px; border-radius: 20px; border: 1px solid var(--pp-linea); background: transparent; color: inherit; font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
 .pp-chip-tipi button.attivo { background: var(--pp-blu); border-color: var(--pp-blu); color: #fff; }
+
+/* Scan: a selected batch can be delivered separately or as one PDF. */
+.scan-controls{border:0;padding:0;margin:0;min-width:0}.scan-controls:disabled{opacity:.65}.scan-select{display:flex;align-items:center;gap:5px;min-height:44px}.scan-select input{width:20px;height:20px;accent-color:#146c55}.scan-selection-bar,.scan-output-file{display:flex;gap:10px;align-items:center;justify-content:space-between;margin:12px 0}.scan-output-file{flex-wrap:wrap;padding:12px;border:1px solid var(--pp-bordo,#dbe3df);border-radius:12px}.scan-output-file span{flex:1;min-width:120px;overflow-wrap:anywhere}.scan-output-actions{display:grid;gap:10px}.pp-scan-strumenti{flex-wrap:wrap}
+.scan-controls .pp-scansione-pagina figcaption{flex-wrap:wrap;gap:4px;padding:8px}.scan-controls .pp-scansione-pagina figcaption button{flex-shrink:0;min-width:36px;min-height:40px}.scan-controls .pp-scansione-pagina figcaption .scan-edit{width:100%;height:auto;min-height:40px;font-size:13px;order:2;background:var(--pp-sfondo,#eef4f1)}.scan-controls .pp-scansione-pagina figcaption .scan-select{margin-right:auto}.scan-controls .pp-scansione-pdf{aspect-ratio:4/3}

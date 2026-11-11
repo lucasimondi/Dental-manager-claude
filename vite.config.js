@@ -3,10 +3,12 @@ import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
 import { copyFileSync, mkdirSync } from 'node:fs';
 import { VitePWA } from 'vite-plugin-pwa';
+import { ocrAssets } from './scripts/viteOcrAssets.mjs';
 
 export default defineConfig({
   plugins: [
     react(),
+    ocrAssets(),
     VitePWA({
       registerType: 'autoUpdate',
       // POL-UI-029: registered explicitly in src/App.jsx (via
@@ -52,6 +54,8 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
+        // SCAN-PDF-MANAGER: il motore OCR (~5 MB) si scarica solo quando serve, non con l'app.
+        globIgnores: ['ocr/**'],
         // The Poliedron phone app has its own page (icon + manifest). Without
         // this, the studio app's service worker answered /poliedron/ with the
         // studio's index.html, so "Installa" installed Poliedra, not Poliedron.

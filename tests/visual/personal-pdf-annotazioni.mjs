@@ -47,7 +47,7 @@ try {
   const sig = await page.locator('.pdf-signature').boundingBox();
   assert.ok(sig.width / sig.height > 2 && sig.width / sig.height < 6, `signature keeps its proportions (${sig.width}x${sig.height})`);
   await page.screenshot({ path: `${out}/firma-posizionata.png` });
-  await page.getByRole('button', { name: 'Condividi', exact: true }).click();
+  await page.getByRole('button', { name: 'Salva / Invia', exact: true }).click();
   await page.getByRole('button', { name: 'Condividi PDF', exact: true }).click();
   await page.waitForFunction(() => window.pdfTest.shares.length === 1);
   const bytes = Uint8Array.from(await page.evaluate(() => window.pdfTest.shares[0].bytes));

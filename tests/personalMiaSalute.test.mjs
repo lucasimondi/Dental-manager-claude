@@ -113,7 +113,7 @@ test('UI wiring: Mail/WhatsApp buttons, single PDF option, scan and crop entries
   assert.match(p('sezioni/documenti/Documento.jsx'), /tipo: 'modifica-immagine'/);
   assert.match(p('sezioni/documenti/index.jsx'), /'modifica-immagine': \{/);
   assert.match(p('Aggiungi.jsx'), /opzioni: \{ \.\.\.opzioni, descrizione/);
-  assert.match(p('Aggiungi.jsx'), /<Ritaglio /);
+  assert.match(p('Aggiungi.jsx'), /<Angoli /); // SCAN-PDF-MANAGER: ritaglio con i 4 angoli (raddrizza)
 });
 
 // --- terza richiesta: un solo strumento «Scansiona o allega» per tutti i documenti ---

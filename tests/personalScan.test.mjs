@@ -80,6 +80,6 @@ test('Scan: riceve i PDF da Condividi e da Apri con', () => {
     assert.match(readFileSync(`public${base}sw-notifiche.js`, 'utf8'), /importScripts\('\/personal\/sw-notifiche\.js'\)/);
   }
   const scan = readFileSync('personal/src/scan/Scan.jsx', 'utf8');
-  assert.match(scan, /useIngressoPdf\(apri, setErrore\)/);
+  assert.match(scan, /useIngressoPdf\(ricevi, setErrore\)/);
   assert.match(scan, /launchQueue/);
 });

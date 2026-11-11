@@ -22,7 +22,7 @@ const caricaSenzaCartella = () => documentiSenzaCartella(archivioDb, CAMPI_DOC);
 export const documenti = {
   id: 'documenti', nome: 'Documenti', Icona: IconaDocumenti, Vista: VistaDocumenti,
   pagine: {
-    pdf: { titolo: 'Gestore PDF', modulo: true, render: (p, { ctx, chiudi, sostituisci }) => <PaginaPdf file={p.file} files={p.files} ctx={ctx} chiudi={chiudi} sostituisci={sostituisci} /> },
+    pdf: { titolo: 'Gestore PDF', modulo: true, render: (p, { ctx, chiudi, sostituisci }) => <PaginaPdf file={p.file} files={p.files} onSave={p.onSave} ctx={ctx} chiudi={chiudi} sostituisci={sostituisci} /> },
     revisione: { titolo: 'Da valutare', render: (p, { ctx }) => <RevisioneArchivio ctx={ctx} /> },
     documento: { titolo: 'Documento', render: (p, { ctx, chiudi }) => <PaginaDocumento id={p.id} ctx={ctx} chiudi={chiudi} /> },
     cartella: { titolo: 'Cartella', render: (p, { ctx, chiudi, sostituisci }) => <PaginaCartella key={p.ente} ente={p.ente} ctx={ctx} chiudi={chiudi} sostituisci={sostituisci} /> },
