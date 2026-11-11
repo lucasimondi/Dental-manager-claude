@@ -78,7 +78,7 @@ export function federatedSearch(query, sources = {}, opts = {}) {
    a small set of frequent actions + "open current context". Kept separate
    from federatedSearch so an empty query never runs the search algorithm
    at all. */
-export function suggestedIdle({ recentActionIds = [], actions = [], navigationIndex = [], context } = {}) {
+export function suggestedIdle({ recentActionIds = [], actions = [], context } = {}) {
   const byId = new Map(actions.map((a) => [a.id, a]));
   const recent = recentActionIds.map((id) => byId.get(id)).filter(Boolean);
   const preferredActions = context?.page === 'paz'
@@ -87,18 +87,11 @@ export function suggestedIdle({ recentActionIds = [], actions = [], navigationIn
   const fallback = preferredActions.map((id) => byId.get(id)).filter(Boolean);
   const actionItems = (recent.length ? recent : fallback).slice(0, 6)
     .map((a) => ({ kind: 'action', id: a.id, label: a.label, description: a.description, data: a }));
-  // POL-UI-015 §10: 'set' (Impostazioni) added so it stays reachable from
-  // the central Poliedron button's default panel now that the mobile dock
-  // no longer has its own Impostazioni slot — listed last since it's a
-  // secondary destination, not a priority operational shortcut.
-  const preferredSections = ['controllo', 'spese', 'agenda', 'paz', 'paga', 'archivio', 'piani', 'richiami', 'set'];
-  const sectionById = new Map(navigationIndex.map((item) => [item.id, item]));
-  const sectionItems = preferredSections.map((id) => sectionById.get(id)).filter(Boolean).slice(0, 9)
-    .map((section) => ({ kind: 'section', id: section.id, label: section.label, icon: section.icon, data: section }));
-  return [
-    ...(sectionItems.length ? [{ group: 'APRI UNA SEZIONE', items: sectionItems }] : []),
-    ...(actionItems.length ? [{ group: 'AZIONI E WORKFLOW', items: actionItems }] : []),
-  ];
+  // POLIEDRON-RIORDINO (PO 2026-11-11: "quando lo apro mi dà una serie di sezioni che diventano
+  // dei doppioni rispetto a tasto studio"): all'apertura Poliedron non elenca più le sezioni
+  // (Agenda, Pazienti, Pagamenti, Impostazioni… sono già nel dock e in Studio, Impostazioni nel
+  // piede di Studio e Per te). Restano solo le azioni rapide; le sezioni si trovano scrivendone il nome.
+  return actionItems.length ? [{ group: 'AZIONI E WORKFLOW', items: actionItems }] : [];
 }
 
 export { findAction };

@@ -15,7 +15,7 @@
    homeLayoutPersistence.js, so tests can inject a fake without touching
    the real Supabase client. */
 
-import { uid, today } from '../utils.js';
+import { uid, today, fmt } from '../utils.js';
 import { normalizza } from '../ricercaPazienti.js';
 import {
   sameProcedureAndTooth, findExistingTreatmentItem, PRICE_UNRESOLVED,
@@ -88,6 +88,30 @@ export const markTreatmentItemCompleted = (plan, voceIndex) => {
   if (voce.eseguita === true) return { plan, changed: false };
   const nuoveVoci = plan.voci.map((v, j) => (j === voceIndex ? { ...v, eseguita: true, dataEsec: today() } : v));
   return { plan: { ...plan, voci: nuoveVoci }, changed: true };
+};
+
+/* PRESTAZIONI-ELIMINA (PO 2026-11-11: "Le prestazioni devono aver il tasto per cancellarle").
+   The exact rule PianoDrillDown already applied when removing a voce, moved here so the
+   patient's «Denti e cure» list uses the same one: totals as in Piani (sconto % or €), paid
+   amount = payments of the plan with stato «pagato». Removing never deletes a payment; when
+   the new total is below what was already paid the surplus stays as a free deposit on the plan. */
+export const planTotals = (voci, sconto, scontoTipo) => {
+  const sub = (voci || []).reduce((s, v) => s + Number(v.prezzo), 0);
+  const sc = Number(sconto) || 0;
+  const scontato = scontoTipo === 'pct' ? sub * (sc / 100) : Math.min(sc, sub);
+  return { sub, scontato, finale: Math.max(0, sub - scontato) };
+};
+export const paidOnPlan = (payments, planId) => (payments || [])
+  .filter((payment) => String(payment.pianoId) === String(planId) && String(payment.stato || '').toLowerCase() === 'pagato')
+  .reduce((sum, payment) => sum + Number(payment.importo || 0), 0);
+export const removeTreatmentItem = (plan, voceIndex) => ({ ...plan, voci: (plan.voci || []).filter((_, i) => i !== voceIndex) });
+export const treatmentItemRemovalMessage = (plan, voceIndex, totalePagato) => {
+  const vociResidue = (plan.voci || []).filter((_, i) => i !== voceIndex);
+  const { finale: nuovoTotale } = planTotals(vociResidue, plan.sconto || 0, plan.scontoTipo || 'pct');
+  const eccedenza = Math.max(0, totalePagato - nuovoTotale);
+  return eccedenza > 0
+    ? `Il piano ha ${fmt(totalePagato)} di pagamenti collegati — rimuovendo questa prestazione il nuovo totale (${fmt(nuovoTotale)}) sarà inferiore a quanto già incassato: ${fmt(eccedenza)} diventerà un acconto libero sul piano. Il pagamento non verrà cancellato. Continuare?`
+    : 'Rimuovere questa prestazione dal piano?';
 };
 
 /** Every voce marked eseguita — the "terminato"/"concluso" display state,

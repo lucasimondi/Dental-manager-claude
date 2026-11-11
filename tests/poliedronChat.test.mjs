@@ -179,7 +179,10 @@ test('Chat route is wired; Setup stays in the Poliedron menu and out of the mobi
   // 'set' there. The requirement is that Impostazioni stays reachable from
   // the Poliedron menu once the dock slot became Chat — not a specific
   // ordering — so master's approved ordering is kept.
-  assert.match(searchEngine, /const preferredSections = \[[^\]]*'set'[^\]]*\]/);
+  // POLIEDRON-RIORDINO (PO 2026-11-11): Impostazioni moved to the Studio / Per te footer; the
+  // Poliedron panel no longer duplicates sections.
+  assert.doesNotMatch(searchEngine, /preferredSections/);
+  assert.match(app, /piede=\{\[\{ id: 'set', nome: 'Impostazioni e account'/);
 });
 
 test('Chat UI has one scroller, safe-area/dock clearance, pagination, retry, and conditional near-bottom scroll', () => {

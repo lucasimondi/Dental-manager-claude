@@ -4642,3 +4642,30 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Risks: OCR speed on low-end phones (a few seconds per page); auto-straighten needs the sheet to be lighter than the background (otherwise the photo is left as is and the corners can be set by hand); compression rasterises text and forms (UI warns; OCR can be reapplied); drawn signature remains a simple electronic signature.
 - Rollback: revert the PR; no data rollback.
 - Exact next action: PO tries Scan on the phone after the Vercel preview/merge; task-specific "Mergia" for PR302. Play Store (native wrapper for «Apri con») is a separate task to authorize.
+
+## Handoff — POLIEDRON-RIORDINO-RICETTA (2026-11-11) — Claude Code
+- Branch `ccr-b7a5a599-0pxser` from master dc1e858. Files: src/components/RicettaConRicerca.jsx (new), src/components/Dashboard.jsx, src/App.jsx, src/components/poliedron/{Poliedron.jsx, PoliedronActionPreview.jsx, PoliedronSuggestionBoard.jsx}, src/lib/poliedron/{searchEngine.js, actionRegistry.js, prescriptionWorkflow.js}, tests (new poliedronRicettaDiretta, updated dashboardPremiumV2, incassiPoliedronAndControlUi, mobileHomeRound2, poliedronChat), tests/visual/poliedron-ricetta.{html,fixture.jsx}.
+- Database: none. Tests 1658 pass, 1 pre-existing unrelated failure (also on master). Studio build OK; Chromium fixture PASS. Rollback: revert the commit (the «Naviga» grid and the old Ricetta flow come back).
+- Next: PO check on the phone; "Mergia" for the PR.
+
+## Handoff — POLIEDRON-RIORDINO-RICETTA merged (2026-11-11) — Claude Code
+- PR303 squash-merged as 0535aec; production dpl_775vCBr2Arep9gh38FET4JycJgBT READY. Also fixed tests/androidAgendaWidget.test.mjs (fixed dates fell out of the widget window; now relative to today). Two non-required CI jobs (connector UI, iPhone agenda visual) were stuck >20 min on `playwright install --with-deps` at merge time.
+
+## Handoff — POLIEDRON-TASTI (2026-11-11) — Claude Code
+- Branch `ccr-b7a5a599-0pxser` from master 0535aec. Files: src/components/poliedron/PoliedronSuggestionBoard.jsx, src/components/PremiumVisualSystem.css, tests/poliedronRicettaDiretta.test.mjs, coordination docs.
+- Database: none. Tests 1660/1660; Chromium fixture PASS. Rollback: revert the commit (long cards with description return).
+
+## Handoff — POLIEDRON-TASTI merged (2026-11-11) — Claude Code
+- PR304 squash-merged as a4eb180; production dpl_D5QdNN41uLXMSKghn6vDk7fwiqUP READY.
+
+## Handoff — PRESTAZIONI-ELIMINA (2026-11-11) — Claude Code
+- Branch `ccr-b7a5a599-0pxser` from master a4eb180. Files: src/lib/domain/treatmentPlanService.js, src/components/{PatientDentalOverview.jsx, PatientDentalOverview.css, PianoDrillDown.jsx, SchedaPaz.jsx}, tests/{prestazioniElimina.test.mjs (new), planExecutionUi.test.mjs}, tests/visual/prestazioni-elimina.{html,fixture.jsx}.
+- Database: none (plan voci saved through existing setPlans). Tests 1664/1664; build OK (a stray brace in PianoDrillDown fixed in a follow-up commit); Chromium fixture PASS. Rollback: revert the commits.
+
+## Handoff — PRESTAZIONI-ELIMINA merged (2026-11-11) — Claude Code
+- PR305 squash-merged as 41d434a; production dpl_J7RaxbvXJ58pQbeMWuJV5tQf6XVS READY. PO then reported deletion did not work: `window.confirm` in the Android WebView app returns false.
+
+## Handoff — PRESTAZIONI-TUTTE (2026-11-11) — Claude Code
+- Branch `ccr-b7a5a599-0pxser` from master 41d434a. Files: src/components/PatientDentalOverview.{jsx,css}, tests/{prestazioniElimina,denteEseguito}.test.mjs, coordination docs.
+- Database: none. Tests 1665/1665; build OK; Chromium fixture PASS. Rollback: revert the commit.
+- Open: Piani (PianoDrillDown) and other places using `confirm()` have the same Android WebView limitation (alternative: add a WebChromeClient with onJsConfirm to android/agenda MainActivity.java, which needs a new APK).

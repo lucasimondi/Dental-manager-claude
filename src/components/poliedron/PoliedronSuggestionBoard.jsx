@@ -2,11 +2,17 @@ import React from 'react';
 import { C } from '../../lib/utils';
 import { DockIc, Ic } from '../ui';
 
-const actionType = (action) => {
-  if (action?.kind === 'workflow') return 'Workflow';
-  if (action?.riskLevel === 1) return 'Crea';
-  return 'Azione';
-};
+/* POLIEDRON-TASTI (PO 2026-11-11: "in poliedron quando apre creerei dei tasti senza tutta la
+   spiegazione che stiamo anche in tre per linea"): tasti compatti, icona + nome breve, tre per riga. */
+export const NOME_BREVE = Object.freeze({
+  'appointment.create': 'Appuntamento',
+  'patient.create': 'Paziente',
+  'prescription.create': 'Ricetta',
+  'payment.create': 'Pagamento',
+  'expense.create': 'Spesa',
+  'document.create': 'Documento',
+  'quote.create': 'Preventivo',
+});
 
 export default function PoliedronSuggestionBoard({ groups, onSelect }) {
   const sections = groups.find((group) => group.group === 'APRI UNA SEZIONE')?.items || [];
@@ -18,8 +24,8 @@ export default function PoliedronSuggestionBoard({ groups, onSelect }) {
         <div className="poliedron-suggestions__mark"><Ic n="spark" s={17} c="#fff" /></div>
         <div>
           <div className="poliedron-suggestions__eyebrow">Poliedra AI</div>
-          <div className="poliedron-suggestions__title">Dove vuoi lavorare?</div>
-          <div className="poliedron-suggestions__copy">Apri una sezione, avvia un workflow reale oppure scrivi una domanda.</div>
+          <div className="poliedron-suggestions__title">Cosa vuoi fare?</div>
+          <div className="poliedron-suggestions__copy">Crea al volo oppure scrivi una domanda o il nome di un paziente.</div>
         </div>
       </div>
 
@@ -39,17 +45,12 @@ export default function PoliedronSuggestionBoard({ groups, onSelect }) {
 
       {actions.length > 0 && (
         <section aria-labelledby="poliedron-actions-title">
-          <div id="poliedron-actions-title" className="poliedron-group-label">Crea e workflow</div>
+          <div id="poliedron-actions-title" className="poliedron-group-label">Crea</div>
           <div className="poliedron-action-grid">
             {actions.map((item) => (
-              <button key={item.id} className="poliedron-action-card" onClick={() => onSelect(item)}>
-                <span className="poliedron-action-card__icon"><Ic n={item.data?.quickAction?.ic || (item.data?.kind === 'workflow' ? 'pill' : 'zap')} s={16} c={C.pri} /></span>
-                <span className="poliedron-action-card__body">
-                  <span className="poliedron-action-card__type">{actionType(item.data)}</span>
-                  <span className="poliedron-action-card__label">{item.label}</span>
-                  {item.description && <span className="poliedron-action-card__description">{item.description}</span>}
-                </span>
-                <span className="poliedron-action-card__arrow" aria-hidden="true">›</span>
+              <button key={item.id} className="poliedron-action-card" onClick={() => onSelect(item)} aria-label={item.label} title={item.label}>
+                <span className="poliedron-action-card__icon"><Ic n={item.data?.quickAction?.ic || (item.data?.kind === 'workflow' ? 'pill' : 'zap')} s={18} c={C.pri} /></span>
+                <span className="poliedron-action-card__label">{NOME_BREVE[item.id] || item.label}</span>
               </button>
             ))}
           </div>
