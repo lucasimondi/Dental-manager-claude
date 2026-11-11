@@ -4636,4 +4636,4 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 
 ## Handoff — PRESTAZIONI-ELIMINA (2026-11-11) — Claude Code
 - Branch `ccr-b7a5a599-0pxser` from master a4eb180. Files: src/lib/domain/treatmentPlanService.js, src/components/{PatientDentalOverview.jsx, PatientDentalOverview.css, PianoDrillDown.jsx, SchedaPaz.jsx}, tests/{prestazioniElimina.test.mjs (new), planExecutionUi.test.mjs}, tests/visual/prestazioni-elimina.{html,fixture.jsx}.
-- Database: none (plan voci saved through existing setPlans). Tests 1664/1664; build OK; Chromium fixture PASS. Rollback: revert the commit.
+- Database: none (plan voci saved through existing setPlans). Tests 1664/1664; build OK (a stray brace in PianoDrillDown fixed in a follow-up commit); Chromium fixture PASS. Rollback: revert the commits.
