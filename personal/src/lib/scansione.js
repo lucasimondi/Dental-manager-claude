@@ -1,7 +1,12 @@
 // POL-VITA-006 — scansione di documenti dal telefono: foto delle pagine, miglioramento per la
 // lettura (bianco e nero o colori più netti), rotazione, poi un solo PDF A4 da archiviare.
 // Le funzioni sui pixel sono pure (lavorano su un array RGBA) e quindi testabili.
+import { trovaAngoli, angoliValidi, angoliInteri, misureRaddrizzate, raddrizza } from './prospettiva.js';
+
 const LATO_MAX = 2000;
+// SCAN-PDF-MANAGER (PO 2026-11-11: «Comprimi PDF»): «Leggero» riduce lato e qualità JPEG,
+// per allegati piccoli da mandare con Mail o WhatsApp.
+export const PESI = { normale: { lato: LATO_MAX, qualita: 0.85 }, leggero: { lato: 1400, qualita: 0.6 } };
 
 // Ritaglio normalizzato: dentro l'immagine e mai più piccolo del 5% per lato.
 export const RITAGLIO_INTERO = { x: 0, y: 0, w: 1, h: 1 };
@@ -60,7 +65,10 @@ export function migliora(px, modo) {
 
 // Foto → canvas ridotto, ruotato e migliorato → JPEG.
 // MIA-SALUTE: `ritaglio` ({x, y, w, h} da 0 a 1, sull'immagine già ruotata) taglia i bordi.
-export async function elaboraPagina(file, { modo = 'documento', rotazione = 0, ritaglio = null } = {}) {
+// SCAN-PDF-MANAGER: `angoli` ('auto' oppure { tl, tr, br, bl } da 0 a 1) raddrizza il foglio;
+// con 'auto' gli angoli si cercano nella foto e vengono restituiti (null se non trovati).
+export async function elaboraPagina(file, { modo = 'documento', rotazione = 0, ritaglio = null, angoli = null, peso = 'normale' } = {}) {
+  const { lato, qualita } = PESI[peso] || PESI.normale;
   const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
   const scala = Math.min(1, LATO_MAX / Math.max(bitmap.width, bitmap.height));
   const w = Math.round(bitmap.width * scala);
@@ -76,7 +84,19 @@ export async function elaboraPagina(file, { modo = 'documento', rotazione = 0, r
   bitmap.close();
   c.setTransform(1, 0, 0, 1, 0, 0);
   let tela = canvas;
-  const taglio = ritaglio && rettangoloPixel(ritaglio, canvas.width, canvas.height);
+  let angoliUsati = null;
+  if (angoli) {
+    const dati = c.getImageData(0, 0, canvas.width, canvas.height);
+    const q = angoli === 'auto' ? trovaAngoli(dati.data, canvas.width, canvas.height) : angoli;
+    if (q && angoliValidi(q) && !angoliInteri(q)) {
+      const { w: ow, h: oh } = misureRaddrizzate(q, canvas.width, canvas.height, lato);
+      tela = document.createElement('canvas');
+      tela.width = ow; tela.height = oh;
+      tela.getContext('2d', { willReadFrequently: true }).putImageData(new ImageData(raddrizza(dati.data, canvas.width, canvas.height, q, ow, oh), ow, oh), 0, 0);
+      angoliUsati = q;
+    }
+  }
+  const taglio = !angoliUsati && ritaglio && rettangoloPixel(ritaglio, canvas.width, canvas.height);
   if (taglio && (taglio.w < canvas.width || taglio.h < canvas.height)) {
     tela = document.createElement('canvas');
     tela.width = taglio.w; tela.height = taglio.h;
@@ -88,7 +108,14 @@ export async function elaboraPagina(file, { modo = 'documento', rotazione = 0, r
     migliora(dati.data, modo);
     ct.putImageData(dati, 0, 0);
   }
-  return { url: tela.toDataURL('image/jpeg', 0.85), larghezza: tela.width, altezza: tela.height };
+  if (Math.max(tela.width, tela.height) > lato) {
+    const k = lato / Math.max(tela.width, tela.height);
+    const piccola = document.createElement('canvas');
+    piccola.width = Math.round(tela.width * k); piccola.height = Math.round(tela.height * k);
+    piccola.getContext('2d').drawImage(tela, 0, 0, piccola.width, piccola.height);
+    tela = piccola;
+  }
+  return { url: tela.toDataURL('image/jpeg', qualita), larghezza: tela.width, altezza: tela.height, angoli: angoliUsati };
 }
 
 // Pagine → PDF A4 (verticale o orizzontale secondo la foto), immagine centrata con margine.
@@ -110,4 +137,20 @@ export async function creaPdf(pagine, nome = 'Scansione') {
   pdf.setProperties({ title: nome });
   const blob = pdf.output('blob');
   return new File([blob], `${nome.replace(/[^\w\- ]+/g, '').trim() || 'Scansione'}.pdf`, { type: 'application/pdf' });
+}
+
+// SCAN-PDF-MANAGER — angoli del foglio trovati nella foto (già ruotata), senza raddrizzarla:
+// servono per proporli nell'editor degli angoli. null se il foglio non si distingue.
+export async function rilevaAngoli(file, { rotazione = 0 } = {}) {
+  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  const scala = Math.min(1, 640 / Math.max(bitmap.width, bitmap.height));
+  const w = Math.max(1, Math.round(bitmap.width * scala)); const h = Math.max(1, Math.round(bitmap.height * scala));
+  const giro = ((rotazione % 360) + 360) % 360;
+  const canvas = document.createElement('canvas');
+  canvas.width = giro % 180 ? h : w; canvas.height = giro % 180 ? w : h;
+  const c = canvas.getContext('2d', { willReadFrequently: true });
+  c.translate(canvas.width / 2, canvas.height / 2); c.rotate((giro * Math.PI) / 180);
+  c.drawImage(bitmap, -w / 2, -h / 2, w, h);
+  bitmap.close();
+  return trovaAngoli(c.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
 }

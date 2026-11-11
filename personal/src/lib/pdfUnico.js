@@ -45,10 +45,19 @@ export async function pdfDaElementi(elementi, titolo = 'Documento', strumenti = 
 }
 
 // Prepare actual attachments before the share gesture. No network or storage writes.
+// SCAN-PDF-MANAGER: con `ocr` ogni PDF pronto riceve il testo ricercabile (sul dispositivo).
 export async function preparaAllegatiScan(elementi, titolo, separati, strumenti = {}) {
   const prepara = strumenti.pdfDaElementi || pdfDaElementi;
   if (!elementi.length) throw new Error('Seleziona almeno un documento.');
   if (elementi.length > 20) throw new Error('Seleziona al massimo 20 documenti.');
+  const files = await preparaSenzaOcr(elementi, titolo, separati, prepara);
+  if (!strumenti.ocr) return files;
+  const leggi = strumenti.fileRicercabile || (await import('../pdf/ocr.js')).fileRicercabile;
+  const out = [];
+  for (const [i, f] of files.entries()) out.push(await leggi(f, { onAvanzamento: (m) => strumenti.onAvanzamento?.(files.length > 1 ? `${f.name} (${i + 1}/${files.length}) · ${m}` : m) }));
+  return out;
+}
+async function preparaSenzaOcr(elementi, titolo, separati, prepara) {
   if (!separati) return [await prepara(elementi, titolo)];
   const files = [], nomi = new Set();
   for (const [i, elemento] of elementi.entries()) {

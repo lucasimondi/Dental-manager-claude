@@ -2,12 +2,12 @@
 // altre app o cloud, documento personale, spesa, incasso, pagamento da fare, evento) e pagina di
 // scansione multipagina che produce un PDF.
 import { useEffect, useRef, useState } from 'react';
-import { elaboraPagina } from './lib/scansione.js';
+import { elaboraPagina, rilevaAngoli } from './lib/scansione.js';
 import { pdfDaElementi, preparaAllegatiScan, tipoFile } from './lib/pdfUnico.js';
 import { validaFile, MAX_PDF_BYTES } from './pdf/filePdf.js';
 import { inviaCon, scaricaDocumento } from './lib/condividi.js';
 import { Segmenti } from './ui.jsx';
-import { Ritaglio } from './Ritaglio.jsx';
+import { Angoli } from './Angoli.jsx';
 import { eScan, indirizzoScan } from './lib/scan.js';
 import {
   IconaFotocamera, IconaFile, IconaPortafoglio, IconaCalendario, IconaEuro, IconaChiudi, IconaScansiona, IconaFoto,
@@ -89,6 +89,13 @@ export function FoglioAggiungi({ onScegli, onChiudi, iniziale = null }) {
 // un solo PDF da archiviare o da mandare subito con Mail / WhatsApp. Altri formati (Word, Excel…)
 // si archiviano così come sono.
 let prossimoId = 0;
+// SCAN-PDF-MANAGER (PO 2026-11-11): raddrizza automatico, peso leggero e OCR restano scelti sul telefono.
+const leggiScelta = (chiave, base) => { try { const v = localStorage.getItem(chiave); return v === null ? base : v === '1'; } catch { return base; } };
+const salvaScelta = (chiave, v) => { try { localStorage.setItem(chiave, v ? '1' : '0'); } catch { /* memoria non disponibile */ } };
+function useScelta(chiave, base) {
+  const [v, setV] = useState(() => leggiScelta(chiave, base));
+  return [v, (x) => { salvaScelta(chiave, x); setV(x); }];
+}
 export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initialFiles }) {
   const { mostra } = ctx;
   const [pagine, setPagine] = useState([]); // foto: { id, tipo:'foto', file, rotazione, ritaglio, url, larghezza, altezza } · pdf: { id, tipo:'pdf', file }
@@ -99,14 +106,19 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
   const [modo, setModo] = useState('colore');
   const [lavoro, setLavoro] = useState(null);
   const [nome, setNome] = useState(opzioni.descrizione || '');
-  const [taglia, setTaglia] = useState(null); // { i, url } pagina da ritagliare
+  const [taglia, setTaglia] = useState(null); // { i, url, automatici } pagina da raddrizzare
+  const [auto, setAuto] = useScelta('scan-raddrizza-auto', true);
+  const [leggero, setLeggero] = useScelta('scan-peso-leggero', false);
+  const [ocr, setOcr] = useScelta('scan-ocr', false);
+  const [avanzamento, setAvanzamento] = useState('');
+  const peso = leggero ? 'leggero' : 'normale';
   const [pronto, setPronto] = useState(null); // { chiave, file } PDF già pronto (iOS vuole il file prima del tocco)
   const scatto = useRef(null);
   const galleria = useRef(null);
   const altriFile = useRef(null);
   const titolo = nome.trim() || opzioni.descrizione || `Documento ${new Date().toLocaleDateString('it-IT')}`;
   const selezionate = pagine.filter(p => !esclusi.includes(p.id));
-  const chiave = `${selezionate.map((p) => `${p.id}:${p.rotazione || 0}:${JSON.stringify(p.ritaglio || null)}:${p.url?.length || 0}`).join('|')}#${modo}#${titolo}#${separati}`;
+  const chiave = `${selezionate.map((p) => `${p.id}:${p.rotazione || 0}:${JSON.stringify(p.angoli || p.ritaglio || null)}:${p.url?.length || 0}`).join('|')}#${modo}#${titolo}#${separati}#${peso}#${ocr}`;
 
   // Rielabora le foto quando cambia il modo.
   useEffect(() => {
@@ -115,19 +127,24 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
     (async () => {
       inCorso.current = true; setLavoro('Miglioro le pagine…');
       const nuove = [];
-      for (const p of pagine) nuove.push(p.tipo === 'foto' ? { ...p, ...(await elaboraPagina(p.file, { modo, rotazione: p.rotazione, ritaglio: p.ritaglio })) } : p);
+      for (const p of pagine) nuove.push(p.tipo === 'foto' ? { ...p, ...(await elaboraPagina(p.file, { modo, rotazione: p.rotazione, ritaglio: p.ritaglio, angoli: p.angoli, peso })) } : p);
       if (vivo) { setPagine(nuove); setLavoro(null); inCorso.current = false; }
     })().catch((e) => { if (vivo) { mostra(e.message || 'Impossibile migliorare le foto.'); setLavoro(null); inCorso.current = false; } });
     return () => { vivo = false; };
-  }, [modo]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [modo, peso]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Il PDF si prepara da solo poco dopo ogni modifica: Archivia, Mail e WhatsApp partono subito.
   useEffect(() => {
     setPronto(null);
     if (!selezionate.length || lavoro) return undefined;
     let vivo = true;
-    const t = setTimeout(() => { preparaAllegatiScan(selezionate, titolo, separati).then((files) => vivo && setPronto({ chiave, files, file: files[0] })).catch((e) => vivo && setPronto({ chiave, errore: e.message })); }, 400);
-    return () => { vivo = false; clearTimeout(t); };
+    const t = setTimeout(() => {
+      preparaAllegatiScan(selezionate, titolo, separati, { ocr, onAvanzamento: (m) => vivo && setAvanzamento(m) })
+        .then((files) => vivo && setPronto({ chiave, files, file: files[0] }))
+        .catch((e) => vivo && setPronto({ chiave, errore: e.message }))
+        .finally(() => vivo && setAvanzamento(''));
+    }, 400);
+    return () => { vivo = false; clearTimeout(t); setAvanzamento(''); };
   }, [chiave, lavoro]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const aggiungi = async (files) => {
@@ -151,7 +168,10 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
         const t = tipoFile(file);
         prossimoId += 1;
         if (t === 'pdf') nuove.push({ id: prossimoId, tipo: 'pdf', file });
-        else if (t === 'immagine') nuove.push({ id: prossimoId, tipo: 'foto', file, rotazione: 0, ritaglio: null, ...(await elaboraPagina(file, { modo })) });
+        else if (t === 'immagine') {
+          const r = await elaboraPagina(file, { modo, angoli: auto ? 'auto' : null, peso });
+          nuove.push({ id: prossimoId, tipo: 'foto', file, rotazione: 0, ritaglio: null, ...r, rilevati: r.angoli });
+        }
       }
       setPagine((p) => [...p, ...nuove]);
     } catch (e) { mostra(e.message || 'File non leggibile'); }
@@ -169,15 +189,19 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
   const ruota = async (i) => {
     const p = pagine[i];
     const rotazione = (p.rotazione + 90) % 360;
-    const r = await elaboraPagina(p.file, { modo, rotazione });
-    setPagine((xs) => xs.map((x, j) => (j === i ? { ...x, rotazione, ritaglio: null, ...r } : x)));
+    const r = await elaboraPagina(p.file, { modo, rotazione, angoli: auto ? 'auto' : null, peso });
+    setPagine((xs) => xs.map((x, j) => (j === i ? { ...x, rotazione, ritaglio: null, ...r, rilevati: r.angoli } : x)));
   };
-  const apriRitaglio = async (i) => { const p = pagine[i]; const r = await elaboraPagina(p.file, { modo: 'originale', rotazione: p.rotazione }); setTaglia({ i, url: r.url }); };
-  const ritaglia = async (ritaglio) => {
-    const { i } = taglia; setTaglia(null);
+  const apriAngoli = async (i) => {
     const p = pagine[i];
-    const r = await elaboraPagina(p.file, { modo, rotazione: p.rotazione, ritaglio });
-    setPagine((xs) => xs.map((x, j) => (j === i ? { ...x, ritaglio, ...r } : x)));
+    const [r, automatici] = await Promise.all([elaboraPagina(p.file, { modo: 'originale', rotazione: p.rotazione }), p.rilevati !== undefined && p.rilevati !== null ? p.rilevati : rilevaAngoli(p.file, { rotazione: p.rotazione })]);
+    setTaglia({ i, url: r.url, automatici });
+  };
+  const raddrizzaPagina = async (angoli) => {
+    const { i, automatici } = taglia; setTaglia(null);
+    const p = pagine[i];
+    const r = await elaboraPagina(p.file, { modo, rotazione: p.rotazione, angoli, peso });
+    setPagine((xs) => xs.map((x, j) => (j === i ? { ...x, ritaglio: null, ...r, rilevati: automatici } : x)));
   };
   const togli = (i) => setPagine((xs) => xs.filter((_, j) => j !== i));
   const sposta = (i, d) => setPagine((xs) => { const a = [...xs]; const [x] = a.splice(i, 1); a.splice(i + d, 0, x); return a; });
@@ -208,7 +232,7 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
     if (!pronta) return;
     try { const r = await inviaCon(canale, { titolo, files: pronto.files }); if (r === 'non_disponibile') mostra('Questo browser non può allegare questi file: usa Scarica PDF e allegali dalla tua app.'); } catch (e) { mostra(e.message); }
   };
-  const stato = lavoro || (!selezionate.length ? 'Seleziona almeno un documento' : pagine.length && !pronta ? (pronto?.errore ? `PDF non creato: ${pronto.errore}` : 'Preparo il PDF…') : null);
+  const stato = lavoro || avanzamento || (!selezionate.length ? 'Seleziona almeno un documento' : pagine.length && !pronta ? (pronto?.errore ? `PDF non creato: ${pronto.errore}` : 'Preparo il PDF…') : null);
 
   return (
     <>
@@ -220,17 +244,23 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
         <button className="pp-bottone pp-bottone-chiaro" onClick={() => galleria.current.click()}><IconaFoto size={20} /> Foto</button>
         <button className="pp-bottone pp-bottone-chiaro" onClick={() => altriFile.current.click()}><IconaFile size={20} /> PDF e file</button>
       </div>
-      {pagine.length === 0 && <p className="pp-riga-meta pp-spiegazione">Scatta le pagine (dall'alto, su un piano scuro) o scegli foto e PDF: diventano un solo PDF. Tocca ✂ per ritagliare una foto.</p>}
+      {pagine.length === 0 && <p className="pp-riga-meta pp-spiegazione">Scatta le pagine (dall'alto, su un piano scuro) o scegli foto e PDF: diventano un solo PDF. Il foglio si raddrizza da solo; tocca ✂ per sistemare gli angoli.</p>}
+      <div className="scan-opzioni">
+        <label><input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} /> Raddrizza automatico</label>
+        <label><input type="checkbox" checked={leggero} onChange={(e) => setLeggero(e.target.checked)} /> PDF leggero</label>
+        <label><input type="checkbox" checked={ocr} onChange={(e) => setOcr(e.target.checked)} /> Testo ricercabile (OCR)</label>
+      </div>
       {pagine.some((p) => p.tipo === 'foto') && <Segmenti voci={[['colore', 'Nitida'], ['documento', 'Bianco e nero'], ['originale', 'Originale']]} attiva={modo} onScegli={setModo} />}
       {pagine.length > 0 && (
         <div className="pp-scansione">
           {pagine.map((p, i) => (
             <figure key={p.id} className="pp-scansione-pagina">
+              {p.tipo === 'foto' && p.angoli && <span className="pp-scan-auto">Raddrizzata</span>}
               {p.tipo === 'foto' ? <img src={p.url} alt={`Pagina ${i + 1}`} /> : <div className="pp-scansione-pdf"><IconaFile size={30} /><span>{p.file.name}</span></div>}
               <figcaption>
                 <label className="scan-select"><input type="checkbox" aria-label={`Seleziona documento ${i + 1}`} checked={!esclusi.includes(p.id)} onChange={() => setEsclusi(xs => xs.includes(p.id) ? xs.filter(id => id !== p.id) : [...xs, p.id])} />{i + 1}</label>
                 {p.tipo === 'pdf' && <button className="scan-edit" onClick={() => modifica([p])}>Apri · Firma</button>}
-                {p.tipo === 'foto' && <button aria-label={`Ritaglia pagina ${i + 1}`} onClick={() => modificaFoto(() => apriRitaglio(i))}><IconaTaglia size={18} /></button>}
+                {p.tipo === 'foto' && <button aria-label={`Raddrizza o ritaglia pagina ${i + 1}`} onClick={() => modificaFoto(() => apriAngoli(i))}><IconaTaglia size={18} /></button>}
                 {p.tipo === 'foto' && <button aria-label={`Ruota pagina ${i + 1}`} onClick={() => modificaFoto(() => ruota(i))}><IconaRuota size={18} /></button>}
                 {i > 0 && <button aria-label={`Sposta prima la pagina ${i + 1}`} onClick={() => sposta(i, -1)}>‹</button>}
                 {i < pagine.length - 1 && <button aria-label={`Sposta dopo la pagina ${i + 1}`} onClick={() => sposta(i, 1)}>›</button>}
@@ -269,7 +299,7 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
       {lavoro && !pagine.length && <p className="pp-riga-meta"><span className="pp-rotella" /> {lavoro}</p>}
       <button className="pp-testo-link" onClick={() => sostituisci({ tipo: 'pdf' })}>Solo firmare o modificare un PDF, senza archiviarlo</button>
       {!eScan() && <a className="pp-testo-link" href={indirizzoScan()} target="_blank" rel="noreferrer">Metti «Scan» sulla schermata Home</a>}
-      {taglia && <Ritaglio src={taglia.url} iniziale={pagine[taglia.i]?.ritaglio} onFatto={r => modificaFoto(() => ritaglia(r))} onAnnulla={() => setTaglia(null)} />}
+      {taglia && <Angoli src={taglia.url} iniziale={pagine[taglia.i]?.angoli} automatici={taglia.automatici} onFatto={q => modificaFoto(() => raddrizzaPagina(q))} onAnnulla={() => setTaglia(null)} />}
     </>
   );
 }

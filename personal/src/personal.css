@@ -872,6 +872,18 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-ritaglio .pp-bottone { background: #1f7a4d; color: #fff; opacity: 1; }
 .pp-ritaglio-testa .pp-icona-bottone { background: rgba(255, 255, 255, .16); color: #fff; }
 .pp-ritaglio-testa span, .pp-ritaglio-testa .pp-testo-link { color: #fff; }
+.pp-angoli-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.pp-angoli-ombra { fill: rgba(0, 0, 0, .5); }
+.pp-angoli-bordo { fill: none; stroke: #6fd49b; stroke-width: 2.5px; }
+.pp-angoli-errore { stroke: #ff6b6b; }
+.pp-angoli-maniglia { position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px; padding: 0; border-radius: 50%; background: rgba(255, 255, 255, .92); border: 3px solid #1f7a4d; touch-action: none; cursor: grab; }
+.pp-angoli-maniglia:focus-visible { outline: 3px solid #6fd49b; outline-offset: 2px; }
+.pp-angoli-scelte { display: inline-flex; gap: 14px; }
+.pp-angoli-avviso { margin: 0; color: #ffb4b4; font-size: 14px; text-align: center; }
+.pp-scan-auto { position: absolute; left: 6px; top: 6px; padding: 2px 7px; border-radius: 999px; background: rgba(31, 122, 77, .92); color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; }
+.pp-scansione-pagina { position: relative; }
+.scan-opzioni { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 6px 0 10px; font-size: 14px; }
+.scan-opzioni label { display: inline-flex; align-items: center; gap: 6px; }
 .pp-sorgenti-rapide { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
 .pp-sorgenti-rapide .pp-bottone { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 64px; padding: 8px 4px; font-size: 14px; }
 .pp-scansione-pdf { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; aspect-ratio: 3 / 4; padding: 10px; background: #e4e7ec; color: var(--pp-blu); text-align: center; font-size: 12px; word-break: break-word; }
