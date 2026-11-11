@@ -30,7 +30,8 @@ function fakeHost() {
 test('native sync pages both tables, strips identifiers, and clears on a failed refresh',async()=>{
  const {host,messages,listeners}=fakeHost(); let failed=false; const pages=[];
  const db={auth:{onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},from(table){
-  const query={select(){return this;},gte(){return this;},lte(){return this;},order(){return this;},async range(start,end){pages.push([table,start,end]);if(failed)return {error:{message:'unavailable'}};return {data:table==='appointments' && start===0 ? Array.from({length:500},(_,id)=>({id,data:'2026-11-03',ora:'09:00',tipo:'Prova'})) : table==='appointments' ? [{id:501,data:'2026-11-04',ora:'10:00'}] : []};}};return query;
+  let from; // Use the queried date window: fixed November dates expire as time passes.
+  const query={select(){return this;},gte(column,value){if(column==='data')from=value;return this;},lte(){return this;},order(){return this;},async range(start,end){pages.push([table,start,end]);if(failed)return {error:{message:'unavailable'}};return {data:table==='appointments' && start===0 ? Array.from({length:500},(_,id)=>({id,data:from,ora:'09:00',tipo:'Prova'})) : table==='appointments' ? [{id:501,data:from,ora:'10:00'}] : []};}};return query;
  }};
  const stop=startAndroidAgendaWidget({db,session:async()=>({user:{id:'synthetic'}}),studioId:()=> 'synthetic-studio',host});
  await new Promise(r=>setImmediate(r)); const snapshot=messages.find(m=>m.entries);assert.equal(snapshot.entries.length,501);assert.equal(pages.length,3);assert.equal(snapshot.entries[0].id,undefined);
