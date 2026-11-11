@@ -1,3 +1,11 @@
+# Current task — PRESTAZIONI-TUTTE (2026-11-11)
+- OWNER Claude Code; branch `ccr-b7a5a599-0pxser` restarted from master 41d434a (PR305 merged).
+- REPORT/AUTHORIZATION PO 2026-11-11: "Non si cancellano inoltre voglio vederle tutte le prestazioni, poi lasciami filtri".
+- CAUSE (delete): the trash button asked with `window.confirm`; the Android app is a native WebView without a WebChromeClient (android/agenda MainActivity.java), where `confirm()` returns false without showing anything, so nothing was removed. The browser/PWA were not affected.
+- SCOPE (PatientDentalOverview only): (1) confirmation now inside the row (alert row «Cancellare «Corona sul 46»?» with the payments warning when relevant, «Annulla» / «Cancella»), no browser dialog; same rule and guard as PRESTAZIONI-ELIMINA. (2) every prestazione is listed (no «first 3» / «Mostra tutte»); filters Tutte (default) · Da eseguire · Eseguite with counts, still combined with the selected teeth; tapping a tooth with pending items still switches to Da eseguire. Done rows show «Eseguita · date». No schema/RLS/data change. Piani (PianoDrillDown) still uses the browser confirm: same WebView limitation, not changed here.
+- VALIDATION 1665/1665 Node tests (prestazioniElimina, denteEseguito updated); Studio build; Chromium 390×844 fixture with `window.confirm` forced to false (as in the Android WebView): Tutte 3 · Da eseguire 2 · Eseguite 1, Annulla keeps «Corona 46», Cancella removes it.
+- STATUS pushed; PR on request; task-specific "Mergia" required.
+
 # Current task — PRESTAZIONI-ELIMINA (2026-11-11)
 - OWNER Claude Code; branch `ccr-b7a5a599-0pxser` restarted from master a4eb180 (PR304 merged).
 - AUTHORIZATION PO 2026-11-11: "Le prestazioni devono aver il tasto per cancellarle".

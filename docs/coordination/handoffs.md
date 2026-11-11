@@ -4637,3 +4637,11 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 ## Handoff — PRESTAZIONI-ELIMINA (2026-11-11) — Claude Code
 - Branch `ccr-b7a5a599-0pxser` from master a4eb180. Files: src/lib/domain/treatmentPlanService.js, src/components/{PatientDentalOverview.jsx, PatientDentalOverview.css, PianoDrillDown.jsx, SchedaPaz.jsx}, tests/{prestazioniElimina.test.mjs (new), planExecutionUi.test.mjs}, tests/visual/prestazioni-elimina.{html,fixture.jsx}.
 - Database: none (plan voci saved through existing setPlans). Tests 1664/1664; build OK (a stray brace in PianoDrillDown fixed in a follow-up commit); Chromium fixture PASS. Rollback: revert the commits.
+
+## Handoff — PRESTAZIONI-ELIMINA merged (2026-11-11) — Claude Code
+- PR305 squash-merged as 41d434a; production dpl_J7RaxbvXJ58pQbeMWuJV5tQf6XVS READY. PO then reported deletion did not work: `window.confirm` in the Android WebView app returns false.
+
+## Handoff — PRESTAZIONI-TUTTE (2026-11-11) — Claude Code
+- Branch `ccr-b7a5a599-0pxser` from master 41d434a. Files: src/components/PatientDentalOverview.{jsx,css}, tests/{prestazioniElimina,denteEseguito}.test.mjs, coordination docs.
+- Database: none. Tests 1665/1665; build OK; Chromium fixture PASS. Rollback: revert the commit.
+- Open: Piani (PianoDrillDown) and other places using `confirm()` have the same Android WebView limitation (alternative: add a WebChromeClient with onJsConfirm to android/agenda MainActivity.java, which needs a new APK).
