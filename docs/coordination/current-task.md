@@ -1,3 +1,10 @@
+# Current task — PRESTAZIONI-ELIMINA (2026-11-11)
+- OWNER Claude Code; branch `ccr-b7a5a599-0pxser` restarted from master a4eb180 (PR304 merged).
+- AUTHORIZATION PO 2026-11-11: "Le prestazioni devono aver il tasto per cancellarle".
+- SCOPE: scheda paziente → «Denti e cure» (PatientDentalOverview): every prestazione row (Eseguite and Da eseguire) gets a red trash button «Cancella prestazione» that removes the voce from its plan after confirmation. The rule is the one Piani (PianoDrillDown) already used, moved to treatmentPlanService (`planTotals`, `paidOnPlan`, `removeTreatmentItem`, `treatmentItemRemovalMessage`) and now used by both: same totals, payments never deleted, warning when the new total falls below what was already paid (surplus becomes a free deposit on the plan). Guard: the voce is removed only if its name matches the row shown. SchedaPaz passes `payments`. No schema, RLS or migration change; saving goes through the existing setPlans.
+- VALIDATION 1664/1664 Node tests (new tests/prestazioniElimina.test.mjs; planExecutionUi updated for the shared paid rule); Studio build; Chromium 390×844 fixture tests/visual/prestazioni-elimina: Annulla keeps the voce, OK removes «Corona 46», message shows paid €300 / new total €185 / €115 deposit.
+- STATUS pushed; PR on request; task-specific "Mergia" required.
+
 # Current task — POLIEDRON-TASTI (2026-11-11)
 - OWNER Claude Code; branch `ccr-b7a5a599-0pxser` restarted from master 0535aec (PR303 merged).
 - AUTHORIZATION PO 2026-11-11: "Ok allora in poliedron quando apre creerei dei tasti senza tutta la spiegazione che stiamo anche in tre per linea".

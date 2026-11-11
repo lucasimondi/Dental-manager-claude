@@ -4630,3 +4630,10 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 ## Handoff — POLIEDRON-TASTI (2026-11-11) — Claude Code
 - Branch `ccr-b7a5a599-0pxser` from master 0535aec. Files: src/components/poliedron/PoliedronSuggestionBoard.jsx, src/components/PremiumVisualSystem.css, tests/poliedronRicettaDiretta.test.mjs, coordination docs.
 - Database: none. Tests 1660/1660; Chromium fixture PASS. Rollback: revert the commit (long cards with description return).
+
+## Handoff — POLIEDRON-TASTI merged (2026-11-11) — Claude Code
+- PR304 squash-merged as a4eb180; production dpl_D5QdNN41uLXMSKghn6vDk7fwiqUP READY.
+
+## Handoff — PRESTAZIONI-ELIMINA (2026-11-11) — Claude Code
+- Branch `ccr-b7a5a599-0pxser` from master a4eb180. Files: src/lib/domain/treatmentPlanService.js, src/components/{PatientDentalOverview.jsx, PatientDentalOverview.css, PianoDrillDown.jsx, SchedaPaz.jsx}, tests/{prestazioniElimina.test.mjs (new), planExecutionUi.test.mjs}, tests/visual/prestazioni-elimina.{html,fixture.jsx}.
+- Database: none (plan voci saved through existing setPlans). Tests 1664/1664; build OK (a stray brace in PianoDrillDown fixed in a follow-up commit); Chromium fixture PASS. Rollback: revert the commits.

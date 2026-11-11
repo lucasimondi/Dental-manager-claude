@@ -1,16 +1,11 @@
 import React, { useState } from 'react';
 import { Btn, Crd, EmptyState, Fld, Ic, Inp, Modal, Sel } from './ui';
 import { C, fmt, fmtD, today, SCADENZA_PRESET, addMesi, rilevaRichiamo } from '../lib/utils';
-import { markTreatmentItemCompleted, isTreatmentPlanCompleted } from '../lib/domain/treatmentPlanService.js';
+import { markTreatmentItemCompleted, isTreatmentPlanCompleted, planTotals, paidOnPlan, removeTreatmentItem, treatmentItemRemovalMessage } from '../lib/domain/treatmentPlanService.js';
 import IncassoModal from './IncassoModal.jsx';
 import PdfView from './PdfView.jsx';
 
-const calcTot = (voci, sconto, scontoTipo) => {
-  const sub = (voci || []).reduce((s, v) => s + Number(v.prezzo), 0);
-  const sc = Number(sconto) || 0;
-  const scontato = scontoTipo === 'pct' ? sub * (sc / 100) : Math.min(sc, sub);
-  return { sub, scontato, finale: Math.max(0, sub - scontato) };
-};
+const calcTot = planTotals;
 
 const STATO_LABEL = { attivo: 'In attesa', accettato: 'Accettato', rifiutato: 'Non accettato' };
 const STATO_COLOR = { attivo: C.war, accettato: C.acc, rifiutato: C.dan };
@@ -98,9 +93,7 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
   // doppio incasso reale segnalato dal Product Owner: il piano aveva già
   // €90 pagati, il tasto "Incassato" sulla prestazione riproponeva
   // ciecamente altri €90).
-  const totalePagatoPiano = (planId) => (payments || [])
-    .filter((payment) => String(payment.pianoId) === String(planId) && String(payment.stato || '').toLowerCase() === 'pagato')
-    .reduce((sum, payment) => sum + Number(payment.importo || 0), 0);
+  const totalePagatoPiano = (planId) => paidOnPlan(payments, planId);
 
   const openIncassoPiano = (pl, tot) => {
     const giaPagato = totalePagatoPiano(pl.id);
@@ -116,18 +109,8 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
   };
 
   const removeItemFromPlan = (plan, index) => {
-    const totalePagato = totalePagatoPiano(plan.id);
-    const vociResidue = (plan.voci || []).filter((_, i) => i !== index);
-    const { finale: nuovoTotale } = calcTot(vociResidue, plan.sconto || 0, plan.scontoTipo || 'pct');
-    const eccedenza = Math.max(0, totalePagato - nuovoTotale);
-    const message = eccedenza > 0
-      ? `Il piano ha ${fmt(totalePagato)} di pagamenti collegati — rimuovendo questa prestazione il nuovo totale (${fmt(nuovoTotale)}) sarà inferiore a quanto già incassato: ${fmt(eccedenza)} diventerà un acconto libero sul piano. Il pagamento non verrà cancellato. Continuare?`
-      : 'Rimuovere questa prestazione dal piano?';
-    if (!confirm(message)) return;
-    setPlans((current) => current.map((candidate) => {
-      if (String(candidate.id) !== String(plan.id)) return candidate;
-      return { ...candidate, voci: (candidate.voci || []).filter((_, i) => i !== index) };
-    }));
+    if (!confirm(treatmentItemRemovalMessage(plan, index, totalePagatoPiano(plan.id)))) return;
+    setPlans((current) => current.map((candidate) => (String(candidate.id) !== String(plan.id) ? candidate : removeTreatmentItem(candidate, index))));
   };
 
   const openEditVoce = (plan, index) => { const v = plan.voci[index]; setEditVoceForm({ prestazione: v.prestazione, dente: v.dente || '', prezzo: String(v.prezzo) }); setEditingVoce({ planId: plan.id, index }); };

@@ -29,7 +29,8 @@ test('marking a prestazione done offers to register the incasso right away, reus
 // already been paid on THIS plan first, and only ever default to the
 // residual — never blindly re-propose the full amount.
 test('REGRESSION GUARD: Incassato never blindly re-proposes the full amount — it accounts for what the plan already has paid', () => {
-  assert.match(source, /const totalePagatoPiano = \(planId\) => \(payments \|\| \[\]\)/);
+  // PRESTAZIONI-ELIMINA: same paid-amount rule, now shared in treatmentPlanService (paidOnPlan).
+  assert.match(source, /const totalePagatoPiano = \(planId\) => paidOnPlan\(payments, planId\);/);
   assert.match(source, /const openIncassoPiano = \(pl, tot\) => \{/);
   assert.match(source, /const openIncassoVoce = \(pl, v, tot\) => \{/);
   assert.match(source, /const residuo = Math\.max\(0, tot - giaPagato\);/);
