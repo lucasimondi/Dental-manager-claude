@@ -1,3 +1,10 @@
+# Current task — POLIEDRON-TASTI (2026-11-11)
+- OWNER Claude Code; branch `ccr-b7a5a599-0pxser` restarted from master 0535aec (PR303 merged).
+- AUTHORIZATION PO 2026-11-11: "Ok allora in poliedron quando apre creerei dei tasti senza tutta la spiegazione che stiamo anche in tre per linea".
+- SCOPE (presentation only): the opening Poliedron panel's action cards become compact buttons — icon on top, short name below (Appuntamento, Paziente, Ricetta, Pagamento, Spesa, Documento; Preventivo on a patient page), no type label, description or arrow; three per row on phone and computer (PoliedronSuggestionBoard.jsx `NOME_BREVE`, PremiumVisualSystem.css). Full label kept as aria-label/title. Intro card unchanged. No data change.
+- VALIDATION 1660/1660 Node tests (new case in tests/poliedronRicettaDiretta.test.mjs); Chromium 390×844 and 1280×900 fixture: 6 buttons on 2 rows of 3, Ricetta still opens the form with patient search.
+- STATUS pushed; PR on request; task-specific "Mergia" required.
+
 # Current task — POLIEDRON-RIORDINO-RICETTA (2026-11-11)
 - OWNER Claude Code; branch `ccr-b7a5a599-0pxser` from master dc1e858 (PR301 merged).
 - AUTHORIZATION PO 2026-11-11: "Il poliedron quando lo apro mi dà una serie di sezioni che diventano dei doppioni rispetto a tasto studio, dobbiamo riorganizzare, inoltre il tasto ricetta crea deve essere immediato e completo adesso mi dà una serie di pazienti a caso e non mi permette di cercarli dobbiamo aprire con il tasto ricetta il form per la ricetta".

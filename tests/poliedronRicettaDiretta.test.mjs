@@ -48,3 +48,15 @@ test('App opens RicettaConRicerca when openPrescription has no patient', () => {
   assert.match(app, /\{ricettaLibera && \(\s*<RicettaConRicerca/);
   assert.match(app, /initialPrefill=\{ricettaLibera\.prefill\}/);
 });
+
+// POLIEDRON-TASTI (PO 2026-11-11): "creerei dei tasti senza tutta la spiegazione che stiamo anche
+// in tre per linea".
+test('opening panel buttons are compact: short name, no description, three per row', () => {
+  const board = read('../src/components/poliedron/PoliedronSuggestionBoard.jsx');
+  const css = read('../src/components/PremiumVisualSystem.css');
+  assert.doesNotMatch(board, /poliedron-action-card__description|poliedron-action-card__type|poliedron-action-card__arrow/);
+  assert.match(board, /\{NOME_BREVE\[item\.id\] \|\| item\.label\}/);
+  assert.match(board, /'prescription\.create': 'Ricetta'/);
+  assert.match(css, /\.poliedron-action-grid \{ display: grid; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
+  assert.doesNotMatch(css, /\.poliedron-action-grid, \.poliedron-patient-picker__list \{ grid-template-columns: 1fr; \}/);
+});
