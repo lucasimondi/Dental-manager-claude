@@ -18,8 +18,8 @@ export default function PoliedronSuggestionBoard({ groups, onSelect }) {
         <div className="poliedron-suggestions__mark"><Ic n="spark" s={17} c="#fff" /></div>
         <div>
           <div className="poliedron-suggestions__eyebrow">Poliedra AI</div>
-          <div className="poliedron-suggestions__title">Dove vuoi lavorare?</div>
-          <div className="poliedron-suggestions__copy">Apri una sezione, avvia un workflow reale oppure scrivi una domanda.</div>
+          <div className="poliedron-suggestions__title">Cosa vuoi fare?</div>
+          <div className="poliedron-suggestions__copy">Crea al volo oppure scrivi una domanda o il nome di un paziente.</div>
         </div>
       </div>
 
@@ -39,7 +39,7 @@ export default function PoliedronSuggestionBoard({ groups, onSelect }) {
 
       {actions.length > 0 && (
         <section aria-labelledby="poliedron-actions-title">
-          <div id="poliedron-actions-title" className="poliedron-group-label">Crea e workflow</div>
+          <div id="poliedron-actions-title" className="poliedron-group-label">Crea</div>
           <div className="poliedron-action-grid">
             {actions.map((item) => (
               <button key={item.id} className="poliedron-action-card" onClick={() => onSelect(item)}>

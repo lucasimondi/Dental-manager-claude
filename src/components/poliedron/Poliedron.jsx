@@ -944,18 +944,15 @@ export default function Poliedron({
       return;
     }
     if (item.kind === 'action') {
-      if (item.id === 'prescription.create') {
-        setQuery('crea ricetta');
-        inputRef.current?.focus();
-        return;
-      }
+      // POLIEDRON-RICETTA (PO 2026-11-11): il tasto Ricetta apre subito il modulo completo
+      // (paziente da cercare in testa), non più «crea ricetta» con pazienti a caso.
       item.data.navigate(navCtx, item.data.entity);
       close();
     }
   }, [goSchedaPaz, setPage, onArchivioFilterHint, navCtx, close]);
 
   const handleConfirmAction = useCallback((action, selectedPatient) => {
-    const patient = selectedPatient || state?.entities?.patientCandidates?.[0];
+    const patient = selectedPatient === null ? null : (selectedPatient || state?.entities?.patientCandidates?.[0]);
     action.navigate(navCtx, patient, {
       drug: state?.entities?.drugText || '',
       date: state?.entities?.appointmentDate || null,
@@ -966,7 +963,7 @@ export default function Poliedron({
   }, [navCtx, state, close]);
 
   const handleConfirmChatAction = useCallback((action, selectedPatient) => {
-    const patient = selectedPatient || chatStructuredState?.entities?.patientCandidates?.[0];
+    const patient = selectedPatient === null ? null : (selectedPatient || chatStructuredState?.entities?.patientCandidates?.[0]);
     action.navigate(navCtx, patient, {
       drug: chatStructuredState?.entities?.drugText || '',
       date: chatStructuredState?.entities?.appointmentDate || null,

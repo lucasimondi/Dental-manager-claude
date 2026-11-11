@@ -23,6 +23,7 @@ import { MOBILE_DOCK_BOTTOM, MOBILE_DOCK_HEIGHT, MOBILE_DOCK_PROTECTED_GAP } fro
    (see package.json). */
 
 const dashboardSrc = await readFile(new URL('../src/components/Dashboard.jsx', import.meta.url), 'utf8');
+const ricettaSrc = await readFile(new URL('../src/components/RicettaConRicerca.jsx', import.meta.url), 'utf8');
 const premiumCss = await readFile(new URL('../src/components/PremiumVisualSystem.css', import.meta.url), 'utf8');
 const dockSrc = await readFile(new URL('../src/components/poliedron/PoliedronMobileDock.jsx', import.meta.url), 'utf8');
 const bellSrc = await readFile(new URL('../src/components/poliedron/PoliedronBell.jsx', import.meta.url), 'utf8');
@@ -312,16 +313,21 @@ test('ROUND 4 (rev. azioni rapide mobile): Home "Ricetta" opens the full DocMedi
   // POL-VITA-001 follow-up (PO: "deve rimanere aperto il documento anche quando cambio app e ritorno"):
   // chiusa all'avvio salvo una ricetta rimasta aperta prima di un ricaricamento dell'app.
   assert.match(dashboardSrc, /const \[ricettaPickerOpen, setRicettaPickerOpen\] = useState\(\(\) => Boolean\(documentoAperto\('home'\)\)\);/);
-  assert.match(dashboardSrc, /const DocMedico = React\.lazy\(\(\) => import\('\.\/DocMedico\.jsx'\)\);/);
+  // POLIEDRON-RICETTA (PO 2026-11-11): the form + patient picker live in RicettaConRicerca,
+  // shared by the Home and the Poliedron Ricetta button.
+  assert.match(dashboardSrc, /import RicettaConRicerca from '\.\/RicettaConRicerca\.jsx';/);
   const modalBlock = dashboardSrc.slice(dashboardSrc.indexOf('{ricettaPickerOpen && ('), dashboardSrc.indexOf('{bookingOpen && ('));
   // No bottom-sheet Modal in between any more: the full-screen form (top
   // of the screen on mobile) is the very first thing the action shows.
   assert.doesNotMatch(modalBlock, /<Modal\b/);
-  assert.match(modalBlock, /<DocMedico\s+paz=\{ricettaPaz\}/);
-  assert.match(modalBlock, /initialType="ricetta"/);
-  assert.match(modalBlock, /pazienteSelector=\{\(\s*<SelettorePaziente/);
-  assert.match(modalBlock, /value=\{ricettaPazienteId\}/);
-  assert.match(modalBlock, /creaLabel="Salva paziente"/);
+  assert.match(modalBlock, /<RicettaConRicerca\b/);
+  assert.match(modalBlock, /initialPazienteId=\{ricettaPazienteId\}/);
+  assert.match(ricettaSrc, /const DocMedico = React\.lazy\(\(\) => import\('\.\/DocMedico\.jsx'\)\);/);
+  assert.match(ricettaSrc, /<DocMedico\s+paz=\{paz\}/);
+  assert.match(ricettaSrc, /initialType="ricetta"/);
+  assert.match(ricettaSrc, /pazienteSelector=\{\(\s*<SelettorePaziente/);
+  assert.match(ricettaSrc, /value=\{pazienteId\}/);
+  assert.match(ricettaSrc, /creaLabel="Salva paziente"/);
 });
 
 test('DocMedico accepts a caller-supplied patient picker and blocks PDF generation until a patient is chosen', () => {
@@ -384,19 +390,19 @@ test('ROUND 6: the Ricetta patient picker lets you create a brand-new patient in
   // Reuses SelettorePaziente's own existing onCreaPaziente contract — the
   // exact same "no results -> create inline" UI/flow Agenda.jsx's
   // creaPazienteRapido already ships. No new patient-creation UI invented.
-  assert.match(dashboardSrc, /onCreaPaziente=\{setPatients \? creaPazienteRapidoRicetta : undefined\}/);
-  assert.match(dashboardSrc, /const creaPazienteRapidoRicetta = \(nome, cognome\) => \{/);
-  assert.match(dashboardSrc, /const id = uid\(\);/);
+  assert.match(dashboardSrc, /setPatients=\{setPatients\}/);
+  assert.match(ricettaSrc, /onCreaPaziente=\{setPatients \? creaPaziente : undefined\}/);
+  assert.match(ricettaSrc, /const creaPaziente = \(nome, cognome\) => \{/);
+  assert.match(ricettaSrc, /const id = uid\(\);/);
   // Same plan-limit fail-closed guard Agenda.jsx's own creaPazienteRapido
   // uses — no bypass of the studio's max_pazienti cap via this new path.
-  assert.match(dashboardSrc, /if \(limitePazienti != null && patients\.length >= limitePazienti\) \{/);
+  assert.match(ricettaSrc, /if \(limitePazienti != null && patients\.length >= limitePazienti\) \{/);
   // The just-created patient must be usable immediately even though
   // setPatients hasn't flushed into a re-render yet — SelettorePaziente
   // calls onChange(id) synchronously right after onCreaPaziente returns.
-  assert.match(dashboardSrc, /const ricettaJustCreatedRef = useRef\(null\);/);
-  assert.match(dashboardSrc, /ricettaJustCreatedRef\.current = nuovoPaziente;/);
-  const modalBlock = dashboardSrc.slice(dashboardSrc.indexOf('{ricettaPickerOpen && ('), dashboardSrc.indexOf('{bookingOpen && ('));
-  assert.match(modalBlock, /ricettaJustCreatedRef\.current && String\(ricettaJustCreatedRef\.current\.id\) === String\(ricettaPazienteId\)/);
+  assert.match(ricettaSrc, /const appenaCreato = useRef\(null\);/);
+  assert.match(ricettaSrc, /appenaCreato\.current = nuovo;/);
+  assert.match(ricettaSrc, /appenaCreato\.current && String\(appenaCreato\.current\.id\) === String\(pazienteId\)/);
 });
 
 test('App.jsx passes setPatients into Dashboard, mirroring Agenda/Pazienti — required for the inline patient-creation path to exist at all', () => {

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { suggestedIdle } from '../src/lib/poliedron/searchEngine.js';
+import { federatedSearch, suggestedIdle } from '../src/lib/poliedron/searchEngine.js';
 import { NAVIGATION_INDEX } from '../src/lib/poliedron/navigationIndex.js';
 import { createDefaultHomeLayout, getHomeWidget } from '../src/lib/homeWidgetRegistry.js';
 import { createRolePresetLayout, HOME_PRESETS } from '../src/lib/homeDashboardModel.js';
@@ -181,11 +181,15 @@ test('mobile dock no longer has a Setup/Impostazioni slot; Chat opens the same P
 
 // --- 10/11. IMPOSTAZIONI REACHABLE FROM THE CENTRAL PANEL / DESKTOP SIDEBAR -
 
-test('Impostazioni (set) is offered by the central Poliedron panel default suggestions now that the dock lost its slot', () => {
+// POLIEDRON-RIORDINO (PO 2026-11-11): the opening panel no longer lists sections (duplicates of
+// the Studio page); Impostazioni stays reachable from the Studio / Per te footer and by typing.
+test('the central Poliedron panel opens with quick actions only — no section duplicates of Studio', async () => {
   const idle = suggestedIdle({ actions: [], navigationIndex: NAVIGATION_INDEX, context: {} });
-  const sectionGroup = idle.find((g) => g.group === 'APRI UNA SEZIONE');
-  assert.ok(sectionGroup, 'expected an APRI UNA SEZIONE group');
-  assert.ok(sectionGroup.items.some((item) => item.id === 'set'), 'expected Impostazioni (set) among the default suggestions');
+  assert.equal(idle.find((g) => g.group === 'APRI UNA SEZIONE'), undefined);
+  const app = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8');
+  assert.match(app, /page === 'studio' && <AltroPage titolo="Studio"[^\n]*\{ id: 'set', nome: 'Impostazioni e account'/);
+  const typed = federatedSearch('impostazioni', { navigationIndex: NAVIGATION_INDEX });
+  assert.ok(typed.groups.some((g) => g.items.some((item) => item.id === 'set')));
 });
 
 test('desktop keeps Impostazioni in the sidebar nav (App.jsx NAV, unchanged) — no change needed there', async () => {

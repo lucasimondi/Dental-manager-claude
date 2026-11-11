@@ -96,7 +96,8 @@ export function resolvePrescriptionRequest(query, patients = []) {
 
   return {
     patientCandidates,
-    patientOptions: patientCandidates.length ? patientCandidates : patients.slice(0, 8),
+    // POLIEDRON-RICETTA: niente pazienti «a caso» quando il nome non è riconosciuto.
+    patientOptions: patientCandidates,
     drugText: drugNeedsClarification ? '' : drugText,
     requestedDrugText: drugText,
     drugNeedsClarification,

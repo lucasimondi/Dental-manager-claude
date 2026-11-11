@@ -50,7 +50,7 @@ export default function PoliedronActionPreview({ entities, suggestedActions, onC
               </button>
             ))}
           </div>
-          {entities?.patientCandidates?.length === 0 && (
+          {entities?.patientCandidates?.length === 0 && !isPrescription && (
             <button className="poliedron-text-action" onClick={onModify}>Cerca un altro paziente nel comando</button>
           )}
         </div>
@@ -82,6 +82,11 @@ export default function PoliedronActionPreview({ entities, suggestedActions, onC
 
       <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
         <Btn ch="Modifica richiesta" v="sec" onClick={onModify} />
+        {/* POLIEDRON-RICETTA (PO 2026-11-11): senza paziente la ricetta si apre lo stesso, con la
+            ricerca del paziente in testa al modulo. */}
+        {!patient && isPrescription && !entities?.drugNeedsClarification && (
+          <Btn ch="Apri modulo Ricetta" onClick={() => onConfirm(primary, null)} full />
+        )}
         {patient && !entities?.drugNeedsClarification && (
           <Btn ch={isPrescription ? 'Apri modulo Ricetta' : isAppointment ? 'Apri modulo Appuntamento' : 'Conferma'} onClick={() => onConfirm(primary, patient)} full />
         )}

@@ -7,11 +7,11 @@ import { suggestedIdle } from '../src/lib/poliedron/searchEngine.js';
 const css = fs.readFileSync(new URL('../src/components/PremiumVisualSystem.css', import.meta.url), 'utf8');
 const control = fs.readFileSync(new URL('../src/components/ControlloGestione.jsx', import.meta.url), 'utf8');
 
-test('Poliedron default Naviga includes the unified financial section', () => {
+test('Poliedron opening panel lists no sections (POLIEDRON-RIORDINO); unified financial section stays in the navigation index', () => {
   const groups = suggestedIdle({ navigationIndex: NAVIGATION_INDEX, actions: [], context: {} });
-  const sections = groups.find((group) => group.group === 'APRI UNA SEZIONE').items;
-  assert.ok(sections.some((item) => item.id === 'paga'));
-  assert.ok(!sections.some((item) => item.id === 'incassi'));
+  assert.equal(groups.find((group) => group.group === 'APRI UNA SEZIONE'), undefined);
+  assert.ok(NAVIGATION_INDEX.some((item) => item.id === 'paga'));
+  assert.ok(!NAVIGATION_INDEX.some((item) => item.id === 'incassi'));
 });
 
 const schedaPaz = fs.readFileSync(new URL('../src/components/SchedaPaz.jsx', import.meta.url), 'utf8');

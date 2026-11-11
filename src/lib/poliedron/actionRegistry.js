@@ -150,7 +150,7 @@ const WORKFLOW_ACTIONS = Object.freeze([
   Object.freeze({
     id: 'prescription.create',
     label: 'Prepara una ricetta',
-    description: 'Apre il modulo Ricetta reale con il paziente selezionato e i soli campi supportati.',
+    description: 'Apre subito il modulo Ricetta completo: il paziente si cerca in testa al modulo.',
     category: 'clinical',
     kind: 'workflow',
     riskLevel: 1,
@@ -159,7 +159,8 @@ const WORKFLOW_ACTIONS = Object.freeze([
     verticals: Object.freeze([...VERTICALI_CON_RICETTA]),
     featureNotFalse: 'documenti',
     navigate: (ctx, patient, payload = {}) => {
-      if (ctx.openPrescription && patient) ctx.openPrescription({ patient, drug: payload.drug || '' });
+      // POLIEDRON-RICETTA (PO 2026-11-11): anche senza paziente apre il modulo, con la ricerca.
+      if (ctx.openPrescription) ctx.openPrescription({ patient: patient || null, drug: payload.drug || '' });
     },
   }),
 ]);
