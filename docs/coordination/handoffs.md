@@ -4623,3 +4623,10 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Branch `ccr-b7a5a599-0pxser` from master dc1e858. Files: src/components/RicettaConRicerca.jsx (new), src/components/Dashboard.jsx, src/App.jsx, src/components/poliedron/{Poliedron.jsx, PoliedronActionPreview.jsx, PoliedronSuggestionBoard.jsx}, src/lib/poliedron/{searchEngine.js, actionRegistry.js, prescriptionWorkflow.js}, tests (new poliedronRicettaDiretta, updated dashboardPremiumV2, incassiPoliedronAndControlUi, mobileHomeRound2, poliedronChat), tests/visual/poliedron-ricetta.{html,fixture.jsx}.
 - Database: none. Tests 1658 pass, 1 pre-existing unrelated failure (also on master). Studio build OK; Chromium fixture PASS. Rollback: revert the commit (the «Naviga» grid and the old Ricetta flow come back).
 - Next: PO check on the phone; "Mergia" for the PR.
+
+## Handoff — POLIEDRON-RIORDINO-RICETTA merged (2026-11-11) — Claude Code
+- PR303 squash-merged as 0535aec; production dpl_775vCBr2Arep9gh38FET4JycJgBT READY. Also fixed tests/androidAgendaWidget.test.mjs (fixed dates fell out of the widget window; now relative to today). Two non-required CI jobs (connector UI, iPhone agenda visual) were stuck >20 min on `playwright install --with-deps` at merge time.
+
+## Handoff — POLIEDRON-TASTI (2026-11-11) — Claude Code
+- Branch `ccr-b7a5a599-0pxser` from master 0535aec. Files: src/components/poliedron/PoliedronSuggestionBoard.jsx, src/components/PremiumVisualSystem.css, tests/poliedronRicettaDiretta.test.mjs, coordination docs.
+- Database: none. Tests 1660/1660; Chromium fixture PASS. Rollback: revert the commit (long cards with description return).
