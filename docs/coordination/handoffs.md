@@ -4618,3 +4618,8 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 ## Handoff — SCAN-PDF (2026-11-10) — Claude Code
 - PR300 merged as 93e4522 (production dpl_14pfvJ6scuwzBbvRLhHr7F8fB2ny READY; sw.js denylist with /scan verified). Branch `ccr-9c70a578-a2q1cs`. Files: public/scan*.webmanifest, public/{poliedron/scan,scan}/sw-notifiche.js (new), personal/src/pdf/ingresso.js, personal/src/scan/Scan.jsx, tests/personalScan.test.mjs.
 - Database: none. Rollback: revert the commit.
+
+## Handoff — POLIEDRON-RIORDINO-RICETTA (2026-11-11) — Claude Code
+- Branch `ccr-b7a5a599-0pxser` from master dc1e858. Files: src/components/RicettaConRicerca.jsx (new), src/components/Dashboard.jsx, src/App.jsx, src/components/poliedron/{Poliedron.jsx, PoliedronActionPreview.jsx, PoliedronSuggestionBoard.jsx}, src/lib/poliedron/{searchEngine.js, actionRegistry.js, prescriptionWorkflow.js}, tests (new poliedronRicettaDiretta, updated dashboardPremiumV2, incassiPoliedronAndControlUi, mobileHomeRound2, poliedronChat), tests/visual/poliedron-ricetta.{html,fixture.jsx}.
+- Database: none. Tests 1658 pass, 1 pre-existing unrelated failure (also on master). Studio build OK; Chromium fixture PASS. Rollback: revert the commit (the «Naviga» grid and the old Ricetta flow come back).
+- Next: PO check on the phone; "Mergia" for the PR.

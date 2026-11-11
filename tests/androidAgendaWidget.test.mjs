@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { widgetSnapshot, startAndroidAgendaWidget } from '../personal/src/lib/androidAgendaWidget.js';
+import { oggi, piuGiorni } from '../personal/src/lib/agenda.js';
 const window = { from:'2026-11-01', to:'2026-11-30', now:1000 };
 test('native snapshot combines both sources and multi-day events, no patient identifiers or notes', () => {
   const s=widgetSnapshot({...window,appuntamenti:[{id:1,paziente_id:123,paziente:'SYNTHETIC',note:'PRIVATE',data:'2026-11-03',ora:'15:00:00',tipo:'Visita'}],impegni:[{id:2,titolo:'Impegno prova',data_inizio:'2026-11-02',data_fine:'2026-11-04',tutto_il_giorno:true}]});
@@ -29,8 +30,10 @@ function fakeHost() {
 }
 test('native sync pages both tables, strips identifiers, and clears on a failed refresh',async()=>{
  const {host,messages,listeners}=fakeHost(); let failed=false; const pages=[];
+ // Date relative a oggi: la sincronizzazione legge oggi −7 … +28 giorni (date fisse uscivano dalla finestra).
+ const giorno1=piuGiorni(oggi(),1), giorno2=piuGiorni(oggi(),2);
  const db={auth:{onAuthStateChange:()=>({data:{subscription:{unsubscribe(){}}}})},from(table){
-  const query={select(){return this;},gte(){return this;},lte(){return this;},order(){return this;},async range(start,end){pages.push([table,start,end]);if(failed)return {error:{message:'unavailable'}};return {data:table==='appointments' && start===0 ? Array.from({length:500},(_,id)=>({id,data:'2026-11-03',ora:'09:00',tipo:'Prova'})) : table==='appointments' ? [{id:501,data:'2026-11-04',ora:'10:00'}] : []};}};return query;
+  const query={select(){return this;},gte(){return this;},lte(){return this;},order(){return this;},async range(start,end){pages.push([table,start,end]);if(failed)return {error:{message:'unavailable'}};return {data:table==='appointments' && start===0 ? Array.from({length:500},(_,id)=>({id,data:giorno1,ora:'09:00',tipo:'Prova'})) : table==='appointments' ? [{id:501,data:giorno2,ora:'10:00'}] : []};}};return query;
  }};
  const stop=startAndroidAgendaWidget({db,session:async()=>({user:{id:'synthetic'}}),studioId:()=> 'synthetic-studio',host});
  await new Promise(r=>setImmediate(r)); const snapshot=messages.find(m=>m.entries);assert.equal(snapshot.entries.length,501);assert.equal(pages.length,3);assert.equal(snapshot.entries[0].id,undefined);

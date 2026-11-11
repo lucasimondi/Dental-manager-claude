@@ -57,6 +57,7 @@ import LoadingScreen from './components/LoadingScreen.jsx';
 
 import QuickBookingModal from './components/QuickBookingModal.jsx';
 import RouteErrorBoundary from './components/RouteErrorBoundary.jsx';
+import RicettaConRicerca from './components/RicettaConRicerca.jsx';
 import { lazyWithRetry } from './lib/lazyWithRetry.js';
 import { resolveFarmaciPreferiti } from './lib/farmaciPreferiti.js';
 const Dashboard = lazyWithRetry(() => import('./components/Dashboard.jsx'), 'Dashboard');
@@ -626,10 +627,13 @@ export default function App() {
     setQuickHubPoliedronRequest({ id: requestId(), command, patient, appointment });
   };
   // POL-AI-009: `farmaci` = ricetta completa preparata da Poliedron in chat.
-  const openPrescription = ({ patient, drug = '', farmaci = null }) => {
-    if (!patient) return;
-    setPatientAgendaRequest(null);
+  // POLIEDRON-RICETTA (PO 2026-11-11): senza paziente il tasto Ricetta apre subito la ricetta
+  // completa con la ricerca del paziente in testa (RicettaConRicerca), non una lista a caso.
+  const [ricettaLibera, setRicettaLibera] = useState(null);
+  const openPrescription = ({ patient, drug = '', farmaci = null } = {}) => {
     const prefill = Array.isArray(farmaci) && farmaci.length ? { farmaco: '', farmaci } : { farmaco: drug };
+    if (!patient) { setRicettaLibera({ prefill, requestId: requestId() }); return; }
+    setPatientAgendaRequest(null);
     const documentRequest = { type: 'ricetta', prefill, requestId: `${Date.now()}-${patient.id}` };
     setSchedaDashPaz({ paz: patient, tab: 'doc', documentRequest });
     salvaPosizione({ schedaPazId: patient.id, schedaPazTab: 'doc' });
@@ -991,6 +995,18 @@ export default function App() {
           </RouteErrorBoundary>
         )}
       </div>
+
+      {ricettaLibera && (
+        <RicettaConRicerca
+          patients={patients}
+          setPatients={setPatientsSync}
+          si={studioInfo}
+          features={features}
+          initialPrefill={ricettaLibera.prefill}
+          requestId={ricettaLibera.requestId}
+          onClose={() => setRicettaLibera(null)}
+        />
+      )}
 
       <Poliedron
         phoneApp={phoneApp}
