@@ -12,7 +12,8 @@ test('il tocco su un dente con cure da fare mostra «Da eseguire»; il tocco bre
 
 test('«Eseguito» usa la regola canonica dei piani e salva con setPlans', () => {
   assert.match(src, /markTreatmentItemCompleted\(p, row\.itemIndex\)\.plan/);
-  assert.match(src, /filter === 'pending' && setPlans \? <button type="button" className="patient-dental-done-button"/);
+  // PRESTAZIONI-TUTTE: la lista mostra tutte le prestazioni; «Eseguito» resta sulle righe da eseguire.
+  assert.match(src, /row\.kind === 'pending' && setPlans \? <button type="button" className="patient-dental-done-button"/);
   assert.match(readFileSync(new URL('../src/components/SchedaPaz.jsx', import.meta.url), 'utf8'), /<PatientDentalOverview [^>]*setPlans=\{setPlans\}/);
   const plan = { id: 1, voci: [{ prestazione: 'Otturazione', dente: '36', eseguita: false }, { prestazione: 'Endo', dente: '36', eseguita: false }] };
   const { plan: dopo } = markTreatmentItemCompleted(plan, 0);

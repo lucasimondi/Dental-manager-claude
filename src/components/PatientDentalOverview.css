@@ -145,3 +145,9 @@
 .patient-dental-home .patient-dental-delete-button { flex-shrink:0; width:44px; height:44px; margin-left:6px; display:inline-flex; align-items:center; justify-content:center; border:1.5px solid #e3c4c4; border-radius:10px; background:#fff; color:#b42318; cursor:pointer; }
 .patient-dental-home .patient-dental-delete-button svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .patient-dental-home .patient-dental-delete-button:hover { background:#fff4f3; }
+.patient-dental-history li.patient-dental-confirm { flex-wrap:wrap; padding:12px; margin:6px 0; border:1.5px solid #f0c7c2; border-radius:12px; background:#fff7f6; }
+.patient-dental-history li.patient-dental-confirm > div { flex:1 1 100%; }
+.patient-dental-history li.patient-dental-confirm small { color:#7a3b33; line-height:1.4; }
+.patient-dental-home .patient-dental-confirm-no, .patient-dental-home .patient-dental-confirm-yes { flex:1; min-height:44px; border-radius:10px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+.patient-dental-home .patient-dental-confirm-no { border:1.5px solid #c9d6de; background:#fff; color:#33566e; }
+.patient-dental-home .patient-dental-confirm-yes { border:0; background:#b42318; color:#fff; }

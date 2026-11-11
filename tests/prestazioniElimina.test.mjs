@@ -34,10 +34,21 @@ test('confirmation warns when the new total falls below what was already paid', 
 test('«Denti e cure» rows have a delete button with confirmation; Piani drill-down uses the same rule', () => {
   const overview = read('../src/components/PatientDentalOverview.jsx');
   assert.match(overview, /className="patient-dental-delete-button"/);
-  assert.match(overview, /window\.confirm\(treatmentItemRemovalMessage\(plan, row\.itemIndex, paidOnPlan\(payments, plan\.id\)\)\)/);
-  assert.match(overview, /\(voce\.prestazione \|\| 'Prestazione'\) !== row\.name\) return;/);
+  // In-row confirmation: window.confirm always answers «no» in the Android app's WebView.
+  assert.doesNotMatch(overview, /window\.confirm\(|[^.\w]confirm\(/);
+  assert.match(overview, /messaggio: treatmentItemRemovalMessage\(plan, row\.itemIndex, paidOnPlan\(payments, plan\.id\)\)/);
+  assert.match(overview, /className="patient-dental-confirm-yes" onClick=\{\(\)=>elimina\(row\)\}>Cancella<\/button>/);
+  assert.match(overview, /return voce && \(voce\.prestazione \|\| 'Prestazione'\) === row\.name \? plan : null;/);
   assert.match(read('../src/components/SchedaPaz.jsx'), /<PatientDentalOverview patientId=\{paz\.id\} plans=\{patPlans\} payments=\{payments\}/);
   const drill = read('../src/components/PianoDrillDown.jsx');
   assert.match(drill, /confirm\(treatmentItemRemovalMessage\(plan, index, totalePagatoPiano\(plan\.id\)\)\)/);
   assert.match(drill, /const totalePagatoPiano = \(planId\) => paidOnPlan\(payments, planId\);/);
+});
+
+// PRESTAZIONI-TUTTE (PO 2026-11-11): "voglio vederle tutte le prestazioni, poi lasciami filtri".
+test('«Denti e cure» shows every prestazione with Tutte / Da eseguire / Eseguite filters', () => {
+  const overview = read('../src/components/PatientDentalOverview.jsx');
+  assert.match(overview, /useState\('all'\)/);
+  assert.doesNotMatch(overview, /slice\(0,\s*3\)|Mostra tutte/);
+  assert.match(overview, /\['all','Tutte',tutte\.length\],\['pending','Da eseguire',model\.pending\.length\],\['done','Eseguite',model\.done\.length\]/);
 });
