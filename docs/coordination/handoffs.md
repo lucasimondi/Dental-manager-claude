@@ -4669,3 +4669,11 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Branch `ccr-b7a5a599-0pxser` from master 41d434a. Files: src/components/PatientDentalOverview.{jsx,css}, tests/{prestazioniElimina,denteEseguito}.test.mjs, coordination docs.
 - Database: none. Tests 1665/1665; build OK; Chromium fixture PASS. Rollback: revert the commit.
 - Open: Piani (PianoDrillDown) and other places using `confirm()` have the same Android WebView limitation (alternative: add a WebChromeClient with onJsConfirm to android/agenda MainActivity.java, which needs a new APK).
+
+## Handoff — PRESTAZIONI-TUTTE merged (2026-11-11) — Claude Code
+- PR306 squash-merged as 2a52e22; production dpl_7pWcARmkHozD8ZCzJz1gvAZZFozP READY.
+
+## Handoff — PIANI-ELIMINA (2026-11-11) — Claude Code
+- Branch `ccr-b7a5a599-0pxser` from master 9443547. Files: src/components/PianoDrillDown.jsx, tests/prestazioniElimina.test.mjs, tests/visual/piani-elimina.{html,fixture.jsx}, coordination docs.
+- Database: none. Tests 1679/1679; build OK; Chromium fixture PASS. Rollback: revert the commit.
+- Open: other `confirm()` calls elsewhere in the app still have the Android WebView limitation (a native fix is a WebChromeClient with onJsConfirm in android/agenda MainActivity.java + new APK).

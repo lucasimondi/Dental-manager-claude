@@ -41,7 +41,10 @@ test('«Denti e cure» rows have a delete button with confirmation; Piani drill-
   assert.match(overview, /return voce && \(voce\.prestazione \|\| 'Prestazione'\) === row\.name \? plan : null;/);
   assert.match(read('../src/components/SchedaPaz.jsx'), /<PatientDentalOverview patientId=\{paz\.id\} plans=\{patPlans\} payments=\{payments\}/);
   const drill = read('../src/components/PianoDrillDown.jsx');
-  assert.match(drill, /confirm\(treatmentItemRemovalMessage\(plan, index, totalePagatoPiano\(plan\.id\)\)\)/);
+  // PIANI-ELIMINA: Piani also confirms in the page (no browser confirm in the Android WebView).
+  assert.doesNotMatch(drill, /[^.\w]confirm\(\s*treatment|window\.confirm\(/);
+  assert.match(drill, /setConfermaVoce\(\{ planId: plan\.id, index, messaggio: treatmentItemRemovalMessage\(plan, index, totalePagatoPiano\(plan\.id\)\) \}\)/);
+  assert.match(drill, /<button onClick=\{confermaRimozione\}[^>]*>Elimina<\/button>/);
   assert.match(drill, /const totalePagatoPiano = \(planId\) => paidOnPlan\(payments, planId\);/);
 });
 

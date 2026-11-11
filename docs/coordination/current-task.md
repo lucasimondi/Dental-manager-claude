@@ -1,3 +1,10 @@
+# Current task — PIANI-ELIMINA (2026-11-11)
+- OWNER Claude Code; branch `ccr-b7a5a599-0pxser` restarted from master 9443547 (PR306 and PR302 merged).
+- AUTHORIZATION PO 2026-11-11: "Si e mergia" (to: fix the Piani deletion like Denti e cure).
+- SCOPE (PianoDrillDown only): «Elimina» on a prestazione no longer uses `window.confirm` (always «no» in the Android WebView app); the prestazione card shows an in-page confirmation with the same message (payments warning) and «Annulla» / «Elimina». Same shared rule (`treatmentItemRemovalMessage`, `removeTreatmentItem`). No schema/RLS/data change.
+- VALIDATION 1679/1679 Node tests (prestazioniElimina updated); Studio build (after `npm ci` for the new Scan dependencies on master); Chromium 390×844 fixture tests/visual/piani-elimina with `window.confirm` forced to false: Annulla keeps «Corona», Elimina removes it.
+- STATUS pushed; PR + "Mergia" authorised by the PO.
+
 # Current task — SCAN-PDF-MANAGER passo 2 (2026-11-11)
 - OWNER Claude Code (takeover from Codex by explicit PO instruction 2026-11-11: "Guarda cosa ha fatto work e implementa deve diventare il mio gestore PDF poi facciamo poi il resto per PlayStore", then "Se hai già scritto vai avanti tu"); same branch `codex/scan-pdf-manager`, PR302, base master dc1e858e.
 - AUTHORIZATION PO 2026-11-11: features chosen "Raddrizza automatico, Firma salvata, OCR locale, Comprimi PDF". Play Store packaging is a later, separate task.
