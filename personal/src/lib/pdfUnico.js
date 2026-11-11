@@ -39,6 +39,25 @@ export async function pdfDaElementi(elementi, titolo = 'Documento', strumenti = 
     if (e.tipo === 'pdf') { await chiudiFoto(); pezzi.push(new Uint8Array(await e.file.arrayBuffer())); } else foto.push(e);
   }
   await chiudiFoto();
-  const bytes = pezzi.length === 1 && elementi.every((e) => e.tipo !== 'pdf') ? pezzi[0] : await unisciPdf(pezzi);
+  // A single PDF must retain its forms, annotations and original byte structure.
+  const bytes = pezzi.length === 1 ? pezzi[0] : await unisciPdf(pezzi);
   return new File([bytes], nomePdf(titolo), { type: 'application/pdf' });
+}
+
+// Prepare actual attachments before the share gesture. No network or storage writes.
+export async function preparaAllegatiScan(elementi, titolo, separati, strumenti = {}) {
+  const prepara = strumenti.pdfDaElementi || pdfDaElementi;
+  if (!elementi.length) throw new Error('Seleziona almeno un documento.');
+  if (elementi.length > 20) throw new Error('Seleziona al massimo 20 documenti.');
+  if (!separati) return [await prepara(elementi, titolo)];
+  const files = [], nomi = new Set();
+  for (const [i, elemento] of elementi.entries()) {
+    const base = (elemento.nome || elemento.file?.name || `${titolo} ${i + 1}`).replace(/\.[^.]+$/, '').slice(0, 64);
+    let nome = nomePdf(base), n = 2;
+    while (nomi.has(nome.toLocaleLowerCase())) nome = nomePdf(`${base} - ${n++}`);
+    nomi.add(nome.toLocaleLowerCase());
+    const file = await prepara([elemento], nome.replace(/\.pdf$/i, ''));
+    files.push(new File([file], nome, { type: 'application/pdf' }));
+  }
+  return files;
 }

@@ -73,6 +73,7 @@ export async function elaboraPagina(file, { modo = 'documento', rotazione = 0, r
   c.translate(canvas.width / 2, canvas.height / 2);
   c.rotate((giro * Math.PI) / 180);
   c.drawImage(bitmap, -w / 2, -h / 2, w, h);
+  bitmap.close();
   c.setTransform(1, 0, 0, 1, 0, 0);
   let tela = canvas;
   const taglio = ritaglio && rettangoloPixel(ritaglio, canvas.width, canvas.height);

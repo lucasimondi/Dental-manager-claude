@@ -1,11 +1,7 @@
 // Pure PDF geometry and byte transformations. No network, storage or original writes.
 import { PDFDocument, degrees } from 'pdf-lib';
 
-export const MAX_PDF_BYTES = 40 * 1024 * 1024;
-export function validaFile(file) {
-  if (!file?.size || file.size > MAX_PDF_BYTES) throw new Error('Scegli un file non vuoto, fino a 40 MB.');
-  if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name) && !file.type.startsWith('image/')) throw new Error('Scegli un PDF o una foto.');
-}
+export { MAX_PDF_BYTES, validaFile } from './filePdf.js';
 export function schermoPdf({ x, y }, [a, b, c, d, e, f]) {
   const det = a * d - b * c;
   if (!Number.isFinite(det) || det === 0) throw new Error('Coordinate della pagina non valide.');
@@ -80,4 +76,22 @@ export function ritaglioFirma(b, pad, margin = 8) {
   const x = Math.max(0, Math.floor(b.x0 - margin)), y = Math.max(0, Math.floor(b.y0 - margin));
   const x1 = Math.min(pad.width, Math.ceil(b.x1 + margin)), y1 = Math.min(pad.height, Math.ceil(b.y1 + margin));
   return { x, y, width: Math.max(1, x1 - x), height: Math.max(1, y1 - y) };
+}
+
+// Explicit page-range parser: reject typos instead of exporting the wrong pages.
+export function pagineDaIntervallo(value, count) {
+  const pages = [], seen = new Set();
+  for (const part of String(value).split(',')) {
+    const match = part.trim().match(/^(\d+)(?:\s*-\s*(\d+))?$/);
+    if (!match) throw new Error('Indica le pagine, ad esempio 1-3, 5.');
+    const first = Number(match[1]), last = Number(match[2] || match[1]);
+    if (first < 1 || last > count || last < first) throw new Error(`Scegli pagine da 1 a ${count}, in ordine crescente negli intervalli.`);
+    for (let n = first; n <= last; n++) if (!seen.has(n)) { seen.add(n); pages.push({ index: n - 1, rotation: 0 }); }
+  }
+  return pages;
+}
+export function nomeDocumento(value) {
+  const base = String(value || '').trim().replace(/\.pdf$/i, '').replace(/[\\/:*?"<>|\x00-\x1f]/g, '-').trim().slice(0, 120);
+  if (!base || /^\.+$/.test(base)) throw new Error('Scrivi un nome per il documento.');
+  return `${base}.pdf`;
 }

@@ -2,7 +2,7 @@
 // È lo strumento «Scansiona o allega» di Personal aperto da solo (lib/scan.js): niente dock né
 // sezioni, si parte già con Scatta · Foto · PDF e file. «PDF e firma» apre il gestore PDF di Personal
 // (firma con il dito, testo, disegno, pagine). Archiviare usa la stessa pagina di Personal; dopo
-// l'archiviazione lo scanner riparte vuoto. Nessuna nuova tabella, nessun invio automatico.
+// l'archiviazione gli altri file restano disponibili. Nessuna nuova tabella, nessun invio automatico.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PaginaScansione } from '../Aggiungi.jsx';
 import { Pagina } from '../Pagina.jsx';
@@ -33,12 +33,13 @@ function useInstalla() {
 }
 
 export function Scan({ email }) {
+  const [filesRicevuti, setFilesRicevuti] = useState(null);
   const [pagine, setPagine] = useState([]);
   const [errore, setErrore] = useState(null);
   const [toast, setToast] = useState(null);
   const [occupato, setOccupato] = useState(0);
   const [versione, setVersione] = useState(0);
-  const [giro, setGiro] = useState(0); // nuovo scanner vuoto dopo un'archiviazione
+  const [giro, setGiro] = useState(0); // nuova sessione esplicita
   const [fascicoli, setFascicoli] = useState([]);
   const [chat, setChat] = useState(CHAT_VUOTA);
   const [impostazioni, setImpostazioni] = useState(() => JSON.parse(JSON.stringify(IMPOSTAZIONI_PREDEFINITE)));
@@ -62,33 +63,36 @@ export function Scan({ email }) {
   const sostituisci = useCallback((p) => {
     contatore.current += 1;
     setPagine((st) => {
-      // Archiviazione riuscita (Carica → documento, spesa, foto): lo scanner riparte vuoto.
-      if (st[st.length - 1]?.tipo === 'carica' && p.tipo !== 'scansione') setGiro((g) => g + 1);
+      // Keep the working batch after archiving one file; the other files remain available.
       return [...st.slice(0, -1), { ...p, chiave: contatore.current }];
     });
   }, []);
   // Il resto di Personal (sezioni, chat) si apre nell'app Personal.
   const vai = useCallback((sezione) => { window.location.href = indirizzoPersonal(sezione); }, []);
   // SCAN-PDF: «Condividi → Scan» (Android) e «Apri con → Scan» (computer) aprono il PDF nel gestore.
-  useIngressoPdf(apri, setErrore);
+  const ricevi = useCallback((p) => {
+    if (p.files?.length > 1) setFilesRicevuti(p.files);
+    else apri(p);
+  }, [apri]);
+  useIngressoPdf(ricevi, setErrore);
   useEffect(() => {
     const coda = window.launchQueue;
     let daFile = false;
     if (coda?.setConsumer) coda.setConsumer(async (p) => {
       if (!p?.files?.length) return;
       daFile = true;
-      try { apri({ tipo: 'pdf', files: await Promise.all(p.files.map((h) => h.getFile())) }); } catch (e) { setErrore(e.message); }
+      try { ricevi({ tipo: 'pdf', files: await Promise.all(p.files.map((h) => h.getFile())) }); } catch (e) { setErrore(e.message); }
     });
     if (strumentoDaIndirizzo() === 'pdf') setTimeout(() => { if (!daFile) apri({ tipo: 'pdf' }); }, 0);
-  }, [apri]);
+  }, [apri, ricevi]);
 
   const salvaImp = useCallback(async (nuove) => {
     setImpostazioni(nuove);
     try { setImpostazioni(await salvaImpostazioni(archivioDb, nuove)); } catch (e) { setErrore(`Impostazioni non salvate: ${e.message}`); }
   }, []);
   const ctx = {
-    esegui, aggiorna, mostra, versione, impostazioni, salvaImp, fascicoli, apri, vai, sotto: null, chat, setChat,
-    aggiungi: () => { setPagine([]); setGiro((g) => g + 1); },
+    esegui, aggiorna, mostra, versione, impostazioni, salvaImp, fascicoli, apri, indietro, vai, sotto: null, chat, setChat,
+    aggiungi: () => { setPagine([]); setFilesRicevuti(null); setGiro((g) => g + 1); },
     apriChat: () => vai('poliedron'),
     pagato: () => vai('conti'),
   };
@@ -108,8 +112,9 @@ export function Scan({ email }) {
         <div className="pp-scan-strumenti" role="group" aria-label="Strumenti">
           <span className="pp-scan-strumento attivo"><IconaScansiona size={20} /> Scansiona o allega</span>
           <button className="pp-scan-strumento" onClick={() => apri({ tipo: 'pdf' })}><IconaFile size={20} /> PDF e firma</button>
+          <button className="pp-scan-strumento" onClick={() => vai('documenti')}><IconaFile size={20} /> Archivio</button>
         </div>
-        <PaginaScansione key={giro} ctx={ctx} sostituisci={apri} opzioni={{}} />
+        <PaginaScansione key={giro} files={filesRicevuti} ctx={ctx} sostituisci={apri} opzioni={{ destinazione: true }} />
         {!installata && (puo || iphone) && (
           <div className="pp-scan-installa">
             {puo ? <button className="pp-bottone pp-bottone-chiaro pp-bottone-largo" onClick={installa}>Metti «Scan» sulla schermata Home</button>

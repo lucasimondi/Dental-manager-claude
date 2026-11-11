@@ -29,7 +29,7 @@ try {
   const pdfIn = await PDFDocument.create(); pdfIn.addPage([595, 842]);
   await page.locator('input[type=file]').nth(2).setInputFiles({ name: 'esame.pdf', mimeType: 'application/pdf', buffer: Buffer.from(await pdfIn.save()) });
   await page.locator('.pp-scansione-pdf').waitFor();
-  await page.waitForFunction(() => [...document.querySelectorAll('button')].some((b) => /Archivia il PDF \(2/.test(b.textContent) && !b.disabled));
+  await page.waitForFunction(() => [...document.querySelectorAll('button')].some((b) => /Archivia il PDF/.test(b.textContent) && !b.disabled));
   await page.getByRole('button', { name: 'WhatsApp' }).click();
   await page.waitForFunction(() => window.saluteTest.condivisi.length === 1);
   await page.screenshot({ path: `${out}/scansione.png` });

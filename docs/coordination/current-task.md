@@ -1,3 +1,12 @@
+# Current task — SCAN-PDF-MANAGER (2026-11-11)
+- OWNER Codex; branch `codex/scan-pdf-manager` from master dc1e858e (PR301 merged).
+- AUTHORIZATION PO: "Analizza Scan di poliedra e rendilo un vero gestore di PDF".
+- SCOPE: connected scan/edit/sign/archive flow; selected separate or combined PDF delivery; rename; page previews and extraction; file limits and error handling. Existing PDF.js/pdf-lib and archive routes only.
+- STATUS WAITING_PRODUCT_OWNER; implementation and PDF checks complete, PR to review. Full suite has one unrelated Android widget failure also reproduced at baseline dc1e858e. Previous SCAN-PDF implementation merged; no competing task takeover.
+- DATABASE none; no security, tenancy, finance or deployment changes. Stable checkpoint preserved.
+- VALIDATION 35/35 targeted tests; full suite 1659/1660 (baseline widget test fails 1 versus 501); Studio + Personal builds PASS; git diff --check PASS; browser synthetic Scan flow and 375/768/1024/1440 layouts verified. No real-phone or production archive write verification.
+- NEXT review dedicated PR and resolve the baseline CI failure before merge; task-specific PO approval required.
+
 # Current task — SCAN-PDF (2026-11-10)
 - OWNER Claude Code; branch `ccr-9c70a578-a2q1cs` from master 93e4522 (PR300 merged).
 - AUTHORIZATION PO 2026-11-10: "Metti anche che quando si deve aprire un file PDF posso scegliere Scan".
