@@ -142,3 +142,6 @@
 .patient-dental-home .patient-dental-done-button { flex-shrink:0; min-height:44px; padding:0 14px; border:1.5px solid #348c6b; border-radius:10px; background:#fff; color:#24745c; font:inherit; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; }
 .patient-dental-home .patient-dental-done-button:hover { background:#f0faf6; }
 .patient-dental-home .patient-dental-done-button:active { background:#348c6b; color:#fff; }
+.patient-dental-home .patient-dental-delete-button { flex-shrink:0; width:44px; height:44px; margin-left:6px; display:inline-flex; align-items:center; justify-content:center; border:1.5px solid #e3c4c4; border-radius:10px; background:#fff; color:#b42318; cursor:pointer; }
+.patient-dental-home .patient-dental-delete-button svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.patient-dental-home .patient-dental-delete-button:hover { background:#fff4f3; }
