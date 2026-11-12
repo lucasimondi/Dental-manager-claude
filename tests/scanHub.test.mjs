@@ -146,3 +146,18 @@ test('Android OCR: ML Kit text recognition bundled, words with boxes, web uses i
   assert.match(ocr, /inAppAndroid\(\)/); assert.match(ocr, /ocrNativo\(/); assert.match(ocr, /export async function testoPerRicerca/);
   assert.match(readFileSync('personal/src/scan/Scan.jsx', 'utf8'), /testoPerRicerca/);
 });
+
+// SCAN-ESPORTA — Word, JPG e testo dai documenti della libreria.
+test('Esporta: paragraphs from OCR text and a real .docx from a text file', async () => {
+  const { paragrafi, wordDa, testoTxtDa, FORMATI } = await import('../personal/src/scan/esporta.js');
+  assert.deepEqual(paragrafi('REFERTO\nPaziente di prova\n\n\nConclusioni:  nella norma.\n'), [['REFERTO', 'Paziente di prova'], ['Conclusioni:  nella norma.']]);
+  assert.deepEqual(FORMATI.map(([f]) => f), ['docx', 'jpg', 'txt']);
+  const [docx] = await wordDa(new File(['FATTURA\nTotale 120\n\nGrazie'], 'Bolletta.txt', { type: 'text/plain' }));
+  assert.equal(docx.name, 'Bolletta.docx');
+  const zip = Buffer.from(await docx.arrayBuffer());
+  assert.equal(zip.subarray(0, 2).toString(), 'PK', 'docx is a zip');
+  assert.ok(zip.includes(Buffer.from('word/document.xml')));
+  const [txt] = await testoTxtDa(new File(['ciao'], 'Nota.txt', { type: 'text/plain' }));
+  assert.equal(txt.name, 'Nota.txt'); assert.equal(await txt.text(), 'ciao');
+  await assert.rejects(wordDa(new File(['  '], 'Vuoto.txt', { type: 'text/plain' })), /Nessun testo/);
+});

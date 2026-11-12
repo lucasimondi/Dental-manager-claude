@@ -57,6 +57,25 @@ try {
   await page.getByRole('button', { name: /^Condividi Scansione/ }).click();
   await page.waitForFunction(() => window.__inviati.includes('condividi'));
   await page.screenshot({ path: `${out}/2-ricerca-testo.png` });
+  // SCAN-ESPORTA: Word and JPG from the scanned PDF, saved in the same folder; «Aggiungi pagine».
+  await page.getByLabel('Cerca nei documenti').fill('');
+  await page.getByRole('button', { name: /^Altre azioni per Scansione/ }).click();
+  await page.getByRole('button', { name: 'Esporta come Word, JPG, testo' }).click();
+  await page.screenshot({ path: `${out}/3-esporta.png` });
+  await page.locator('.scan-voce', { hasText: 'Word (.docx)' }).click();
+  await page.locator('.scan-documenti .scan-recente', { hasText: 'Scansione' }).nth(1).waitFor({ timeout: 30000 });
+  await page.waitForFunction(() => document.querySelectorAll('.scan-documenti .scan-recente').length === 2);
+  assert.match(await page.locator('.scan-documenti').textContent(), /DOCX/);
+  await page.getByRole('button', { name: /^Altre azioni per Scansione.*\.pdf/ }).click();
+  await page.getByRole('button', { name: 'Esporta come Word, JPG, testo' }).click();
+  await page.locator('.scan-voce', { hasText: 'Immagini JPG' }).click();
+  await page.waitForFunction(() => document.querySelectorAll('.scan-documenti .scan-recente').length === 3, null, { timeout: 30000 });
+  await page.screenshot({ path: `${out}/4-esportati.png` });
+  await page.getByRole('button', { name: /^Altre azioni per Scansione.*\.pdf/ }).click();
+  await page.getByRole('button', { name: 'Aggiungi pagine' }).click();
+  await page.locator('.pp-pagina-titolo', { hasText: 'Scanner' }).waitFor();
+  await page.locator('.pp-scansione-pagina').first().waitFor();
+  assert.equal(await page.locator('.pp-scansione-pagina').count(), 1, 'existing PDF loaded in the scanner');
   assert.deepEqual(errors, []);
   console.log('scan-app PASS ·', await page.evaluate(() => window.__inviati.join(',')));
 } finally { await browser?.close(); server.kill(); }

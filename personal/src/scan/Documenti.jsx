@@ -10,6 +10,7 @@ import {
 import { condividi, scaricaDocumento } from '../lib/condividi.js';
 import { IconaCerca, IconaCondividi, IconaCestino, IconaDocumenti, IconaChiudi } from '../Icone.jsx';
 import { creaMiniatura } from './miniaturaFile.js';
+import { FORMATI, esporta } from './esporta.js';
 
 const ORDINI = [['recenti', 'Più recenti'], ['vecchi', 'Meno recenti'], ['nome', 'Nome A-Z'], ['peso', 'Più pesanti']];
 
@@ -34,7 +35,7 @@ export function RigaDocumento({ d, selezionabile, scelto, onScegli, onApri, onCo
         {d.miniatura ? <img className="scan-doc-mini" src={d.miniatura} alt="" />
           : <span className={`scan-recente-tipo${ePdf(d) ? ' pdf' : ''}`} aria-hidden="true">{ePdf(d) ? 'PDF' : (d.nome.match(/\.([^.]+)$/)?.[1] || 'FILE').slice(0, 4).toUpperCase()}</span>}
         <span className="scan-recente-testo"><strong>{d.nome.replace(/\.[^.]+$/, '')}</strong>
-          <small>{new Date(d.modificato).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · {formatoPeso(d.dimensione)}{d.cartella && d.cartella !== CARTELLA_BASE ? ` · ${d.cartella}` : ''}</small></span>
+          <small>{(d.nome.match(/\.([^.]+)$/)?.[1] || '').toUpperCase()}{/\.[^.]+$/.test(d.nome) ? ' · ' : ''}{new Date(d.modificato).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · {formatoPeso(d.dimensione)}{d.cartella && d.cartella !== CARTELLA_BASE ? ` · ${d.cartella}` : ''}</small></span>
       </button>
       {!selezionabile && <>
         <button className="scan-recente-azione" aria-label={`Condividi ${d.nome}`} onClick={onCondividi}><IconaCondividi size={20} /></button>
@@ -74,6 +75,7 @@ export function Documenti({ ctx, versione, onCambia }) {
   const [scelti, setScelti] = useState(null); // Set di id in modalità selezione
   const [foglio, setFoglio] = useState(null); // { tipo: 'sposta'|'rinomina'|'elimina'|'cartella', ids, d }
   const [nome, setNome] = useState('');
+  const [lavoro, setLavoro] = useState(null); // SCAN-ESPORTA: messaggio di avanzamento
 
   const carica = useCallback(() => {
     Promise.all([elencoDocumenti(), cartelleCreate()]).then(([d, c]) => { setDocs(d); setCreate(c); }).catch(() => { setDocs([]); setCreate([]); });
@@ -93,6 +95,17 @@ export function Documenti({ ctx, versione, onCambia }) {
     setScelti(null); cambiato();
     mostra(esclusi.length ? `PDF creato. Non uniti: ${esclusi.join(', ')}` : `Creato «${file.name}».`);
   });
+
+  // SCAN-ESPORTA: il risultato va nella stessa cartella di «I miei documenti», con «Condividi» nel messaggio.
+  const esportaCome = (d, formato) => prova(async () => {
+    setFoglio(null); setLavoro('Preparo…');
+    try {
+      const files = await esporta[formato](await fileDocumento(d.id), { onAvanzamento: setLavoro });
+      ctx.ricorda?.(files, { cartella: d.cartella || CARTELLA_BASE });
+      mostra(files.length > 1 ? `Create ${files.length} immagini in «${d.cartella || CARTELLA_BASE}».` : `Creato «${files[0].name}».`,
+        { etichetta: 'Condividi', fai: async () => { const r = await condividi({ titolo: files[0].name, files }); if (r === 'non_disponibile' || r === 'link') { files.forEach(scaricaDocumento); return 'File scaricati.'; } return 'Pronto da condividere.'; } });
+    } finally { setLavoro(null); }
+  })();
 
   const gruppi = [];
   for (const d of visibili) {
@@ -119,6 +132,7 @@ export function Documenti({ ctx, versione, onCambia }) {
         {visibili.length > 0 && <button className="pp-testo-link" onClick={() => setScelti(scelti ? null : new Set())}>{scelti ? 'Fine' : 'Seleziona'}</button>}
       </div>
 
+      {lavoro && <p className="pp-riga-meta" role="status"><span className="pp-rotella" /> {lavoro}</p>}
       {docs && !docs.length && (
         <div className="scan-recenti-vuoto"><strong>Nessun documento ancora</strong><p>Scansiona o apri un file: i PDF che crei restano qui, solo su questo telefono, in cartelle tue.</p></div>
       )}
@@ -136,6 +150,8 @@ export function Documenti({ ctx, versione, onCambia }) {
                 <div className="scan-recente-menu">
                   <button onClick={() => { setMenu(null); setNome(d.nome.replace(/\.[^.]+$/, '')); setFoglio({ tipo: 'rinomina', d }); }}>Rinomina</button>
                   <button onClick={() => { setMenu(null); setFoglio({ tipo: 'sposta', ids: [d.id] }); }}>Sposta in una cartella</button>
+                  <button onClick={() => { setMenu(null); setFoglio({ tipo: 'esporta', d }); }}>Esporta come Word, JPG, testo</button>
+                  {ePdf(d) && <button onClick={prova(async () => { setMenu(null); ctx.apri({ tipo: 'scanner', files: [await fileDocumento(d.id)] }); })}>Aggiungi pagine</button>}
                   <button onClick={prova(async () => { setMenu(null); scaricaDocumento(await fileDocumento(d.id)); })}>Salva sul telefono</button>
                   {(ePdf(d) || (d.tipo || '').startsWith('image/')) && <button onClick={prova(async () => { setMenu(null); ctx.apri({ tipo: 'carica', file: await fileDocumento(d.id), opzioni: { descrizione: d.nome.replace(/\.[^.]+$/, ''), scelto: true, soloArchiviazione: true, nonAnalizzare: true, destinazione: true } }); })}>Archivia in Personal o Studio</button>}
                   <button className="pericolo" onClick={() => { setMenu(null); setFoglio({ tipo: 'elimina', ids: [d.id] }); }}><IconaCestino size={16} /> Elimina</button>
@@ -160,6 +176,18 @@ export function Documenti({ ctx, versione, onCambia }) {
         onScegli={prova(async (c) => { await spostaDocumenti(foglio.ids, c); setFoglio(null); setScelti(null); cambiato(); mostra(`Spostati in «${c}».`); })} />}
       {foglio?.tipo === 'cartella' && <SceltaCartella cartelle={cartelle} titolo="Cartelle" onChiudi={() => setFoglio(null)}
         onScegli={(c) => { setFoglio(null); setCartella(c); cambiato(); }} />}
+      {foglio?.tipo === 'esporta' && (
+        <div className="scan-scrim" role="dialog" aria-label="Esporta" onClick={(e) => e.target === e.currentTarget && setFoglio(null)}>
+          <section className="scan-foglio-azioni">
+            <h2>Esporta «{foglio.d.nome.replace(/\.[^.]+$/, '')}»</h2>
+            <p>Il documento originale resta com'è; il nuovo file va nella stessa cartella.</p>
+            {FORMATI.filter(([f]) => f !== 'jpg' || ePdf(foglio.d)).map(([f, titolo, nota]) => (
+              <button key={f} className="scan-voce" onClick={() => esportaCome(foglio.d, f)}><span>{titolo}</span><small>{nota}</small></button>
+            ))}
+            <button className="pp-bottone pp-bottone-chiaro pp-bottone-largo" onClick={() => setFoglio(null)}>Annulla</button>
+          </section>
+        </div>
+      )}
       {foglio?.tipo === 'rinomina' && (
         <div className="scan-scrim" role="dialog" aria-label="Rinomina">
           <form className="scan-foglio-azioni" onSubmit={prova(async (e) => { e.preventDefault(); const n = await rinominaDocumento(foglio.d.id, nome); setFoglio(null); cambiato(); mostra(`Rinominato «${n}».`); })}>

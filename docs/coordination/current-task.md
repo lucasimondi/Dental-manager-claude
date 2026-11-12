@@ -1,3 +1,9 @@
+# Current task — SCAN-ESPORTA (2026-11-12) · passo 3 di «Scan professionale»
+- OWNER Claude Code; branch `ccr-01036c30-3eoy2l`, PR309. AUTHORIZATION PO 2026-11-12: "Fai tutto tu procedi con i prossimi 1 2 3".
+- SCOPE: personal/src/scan/esporta.js — from «I miei documenti» ⋮ «Esporta come Word, JPG, testo»: Word .docx (library `docx` 9.5.1, MIT, new dependency; text from PDF/ML Kit/Tesseract, one paragraph per text block, page breaks), JPG (one image per PDF page, max 30), TXT. The new files go into the same folder (thumbnails and text indexed) with a «Condividi» action in the message; originals unchanged. «Aggiungi pagine» opens the scanner with the existing PDF as first item. Rows show the format (PDF · JPG · DOCX…).
+- NOT DONE (needs a choice): PDF password (pdf-lib cannot encrypt; would need qpdf WebAssembly ~1–2 MB); Excel export (only reliable for simple tables); Traduci (ML Kit Translation, step 4).
+- VALIDATION 1690/1690 Node tests (scanHub 11/11, real .docx generated); both builds PASS; Chromium scan-hub, personal-scan, scan-app (now also Word + JPG export and Aggiungi pagine) PASS.
+
 # Current task — SCAN-OCR-MLKIT + SCAN-FIRMA (2026-11-12) · passo 2 di «Scan professionale»
 - OWNER Claude Code; branch `ccr-01036c30-3eoy2l`, PR309.
 - AUTHORIZATION PO 2026-11-12: "Fai tutto tu procedi con i prossimi 1 2 3" (OCR, step 2, signing key).
