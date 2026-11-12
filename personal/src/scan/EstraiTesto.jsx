@@ -6,6 +6,7 @@ import { elaboraPagina } from '../lib/scansione.js';
 import { tipoFile } from '../lib/pdfUnico.js';
 import { validaFile } from '../pdf/filePdf.js';
 import { scaricaDocumento } from '../lib/condividi.js';
+import { daScannerNativo } from '../lib/nativo.js';
 import { IconaFotocamera, IconaFoto, IconaFile, IconaCondividi } from '../Icone.jsx';
 
 export const MAX_FOTO_TESTO = 10;
@@ -36,7 +37,7 @@ export function EstraiTesto({ ctx }) {
         if (foto.length !== elenco.length) throw new Error('Scegli solo foto, oppure un PDF alla volta.');
         if (foto.length > MAX_FOTO_TESTO) throw new Error(`Al massimo ${MAX_FOTO_TESTO} foto alla volta.`);
         const immagini = [];
-        for (const f of foto) { avanza('Raddrizzo la foto…'); immagini.push((await elaboraPagina(f, { modo: 'documento', angoli: 'auto' })).url); }
+        for (const f of foto) { avanza('Raddrizzo la foto…'); immagini.push((await elaboraPagina(f, { modo: 'documento', angoli: daScannerNativo(f) ? null : 'auto' })).url); }
         parti = await testoDaImmagini(immagini, { onAvanzamento: avanza });
       }
       const unito = parti.map((p) => p.trim()).filter(Boolean).join('\n\n— — —\n\n');

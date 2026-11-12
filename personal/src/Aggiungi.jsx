@@ -9,6 +9,7 @@ import { inviaCon, scaricaDocumento } from './lib/condividi.js';
 import { Segmenti } from './ui.jsx';
 import { Angoli } from './Angoli.jsx';
 import { eScan, indirizzoScan } from './lib/scan.js';
+import { daScannerNativo } from './lib/nativo.js';
 import {
   IconaFotocamera, IconaFile, IconaPortafoglio, IconaCalendario, IconaEuro, IconaChiudi, IconaScansiona, IconaFoto,
   IconaNuvola, IconaRuota, IconaCestino, IconaTaglia, IconaEmail, IconaChat, IconaNote, IconaLucchetto, IconaIndietro,
@@ -169,7 +170,8 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
         prossimoId += 1;
         if (t === 'pdf') nuove.push({ id: prossimoId, tipo: 'pdf', file });
         else if (t === 'immagine') {
-          const r = await elaboraPagina(file, { modo, angoli: auto ? 'auto' : null, peso });
+          // SCAN-MLKIT: le pagine dello scanner Google arrivano già raddrizzate.
+          const r = await elaboraPagina(file, { modo, angoli: auto && !daScannerNativo(file) ? 'auto' : null, peso });
           nuove.push({ id: prossimoId, tipo: 'foto', file, rotazione: 0, ritaglio: null, ...r, rilevati: r.angoli });
         }
       }
@@ -238,7 +240,7 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
 
   return (
     <>
-      <input ref={scatto} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { aggiungi(e.target.files); e.target.value = ''; }} />
+      <input ref={scatto} type="file" accept="image/*" capture="environment" multiple hidden onChange={(e) => { aggiungi(e.target.files); e.target.value = ''; }} />
       <input ref={galleria} type="file" accept="image/*,.heic,.heif" multiple hidden onChange={(e) => { aggiungi(e.target.files); e.target.value = ''; }} />
       <input ref={altriFile} type="file" accept="application/pdf,image/*,.heic,.heif,.doc,.docx,.xls,.xlsx,.odt,.ods,.txt,.rtf" multiple hidden onChange={(e) => { aggiungi(e.target.files); e.target.value = ''; }} />
       <fieldset disabled={!!lavoro} className="scan-controls"><div className="pp-sorgenti-rapide">

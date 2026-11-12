@@ -2,11 +2,11 @@ name: Android agenda widgets
 on:
   pull_request:
     branches: [master]
-    paths: ['android/**', 'personal/src/lib/androidAgendaWidget.js', 'personal/src/lib/widgetAzioni.js', 'tests/androidAgendaWidget.test.mjs', 'tests/widgetAzioni.test.mjs', '.github/workflows/android-agenda.yml']
+    paths: ['android/agenda/**', 'personal/src/lib/androidAgendaWidget.js', 'personal/src/lib/widgetAzioni.js', 'tests/androidAgendaWidget.test.mjs', 'tests/widgetAzioni.test.mjs', '.github/workflows/android-agenda.yml']
   # After a merge the tested APK is published as a plain .apk file (no zip) at a fixed release link.
   push:
     branches: [master]
-    paths: ['android/**', '.github/workflows/android-agenda.yml']
+    paths: ['android/agenda/**', '.github/workflows/android-agenda.yml']
   workflow_dispatch:
 permissions:
   contents: read

@@ -54,7 +54,7 @@ export function ScanHome({ ctx, versioneRecenti, onStrumento, onFiles, coperta =
 
   return (
     <div className="scan-home">
-      <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { onFiles([...e.target.files]); e.target.value = ''; }} />
+      <input ref={camera} type="file" accept="image/*" capture="environment" multiple hidden onChange={(e) => { onFiles([...e.target.files]); e.target.value = ''; }} />
       <input ref={album} type="file" accept="image/*,.heic,.heif" multiple hidden onChange={(e) => { onFiles([...e.target.files]); e.target.value = ''; }} />
       <input ref={daFile} type="file" accept="application/pdf,image/*,.heic,.heif" multiple hidden onChange={(e) => { onFiles([...e.target.files]); e.target.value = ''; }} />
 

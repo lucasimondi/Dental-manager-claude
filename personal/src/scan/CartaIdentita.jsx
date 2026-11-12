@@ -8,6 +8,7 @@ import { condividi, scaricaDocumento } from '../lib/condividi.js';
 import { validaFile } from '../pdf/filePdf.js';
 import { Segmenti } from '../ui.jsx';
 import { Angoli } from '../Angoli.jsx';
+import { daScannerNativo } from '../lib/nativo.js';
 import { IconaFotocamera, IconaFoto, IconaRuota, IconaTaglia, IconaCestino, IconaCondividi } from '../Icone.jsx';
 
 export const TESSERE = [
@@ -19,9 +20,10 @@ export const TESSERE = [
 const FACCE = [['fronte', 'Fronte'], ['retro', 'Retro']];
 
 async function prepara(file, { modo, rotazione = 0, angoli = 'auto' }) {
+  if (angoli === 'auto' && daScannerNativo(file)) angoli = null; // SCAN-MLKIT: già raddrizzata
   let r = await elaboraPagina(file, { modo, rotazione, angoli });
   // Tessera fotografata in verticale: si gira, così fronte e retro stanno orizzontali sul foglio.
-  if (rotazione === 0 && angoli === 'auto' && daGirare(r.larghezza, r.altezza)) {
+  if (rotazione === 0 && !(angoli && typeof angoli === 'object') && daGirare(r.larghezza, r.altezza)) {
     rotazione = 90;
     r = await elaboraPagina(file, { modo, rotazione, angoli });
   }

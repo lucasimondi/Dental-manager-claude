@@ -4689,3 +4689,11 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 
 ## Handoff — SCAN-HUB merged (2026-11-12) — Claude Code
 - PR308 squash-merged as b303da5 after PO "Mergia"; checks verify ×3, pixel7-pdf, iphone-agenda, Netlify, Vercel preview all green. Production deployment dpl_BsFkU8WCRAoaycC5ggHd5xGvLytV started on Vercel.
+
+## Handoff — SCAN-MLKIT (2026-11-12) — Claude Code
+- Branch `ccr-01036c30-3eoy2l`. Files: android/scan/** (new app), .github/workflows/android-scan.yml (new), .github/workflows/android-agenda.yml (paths narrowed to android/agenda/**), personal/src/lib/nativo.js (new), personal/src/lib/condividi.js, personal/src/scan/{Scan,ScanHome,CartaIdentita,EstraiTesto}.jsx, personal/src/Aggiungi.jsx, tests/scanHub.test.mjs.
+- Database: none. Deployment: web build as usual; APK via GitHub release `scan-android` after merge (debug-signed, test only).
+- Tests: npm test 1687/1687; builds PASS; Chromium visual PASS. Android build only in CI.
+- Risks: ML Kit document scanner needs Google Play Services (fallback to normal camera); debug key changes per CI build (uninstall before update until a fixed signing key is configured — PO decision); WebView login separate from Chrome.
+- Rollback: revert the PR and uninstall the app; the web Scan without the app is unchanged.
+- Next: CI APK build; PO installs poliedra-scan.apk and tries the scanner; "Mergia".

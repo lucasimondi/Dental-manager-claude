@@ -15,6 +15,7 @@ import { IMPOSTAZIONI_PREDEFINITE, leggiImpostazioni, salvaImpostazioni } from '
 import { indirizzoPersonal, strumentoDaIndirizzo } from '../lib/scan.js';
 import { pagina, titoloPagina, eModulo } from '../sezioni/index.js';
 import { useIngressoPdf } from '../pdf/useIngressoPdf.js';
+import { installaPonte } from '../lib/nativo.js';
 import { PaginaPdf } from '../pdf/PaginaPdf.jsx';
 import { ricordaFile } from '../lib/recenti.js';
 import { ScanHome } from './ScanHome.jsx';
@@ -91,6 +92,8 @@ export function Scan({ email }) {
     else apri(p);
   }, [apri]);
   useIngressoPdf(ricevi, setErrore);
+  // SCAN-MLKIT: nell'app Android, PDF e foto da «Condividi / Apri con → Poliedra Scan».
+  useEffect(() => { installaPonte((files) => ricevi(files.length === 1 && files[0].type === 'application/pdf' ? { tipo: 'pdf', file: files[0] } : { tipo: 'scanner', files })); }, [ricevi]);
   useEffect(() => {
     const coda = window.launchQueue;
     let daFile = false;

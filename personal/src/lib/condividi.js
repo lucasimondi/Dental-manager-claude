@@ -18,6 +18,8 @@ export function preparaFile(driveFileId, token) {
   return memoria.get(driveFileId);
 }
 
+import { ponte, salvaNativo } from './nativo.js';
+
 export function comeFile({ nome, mime, dati }) {
   const byte = Uint8Array.from(atob(dati), (c) => c.charCodeAt(0));
   return new File([byte], nome || 'documento', { type: mime || 'application/octet-stream' });
@@ -50,6 +52,8 @@ export async function condividi({ titolo, link, file, files }, nav = globalThis.
 }
 
 export function scaricaDocumento(file) {
+  // SCAN-MLKIT: nell'app Android la WebView non scarica: «Salva in…» di Android.
+  if (ponte()) { salvaNativo(file).catch(() => {}); return; }
   const url=URL.createObjectURL(file);
   const a=document.createElement('a');a.href=url;a.download=file.name;a.click();
   setTimeout(()=>URL.revokeObjectURL(url),60000);

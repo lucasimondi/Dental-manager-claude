@@ -71,3 +71,38 @@ test('Scan opens on its Home with tools, recents and camera; everything stays on
   assert.doesNotMatch(tessera + readFileSync('personal/src/scan/EstraiTesto.jsx', 'utf8'), /fetch\(|archivioDb|anthropic|openai/i);
   assert.match(readFileSync('personal/src/pdf/GestorePdf.jsx', 'utf8'), /strumento === 'comprimi'/);
 });
+
+// SCAN-MLKIT (PO 2026-11-12: «Ml kit») — app Android «Poliedra Scan» con lo scanner documenti di Google.
+test('ponte Android: share and download go through the app, incoming files become File objects', async () => {
+  const { ponte, inAppAndroid, daScannerNativo, installaPonte, daBase64 } = await import('../personal/src/lib/nativo.js');
+  assert.equal(inAppAndroid({}), false); assert.equal(ponte({ PoliedraScan: {} }), null);
+  const inviati = []; let ascolto = null;
+  const p = { postMessage: (m) => inviati.push(JSON.parse(m)), addEventListener: (t, fn) => { ascolto = fn; } };
+  const w = { PoliedraScan: p, navigator: {} };
+  const ricevuti = [];
+  assert.equal(installaPonte((files) => ricevuti.push(...files), w), true);
+  assert.deepEqual(inviati[0], { azione: 'pronto' });
+  assert.equal(w.navigator.canShare({ files: [new File(['x'], 'a.pdf')] }), true);
+  await w.navigator.share({ files: [new File(['ciao'], 'Referto.pdf', { type: 'application/pdf' })], title: 'Referto' });
+  assert.equal(inviati[1].azione, 'condividi'); assert.equal(inviati[1].files[0].nome, 'Referto.pdf');
+  assert.equal(Buffer.from(inviati[1].files[0].dati, 'base64').toString(), 'ciao');
+  await w.navigator.share({ title: 'Testo', text: 'riga' });
+  assert.deepEqual(inviati[2], { azione: 'testo', testo: 'Testo\n\nriga' });
+  ascolto({ data: JSON.stringify({ tipo: 'file', files: [{ nome: 'doc.pdf', mime: 'application/pdf', dati: Buffer.from('%PDF').toString('base64') }] }) });
+  assert.equal(ricevuti[0].name, 'doc.pdf'); assert.equal(await ricevuti[0].text(), '%PDF');
+  ascolto({ data: 'non json' });
+  assert.equal(daBase64({ nome: 'x.jpg', mime: 'image/jpeg', dati: 'AA==' }).size, 1);
+  assert.equal(daScannerNativo({ name: 'scan-mlkit-1-1.jpg' }), true); assert.equal(daScannerNativo({ name: 'foto.jpg' }), false);
+});
+test('Android app: ML Kit scanner for every capture input, origin-locked bridge, private cache, no extra permissions', () => {
+  const java = readFileSync('android/scan/app/src/main/java/it/poliedrasoft/scan/MainActivity.java', 'utf8');
+  assert.match(java, /GmsDocumentScanning\.getClient/); assert.match(java, /isCaptureEnabled\(\)/);
+  assert.match(java, /scan-mlkit-/); assert.match(java, /Collections\.singleton\(ORIGIN\)/);
+  assert.match(java, /"https:\/\/personal\.poliedrasoft\.it"/); assert.doesNotMatch(java, /addJavascriptInterface/);
+  assert.match(java, /handler\.cancel\(\)/); assert.match(java, /setAllowFileAccess\(false\)/);
+  const manifest = readFileSync('android/scan/app/src/main/AndroidManifest.xml', 'utf8');
+  assert.deepEqual([...manifest.matchAll(/uses-permission android:name="([^"]+)"/g)].map((m) => m[1]), ['android.permission.INTERNET']);
+  assert.match(manifest, /allowBackup="false"/); assert.match(manifest, /FileProvider[^>]*exported="false"/);
+  assert.match(readFileSync('android/scan/app/build.gradle', 'utf8'), /play-services-mlkit-document-scanner/);
+  assert.match(readFileSync('personal/src/Aggiungi.jsx', 'utf8'), /capture="environment" multiple/);
+});
