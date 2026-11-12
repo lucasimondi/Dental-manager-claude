@@ -4677,3 +4677,12 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Branch `ccr-b7a5a599-0pxser` from master 9443547. Files: src/components/PianoDrillDown.jsx, tests/prestazioniElimina.test.mjs, tests/visual/piani-elimina.{html,fixture.jsx}, coordination docs.
 - Database: none. Tests 1679/1679; build OK; Chromium fixture PASS. Rollback: revert the commit.
 - Open: other `confirm()` calls elsewhere in the app still have the Android WebView limitation (a native fix is a WebChromeClient with onJsConfirm in android/agenda MainActivity.java + new APK).
+
+## Handoff — SCAN-HUB (2026-11-12) — Claude Code
+- Branch `ccr-01036c30-3eoy2l` from master 36548b2. Objective: Scan becomes a scanner/PDF hub like the app shown by the PO.
+- Files: personal/src/scan/{Scan.jsx, ScanHome.jsx (new), CartaIdentita.jsx (new), EstraiTesto.jsx (new)}, personal/src/lib/{fronteRetro.js, recenti.js} (new), personal/src/pdf/{testo.js (new), ocr.js, GestorePdf.jsx, PaginaPdf.jsx}, personal/src/{Aggiungi.jsx, Icone.jsx, pro.css}, tests/{scanHub.test.mjs (new), personalSezioni.test.mjs}, tests/visual/{scan-hub.mjs (new), personal-scan.mjs}.
+- Database: none (Recenti are browser IndexedDB on the device only). Deployment: none beyond the normal build.
+- Tests: npm test 1685/1685; both builds PASS; Chromium Pixel 7 scan-hub and personal-scan PASS (synthetic data).
+- Risks: Recenti live in browser storage (cleared if the user clears site data); ID straightening needs a card lighter than the background (corners can be set by hand); OCR speed on low-end phones.
+- Rollback: revert the commit; Recenti store is simply unused afterwards.
+- Next: PO tries Scan on the phone; decide on Traduci / Converti in Word-Excel (need a model or server) and Fototessera; "Mergia" for the PR.

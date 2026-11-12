@@ -206,7 +206,9 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
   const togli = (i) => setPagine((xs) => xs.filter((_, j) => j !== i));
   const sposta = (i, d) => setPagine((xs) => { const a = [...xs]; const [x] = a.splice(i, 1); a.splice(i + d, 0, x); return a; });
   const pronta = !lavoro && pronto?.file && pronto.chiave === chiave;
-  const archiviaFile = (file) => sostituisci({ tipo: 'carica', file, opzioni: { ...opzioni, descrizione: file.name.replace(/\.pdf$/i, ''), scelto: true, soloArchiviazione: true, nonAnalizzare: true } });
+  // SCAN-HUB: in Scan i PDF archiviati, inviati o scaricati restano nei Recenti del telefono.
+  const ricorda = (files) => ctx.ricorda?.(files);
+  const archiviaFile = (file) => { ricorda([file]); sostituisci({ tipo: 'carica', file, opzioni: { ...opzioni, descrizione: file.name.replace(/\.pdf$/i, ''), scelto: true, soloArchiviazione: true, nonAnalizzare: true } }); };
   const archivia = () => { if (pronta) archiviaFile(pronto.file); };
   const modifica = async (elementi) => {
     if (inCorso.current) return;
@@ -230,7 +232,7 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
   }, [pagine.length]);
   const invia = async (canale) => {
     if (!pronta) return;
-    try { const r = await inviaCon(canale, { titolo, files: pronto.files }); if (r === 'non_disponibile') mostra('Questo browser non può allegare questi file: usa Scarica PDF e allegali dalla tua app.'); } catch (e) { mostra(e.message); }
+    try { const r = await inviaCon(canale, { titolo, files: pronto.files }); if (r !== 'annullato') ricorda(pronto.files); if (r === 'non_disponibile') mostra('Questo browser non può allegare questi file: usa Scarica PDF e allegali dalla tua app.'); } catch (e) { mostra(e.message); }
   };
   const stato = lavoro || avanzamento || (!selezionate.length ? 'Seleziona almeno un documento' : pagine.length && !pronta ? (pronto?.errore ? `PDF non creato: ${pronto.errore}` : 'Preparo il PDF…') : null);
 
@@ -291,7 +293,7 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
             <button className="pp-bottone pp-bottone-chiaro" disabled={!pronta} onClick={() => modifica(selezionate)}>Apri · Modifica · Firma</button>
             <button className="pp-bottone" disabled={!pronta} onClick={archivia}>Archivia il PDF</button>
           </div>}
-          {pronta && pronto.files.map((file, i) => <div className="scan-output-file" key={`${chiave}:${i}`}><span>{file.name}</span><button className="pp-testo-link" onClick={() => scaricaDocumento(file)}>Scarica PDF</button>{separati && <button className="pp-testo-link" onClick={() => archiviaFile(file)}>Archivia</button>}</div>)}
+          {pronta && pronto.files.map((file, i) => <div className="scan-output-file" key={`${chiave}:${i}`}><span>{file.name}</span><button className="pp-testo-link" onClick={() => { scaricaDocumento(file); ricorda([file]); }}>Scarica PDF</button>{separati && <button className="pp-testo-link" onClick={() => archiviaFile(file)}>Archivia</button>}</div>)}
           {stato && <p className="pp-riga-meta" role="status">{stato}</p>}
 
         </>

@@ -3,6 +3,7 @@
 // tenuti dal browser): il documento non lascia mai il dispositivo e nessun modello esterno lo legge.
 import { apriDocumento, disegnaPagina, liberaCanvas } from './raster.js';
 import { aggiungiTestoOcr } from './operazioni.js';
+import { testoDaBlocchi } from './testo.js';
 
 export const MAX_PAGINE_OCR = 30;
 let motore = null;
@@ -59,4 +60,41 @@ export async function rendiRicercabile(bytes, { onAvanzamento } = {}) {
 export async function fileRicercabile(file, opzioni) {
   const r = await rendiRicercabile(new Uint8Array(await file.arrayBuffer()), opzioni);
   return r.parole ? new File([r.bytes], file.name, { type: 'application/pdf' }) : file;
+}
+
+// SCAN-HUB — «Estrai testo»: il testo di foto o PDF, da copiare o condividere. Stesso motore locale.
+// immagini: data URL, canvas o Blob (già raddrizzate). Restituisce il testo, pagina per pagina.
+export async function testoDaImmagini(immagini, { onAvanzamento } = {}) {
+  const worker = await avviaMotore(onAvanzamento);
+  const parti = [];
+  for (let i = 0; i < immagini.length; i += 1) {
+    onAvanzamento?.(immagini.length > 1 ? `Leggo il testo… pagina ${i + 1} di ${immagini.length}` : 'Leggo il testo…');
+    const { data } = await worker.recognize(immagini[i], {}, { blocks: true, text: false });
+    parti.push(testoDaBlocchi(data.blocks));
+  }
+  return parti;
+}
+
+// PDF: le pagine con testo vero lo danno subito, le altre (scansioni) passano dall'OCR.
+export async function testoDaPdf(file, { onAvanzamento } = {}) {
+  const doc = await apriDocumento(new Uint8Array(await file.arrayBuffer()));
+  const totale = Math.min(doc.numPages, MAX_PAGINE_OCR);
+  const parti = [];
+  try {
+    for (let n = 1; n <= totale; n += 1) {
+      const page = await doc.getPage(n);
+      if (await haTesto(page)) {
+        const c = await page.getTextContent();
+        parti.push(c.items.map((t) => `${t.str}${t.hasEOL ? '\n' : ''}`).join('').replace(/[ \t]+\n/g, '\n').trim());
+        continue;
+      }
+      const worker = await avviaMotore(onAvanzamento);
+      onAvanzamento?.(`Leggo il testo… pagina ${n} di ${totale}`);
+      const { canvas } = await disegnaPagina(doc, n, { latoMax: 2200 });
+      const { data } = await worker.recognize(canvas, {}, { blocks: true, text: false });
+      liberaCanvas(canvas);
+      parti.push(testoDaBlocchi(data.blocks));
+    }
+  } finally { await doc.destroy(); }
+  return { parti, oltre: doc.numPages > totale };
 }

@@ -126,3 +126,68 @@
 .pp-scan-strumento { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 8px; border: 0; border-radius: 10px; background: transparent; color: var(--pp-inchiostro); font: inherit; font-size: 15px; font-weight: 650; cursor: pointer; }
 .pp-scan-strumento.attivo { background: var(--pp-blu); color: var(--pp-sfondo); }
 .pp-scan-installa { margin-top: 18px; }
+
+/* SCAN-HUB (PO 2026-11-12): Home di Scan — scanner in evidenza, strumenti a griglia, Recenti. */
+.scan-home { padding-bottom: 88px; }
+.scan-hero { display: grid; grid-template-columns: 1.1fr 1fr; grid-template-rows: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.scan-hero button { position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 4px; padding: 14px; border: 0; border-radius: 18px; text-align: left; font: inherit; color: var(--pp-inchiostro); cursor: pointer; overflow: hidden; }
+.scan-hero strong { font-size: 17px; line-height: 1.2; }
+.scan-hero span { font-size: 13px; color: var(--pp-grigio); }
+.scan-hero-grande { grid-row: 1 / span 2; min-height: 168px; background: linear-gradient(160deg, #ece6ff, #d9ccff); }
+.scan-hero-grande .scan-hero-icona { position: absolute; right: 12px; bottom: 10px; color: #5b3fd6; opacity: .85; }
+.scan-hero-pdf { background: linear-gradient(160deg, #ffe4e4, #ffd0d0); min-height: 79px; }
+.scan-hero-tessera { background: linear-gradient(160deg, #dcebff, #c8defc); min-height: 79px; }
+.scan-griglia { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px 6px; padding: 12px 6px; margin-bottom: 10px; border-radius: 18px; background: var(--pp-superficie); border: 1px solid var(--pp-linea); }
+.scan-strumento { display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 76px; padding: 6px 2px; border: 0; border-radius: 12px; background: transparent; color: var(--pp-inchiostro); font: inherit; font-size: 12.5px; line-height: 1.2; text-align: center; cursor: pointer; }
+.scan-strumento:active { background: var(--pp-sfondo); }
+.scan-strumento-icona { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--pp-sfondo); color: var(--pp-blu); }
+.scan-strumento-testo .scan-strumento-icona { color: #1d6fd8; }
+.scan-strumento-tessera .scan-strumento-icona { color: #2f6fd1; }
+.scan-strumento-firma .scan-strumento-icona { color: #d1452f; }
+.scan-strumento-unisci .scan-strumento-icona { color: #6d4bd6; }
+.scan-strumento-comprimi .scan-strumento-icona { color: #c26a12; }
+.scan-strumento-pagine .scan-strumento-icona { color: #0f8a5f; }
+.scan-sorgenti { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-bottom: 18px; border-radius: 16px; background: var(--pp-superficie); border: 1px solid var(--pp-linea); }
+.scan-sorgenti button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; border: 0; background: transparent; color: var(--pp-inchiostro); font: inherit; font-size: 15px; cursor: pointer; }
+.scan-recenti-testa { display: flex; align-items: center; justify-content: space-between; }
+.scan-recenti h2 { margin: 0 0 6px; font-size: 20px; }
+.scan-recenti h3 { margin: 14px 0 4px; font-size: 13px; font-weight: 600; color: var(--pp-grigio); }
+.scan-recenti-vuoto { padding: 22px 12px; text-align: center; }
+.scan-recenti-vuoto p { margin: 6px 0 0; color: var(--pp-grigio); font-size: 14px; }
+.scan-recente { position: relative; display: flex; align-items: center; gap: 2px; border-bottom: 1px solid var(--pp-linea); }
+.scan-recente-apri { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 10px 0; border: 0; background: transparent; color: var(--pp-inchiostro); font: inherit; text-align: left; cursor: pointer; }
+.scan-recente-tipo { flex-shrink: 0; display: grid; place-items: center; width: 40px; height: 46px; border-radius: 8px; background: #667085; color: #fff; font-size: 11px; font-weight: 800; }
+.scan-recente-tipo.pdf { background: #e5383b; }
+.scan-recente-testo { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.scan-recente-testo strong { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scan-recente-testo small { color: var(--pp-grigio); font-size: 12.5px; }
+.scan-recente-azione { flex-shrink: 0; width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 10px; background: transparent; color: var(--pp-grigio); font-size: 20px; cursor: pointer; }
+.scan-recente-menu { position: absolute; right: 4px; top: 52px; z-index: 5; display: flex; flex-direction: column; min-width: 190px; padding: 6px; border-radius: 12px; background: var(--pp-superficie); border: 1px solid var(--pp-linea); box-shadow: var(--pp-ombra-alta, 0 12px 32px rgba(16,24,40,.18)); }
+.scan-recente-menu button { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--pp-inchiostro); font: inherit; text-align: left; cursor: pointer; }
+.scan-conferma { margin: 8px 0; padding: 12px; border-radius: 12px; background: var(--pp-sfondo); border: 1px solid var(--pp-linea); }
+.scan-conferma p { margin: 0 0 10px; font-size: 14px; }
+.scan-conferma div { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.scan-fab { position: fixed; right: max(18px, env(safe-area-inset-right)); bottom: calc(22px + env(safe-area-inset-bottom)); z-index: 20; display: grid; place-items: center; width: 62px; height: 62px; border: 0; border-radius: 50%; background: #1f6fe5; color: #fff; box-shadow: 0 8px 22px rgba(31, 111, 229, .4); cursor: pointer; }
+@media (prefers-color-scheme: dark) {
+  .scan-hero-grande { background: linear-gradient(160deg, #2a2346, #362a63); }
+  .scan-hero-grande .scan-hero-icona { color: #b9a6ff; }
+  .scan-hero-pdf { background: linear-gradient(160deg, #3a2226, #4a2a2f); }
+  .scan-hero-tessera { background: linear-gradient(160deg, #1d2c44, #233757); }
+}
+/* Carta d'identità: due facce e anteprima del foglio A4. */
+.scan-tessera .pp-segmenti { margin-bottom: 12px; }
+.scan-facce { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.scan-faccia { padding: 10px; border-radius: 14px; background: var(--pp-superficie); border: 1px solid var(--pp-linea); min-width: 0; }
+.scan-faccia h3 { margin: 0 0 8px; font-size: 15px; }
+.scan-faccia h3 small { font-weight: 500; color: var(--pp-grigio); }
+.scan-faccia-foto { position: relative; }
+.scan-faccia-foto img { display: block; width: 100%; aspect-ratio: 85.6 / 54; object-fit: contain; border-radius: 8px; background: var(--pp-sfondo); }
+.scan-faccia-azioni { display: flex; justify-content: space-between; margin-top: 6px; }
+.scan-faccia-azioni button { width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 8px; background: var(--pp-sfondo); color: var(--pp-blu); cursor: pointer; }
+.scan-faccia-vuota { display: grid; gap: 8px; }
+.scan-faccia-vuota .pp-bottone { font-size: 13.5px; padding-left: 6px; padding-right: 6px; }
+.scan-foglio { position: relative; width: min(100%, 300px); aspect-ratio: 210 / 297; margin: 16px auto; background: #fff; border-radius: 4px; box-shadow: 0 2px 12px rgba(16, 24, 40, .18); }
+.scan-foglio img { position: absolute; object-fit: contain; }
+.scan-tessera > .pp-segmenti, .scan-tessera .scan-output-actions { margin-top: 10px; }
+.scan-testo-area { width: 100%; min-height: 260px; padding: 12px; border-radius: 12px; border: 1px solid var(--pp-linea); background: var(--pp-superficie); color: var(--pp-inchiostro); font: inherit; font-size: 15px; line-height: 1.45; resize: vertical; box-sizing: border-box; }
+.scan-faccia-foto .pp-scan-auto { left: auto; top: auto; right: 6px; bottom: 6px; }

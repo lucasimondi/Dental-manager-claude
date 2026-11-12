@@ -14,17 +14,19 @@ try {
   page.on('pageerror', (e) => errors.push(e.message));
   await page.route('**/*', (route) => new URL(route.request().url()).hostname === '127.0.0.1' ? route.continue() : route.abort());
   await page.goto('http://127.0.0.1:5177/tests/visual/personal-scan.html');
+  // SCAN-HUB: Scan opens on its Home; «Scanner» opens the scanner page on top.
+  await page.getByRole('button', { name: /^Scanner/ }).click();
   await page.getByRole('button', { name: /Scatta/ }).waitFor();
   assert.equal(await page.locator('.pp-schede, .pp-fab').count(), 0, 'no dock and no + in Scan');
   await page.screenshot({ path: `${out}/scan-vuota.png` });
   const foto = await page.evaluate(async () => { const c = document.createElement('canvas'); c.width = 600; c.height = 800; const g = c.getContext('2d'); g.fillStyle = '#222'; g.fillRect(0, 0, 600, 800); g.fillStyle = '#fff'; g.fillRect(100, 100, 400, 600); g.fillStyle = '#000'; g.font = '30px sans-serif'; g.fillText('DOCUMENTO FITTIZIO', 120, 200); const b = await new Promise((r) => c.toBlob(r, 'image/png')); return Array.from(new Uint8Array(await b.arrayBuffer())); });
-  await page.locator('input[type=file]').first().setInputFiles({ name: 'foglio.png', mimeType: 'image/png', buffer: Buffer.from(foto) });
+  await page.locator('.pp-pagina input[type=file]').first().setInputFiles({ name: 'foglio.png', mimeType: 'image/png', buffer: Buffer.from(foto) });
   await page.waitForFunction(() => [...document.querySelectorAll('button')].some((b) => /Archivia il PDF/.test(b.textContent) && !b.disabled));
   await page.screenshot({ path: `${out}/scan-pagina.png` });
   const largo = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   assert.ok(largo <= 0, `no horizontal overflow (${largo})`);
   // «PDF e firma» opens the PDF manager; closing it keeps the scanned page.
-  await page.getByRole('button', { name: 'PDF e firma' }).click();
+  await page.getByRole('button', { name: /Solo firmare o modificare un PDF/ }).click();
   await page.locator('.pdf-manager').waitFor();
   await page.getByRole('button', { name: 'Apri PDF o foto' }).waitFor();
   await page.screenshot({ path: `${out}/scan-pdf.png` });
