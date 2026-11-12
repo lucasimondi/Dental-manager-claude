@@ -358,6 +358,17 @@ export async function cercaArchivio(db, { testo = '', fascicolo, ente, anno, tip
   return esito(await q.limit(limite));
 }
 
+// POL-VITA-030 ARCHIVIO-CHIEDI: ricerca con sinonimi, accenti, errori di battitura e ordine per
+// pertinenza (RPC cerca_archivio_v2, RLS del proprietario). `filtri` arriva da interpretaDomanda.
+// Se la funzione non c'è o risponde con un errore, torna alla ricerca di prima.
+export async function cercaChiedi(db, { testo = '', filtri = {}, anchePocoUtili = false, limite = 200 } = {}) {
+  const p_filtri = { ...filtri, poco_utili: anchePocoUtili };
+  const r = await db.rpc('cerca_archivio_v2', { p_testo: testo, p_filtri, p_lim: limite }).select(CAMPI_DOC);
+  if (!r.error) return r.data || [];
+  const anno = filtri.da && filtri.a && filtri.da.slice(0, 4) === filtri.a.slice(0, 4) ? filtri.da.slice(0, 4) : undefined;
+  return cercaArchivio(db, { testo, anno, anchePocoUtili, limite });
+}
+
 export async function enti(db) {
   return esito(await db.from('v_enti').select('ente, n, ultimo, fascicolo').order('n', { ascending: false }).limit(500));
 }

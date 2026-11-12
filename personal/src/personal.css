@@ -903,3 +903,50 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 /* Scan: a selected batch can be delivered separately or as one PDF. */
 .scan-controls{border:0;padding:0;margin:0;min-width:0}.scan-controls:disabled{opacity:.65}.scan-select{display:flex;align-items:center;gap:5px;min-height:44px}.scan-select input{width:20px;height:20px;accent-color:#146c55}.scan-selection-bar,.scan-output-file{display:flex;gap:10px;align-items:center;justify-content:space-between;margin:12px 0}.scan-output-file{flex-wrap:wrap;padding:12px;border:1px solid var(--pp-bordo,#dbe3df);border-radius:12px}.scan-output-file span{flex:1;min-width:120px;overflow-wrap:anywhere}.scan-output-actions{display:grid;gap:10px}.pp-scan-strumenti{flex-wrap:wrap}
 .scan-controls .pp-scansione-pagina figcaption{flex-wrap:wrap;gap:4px;padding:8px}.scan-controls .pp-scansione-pagina figcaption button{flex-shrink:0;min-width:36px;min-height:40px}.scan-controls .pp-scansione-pagina figcaption .scan-edit{width:100%;height:auto;min-height:40px;font-size:13px;order:2;background:var(--pp-sfondo,#eef4f1)}.scan-controls .pp-scansione-pagina figcaption .scan-select{margin-right:auto}.scan-controls .pp-scansione-pdf{aspect-ratio:4/3}
+
+/* ---------- POL-VITA-030 ARCHIVIO-CHIEDI: Documenti si apre su una sola casella ---------- */
+.pp-chiedi { display: flex; flex-direction: column; gap: 14px; padding-top: 4px; }
+.pp-chiedi-titolo { margin: 8px 0 0; font-size: 28px; line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; color: var(--pp-inchiostro); }
+.pp-chiedi-casella { display: flex; align-items: center; gap: 10px; min-height: 58px; padding: 0 8px 0 16px; border-radius: 18px; background: var(--pp-superficie); border: 1.5px solid var(--pp-inchiostro); box-shadow: var(--pp-ombra-alta); color: var(--pp-inchiostro); }
+.pp-chiedi-casella input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; padding: 14px 0; font-size: 17px; font-weight: 500; color: var(--pp-inchiostro); }
+.pp-chiedi-casella input::placeholder { color: var(--pp-grigio); }
+.pp-chiedi-pulisci { width: 44px; height: 44px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; background: var(--pp-sfondo); color: var(--pp-inchiostro); }
+.pp-chiedi-etichetta { margin: 0; font-size: 13px; color: var(--pp-grigio); }
+.pp-chiedi-suggerimenti { display: flex; flex-wrap: wrap; gap: 8px; }
+.pp-chiedi-sugg { min-height: 40px; padding: 0 14px; border-radius: 999px; font-size: 14px; font-weight: 500; text-align: left; background: var(--pp-superficie); color: var(--pp-inchiostro); border: 1px solid var(--pp-linea); }
+.pp-chiedi-blocco { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.pp-chiedi-h2 { margin: 0 0 2px; font-size: 18px; font-weight: 800; color: var(--pp-inchiostro); }
+.pp-chiedi-dafare { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: var(--pp-raggio); background: var(--pp-superficie); box-shadow: var(--pp-ombra); text-align: left; color: var(--pp-inchiostro); }
+.pp-chiedi-dafare:disabled { opacity: 1; cursor: default; }
+.pp-chiedi-giorno { width: 48px; height: 52px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; background: var(--pp-blu-chiaro); color: var(--pp-blu); line-height: 1.05; }
+.pp-chiedi-giorno strong { font-size: 18px; }
+.pp-chiedi-giorno span { font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.pp-chiedi-dafare.vicina .pp-chiedi-giorno { background: color-mix(in srgb, var(--pp-ambra) 16%, transparent); color: var(--pp-ambra); }
+.pp-chiedi-dafare.scaduta .pp-chiedi-giorno { background: color-mix(in srgb, var(--pp-rosso) 14%, transparent); color: var(--pp-rosso); }
+.pp-chiedi-dafare-testo, .pp-chiedi-primo-testo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.pp-chiedi-dafare-titolo { font-size: 15px; font-weight: 600; }
+.pp-chiedi-meta { font-size: 13px; color: var(--pp-grigio); }
+.pp-chiedi-capito { display: flex; flex-direction: column; gap: 6px; }
+.pp-chiedi-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pp-chiedi-chip { padding: 6px 10px; border-radius: 10px; font-size: 13px; font-weight: 700; background: var(--pp-blu-chiaro); color: var(--pp-blu); }
+.pp-chiedi-risposta { display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 22px; background: var(--pp-inchiostro); color: var(--pp-superficie); }
+.pp-chiedi-risposta .pp-chiedi-meta { color: color-mix(in srgb, var(--pp-superficie) 72%, transparent); }
+.pp-chiedi-cifra { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+.pp-chiedi-sotto { font-size: 14px; color: color-mix(in srgb, var(--pp-superficie) 72%, transparent); }
+.pp-chiedi-barre { display: flex; align-items: flex-end; gap: 6px; height: 72px; margin-top: 4px; }
+.pp-chiedi-barra { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; }
+.pp-chiedi-barra span { display: block; width: 100%; border-radius: 6px 6px 2px 2px; background: color-mix(in srgb, var(--pp-superficie) 55%, var(--pp-blu)); }
+.pp-chiedi-barra em { font-style: normal; font-size: 11px; color: color-mix(in srgb, var(--pp-superficie) 72%, transparent); }
+.pp-chiedi-primo { display: flex; gap: 12px; padding: 12px; border-radius: 16px; background: color-mix(in srgb, var(--pp-superficie) 10%, var(--pp-inchiostro)); }
+.pp-chiedi-primo strong { font-size: 15px; line-height: 1.3; }
+.pp-chiedi-foglio { width: 60px; height: 80px; flex-shrink: 0; display: flex; flex-direction: column; gap: 5px; padding: 9px 7px; border-radius: 6px; background: #fff; }
+.pp-chiedi-foglio i { display: block; height: 3px; border-radius: 2px; background: #d9d6ce; }
+.pp-chiedi-foglio i:first-child { height: 6px; width: 60%; background: var(--c); }
+.pp-chiedi-foglio i:last-child { width: 70%; }
+.pp-chiedi-azione { font-size: 13px; font-weight: 600; color: var(--pp-ambra); }
+.pp-chiedi-bottoni { display: flex; gap: 8px; margin-top: 6px; }
+.pp-chiedi-apri, .pp-chiedi-secondario { min-height: 38px; padding: 0 14px; display: inline-flex; align-items: center; border-radius: 10px; font-size: 14px; font-weight: 700; text-decoration: none; }
+.pp-chiedi-apri { background: var(--pp-superficie); color: var(--pp-inchiostro); }
+.pp-chiedi-secondario { background: color-mix(in srgb, var(--pp-superficie) 18%, var(--pp-inchiostro)); color: var(--pp-superficie); }
+.pp-chiedi-classica, .pp-chiedi-torna { align-self: flex-start; min-height: 44px; padding: 0 4px; font-size: 14px; font-weight: 600; color: var(--pp-blu); background: none; text-align: left; }
+.pp-chiedi-classica { margin-top: 10px; }

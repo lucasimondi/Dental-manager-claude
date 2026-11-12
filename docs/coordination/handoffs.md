@@ -4686,3 +4686,12 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Risks: Recenti live in browser storage (cleared if the user clears site data); ID straightening needs a card lighter than the background (corners can be set by hand); OCR speed on low-end phones.
 - Rollback: revert the commit; Recenti store is simply unused afterwards.
 - Next: PO tries Scan on the phone; decide on Traduci / Converti in Word-Excel (need a model or server) and Fototessera; "Mergia" for the PR.
+
+## Handoff — ARCHIVIO-CHIEDI passo 1 (2026-11-12) — Claude Code
+- Branch `ccr-4e256bf5-1lspk5` from master b303da5. Objective: archive search that understands, Documenti opening on «Chiedi».
+- Files: supabase/archivio/migrations/20261112{100000_pol_vita_030_ricerca_chiedi,110000_pol_vita_030_ricerca_veloce,120000_pol_vita_030_ricerca_indici}.sql; personal/src/lib/{interpreta.js (new), archivio.js}; personal/src/sezioni/documenti/{Chiedi.jsx (new), Documenti.jsx}; personal/src/personal.css; tests/{archivioChiedi.test.mjs (new), archivioPersonale.test.mjs}; tests/visual/personal-chiedi.{html,fixture.jsx,mjs} (new).
+- Database (applied to archivio-documenti tkcwvjzjkfhcuebrjvsp, additive): extensions unaccent/pg_trgm, table sinonimi_ricerca (RLS proprietario), column documenti.testo_ricerca (backfilled for 7497 rows) + trigger + GIN trigram index, RPC cerca_archivio_v2 (security invoker, execute for authenticated only). Old cerca_documenti/cercaArchivio untouched.
+- Tests: npm test 1696/1696; build:personal PASS; Chromium Pixel 7 personal-chiedi PASS (synthetic).
+- Risks: ranking is rule-based (may need tuning, e.g. fuzzy matches on long words); synonyms are generic seeds; the app needs a new deploy to show Chiedi.
+- Rollback: revert the commits (app goes back to the old view; cercaChiedi already falls back). DB objects are additive and unused after revert; removal would need a PO-approved migration.
+- Next: PO tries Chiedi on the phone; then step 2 Tempo, step 3 Le mie cose; "Mergia" for the PR.

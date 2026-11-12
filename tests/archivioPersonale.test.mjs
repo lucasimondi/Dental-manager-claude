@@ -30,6 +30,9 @@ test('lo schema di Cowork è la base, seguito dalla migrazione di sicurezza', ()
     '20261018100000_pol_vita_015_foto_video.sql',
     '20261018150000_pol_vita_018_stato_suggerimenti_notifiche.sql',
     '20261018200000_pol_vita_022_incassi_studio.sql',
+    '20261112100000_pol_vita_030_ricerca_chiedi.sql',
+    '20261112110000_pol_vita_030_ricerca_veloce.sql',
+    '20261112120000_pol_vita_030_ricerca_indici.sql',
   ]);
 });
 

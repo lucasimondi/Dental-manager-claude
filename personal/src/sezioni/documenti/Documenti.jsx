@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { documentiPersonaliStorici, documentiDaDrive, cercaArchivio, enti as caricaEnti, pratiche as caricaPratiche, cambiaStatoPratica } from '../../lib/archivio.js';
 import { VistaCartelle } from './Cartelle.jsx';
+import { VistaChiedi } from './Chiedi.jsx';
 import { colore, Vuoto, Sezione, Gruppo, Chips, Segmenti, ElencoPratiche } from '../../ui.jsx';
 import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaFoto } from '../../Icone.jsx';
 import { ElencoSelezionabile } from './Selezione.jsx';
@@ -14,7 +15,24 @@ import { BarraFiltri, filtriVuoti, conFiltri } from './Filtri.jsx';
 import { personali } from '../personali/index.jsx';
 
 /* ---------- vista Documenti ---------- */
+// POL-VITA-030: si apre su «Chiedi» (una sola casella che capisce); la vista di prima resta
+// raggiungibile come «Vista classica» e la scelta si ricorda sul telefono.
+const MODO_DOCUMENTI_KEY = 'poliedron-personal-documenti-modo';
+const leggiModoDocumenti = () => { try { return localStorage.getItem(MODO_DOCUMENTI_KEY) === 'classica' ? 'classica' : 'chiedi'; } catch { return 'chiedi'; } };
+
 export function VistaDocumenti({ ctx }) {
+  const [modo, setModoStato] = useState(() => (ctx.sotto ? 'classica' : leggiModoDocumenti()));
+  const setModo = (m) => { setModoStato(m); try { localStorage.setItem(MODO_DOCUMENTI_KEY, m); } catch { /* facoltativo */ } };
+  if (modo === 'chiedi') return <VistaChiedi ctx={ctx} onClassica={() => setModo('classica')} />;
+  return (
+    <>
+      <button type="button" className="pp-chiedi-torna" onClick={() => setModo('chiedi')}>← Torna a «Chiedi»</button>
+      <VistaClassica ctx={ctx} />
+    </>
+  );
+}
+
+function VistaClassica({ ctx }) {
   const { esegui, apri, versione, impostazioni, fascicoli, sotto } = ctx;
   const [scheda, setScheda] = useState(sotto === 'enti' ? 'cartelle' : sotto || 'cartelle');
   const [testo, setTesto] = useState('');
