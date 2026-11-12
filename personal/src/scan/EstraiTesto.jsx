@@ -1,16 +1,17 @@
 // SCAN-HUB (PO 2026-11-12) — «Estrai testo»: foto o PDF → testo modificabile da copiare,
 // condividere o salvare come .txt. Riconoscimento sul telefono (Tesseract italiano, lo stesso di
 // «Testo (OCR)»): il documento non lascia il dispositivo e nessun modello esterno lo legge.
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { elaboraPagina } from '../lib/scansione.js';
 import { tipoFile } from '../lib/pdfUnico.js';
 import { validaFile } from '../pdf/filePdf.js';
 import { scaricaDocumento } from '../lib/condividi.js';
+import { daScannerNativo, inAppAndroid } from '../lib/nativo.js';
 import { IconaFotocamera, IconaFoto, IconaFile, IconaCondividi } from '../Icone.jsx';
 
 export const MAX_FOTO_TESTO = 10;
 
-export function EstraiTesto({ ctx }) {
+export function EstraiTesto({ ctx, fileIniziale = null }) {
   const { mostra } = ctx;
   const [testo, setTesto] = useState('');
   const [nome, setNome] = useState('');
@@ -36,7 +37,7 @@ export function EstraiTesto({ ctx }) {
         if (foto.length !== elenco.length) throw new Error('Scegli solo foto, oppure un PDF alla volta.');
         if (foto.length > MAX_FOTO_TESTO) throw new Error(`Al massimo ${MAX_FOTO_TESTO} foto alla volta.`);
         const immagini = [];
-        for (const f of foto) { avanza('Raddrizzo la foto…'); immagini.push((await elaboraPagina(f, { modo: 'documento', angoli: 'auto' })).url); }
+        for (const f of foto) { avanza('Raddrizzo la foto…'); immagini.push((await elaboraPagina(f, { modo: 'documento', angoli: daScannerNativo(f) ? null : 'auto' })).url); }
         parti = await testoDaImmagini(immagini, { onAvanzamento: avanza });
       }
       const unito = parti.map((p) => p.trim()).filter(Boolean).join('\n\n— — —\n\n');
@@ -46,6 +47,9 @@ export function EstraiTesto({ ctx }) {
     } catch (e) { mostra(e.message || 'Testo non letto.'); }
     finally { setLavoro(null); }
   };
+  // SCAN-ORGANIZZA: dalla scheda di un documento senza testo letto.
+  const avviato = useRef(false);
+  useEffect(() => { if (fileIniziale && !avviato.current) { avviato.current = true; leggi([fileIniziale]); } }, [fileIniziale]); // eslint-disable-line react-hooks/exhaustive-deps
   const fileTxt = () => new File([testo], `${(nome || 'Testo').replace(/[^\w\- ]+/g, '').trim() || 'Testo'}.txt`, { type: 'text/plain' });
   const copia = async () => {
     try { await navigator.clipboard.writeText(testo); mostra('Testo copiato.'); } catch { mostra('Copia non riuscita: seleziona il testo e copialo a mano.'); }
@@ -69,7 +73,7 @@ export function EstraiTesto({ ctx }) {
           <button className="pp-bottone pp-bottone-chiaro" onClick={() => pdf.current.click()}><IconaFile size={20} /> PDF</button>
         </div>
       </fieldset>
-      {!testo && !lavoro && <p className="pp-riga-meta pp-spiegazione">Fotografa un foglio o scegli un PDF: il testo viene letto sul telefono (italiano) e puoi correggerlo, copiarlo o condividerlo. La prima volta scarica il riconoscimento (circa 5 MB).</p>}
+      {!testo && !lavoro && <p className="pp-riga-meta pp-spiegazione">Fotografa un foglio o scegli un PDF: il testo viene letto sul telefono e puoi correggerlo, copiarlo o condividerlo. {inAppAndroid() ? 'Riconoscimento Google ML Kit, anche senza rete.' : 'La prima volta scarica il riconoscimento (circa 5 MB).'}</p>}
       {lavoro && <p className="pp-riga-meta" role="status"><span className="pp-rotella" /> {lavoro}</p>}
       {avviso && <p className="pp-riga-meta">{avviso}</p>}
       {testo && (
@@ -81,6 +85,7 @@ export function EstraiTesto({ ctx }) {
           <div className="scan-output-actions">
             <button className="pp-bottone" onClick={copia}>Copia il testo</button>
             <button className="pp-bottone pp-bottone-chiaro" onClick={condividiTesto}><IconaCondividi size={18} /> Condividi</button>
+            <button className="pp-bottone pp-bottone-chiaro" onClick={() => ctx.apri({ tipo: 'traduci', testo })}>Traduci</button>
             <button className="pp-bottone pp-bottone-chiaro" onClick={() => { const f = fileTxt(); scaricaDocumento(f); ctx.ricorda?.([f]); }}>Salva come .txt</button>
             <button className="pp-testo-link" onClick={() => { setTesto(''); setNome(''); }}>Ricomincia</button>
           </div>

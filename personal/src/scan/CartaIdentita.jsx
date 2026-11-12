@@ -8,6 +8,7 @@ import { condividi, scaricaDocumento } from '../lib/condividi.js';
 import { validaFile } from '../pdf/filePdf.js';
 import { Segmenti } from '../ui.jsx';
 import { Angoli } from '../Angoli.jsx';
+import { daScannerNativo } from '../lib/nativo.js';
 import { IconaFotocamera, IconaFoto, IconaRuota, IconaTaglia, IconaCestino, IconaCondividi } from '../Icone.jsx';
 
 export const TESSERE = [
@@ -19,9 +20,10 @@ export const TESSERE = [
 const FACCE = [['fronte', 'Fronte'], ['retro', 'Retro']];
 
 async function prepara(file, { modo, rotazione = 0, angoli = 'auto' }) {
+  if (angoli === 'auto' && daScannerNativo(file)) angoli = null; // SCAN-MLKIT: già raddrizzata
   let r = await elaboraPagina(file, { modo, rotazione, angoli });
   // Tessera fotografata in verticale: si gira, così fronte e retro stanno orizzontali sul foglio.
-  if (rotazione === 0 && angoli === 'auto' && daGirare(r.larghezza, r.altezza)) {
+  if (rotazione === 0 && !(angoli && typeof angoli === 'object') && daGirare(r.larghezza, r.altezza)) {
     rotazione = 90;
     r = await elaboraPagina(file, { modo, rotazione, angoli });
   }
@@ -157,10 +159,11 @@ export function CartaIdentita({ ctx, sostituisci }) {
           <Segmenti voci={[[false, 'Dimensione reale'], [true, 'Più grande']]} attiva={grande} onScegli={setGrande} />
           <Segmenti voci={[['colore', 'Nitida'], ['documento', 'Bianco e nero'], ['originale', 'Originale']]} attiva={modo} onScegli={setModo} />
           <div className="scan-output-actions">
+            {ctx.salvaIn && <button className="pp-bottone" disabled={!file} onClick={() => ctx.salvaIn([file])}>Salva in I miei documenti</button>}
             <button className="pp-bottone" disabled={!file} onClick={condividiPdf}><IconaCondividi size={18} /> Condividi PDF</button>
             <button className="pp-bottone pp-bottone-chiaro" disabled={!file} onClick={() => { scaricaDocumento(file); ctx.ricorda?.([file]); }}>Scarica PDF</button>
             <button className="pp-bottone pp-bottone-chiaro" disabled={!file} onClick={() => { ctx.ricorda?.([file]); ctx.apri({ tipo: 'pdf', file }); }}>Apri · Firma</button>
-            <button className="pp-bottone pp-bottone-chiaro" disabled={!file} onClick={() => { ctx.ricorda?.([file]); sostituisci({ tipo: 'carica', file, opzioni: { descrizione: nome, fascicolo: 'identita', portafoglio: true, scelto: true } }); }}>Archivia nei documenti personali</button>
+            <button className="pp-bottone pp-bottone-chiaro" disabled={!file} onClick={() => { ctx.ricorda?.([file], { archiviato: true }); sostituisci({ tipo: 'carica', file, opzioni: { descrizione: nome, fascicolo: 'identita', portafoglio: true, scelto: true } }); }}>Archivia nei documenti personali</button>
           </div>
         </>
       )}

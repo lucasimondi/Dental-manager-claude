@@ -4686,3 +4686,41 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Risks: Recenti live in browser storage (cleared if the user clears site data); ID straightening needs a card lighter than the background (corners can be set by hand); OCR speed on low-end phones.
 - Rollback: revert the commit; Recenti store is simply unused afterwards.
 - Next: PO tries Scan on the phone; decide on Traduci / Converti in Word-Excel (need a model or server) and Fototessera; "Mergia" for the PR.
+
+## Handoff — SCAN-HUB merged (2026-11-12) — Claude Code
+- PR308 squash-merged as b303da5 after PO "Mergia"; checks verify ×3, pixel7-pdf, iphone-agenda, Netlify, Vercel preview all green. Production deployment dpl_BsFkU8WCRAoaycC5ggHd5xGvLytV started on Vercel.
+
+## Handoff — SCAN-MLKIT (2026-11-12) — Claude Code
+- Branch `ccr-01036c30-3eoy2l`. Files: android/scan/** (new app), .github/workflows/android-scan.yml (new), .github/workflows/android-agenda.yml (paths narrowed to android/agenda/**), personal/src/lib/nativo.js (new), personal/src/lib/condividi.js, personal/src/scan/{Scan,ScanHome,CartaIdentita,EstraiTesto}.jsx, personal/src/Aggiungi.jsx, tests/scanHub.test.mjs.
+- Database: none. Deployment: web build as usual; APK via GitHub release `scan-android` after merge (debug-signed, test only).
+- Tests: npm test 1687/1687; builds PASS; Chromium visual PASS. Android build only in CI.
+- Risks: ML Kit document scanner needs Google Play Services (fallback to normal camera); debug key changes per CI build (uninstall before update until a fixed signing key is configured — PO decision); WebView login separate from Chrome.
+- Rollback: revert the PR and uninstall the app; the web Scan without the app is unchanged.
+- Next: CI APK build; PO installs poliedra-scan.apk and tries the scanner; "Mergia".
+
+## Handoff — SCAN-LIBRERIA (2026-11-12) — Claude Code
+- Branch `ccr-01036c30-3eoy2l` (PR309). Files: personal/src/lib/libreria.js (new; lib/recenti.js removed with migration), personal/src/scan/{Documenti.jsx, miniaturaFile.js} (new), personal/src/scan/{Scan,ScanHome,CartaIdentita}.jsx, personal/src/Aggiungi.jsx, personal/src/lib/{pdfUnico,fronteRetro,condividi}.js, personal/src/pro.css, tests/scanHub.test.mjs, tests/visual/scan-hub.mjs, coordination docs.
+- Database: none. PO decision recorded: WPS-like look for Scan.
+- Tests: 1687/1687; builds PASS; Chromium visual PASS.
+- Rollback: revert the commit (library data stays in the browser, unused).
+- Next: PO tries on phone; step 2 OCR with ML Kit.
+
+## Handoff — SCAN-OCR-MLKIT + SCAN-FIRMA (2026-11-12) — Claude Code
+- Branch `ccr-01036c30-3eoy2l` (PR309). Files: android/scan/app/{build.gradle, src/main/java/it/poliedrasoft/scan/MainActivity.java}, .github/workflows/android-scan.yml, personal/src/lib/nativo.js, personal/src/pdf/ocr.js, personal/src/scan/{Scan,EstraiTesto}.jsx, tests/scanHub.test.mjs, tests/visual/scan-app.mjs (new), coordination docs.
+- Database: none. Secrets: SCAN_KEYSTORE_B64 / SCAN_KEYSTORE_PASSWORD to be added by the PO (values delivered privately, never committed).
+- Tests: 1689/1689; builds PASS; three Chromium visual tests PASS.
+- Rollback: revert; without the secrets CI signs with the debug key as before.
+
+## Handoff — SCAN-ESPORTA (2026-11-12) — Claude Code
+- Branch `ccr-01036c30-3eoy2l` (PR309). Files: personal/src/scan/{esporta.js (new), Documenti.jsx}, package.json + package-lock.json (docx 9.5.1), tests/scanHub.test.mjs, tests/visual/scan-app.mjs, coordination docs.
+- Database: none. Tests 1690/1690; builds PASS; visual PASS. Rollback: revert.
+- Next: step 4 (Traduci with ML Kit Translation, settings); PO decisions on PDF password and Excel.
+
+## Handoff — SCAN-TRADUCI + SCAN-IMPOSTAZIONI (2026-11-12) — Claude Code
+- Branch `ccr-01036c30-3eoy2l` (PR309). Files: android/scan/app/{build.gradle, MainActivity.java}, personal/src/lib/nativo.js, personal/src/scan/{Traduci.jsx, ImpostazioniScan.jsx, impostazioniScan.js} (new), personal/src/scan/{Scan,ScanHome,EstraiTesto,Documenti}.jsx, personal/src/Icone.jsx, personal/src/pro.css, tests/scanHub.test.mjs, tests/visual/scan-app.mjs.
+- Database: none. Tests 1692/1692; builds PASS; visual PASS. Rollback: revert.
+
+## Handoff — SCAN-ORGANIZZA (2026-11-12) — Claude Code
+- Branch `ccr-01036c30-3eoy2l` (PR309). Files: personal/src/scan/{categorie.js, Scheda.jsx, PdfInWord.jsx} (new), personal/src/scan/{Documenti,Scan,ScanHome,EstraiTesto,CartaIdentita}.jsx, personal/src/lib/libreria.js, personal/src/Aggiungi.jsx, personal/src/pro.css, tests/scanHub.test.mjs, tests/visual/{scan-hub,scan-app}.mjs.
+- Database: none (device library only). Tests 1695/1695; builds PASS; visual PASS. Rollback: revert (new fields are ignored by the previous code).
+- Next: PO review on phone; "Mergia" for PR309 when satisfied.
