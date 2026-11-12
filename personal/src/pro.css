@@ -231,3 +231,18 @@
 .scan-nuova-cartella { display: flex; gap: 8px; margin: 4px 0; }
 .scan-nuova-cartella input, .scan-campo { flex: 1; min-width: 0; min-height: 46px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--pp-linea); background: var(--pp-superficie); color: var(--pp-inchiostro); font: inherit; font-size: 16px; box-sizing: border-box; }
 .scan-pericolo { background: var(--pp-rosso) !important; color: #fff !important; }
+
+/* SCAN-TRADUCI / SCAN-IMPOSTAZIONI (passo 4) */
+.pp-scan .pp-testata { position: relative; }
+.scan-ingranaggio { position: absolute; right: 12px; top: calc(10px + env(safe-area-inset-top)); width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--pp-superficie); color: var(--pp-inchiostro); box-shadow: var(--pp-ombra); cursor: pointer; }
+.scan-lingue { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 8px; margin: 12px 0; }
+.scan-lingue > span { padding-bottom: 12px; color: var(--pp-grigio); font-size: 18px; }
+.scan-lingue label { display: grid; gap: 4px; font-size: 13px; color: var(--pp-grigio); }
+.scan-lingue select, .scan-impostazione select, .scan-impostazione-campo input { min-height: 44px; padding: 0 10px; border-radius: 12px; border: 1px solid var(--pp-linea); background: var(--pp-superficie); color: var(--pp-inchiostro); font: inherit; font-size: 15px; min-width: 0; }
+.scan-testo-breve { min-height: 140px; }
+.scan-impostazioni h2 { margin: 20px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--pp-grigio); }
+.scan-impostazione { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px; margin-bottom: 8px; border-radius: 14px; background: var(--pp-superficie); border: 1px solid var(--pp-linea); }
+.scan-impostazione > span { display: grid; gap: 2px; min-width: 0; }
+.scan-impostazione small { color: var(--pp-grigio); font-size: 13px; }
+.scan-impostazione input[type="checkbox"] { width: 46px; height: 26px; flex-shrink: 0; accent-color: #1f6fe5; }
+.scan-impostazione-campo { flex-direction: column; align-items: stretch; }

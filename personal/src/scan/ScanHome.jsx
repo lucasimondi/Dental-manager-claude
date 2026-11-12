@@ -7,7 +7,7 @@ import { elencoDocumenti } from '../lib/libreria.js';
 import { RigaDocumento, apriFileDocumento, condividiDocumenti } from './Documenti.jsx';
 import {
   IconaScansiona, IconaFile, IconaTessera, IconaTesto, IconaFotocamera, IconaFoto, IconaDocumenti,
-  IconaPortafoglio, IconaGraffetta,
+  IconaPortafoglio, IconaGraffetta, IconaTraduci,
 } from '../Icone.jsx';
 
 export const STRUMENTI_SCAN = [
@@ -16,7 +16,7 @@ export const STRUMENTI_SCAN = [
   ['firma', 'Firma PDF', IconaFile],
   ['unisci', 'Unisci in un PDF', IconaGraffetta],
   ['comprimi', 'Comprimi PDF', IconaFile],
-  ['pagine', 'Pagine PDF', IconaFile],
+  ['traduci', 'Traduci', IconaTraduci],
   ['archivio', 'Archivio', IconaDocumenti],
   ['personali', 'Documenti personali', IconaPortafoglio],
 ];

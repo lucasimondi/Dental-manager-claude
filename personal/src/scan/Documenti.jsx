@@ -151,6 +151,7 @@ export function Documenti({ ctx, versione, onCambia }) {
                   <button onClick={() => { setMenu(null); setNome(d.nome.replace(/\.[^.]+$/, '')); setFoglio({ tipo: 'rinomina', d }); }}>Rinomina</button>
                   <button onClick={() => { setMenu(null); setFoglio({ tipo: 'sposta', ids: [d.id] }); }}>Sposta in una cartella</button>
                   <button onClick={() => { setMenu(null); setFoglio({ tipo: 'esporta', d }); }}>Esporta come Word, JPG, testo</button>
+                  <button onClick={prova(async () => { setMenu(null); ctx.apri({ tipo: 'traduci', file: await fileDocumento(d.id) }); })}>Traduci</button>
                   {ePdf(d) && <button onClick={prova(async () => { setMenu(null); ctx.apri({ tipo: 'scanner', files: [await fileDocumento(d.id)] }); })}>Aggiungi pagine</button>}
                   <button onClick={prova(async () => { setMenu(null); scaricaDocumento(await fileDocumento(d.id)); })}>Salva sul telefono</button>
                   {(ePdf(d) || (d.tipo || '').startsWith('image/')) && <button onClick={prova(async () => { setMenu(null); ctx.apri({ tipo: 'carica', file: await fileDocumento(d.id), opzioni: { descrizione: d.nome.replace(/\.[^.]+$/, ''), scelto: true, soloArchiviazione: true, nonAnalizzare: true, destinazione: true } }); })}>Archivia in Personal o Studio</button>}

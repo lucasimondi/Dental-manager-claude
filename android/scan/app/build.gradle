@@ -23,4 +23,7 @@ dependencies {
     implementation 'com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1'
     // SCAN-OCR-MLKIT: riconoscimento del testo di Google (alfabeto latino), modello incluso nell'app: funziona subito e senza rete.
     implementation 'com.google.mlkit:text-recognition:16.0.1'
+    // SCAN-TRADUCI: traduzione sul telefono (modello della lingua scaricato da Google la prima volta, ~30 MB) e riconoscimento della lingua.
+    implementation 'com.google.mlkit:translate:17.0.3'
+    implementation 'com.google.mlkit:language-id:17.0.6'
 }

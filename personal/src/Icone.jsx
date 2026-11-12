@@ -44,3 +44,5 @@ export const IconaAltro = (p) => <Svg {...p} tipo="altro"><rect x="4" y="4" widt
 // SCAN-HUB: tessera (carta d'identità fronte/retro) e testo (estrai testo).
 export const IconaTessera = (p) => <Svg {...p} tipo="tessera"><rect x="3" y="5" width="18" height="14" rx="2.5" /><circle cx="8.5" cy="11" r="2" /><path d="M5.5 16c.6-1.6 1.7-2.3 3-2.3s2.4.7 3 2.3" /><path d="M14 10h4.5M14 13.5h3" /></Svg>;
 export const IconaTesto = (p) => <Svg {...p} tipo="testo"><path d="M4 7V5h16v2" /><path d="M12 5v14" /><path d="M9 19h6" /><path d="M3 3h3M3 3v3M21 3h-3M21 3v3M3 21h3M3 21v-3M21 21h-3M21 21v-3" /></Svg>;
+// SCAN-TRADUCI
+export const IconaTraduci = (p) => <Svg {...p} tipo="traduci"><path d="M4 5h9M8.5 3v2M6 5c.6 3 2.6 5.6 5 7" /><path d="M11 5c-.7 3.6-3.3 6.4-6.5 8" /><path d="M13 20l4-9 4 9M14.4 17h5.2" /></Svg>;

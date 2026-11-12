@@ -4715,3 +4715,7 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Branch `ccr-01036c30-3eoy2l` (PR309). Files: personal/src/scan/{esporta.js (new), Documenti.jsx}, package.json + package-lock.json (docx 9.5.1), tests/scanHub.test.mjs, tests/visual/scan-app.mjs, coordination docs.
 - Database: none. Tests 1690/1690; builds PASS; visual PASS. Rollback: revert.
 - Next: step 4 (Traduci with ML Kit Translation, settings); PO decisions on PDF password and Excel.
+
+## Handoff — SCAN-TRADUCI + SCAN-IMPOSTAZIONI (2026-11-12) — Claude Code
+- Branch `ccr-01036c30-3eoy2l` (PR309). Files: android/scan/app/{build.gradle, MainActivity.java}, personal/src/lib/nativo.js, personal/src/scan/{Traduci.jsx, ImpostazioniScan.jsx, impostazioniScan.js} (new), personal/src/scan/{Scan,ScanHome,EstraiTesto,Documenti}.jsx, personal/src/Icone.jsx, personal/src/pro.css, tests/scanHub.test.mjs, tests/visual/scan-app.mjs.
+- Database: none. Tests 1692/1692; builds PASS; visual PASS. Rollback: revert.

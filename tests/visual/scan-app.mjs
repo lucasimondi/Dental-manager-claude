@@ -22,6 +22,7 @@ try {
       addEventListener: (t, fn) => ascolti.push(fn),
       postMessage: (s) => {
         const m = JSON.parse(s); window.__inviati.push(m.azione);
+        if (m.azione === 'traduci') setTimeout(() => ascolti.forEach((fn) => fn({ data: JSON.stringify({ tipo: 'traduzione', id: m.id, testo: m.testo.replace('FATTURA', 'INVOICE').replace('Totale', 'Total'), da: 'it' }) })), 50);
         if (m.azione === 'ocr') setTimeout(() => ascolti.forEach((fn) => fn({ data: JSON.stringify({ tipo: 'ocr', id: m.id,
           pagine: m.immagini.map(() => ({ testo: 'FATTURA ENEL\nTotale 120 euro', larghezza: 1000, altezza: 1300, parole: [{ testo: 'FATTURA', x0: 100, y0: 100, x1: 400, y1: 160 }, { testo: 'ENEL', x0: 420, y0: 100, x1: 600, y1: 160 }] })) }) })), 50);
       },
@@ -40,6 +41,16 @@ try {
   await page.getByRole('button', { name: 'Condividi' }).click();
   await page.waitForFunction(() => window.__inviati.includes('testo'));
   await page.screenshot({ path: `${out}/1-testo-mlkit.png` });
+  // SCAN-TRADUCI: from Estrai testo to Traduci (ML Kit on the phone), result saved in Word.
+  await page.locator('.scan-testo').getByRole('button', { name: 'Traduci' }).click();
+  await page.locator('.pp-pagina-titolo', { hasText: 'Traduci' }).waitFor();
+  await page.getByRole('button', { name: /^Traduci in Inglese/ }).click();
+  await page.waitForFunction(() => [...document.querySelectorAll('textarea')].some((t) => /INVOICE ENEL/.test(t.value)));
+  assert.match(await page.locator('.scan-traduci').textContent(), /da Italiano/);
+  await page.screenshot({ path: `${out}/1b-traduci.png` });
+  await page.getByRole('button', { name: 'Salva in Word' }).click();
+  await page.locator('.pp-toast', { hasText: 'Traduzione Inglese' }).waitFor();
+  await page.locator('.pp-pagina:not([hidden]) .pp-pagina-barra button').first().click();
   await page.locator('.pp-pagina-barra button').first().click();
 
   // Scanner with «Testo ricercabile (OCR)» → saved in a folder → found by a word of its content.
@@ -64,18 +75,29 @@ try {
   await page.screenshot({ path: `${out}/3-esporta.png` });
   await page.locator('.scan-voce', { hasText: 'Word (.docx)' }).click();
   await page.locator('.scan-documenti .scan-recente', { hasText: 'Scansione' }).nth(1).waitFor({ timeout: 30000 });
-  await page.waitForFunction(() => document.querySelectorAll('.scan-documenti .scan-recente').length === 2);
+  await page.waitForFunction(() => document.querySelectorAll('.scan-documenti .scan-recente').length === 3); // + Word of the translation
   assert.match(await page.locator('.scan-documenti').textContent(), /DOCX/);
   await page.getByRole('button', { name: /^Altre azioni per Scansione.*\.pdf/ }).click();
   await page.getByRole('button', { name: 'Esporta come Word, JPG, testo' }).click();
   await page.locator('.scan-voce', { hasText: 'Immagini JPG' }).click();
-  await page.waitForFunction(() => document.querySelectorAll('.scan-documenti .scan-recente').length === 3, null, { timeout: 30000 });
+  await page.waitForFunction(() => document.querySelectorAll('.scan-documenti .scan-recente').length === 4, null, { timeout: 30000 });
   await page.screenshot({ path: `${out}/4-esportati.png` });
   await page.getByRole('button', { name: /^Altre azioni per Scansione.*\.pdf/ }).click();
   await page.getByRole('button', { name: 'Aggiungi pagine' }).click();
   await page.locator('.pp-pagina-titolo', { hasText: 'Scanner' }).waitFor();
   await page.locator('.pp-scansione-pagina').first().waitFor();
   assert.equal(await page.locator('.pp-scansione-pagina').count(), 1, 'existing PDF loaded in the scanner');
+  // SCAN-IMPOSTAZIONI: the gear opens the settings; the default folder is chosen there.
+  await page.locator('.pp-pagina-barra button').first().click();
+  await page.getByRole('button', { name: 'Impostazioni di Scan' }).click();
+  await page.locator('.pp-pagina-titolo', { hasText: 'Impostazioni di Scan' }).waitFor();
+  await page.getByLabel('Inizio del nome').fill('Studio');
+  assert.match(await page.locator('.scan-impostazioni').textContent(), /«Studio \d\d-\d\d-\d{4}/);
+  await page.getByLabel('Lingua di arrivo predefinita').selectOption('fr');
+  assert.equal(await page.evaluate(() => localStorage.getItem('scan-lingua')), 'fr');
+  await page.waitForTimeout(600);
+  assert.equal(await page.locator('.scan-ingranaggio').count(), 0, 'gear hidden while a page is open');
+  await page.screenshot({ path: `${out}/5-impostazioni.png` });
   assert.deepEqual(errors, []);
   console.log('scan-app PASS ·', await page.evaluate(() => window.__inviati.join(',')));
 } finally { await browser?.close(); server.kill(); }

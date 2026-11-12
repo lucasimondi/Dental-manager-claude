@@ -82,6 +82,7 @@ export function EstraiTesto({ ctx }) {
           <div className="scan-output-actions">
             <button className="pp-bottone" onClick={copia}>Copia il testo</button>
             <button className="pp-bottone pp-bottone-chiaro" onClick={condividiTesto}><IconaCondividi size={18} /> Condividi</button>
+            <button className="pp-bottone pp-bottone-chiaro" onClick={() => ctx.apri({ tipo: 'traduci', testo })}>Traduci</button>
             <button className="pp-bottone pp-bottone-chiaro" onClick={() => { const f = fileTxt(); scaricaDocumento(f); ctx.ricorda?.([f]); }}>Salva come .txt</button>
             <button className="pp-testo-link" onClick={() => { setTesto(''); setNome(''); }}>Ricomincia</button>
           </div>

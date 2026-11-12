@@ -161,3 +161,30 @@ test('Esporta: paragraphs from OCR text and a real .docx from a text file', asyn
   assert.equal(txt.name, 'Nota.txt'); assert.equal(await txt.text(), 'ciao');
   await assert.rejects(wordDa(new File(['  '], 'Vuoto.txt', { type: 'text/plain' })), /Nessun testo/);
 });
+
+// SCAN-TRADUCI + SCAN-IMPOSTAZIONI (passo 4)
+test('Traduci: request through the bridge, detected language returned, unavailable outside the app', async () => {
+  const { traduciNativo } = await import('../personal/src/lib/nativo.js');
+  const inviati = []; let ascolto = null;
+  const p = { postMessage: (m) => inviati.push(JSON.parse(m)), addEventListener: (t, fn) => { ascolto = fn; } };
+  const r = traduciNativo('Buongiorno', { a: 'en' }, p);
+  assert.deepEqual({ azione: inviati[0].azione, testo: inviati[0].testo, da: inviati[0].da, a: inviati[0].a }, { azione: 'traduci', testo: 'Buongiorno', da: 'auto', a: 'en' });
+  ascolto({ data: JSON.stringify({ tipo: 'traduzione', id: inviati[0].id, testo: 'Good morning', da: 'it' }) });
+  assert.deepEqual(await r, { testo: 'Good morning', da: 'it' });
+  const ko = traduciNativo('x', {}, p);
+  ascolto({ data: JSON.stringify({ tipo: 'traduzione', id: inviati[1].id, errore: 'modello non scaricato' }) });
+  await assert.rejects(ko, /modello non scaricato/);
+  await assert.rejects(traduciNativo('x', {}, null), /app Poliedra Scan/);
+  const java = readFileSync('android/scan/app/src/main/java/it/poliedrasoft/scan/MainActivity.java', 'utf8');
+  assert.match(java, /Translation\.getClient/); assert.match(java, /LanguageIdentification\.getClient/); assert.match(java, /downloadModelIfNeeded/);
+});
+test('Impostazioni di Scan: defaults, booleans compatible with the scanner keys, unknown keys refused', async () => {
+  const { leggiImpostazione, salvaImpostazione, PREDEFINITE, LINGUE } = await import('../personal/src/scan/impostazioniScan.js');
+  const m = new Map(); const memoria = { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, v) };
+  assert.equal(leggiImpostazione('scan-raddrizza-auto', memoria), true);
+  salvaImpostazione('scan-ocr', true, memoria); assert.equal(m.get('scan-ocr'), '1'); assert.equal(leggiImpostazione('scan-ocr', memoria), true);
+  salvaImpostazione('scan-cartella', 'Salute', memoria); assert.equal(leggiImpostazione('scan-cartella', memoria), 'Salute');
+  assert.throws(() => salvaImpostazione('altro', 1, memoria));
+  assert.equal(PREDEFINITE['scan-prefisso'], 'Scansione'); assert.ok(LINGUE.some(([c]) => c === 'en'));
+  assert.match(readFileSync('personal/src/Aggiungi.jsx', 'utf8'), /useScelta\('scan-ocr', false\)/, 'same key as the scanner checkbox');
+});

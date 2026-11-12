@@ -49,9 +49,9 @@ function stato(p) {
   const ascolta = (e) => {
     let m; try { m = JSON.parse(e.data); } catch { return; } // messaggio non valido: ignorato
     if (m.tipo === 'file' && Array.isArray(m.files) && m.files.length) s.onFiles?.(m.files.map(daBase64));
-    else if (m.tipo === 'ocr' && s.attese.has(m.id)) {
+    else if (m.id && s.attese.has(m.id)) {
       const { ok, ko } = s.attese.get(m.id); s.attese.delete(m.id);
-      if (m.errore) ko(new Error(`Riconoscimento non riuscito: ${m.errore}`)); else ok(m.pagine || []);
+      if (m.errore) ko(new Error(m.errore)); else ok(m);
     }
   };
   if (typeof p.addEventListener === 'function') p.addEventListener('message', ascolta); else p.onmessage = ascolta;
@@ -59,16 +59,27 @@ function stato(p) {
 }
 const base64Url = (u) => String(u).replace(/^data:[^,]*,/, '');
 // immagini: data URL JPEG/PNG. Restituisce [{ testo, larghezza, altezza, parole: [{ testo, x0, y0, x1, y1 }] }].
-export function ocrNativo(immagini, p = ponte(), attesaMs = 120000) {
-  if (!p) return Promise.reject(new Error('OCR del telefono non disponibile.'));
+// Richiesta all'app con risposta (stesso id): OCR e traduzione.
+function richiesta(azione, dati, p, attesaMs, lento) {
   const s = stato(p);
   s.n += 1;
-  const id = `ocr-${Date.now()}-${s.n}`;
+  const id = `${azione}-${Date.now()}-${s.n}`;
   return new Promise((ok, ko) => {
-    const t = setTimeout(() => { s.attese.delete(id); ko(new Error('Riconoscimento troppo lento: riprova.')); }, attesaMs);
+    const t = setTimeout(() => { s.attese.delete(id); ko(new Error(lento)); }, attesaMs);
     s.attese.set(id, { ok: (v) => { clearTimeout(t); ok(v); }, ko: (e) => { clearTimeout(t); ko(e); } });
-    p.postMessage(JSON.stringify({ azione: 'ocr', id, immagini: immagini.map(base64Url) }));
+    p.postMessage(JSON.stringify({ azione, id, ...dati }));
   });
+}
+export function ocrNativo(immagini, p = ponte(), attesaMs = 120000) {
+  if (!p) return Promise.reject(new Error('OCR del telefono non disponibile.'));
+  return richiesta('ocr', { immagini: immagini.map(base64Url) }, p, attesaMs, 'Riconoscimento troppo lento: riprova.')
+    .then((m) => m.pagine || [], (e) => { throw new Error(`Riconoscimento non riuscito: ${e.message}`); });
+}
+// SCAN-TRADUCI: traduzione con ML Kit sul telefono. da: codice lingua o 'auto'. → { testo, da }
+export function traduciNativo(testo, { da = 'auto', a = 'en' } = {}, p = ponte(), attesaMs = 300000) {
+  if (!p) return Promise.reject(new Error('La traduzione funziona nell\'app Poliedra Scan per Android.'));
+  return richiesta('traduci', { testo, da, a }, p, attesaMs, 'Traduzione troppo lenta: riprova (la prima volta scarica la lingua).')
+    .then((m) => ({ testo: m.testo || '', da: m.da || da }), (e) => { throw new Error(`Traduzione non riuscita: ${e.message}`); });
 }
 
 // Da chiamare una volta all'avvio: navigator.share passa dall'app e i file in arrivo vanno a `onFiles`.

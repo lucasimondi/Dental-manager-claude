@@ -21,9 +21,12 @@ import { nomeAutomatico, salvaDocumenti, aggiungiDettagli, proteggiMemoria, elen
 import { ScanHome } from './ScanHome.jsx';
 import { Documenti, SceltaCartella } from './Documenti.jsx';
 import { creaMiniatura } from './miniaturaFile.js';
-import { IconaOggi, IconaDocumenti } from '../Icone.jsx';
+import { IconaOggi, IconaDocumenti, IconaImpostazioni } from '../Icone.jsx';
 import { CartaIdentita } from './CartaIdentita.jsx';
 import { EstraiTesto } from './EstraiTesto.jsx';
+import { Traduci } from './Traduci.jsx';
+import { ImpostazioniScan } from './ImpostazioniScan.jsx';
+import { leggiImpostazione } from './impostazioniScan.js';
 
 // SCAN-HUB (PO 2026-11-12): le pagine proprie di Scan, aperte dalla Home sopra di essa. Le altre
 // (archiviazione, gestore PDF) sono quelle di Personal (sezioni/index.js).
@@ -31,6 +34,8 @@ const PAGINE_SCAN = {
   scanner: { titolo: 'Scanner', modulo: true, render: (p, { ctx }) => <PaginaScansione files={p.files} ctx={ctx} sostituisci={ctx.apri} opzioni={{ destinazione: true, nomePredefinito: p.nomeAuto }} /> },
   tessera: { titolo: "Carta d'identità", modulo: true, render: (p, { ctx }) => <CartaIdentita ctx={ctx} sostituisci={ctx.apri} /> },
   testo: { titolo: 'Estrai testo', modulo: true, render: (p, { ctx }) => <EstraiTesto ctx={ctx} /> },
+  traduci: { titolo: 'Traduci', modulo: true, render: (p, { ctx }) => <Traduci ctx={ctx} testoIniziale={p.testo} fileIniziale={p.file} /> },
+  impostazioniScan: { titolo: 'Impostazioni di Scan', render: () => <ImpostazioniScan /> },
   pdfStrumento: { titolo: 'Gestore PDF', modulo: true, render: (p, { ctx, chiudi, sostituisci }) => <PaginaPdf strumento={p.strumento} file={p.file} ctx={ctx} chiudi={chiudi} sostituisci={sostituisci} /> },
 };
 const paginaScan = (tipo) => PAGINE_SCAN[tipo] || pagina(tipo);
@@ -81,7 +86,7 @@ export function Scan({ email }) {
     try { await fn(); } catch (e) { setErrore(e.message || String(e)); } finally { setOccupato((n) => n - 1); }
   }, []);
   const aggiorna = useCallback(() => setVersione((v) => v + 1), []);
-  const apri = useCallback((p) => { if (p.tipo === 'scanner' && !p.nomeAuto) p = { ...p, nomeAuto: nomeAutomatico() }; contatore.current += 1; setErrore(null); setPagine((st) => [...st, { ...p, chiave: contatore.current }]); }, []);
+  const apri = useCallback((p) => { if (p.tipo === 'scanner' && !p.nomeAuto) p = { ...p, nomeAuto: nomeAutomatico(new Date(), leggiImpostazione('scan-prefisso')) }; contatore.current += 1; setErrore(null); setPagine((st) => [...st, { ...p, chiave: contatore.current }]); }, []);
   const indietro = useCallback(() => { setErrore(null); setPagine((st) => st.slice(0, -1)); }, []);
   const sostituisci = useCallback((p) => {
     contatore.current += 1;
@@ -122,7 +127,7 @@ export function Scan({ email }) {
     // SCAN-LIBRERIA: ogni file creato, condiviso, scaricato o archiviato finisce in «I miei documenti»;
     // la miniatura si disegna subito dopo, senza far aspettare.
     ricorda: (files, opzioni) => {
-      salvaDocumenti(files, opzioni).then(async (ids) => {
+      salvaDocumenti(files, { cartella: leggiImpostazione('scan-cartella'), ...opzioni }).then(async (ids) => {
         setRecenti((n) => n + 1);
         for (const [i, id] of ids.entries()) { const m = await creaMiniatura(files[i]); if (m) await aggiungiDettagli(id, { miniatura: m }); }
         setRecenti((n) => n + 1);
@@ -144,7 +149,7 @@ export function Scan({ email }) {
   // SCAN-HUB: dalla griglia della Home allo strumento.
   function strumento(id) {
     if (id === 'scanner' || id === 'unisci') apri({ tipo: 'scanner' });
-    else if (id === 'tessera' || id === 'testo') apri({ tipo: id });
+    else if (id === 'tessera' || id === 'testo' || id === 'traduci') apri({ tipo: id });
     else if (id === 'pdf') apri({ tipo: 'pdf' });
     else if (id === 'firma' || id === 'comprimi' || id === 'pagine') apri({ tipo: 'pdfStrumento', strumento: id });
     else if (id === 'archivio') vai('documenti');
@@ -157,6 +162,7 @@ export function Scan({ email }) {
         <div className="pp-testata-titoli">
           <a className="pp-brand" href={indirizzoPersonal()} aria-label="Apri Poliedron Personal"><span className="pp-brand-moderno"><img src="/scan-192.png" alt="" width="24" height="24" /></span><span>Poliedron <small>SCAN</small></span></a>
           <h1>{vista === 'documenti' ? 'I miei documenti' : 'Scan'}</h1>
+          {!sopra && <button className="scan-ingranaggio" aria-label="Impostazioni di Scan" onClick={() => apri({ tipo: 'impostazioniScan' })}><IconaImpostazioni size={22} /></button>}
         </div>
       </header>
       {occupato > 0 && <div className="pp-barra-caricamento" aria-hidden="true" />}

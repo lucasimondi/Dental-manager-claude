@@ -22,6 +22,12 @@ import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions;
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning;
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult;
 import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.common.model.DownloadConditions;
+import com.google.mlkit.nl.languageid.LanguageIdentification;
+import com.google.mlkit.nl.translate.TranslateLanguage;
+import com.google.mlkit.nl.translate.Translation;
+import com.google.mlkit.nl.translate.Translator;
+import com.google.mlkit.nl.translate.TranslatorOptions;
 import com.google.mlkit.vision.text.Text;
 import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.text.TextRecognizer;
@@ -178,6 +184,7 @@ public final class MainActivity extends Activity {
         if ("pronto".equals(azione)) { pagina = reply; consegna(); }
         else if ("condividi".equals(azione)) condividi(m.getJSONArray("files"));
         else if ("salva".equals(azione)) salva(m.getJSONObject("file"));
+        else if ("traduci".equals(azione)) traduci(m.optString("id"), m.optString("testo"), m.optString("da", "auto"), m.optString("a", "en"), reply);
         else if ("ocr".equals(azione)) ocr(m.optString("id"), m.getJSONArray("immagini"), 0, new JSONArray(), reply);
         else if ("testo".equals(azione)) {
             Intent i = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, m.optString("testo"));
@@ -253,6 +260,46 @@ public final class MainActivity extends Activity {
     private void erroreOcr(String id, Exception e, JavaScriptReplyProxy reply) {
         try { reply.postMessage(new JSONObject().put("tipo", "ocr").put("id", id).put("errore", String.valueOf(e.getMessage())).toString()); }
         catch (Exception ignored) { }
+    }
+
+    // ---- SCAN-TRADUCI: traduzione con ML Kit sul telefono, paragrafo per paragrafo ----
+    static final int MAX_TESTO = 30000;
+    private void traduci(String id, String testo, String da, String a, JavaScriptReplyProxy reply) {
+        if (testo == null || testo.trim().isEmpty()) { rispostaTraduzione(id, null, null, "nessun testo", reply); return; }
+        String t = testo.length() > MAX_TESTO ? testo.substring(0, MAX_TESTO) : testo;
+        String arrivo = TranslateLanguage.fromLanguageTag(a);
+        if (arrivo == null) { rispostaTraduzione(id, null, null, "lingua di arrivo non supportata", reply); return; }
+        if (!"auto".equals(da)) { avviaTraduzione(id, t, TranslateLanguage.fromLanguageTag(da), arrivo, reply); return; }
+        LanguageIdentification.getClient().identifyLanguage(t.length() > 2000 ? t.substring(0, 2000) : t)
+            .addOnSuccessListener(codice -> avviaTraduzione(id, t, "und".equals(codice) ? null : TranslateLanguage.fromLanguageTag(codice), arrivo, reply))
+            .addOnFailureListener(e -> rispostaTraduzione(id, null, null, "lingua non riconosciuta: " + e.getMessage(), reply));
+    }
+    private void avviaTraduzione(String id, String testo, String partenza, String arrivo, JavaScriptReplyProxy reply) {
+        if (partenza == null) { rispostaTraduzione(id, null, null, "lingua del testo non riconosciuta: sceglila tu", reply); return; }
+        if (partenza.equals(arrivo)) { rispostaTraduzione(id, testo, partenza, null, reply); return; }
+        Translator traduttore = Translation.getClient(new TranslatorOptions.Builder().setSourceLanguage(partenza).setTargetLanguage(arrivo).build());
+        traduttore.downloadModelIfNeeded(new DownloadConditions.Builder().build())
+            .addOnSuccessListener(v -> {
+                String[] paragrafi = testo.split("\n");
+                String[] fatti = new String[paragrafi.length];
+                paragrafo(traduttore, paragrafi, fatti, 0, () -> { traduttore.close(); rispostaTraduzione(id, String.join("\n", fatti), partenza, null, reply); },
+                    e -> { traduttore.close(); rispostaTraduzione(id, null, partenza, e.getMessage(), reply); });
+            })
+            .addOnFailureListener(e -> { traduttore.close(); rispostaTraduzione(id, null, partenza, "modello della lingua non scaricato (serve internet la prima volta): " + e.getMessage(), reply); });
+    }
+    interface Fatto { void ok(); }
+    interface Errore { void ko(Exception e); }
+    private void paragrafo(Translator t, String[] p, String[] out, int i, Fatto fatto, Errore errore) {
+        if (i >= p.length) { fatto.ok(); return; }
+        if (p[i].trim().isEmpty()) { out[i] = p[i]; paragrafo(t, p, out, i + 1, fatto, errore); return; }
+        t.translate(p[i]).addOnSuccessListener(r -> { out[i] = r; paragrafo(t, p, out, i + 1, fatto, errore); }).addOnFailureListener(errore::ko);
+    }
+    private void rispostaTraduzione(String id, String testo, String da, String errore, JavaScriptReplyProxy reply) {
+        try {
+            JSONObject r = new JSONObject().put("tipo", "traduzione").put("id", id);
+            if (errore != null) r.put("errore", errore); else r.put("testo", testo).put("da", da);
+            reply.postMessage(r.toString());
+        } catch (Exception ignored) { }
     }
 
     // ---- PDF e foto ricevuti da altre app («Condividi» / «Apri con») ----
