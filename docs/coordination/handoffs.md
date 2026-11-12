@@ -4704,3 +4704,9 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Tests: 1687/1687; builds PASS; Chromium visual PASS.
 - Rollback: revert the commit (library data stays in the browser, unused).
 - Next: PO tries on phone; step 2 OCR with ML Kit.
+
+## Handoff — SCAN-OCR-MLKIT + SCAN-FIRMA (2026-11-12) — Claude Code
+- Branch `ccr-01036c30-3eoy2l` (PR309). Files: android/scan/app/{build.gradle, src/main/java/it/poliedrasoft/scan/MainActivity.java}, .github/workflows/android-scan.yml, personal/src/lib/nativo.js, personal/src/pdf/ocr.js, personal/src/scan/{Scan,EstraiTesto}.jsx, tests/scanHub.test.mjs, tests/visual/scan-app.mjs (new), coordination docs.
+- Database: none. Secrets: SCAN_KEYSTORE_B64 / SCAN_KEYSTORE_PASSWORD to be added by the PO (values delivered privately, never committed).
+- Tests: 1689/1689; builds PASS; three Chromium visual tests PASS.
+- Rollback: revert; without the secrets CI signs with the debug key as before.

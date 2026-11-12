@@ -4,6 +4,15 @@ android {
     compileSdk 35
     defaultConfig { applicationId 'it.poliedrasoft.scan'; minSdk 26; targetSdk 35; versionCode 1; versionName '0.1.0' }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    // SCAN-FIRMA: chiave fissa dai segreti del repository (SCAN_KEYSTORE_B64 / SCAN_KEYSTORE_PASSWORD), così
+    // ogni nuovo APK si installa sopra il precedente. Senza segreti si firma con la chiave di debug di CI.
+    def chiave = System.getenv('SCAN_KEYSTORE')
+    signingConfigs {
+        fissa {
+            if (chiave) { storeFile file(chiave); storePassword System.getenv('SCAN_KEYSTORE_PASSWORD'); keyAlias 'poliedra-scan'; keyPassword System.getenv('SCAN_KEYSTORE_PASSWORD') }
+        }
+    }
+    buildTypes { debug { if (chiave) signingConfig signingConfigs.fissa } }
 }
 dependencies {
     // ML Kit porta kotlin-stdlib 1.8 e AndroidX i vecchi -jdk7/-jdk8 1.6: la BOM li allinea (niente classi doppie).
@@ -12,4 +21,6 @@ dependencies {
     implementation 'androidx.core:core:1.13.1'
     // Scanner documenti di Google (ML Kit): fotocamera, bordi, raddrizzamento, ombre; tutto sul telefono.
     implementation 'com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1'
+    // SCAN-OCR-MLKIT: riconoscimento del testo di Google (alfabeto latino), modello incluso nell'app: funziona subito e senza rete.
+    implementation 'com.google.mlkit:text-recognition:16.0.1'
 }

@@ -126,6 +126,10 @@ export function Scan({ email }) {
         setRecenti((n) => n + 1);
         for (const [i, id] of ids.entries()) { const m = await creaMiniatura(files[i]); if (m) await aggiungiDettagli(id, { miniatura: m }); }
         setRecenti((n) => n + 1);
+        // SCAN-OCR-MLKIT: testo per la ricerca (ML Kit nell'app; nel browser solo il testo già nei PDF).
+        const { testoPerRicerca } = await import('../pdf/ocr.js');
+        for (const [i, id] of ids.entries()) { const t = await testoPerRicerca(files[i]).catch(() => ''); if (t) await aggiungiDettagli(id, { testo: t }); }
+        setRecenti((n) => n + 1);
       }).catch((e) => mostra(`Non salvato in «I miei documenti»: ${e.message}`));
     },
     // SCAN-LIBRERIA: «Salva in I miei documenti» con la scelta della cartella.

@@ -120,3 +120,29 @@ test('Android app: ML Kit scanner for every capture input, origin-locked bridge,
   assert.match(readFileSync('android/scan/app/build.gradle', 'utf8'), /play-services-mlkit-document-scanner/);
   assert.match(readFileSync('personal/src/Aggiungi.jsx', 'utf8'), /capture="environment" multiple/);
 });
+
+// SCAN-OCR-MLKIT (PO 2026-11-12: «fai tutto tu») — OCR di Google ML Kit nell'app Android.
+test('OCR nativo: request/response by id through the bridge, errors and timeouts reported', async () => {
+  const { ocrNativo } = await import('../personal/src/lib/nativo.js');
+  const inviati = []; let ascolto = null;
+  const p = { postMessage: (m) => inviati.push(JSON.parse(m)), addEventListener: (t, fn) => { ascolto = fn; } };
+  const attesa = ocrNativo(['data:image/jpeg;base64,QUJD'], p);
+  assert.equal(inviati[0].azione, 'ocr'); assert.deepEqual(inviati[0].immagini, ['QUJD']);
+  ascolto({ data: JSON.stringify({ tipo: 'ocr', id: 'altro', pagine: [] }) });
+  ascolto({ data: JSON.stringify({ tipo: 'ocr', id: inviati[0].id, pagine: [{ testo: 'REFERTO', larghezza: 10, altezza: 10, parole: [{ testo: 'REFERTO', x0: 1, y0: 1, x1: 9, y1: 4 }] }] }) });
+  const [pagina] = await attesa;
+  assert.equal(pagina.testo, 'REFERTO'); assert.equal(pagina.parole[0].x1, 9);
+  const fallita = ocrNativo(['QUJD'], p);
+  ascolto({ data: JSON.stringify({ tipo: 'ocr', id: inviati[1].id, errore: 'modello assente' }) });
+  await assert.rejects(fallita, /modello assente/);
+  await assert.rejects(ocrNativo(['QUJD'], p, 5), /troppo lento/);
+  await assert.rejects(ocrNativo(['QUJD'], null), /non disponibile/);
+});
+test('Android OCR: ML Kit text recognition bundled, words with boxes, web uses it inside the app', () => {
+  assert.match(readFileSync('android/scan/app/build.gradle', 'utf8'), /com\.google\.mlkit:text-recognition/);
+  const java = readFileSync('android/scan/app/src/main/java/it/poliedrasoft/scan/MainActivity.java', 'utf8');
+  assert.match(java, /TextRecognition\.getClient/); assert.match(java, /getBoundingBox\(\)/); assert.match(java, /"ocr"\.equals\(azione\)/);
+  const ocr = readFileSync('personal/src/pdf/ocr.js', 'utf8');
+  assert.match(ocr, /inAppAndroid\(\)/); assert.match(ocr, /ocrNativo\(/); assert.match(ocr, /export async function testoPerRicerca/);
+  assert.match(readFileSync('personal/src/scan/Scan.jsx', 'utf8'), /testoPerRicerca/);
+});

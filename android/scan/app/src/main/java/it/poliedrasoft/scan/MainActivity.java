@@ -21,6 +21,14 @@ import com.google.mlkit.vision.documentscanner.GmsDocumentScanner;
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions;
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning;
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult;
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.text.Text;
+import com.google.mlkit.vision.text.TextRecognition;
+import com.google.mlkit.vision.text.TextRecognizer;
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Rect;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -170,6 +178,7 @@ public final class MainActivity extends Activity {
         if ("pronto".equals(azione)) { pagina = reply; consegna(); }
         else if ("condividi".equals(azione)) condividi(m.getJSONArray("files"));
         else if ("salva".equals(azione)) salva(m.getJSONObject("file"));
+        else if ("ocr".equals(azione)) ocr(m.optString("id"), m.getJSONArray("immagini"), 0, new JSONArray(), reply);
         else if ("testo".equals(azione)) {
             Intent i = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, m.optString("testo"));
             startActivity(Intent.createChooser(i, "Condividi"));
@@ -199,6 +208,51 @@ public final class MainActivity extends Activity {
         Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
             .setType(f.optString("mime", "application/octet-stream")).putExtra(Intent.EXTRA_TITLE, nome(f.optString("nome", "documento")));
         startActivityForResult(i, REQ_SALVA);
+    }
+
+    // ---- SCAN-OCR-MLKIT: testo riconosciuto con ML Kit sul telefono, pagina per pagina ----
+    private TextRecognizer lettore;
+    private void ocr(String id, JSONArray immagini, int i, JSONArray pagine, JavaScriptReplyProxy reply) {
+        try {
+            if (i >= immagini.length() || i >= MAX_PAGINE * 2) {
+                reply.postMessage(new JSONObject().put("tipo", "ocr").put("id", id).put("pagine", pagine).toString());
+                return;
+            }
+            byte[] dati = Base64.decode(immagini.getString(i), Base64.DEFAULT);
+            Bitmap bmp = BitmapFactory.decodeByteArray(dati, 0, dati.length);
+            if (bmp == null) throw new IOException("immagine non leggibile");
+            if (lettore == null) lettore = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
+            int w = bmp.getWidth(), h = bmp.getHeight();
+            lettore.process(InputImage.fromBitmap(bmp, 0))
+                .addOnSuccessListener(testo -> {
+                    try { pagine.put(pagina(testo, w, h)); bmp.recycle(); ocr(id, immagini, i + 1, pagine, reply); }
+                    catch (Exception e) { erroreOcr(id, e, reply); }
+                })
+                .addOnFailureListener(e -> { bmp.recycle(); erroreOcr(id, e, reply); });
+        } catch (Exception e) { erroreOcr(id, e, reply); }
+    }
+    static JSONObject pagina(Text testo, int w, int h) throws Exception {
+        JSONArray parole = new JSONArray();
+        StringBuilder tutto = new StringBuilder();
+        for (Text.TextBlock b : testo.getTextBlocks()) {
+            if (tutto.length() > 0) tutto.append("\n\n");
+            boolean prima = true;
+            for (Text.Line l : b.getLines()) {
+                if (!prima) tutto.append('\n');
+                prima = false;
+                tutto.append(l.getText());
+                for (Text.Element e : l.getElements()) {
+                    Rect r = e.getBoundingBox();
+                    if (r == null || e.getText().trim().isEmpty()) continue;
+                    parole.put(new JSONObject().put("testo", e.getText()).put("x0", r.left).put("y0", r.top).put("x1", r.right).put("y1", r.bottom));
+                }
+            }
+        }
+        return new JSONObject().put("testo", tutto.toString()).put("larghezza", w).put("altezza", h).put("parole", parole);
+    }
+    private void erroreOcr(String id, Exception e, JavaScriptReplyProxy reply) {
+        try { reply.postMessage(new JSONObject().put("tipo", "ocr").put("id", id).put("errore", String.valueOf(e.getMessage())).toString()); }
+        catch (Exception ignored) { }
     }
 
     // ---- PDF e foto ricevuti da altre app («Condividi» / «Apri con») ----
@@ -260,6 +314,6 @@ public final class MainActivity extends Activity {
 
     @Override protected void onResume() { super.onResume(); if (web != null) web.onResume(); }
     @Override protected void onPause() { if (web != null) web.onPause(); super.onPause(); }
-    @Override protected void onDestroy() { if (web != null) { web.destroy(); web = null; } super.onDestroy(); }
+    @Override protected void onDestroy() { if (lettore != null) { lettore.close(); lettore = null; } if (web != null) { web.destroy(); web = null; } super.onDestroy(); }
     @Override public void onBackPressed() { if (web != null && web.canGoBack()) web.goBack(); else super.onBackPressed(); }
 }

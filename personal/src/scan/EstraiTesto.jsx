@@ -6,7 +6,7 @@ import { elaboraPagina } from '../lib/scansione.js';
 import { tipoFile } from '../lib/pdfUnico.js';
 import { validaFile } from '../pdf/filePdf.js';
 import { scaricaDocumento } from '../lib/condividi.js';
-import { daScannerNativo } from '../lib/nativo.js';
+import { daScannerNativo, inAppAndroid } from '../lib/nativo.js';
 import { IconaFotocamera, IconaFoto, IconaFile, IconaCondividi } from '../Icone.jsx';
 
 export const MAX_FOTO_TESTO = 10;
@@ -70,7 +70,7 @@ export function EstraiTesto({ ctx }) {
           <button className="pp-bottone pp-bottone-chiaro" onClick={() => pdf.current.click()}><IconaFile size={20} /> PDF</button>
         </div>
       </fieldset>
-      {!testo && !lavoro && <p className="pp-riga-meta pp-spiegazione">Fotografa un foglio o scegli un PDF: il testo viene letto sul telefono (italiano) e puoi correggerlo, copiarlo o condividerlo. La prima volta scarica il riconoscimento (circa 5 MB).</p>}
+      {!testo && !lavoro && <p className="pp-riga-meta pp-spiegazione">Fotografa un foglio o scegli un PDF: il testo viene letto sul telefono e puoi correggerlo, copiarlo o condividerlo. {inAppAndroid() ? 'Riconoscimento Google ML Kit, anche senza rete.' : 'La prima volta scarica il riconoscimento (circa 5 MB).'}</p>}
       {lavoro && <p className="pp-riga-meta" role="status"><span className="pp-rotella" /> {lavoro}</p>}
       {avviso && <p className="pp-riga-meta">{avviso}</p>}
       {testo && (

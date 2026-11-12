@@ -39,6 +39,38 @@ export async function salvaNativo(file, p = ponte()) {
   p.postMessage(JSON.stringify({ azione: 'salva', file: await descrivi(file) }));
 }
 
+// SCAN-OCR-MLKIT — un solo ascoltatore per ponte: file in arrivo e risposte dell'OCR di ML Kit.
+const stati = new WeakMap();
+function stato(p) {
+  let s = stati.get(p);
+  if (s) return s;
+  s = { attese: new Map(), onFiles: null, n: 0 };
+  stati.set(p, s);
+  const ascolta = (e) => {
+    let m; try { m = JSON.parse(e.data); } catch { return; } // messaggio non valido: ignorato
+    if (m.tipo === 'file' && Array.isArray(m.files) && m.files.length) s.onFiles?.(m.files.map(daBase64));
+    else if (m.tipo === 'ocr' && s.attese.has(m.id)) {
+      const { ok, ko } = s.attese.get(m.id); s.attese.delete(m.id);
+      if (m.errore) ko(new Error(`Riconoscimento non riuscito: ${m.errore}`)); else ok(m.pagine || []);
+    }
+  };
+  if (typeof p.addEventListener === 'function') p.addEventListener('message', ascolta); else p.onmessage = ascolta;
+  return s;
+}
+const base64Url = (u) => String(u).replace(/^data:[^,]*,/, '');
+// immagini: data URL JPEG/PNG. Restituisce [{ testo, larghezza, altezza, parole: [{ testo, x0, y0, x1, y1 }] }].
+export function ocrNativo(immagini, p = ponte(), attesaMs = 120000) {
+  if (!p) return Promise.reject(new Error('OCR del telefono non disponibile.'));
+  const s = stato(p);
+  s.n += 1;
+  const id = `ocr-${Date.now()}-${s.n}`;
+  return new Promise((ok, ko) => {
+    const t = setTimeout(() => { s.attese.delete(id); ko(new Error('Riconoscimento troppo lento: riprova.')); }, attesaMs);
+    s.attese.set(id, { ok: (v) => { clearTimeout(t); ok(v); }, ko: (e) => { clearTimeout(t); ko(e); } });
+    p.postMessage(JSON.stringify({ azione: 'ocr', id, immagini: immagini.map(base64Url) }));
+  });
+}
+
 // Da chiamare una volta all'avvio: navigator.share passa dall'app e i file in arrivo vanno a `onFiles`.
 export function installaPonte(onFiles, w = globalThis) {
   const p = ponte(w);
@@ -48,13 +80,7 @@ export function installaPonte(onFiles, w = globalThis) {
     Object.defineProperty(nav, 'canShare', { configurable: true, value: (dati) => Boolean(dati?.files?.length || dati?.text || dati?.title || dati?.url) });
     Object.defineProperty(nav, 'share', { configurable: true, value: (dati = {}) => condividiNativo({ files: dati.files || [], text: [dati.text, dati.url].filter(Boolean).join('\n'), title: dati.title }, p) });
   } catch { /* navigator non modificabile: restano i messaggi di ripiego */ }
-  const ascolta = (e) => {
-    try {
-      const m = JSON.parse(e.data);
-      if (m.tipo === 'file' && Array.isArray(m.files) && m.files.length) onFiles?.(m.files.map(daBase64));
-    } catch { /* messaggio non valido: ignorato */ }
-  };
-  if (typeof p.addEventListener === 'function') p.addEventListener('message', ascolta); else p.onmessage = ascolta;
+  stato(p).onFiles = onFiles;
   p.postMessage(JSON.stringify({ azione: 'pronto' }));
   return true;
 }

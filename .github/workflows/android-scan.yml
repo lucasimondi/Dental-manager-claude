@@ -26,7 +26,21 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
+      # SCAN-FIRMA: con i segreti del repository l'APK è firmato con la chiave fissa (aggiornamenti senza disinstallare).
+      - name: Chiave di firma fissa
+        env:
+          KEYSTORE_B64: ${{ secrets.SCAN_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/poliedra-scan.jks"
+            echo "SCAN_KEYSTORE=$RUNNER_TEMP/poliedra-scan.jks" >> "$GITHUB_ENV"
+            echo "Firma: chiave fissa Poliedra Scan"
+          else
+            echo "Firma: chiave di debug (segreto SCAN_KEYSTORE_B64 non impostato)"
+          fi
       - run: gradle -p android/scan :app:assembleDebug :app:lintDebug --no-daemon
+        env:
+          SCAN_KEYSTORE_PASSWORD: ${{ secrets.SCAN_KEYSTORE_PASSWORD }}
       # Installability evidence in the log: signature schemes and the manifest Android will read.
       - name: Verify APK
         run: |
@@ -60,4 +74,4 @@ jobs:
           gh release view scan-android >/dev/null 2>&1 || gh release create scan-android --target "$GITHUB_SHA" --prerelease \
             --title "Poliedra Scan (Android)" --notes "APK di prova di Poliedra Scan (scanner Google ML Kit), aggiornato a ogni modifica su master. Scarica poliedra-scan.apk e aprilo direttamente: non c'è nessuno zip da estrarre."
           gh release upload scan-android poliedra-scan.apk --clobber
-          gh release edit scan-android --notes "APK di prova di Poliedra Scan con scanner Google ML Kit (commit ${GITHUB_SHA::7}). Scarica poliedra-scan.apk e aprilo direttamente: non c'è nessuno zip da estrarre. Firmato in debug: è una versione di prova, non quella del Play Store."
+          gh release edit scan-android --notes "APK di prova di Poliedra Scan con scanner Google ML Kit (commit ${GITHUB_SHA::7}). Scarica poliedra-scan.apk e aprilo direttamente: non c'è nessuno zip da estrarre. Firmato con la chiave fissa di Poliedra Scan se configurata (altrimenti chiave di debug): versione di prova, non quella del Play Store."

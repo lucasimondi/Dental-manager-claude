@@ -1,3 +1,11 @@
+# Current task — SCAN-OCR-MLKIT + SCAN-FIRMA (2026-11-12) · passo 2 di «Scan professionale»
+- OWNER Claude Code; branch `ccr-01036c30-3eoy2l`, PR309.
+- AUTHORIZATION PO 2026-11-12: "Fai tutto tu procedi con i prossimi 1 2 3" (OCR, step 2, signing key).
+- SCOPE OCR: Android app gets Google ML Kit Text Recognition (com.google.mlkit:text-recognition 16.0.1, Latin model bundled, offline); bridge action `ocr` (base64 images → per page text + word boxes, replied by id). Web: lib/nativo.js `ocrNativo` (single listener per bridge, id map, 120 s timeout); pdf/ocr.js `riconosci` uses ML Kit inside the app and Tesseract in the browser for Estrai testo, «Testo ricercabile (OCR)» (invisible text layer from ML Kit word boxes) and «Testo (OCR)» in the PDF manager; `testoPerRicerca` indexes every file saved in «I miei documenti» (app: ML Kit up to 10 pages; browser: only digital PDF text, no slow OCR) so the library search finds words inside documents.
+- SCOPE SIGNING: android/scan/app/build.gradle signs with a fixed key when SCAN_KEYSTORE is set; android-scan.yml decodes secret SCAN_KEYSTORE_B64 with SCAN_KEYSTORE_PASSWORD, otherwise debug key as before. Key generated outside the repository (PKCS12, RSA 4096, alias poliedra-scan, SHA-256 C3:65:B8:83:…:07:27) and handed to the PO to add as two repository secrets (no tool here can write GitHub secrets). No key material in git.
+- VALIDATION 1689/1689 Node tests (scanHub 10/10); both builds PASS; Chromium Pixel 7: scan-hub, personal-scan and new scan-app (simulated bridge: ML Kit OCR in Estrai testo, OCR scan saved and found by a word of its content, share through the app) PASS. Android build in CI. NOT verified on a real phone.
+- NEXT: PO adds the two secrets; step 3 (export Word/JPG/TXT, add pages to an existing document).
+
 # Current task — SCAN-LIBRERIA (2026-11-12) · passo 1 di «Scan professionale»
 - OWNER Claude Code; branch `ccr-01036c30-3eoy2l`, same PR309 as SCAN-MLKIT.
 - AUTHORIZATION PO 2026-11-12: "dobbiamo migliorare l'app prima di pubblicarla … grafica coordinata con home, dove possono andare i file, la gestione dell'ocr fatto bene … falla professionale come quelle a pagamento" → plan in 4 steps proposed (1 grafica+libreria+destinazioni, 2 OCR ML Kit, 3 modifica pagine+esportazioni, 4 traduci+impostazioni+firma fissa) → PO: "Grafica mi piace quella proposta come WPS".
