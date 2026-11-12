@@ -17,11 +17,15 @@ begin
   return new;
 end $$;
 
-drop trigger if exists documenti_testo_ricerca_trg on documenti;
-create trigger documenti_testo_ricerca_trg
-  before insert or update of titolo, ente, riassunto, tipo_documento, email_mittente, email_oggetto,
-    nome_file_originale, persona, categoria, fascicolo, tag, azione_descrizione
-  on documenti for each row execute function documenti_testo_ricerca_aggiorna();
+do $$
+begin
+  if not exists (select 1 from pg_trigger where tgname = 'documenti_testo_ricerca_trg' and tgrelid = 'public.documenti'::regclass) then
+    create trigger documenti_testo_ricerca_trg
+      before insert or update of titolo, ente, riassunto, tipo_documento, email_mittente, email_oggetto,
+        nome_file_originale, persona, categoria, fascicolo, tag, azione_descrizione
+      on documenti for each row execute function documenti_testo_ricerca_aggiorna();
+  end if;
+end $$;
 
 -- Riempie solo le righe ancora vuote (rieseguibile).
 update documenti set testo_ricerca = lower(unaccent(concat_ws(' ', titolo, ente, riassunto, tipo_documento,
