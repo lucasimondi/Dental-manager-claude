@@ -117,7 +117,7 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
   const scatto = useRef(null);
   const galleria = useRef(null);
   const altriFile = useRef(null);
-  const titolo = nome.trim() || opzioni.descrizione || `Documento ${new Date().toLocaleDateString('it-IT')}`;
+  const titolo = nome.trim() || opzioni.descrizione || opzioni.nomePredefinito || `Documento ${new Date().toLocaleDateString('it-IT')}`;
   const selezionate = pagine.filter(p => !esclusi.includes(p.id));
   const chiave = `${selezionate.map((p) => `${p.id}:${p.rotazione || 0}:${JSON.stringify(p.angoli || p.ritaglio || null)}:${p.url?.length || 0}`).join('|')}#${modo}#${titolo}#${separati}#${peso}#${ocr}`;
 
@@ -284,13 +284,14 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
           <Segmenti voci={[[false, 'Un solo PDF'], [true, 'File separati']]} attiva={separati} onScegli={setSeparati} />
           {!separati && selezionate.filter(p => p.tipo === 'pdf').length > 0 && selezionate.length > 1 && <p className="pp-riga-meta">Unire fissa i campi compilati e può invalidare firme digitali esistenti. Gli originali restano intatti.</p>}
           <label className="pp-campo"><span>Nome (facoltativo)</span>
-            <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Es. Referto ecografia" />
+            <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder={opzioni.nomePredefinito || "Es. Referto ecografia"} />
           </label>
           <div className="pp-invio-salute">
             <button disabled={!pronta} onClick={() => invia('mail')}><IconaEmail size={18} /> Mail</button>
             <button className="pp-whatsapp" disabled={!pronta} onClick={() => invia('whatsapp')}><IconaChat size={18} /> WhatsApp</button>
           </div>
           <p className="pp-riga-meta">Mail e WhatsApp aprono la condivisione del telefono: scegli lì l’app destinataria.</p>
+          {ctx.salvaIn && <button className="pp-bottone pp-bottone-largo" disabled={!pronta} onClick={() => ctx.salvaIn(pronto.files)}>Salva in I miei documenti</button>}
           {!separati && <div className="scan-output-actions">
             <button className="pp-bottone pp-bottone-chiaro" disabled={!pronta} onClick={() => modifica(selezionate)}>Apri · Modifica · Firma</button>
             <button className="pp-bottone" disabled={!pronta} onClick={archivia}>Archivia il PDF</button>

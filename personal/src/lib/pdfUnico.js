@@ -5,7 +5,8 @@ export const tipoFile = (f) => (f?.type === 'application/pdf' || /\.pdf$/i.test(
   : (f?.type || '').startsWith('image/') || /\.(jpe?g|png|heic|heif|webp)$/i.test(f?.name || '') ? 'immagine' : 'altro');
 
 export function nomePdf(titolo = 'Documenti') {
-  return `${String(titolo).replace(/[^\w\- àèéìòù]+/gi, '').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Documenti'}.pdf`;
+  // SCAN-LIBRERIA: lettere accentate, apostrofo e punto restano («Carta d'identità», «13.42»).
+  return `${String(titolo).replace(/[^\p{L}\p{N}\- '.,()]+/gu, '').replace(/^\.+/, '').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Documenti'}.pdf`;
 }
 
 export async function unisciInPdf(files, titolo = 'Documenti', strumenti = {}) {

@@ -40,6 +40,6 @@ export async function pdfFronteRetro(facce, { nome = "Carta d'identità", larghe
     pdf.addImage(f.url, 'JPEG', r.x, r.y, r.w, r.h, undefined, 'FAST');
   });
   pdf.setProperties({ title: nome });
-  const pulito = nome.replace(/[^\w\- ']+/g, '').replace(/'/g, ' ').replace(/\s+/g, ' ').trim() || 'Documento';
+  const pulito = nome.replace(/[^\p{L}\p{N}\- '.,()]+/gu, '').replace(/\s+/g, ' ').trim() || 'Documento';
   return new File([pdf.output('blob')], `${pulito}.pdf`, { type: 'application/pdf' });
 }

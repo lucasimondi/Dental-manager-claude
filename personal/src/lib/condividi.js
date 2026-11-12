@@ -55,7 +55,8 @@ export function scaricaDocumento(file) {
   // SCAN-MLKIT: nell'app Android la WebView non scarica: «Salva in…» di Android.
   if (ponte()) { salvaNativo(file).catch(() => {}); return; }
   const url=URL.createObjectURL(file);
-  const a=document.createElement('a');a.href=url;a.download=file.name;a.click();
+  // Accenti tolti solo dal nome scaricato: alcuni browser altrimenti salvano «download».
+  const a=document.createElement('a');a.href=url;a.download=file.name.normalize('NFD').replace(/[\u0300-\u036f]/g,'');a.click();
   setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
 

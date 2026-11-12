@@ -47,10 +47,10 @@ try {
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth) <= 0, 'no horizontal overflow on Carta');
   await page.screenshot({ path: `${out}/3-tessera-pronta.png`, fullPage: true });
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Scarica PDF' }).click()]);
-  assert.match(download.suggestedFilename(), /^Carta d identit.*\.pdf$/);
+  assert.match(download.suggestedFilename(), /^Carta d.identit.*\.pdf$/);
   await page.locator('.pp-pagina-barra button').first().click();
   await page.locator('.scan-recente').first().waitFor();
-  assert.match(await page.locator('.scan-recente').first().textContent(), /Carta d identit/);
+  assert.match(await page.locator('.scan-recente').first().textContent(), /Carta d'identità/);
   await page.screenshot({ path: `${out}/4-home-recenti.png` });
   // Recent PDF opens in the PDF manager.
   await page.locator('.scan-recente-apri').first().click();
@@ -67,6 +67,48 @@ try {
   const testo = await page.locator('.scan-testo-area').inputValue();
   assert.match(testo, /REFERTO/); assert.match(testo, /NORMA/);
   await page.screenshot({ path: `${out}/5-testo.png` });
+  await page.getByRole('button', { name: 'Salva come .txt' }).click();
+  await page.locator('.pp-pagina-barra button').first().click();
+
+  // SCAN-LIBRERIA: scanner → «Salva in I miei documenti» in a new folder.
+  await page.getByRole('button', { name: /^Scanner/ }).click();
+  await page.locator('.pp-pagina input[type=file]').nth(1).setInputFiles({ name: 'foglio.png', mimeType: 'image/png', buffer: Buffer.from(foglio) });
+  await page.waitForFunction(() => [...document.querySelectorAll('button')].some((b) => /Salva in I miei documenti/.test(b.textContent) && !b.disabled));
+  await page.getByRole('button', { name: 'Salva in I miei documenti' }).click();
+  await page.getByLabel('Nuova cartella').fill('Salute');
+  await page.getByRole('button', { name: 'Crea' }).click();
+  await page.locator('.pp-toast', { hasText: 'Salute' }).waitFor();
+  await page.locator('.pp-pagina-barra button').first().click();
+
+  // Library: 3 documents, folders, search, rename, move, merge, delete.
+  await page.getByRole('button', { name: 'I miei documenti' }).click();
+  await page.locator('.scan-documenti .scan-recente').nth(2).waitFor();
+  assert.equal(await page.locator('.scan-documenti .scan-recente').count(), 3);
+  await page.waitForFunction(() => document.querySelectorAll('.scan-doc-mini').length >= 2, null, { timeout: 15000 });
+  await page.screenshot({ path: `${out}/6-documenti.png` });
+  await page.getByRole('tab', { name: /Salute/ }).click();
+  assert.equal(await page.locator('.scan-documenti .scan-recente').count(), 1);
+  await page.getByRole('tab', { name: /Tutti/ }).click();
+  await page.getByLabel('Cerca nei documenti').fill('carta identita');
+  assert.equal(await page.locator('.scan-documenti .scan-recente').count(), 1);
+  await page.getByLabel('Cerca nei documenti').fill('');
+  await page.getByRole('button', { name: /Altre azioni per Carta d'identità/ }).click();
+  await page.getByRole('button', { name: 'Rinomina' }).click();
+  await page.getByLabel('Nuovo nome').fill('CI Mario');
+  await page.getByRole('button', { name: 'Salva nome' }).click();
+  await page.locator('.scan-documenti', { hasText: 'CI Mario' }).waitFor();
+  await page.getByRole('button', { name: 'Seleziona', exact: true }).click();
+  await page.getByLabel('Seleziona CI Mario.pdf').check();
+  await page.locator('.scan-documenti input[type=checkbox]').nth(1).check();
+  await page.screenshot({ path: `${out}/7-selezione.png` });
+  await page.getByRole('button', { name: 'Unisci in PDF' }).click();
+  await page.locator('.scan-documenti', { hasText: 'Unione' }).waitFor();
+  assert.equal(await page.locator('.scan-documenti .scan-recente').count(), 4);
+  await page.getByRole('button', { name: /Altre azioni per Unione/ }).click();
+  await page.locator('.scan-recente-menu').getByRole('button', { name: /Elimina/ }).click();
+  await page.locator('.scan-foglio-azioni').getByRole('button', { name: 'Elimina' }).click();
+  await page.waitForFunction(() => document.querySelectorAll('.scan-documenti .scan-recente').length === 3);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth) <= 0, 'no horizontal overflow in library');
   assert.deepEqual(errors, []);
   console.log('scan-hub PASS ·', JSON.stringify(testo.slice(0, 80)));
 } finally { await browser?.close(); server.kill(); }

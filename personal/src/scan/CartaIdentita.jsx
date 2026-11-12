@@ -159,6 +159,7 @@ export function CartaIdentita({ ctx, sostituisci }) {
           <Segmenti voci={[[false, 'Dimensione reale'], [true, 'Più grande']]} attiva={grande} onScegli={setGrande} />
           <Segmenti voci={[['colore', 'Nitida'], ['documento', 'Bianco e nero'], ['originale', 'Originale']]} attiva={modo} onScegli={setModo} />
           <div className="scan-output-actions">
+            {ctx.salvaIn && <button className="pp-bottone" disabled={!file} onClick={() => ctx.salvaIn([file])}>Salva in I miei documenti</button>}
             <button className="pp-bottone" disabled={!file} onClick={condividiPdf}><IconaCondividi size={18} /> Condividi PDF</button>
             <button className="pp-bottone pp-bottone-chiaro" disabled={!file} onClick={() => { scaricaDocumento(file); ctx.ricorda?.([file]); }}>Scarica PDF</button>
             <button className="pp-bottone pp-bottone-chiaro" disabled={!file} onClick={() => { ctx.ricorda?.([file]); ctx.apri({ tipo: 'pdf', file }); }}>Apri · Firma</button>

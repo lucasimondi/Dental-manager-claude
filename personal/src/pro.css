@@ -191,3 +191,43 @@
 .scan-tessera > .pp-segmenti, .scan-tessera .scan-output-actions { margin-top: 10px; }
 .scan-testo-area { width: 100%; min-height: 260px; padding: 12px; border-radius: 12px; border: 1px solid var(--pp-linea); background: var(--pp-superficie); color: var(--pp-inchiostro); font: inherit; font-size: 15px; line-height: 1.45; resize: vertical; box-sizing: border-box; }
 .scan-faccia-foto .pp-scan-auto { left: auto; top: auto; right: 6px; bottom: 6px; }
+
+/* SCAN-LIBRERIA (PO 2026-11-12: grafica come WPS) — barra Home · I miei documenti, libreria, fogli. */
+.pp-app.pp-scan { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+.scan-schede { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 19; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: min(360px, calc(100% - 120px)); padding: 5px; border-radius: 999px; background: var(--pp-superficie); border: 1px solid var(--pp-linea); box-shadow: 0 6px 20px rgba(16, 24, 40, .12); }
+.scan-schede button { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 52px; padding: 4px 6px; border: 0; border-radius: 999px; background: transparent; color: var(--pp-grigio); font: inherit; font-size: 12px; cursor: pointer; }
+.scan-schede button[aria-current="page"] { background: var(--pp-sfondo); color: #1f6fe5; font-weight: 650; }
+.scan-fab { bottom: calc(14px + env(safe-area-inset-bottom)); }
+.scan-documenti { padding-bottom: 96px; }
+.scan-cerca { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 14px; margin-bottom: 10px; border-radius: 999px; background: var(--pp-superficie); border: 1px solid var(--pp-linea); color: var(--pp-grigio); }
+.scan-cerca input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--pp-inchiostro); font: inherit; font-size: 16px; outline: none; }
+.scan-cerca button { border: 0; background: transparent; color: var(--pp-grigio); width: 36px; height: 36px; display: grid; place-items: center; cursor: pointer; }
+.scan-cartelle { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 8px; scrollbar-width: none; }
+.scan-cartelle::-webkit-scrollbar { display: none; }
+.scan-cartelle button { flex-shrink: 0; min-height: 38px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--pp-linea); background: var(--pp-superficie); color: var(--pp-inchiostro); font: inherit; font-size: 14px; cursor: pointer; }
+.scan-cartelle button small { color: var(--pp-grigio); margin-left: 2px; }
+.scan-cartelle button.attiva { background: #1f6fe5; border-color: #1f6fe5; color: #fff; }
+.scan-cartelle button.attiva small { color: rgba(255, 255, 255, .8); }
+.scan-cartelle .scan-cartella-nuova { border-style: dashed; color: #1f6fe5; }
+.scan-barra-elenco { display: flex; align-items: center; gap: 12px; justify-content: space-between; margin: 2px 0 4px; }
+.scan-barra-elenco select { min-height: 36px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--pp-linea); background: var(--pp-superficie); color: var(--pp-inchiostro); font: inherit; font-size: 14px; }
+.scan-barra-elenco label { margin-right: auto; }
+.pp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.scan-doc-mini { flex-shrink: 0; width: 40px; height: 52px; object-fit: cover; object-position: top; border-radius: 6px; border: 1px solid var(--pp-linea); background: #fff; }
+.scan-doc-check { width: 22px; height: 22px; margin: 0 6px 0 2px; accent-color: #1f6fe5; flex-shrink: 0; }
+.scan-recente.scelto { background: color-mix(in srgb, #1f6fe5 8%, transparent); }
+.scan-recente-menu .pericolo, .scan-azioni-selezione .pericolo { color: var(--pp-rosso); }
+.scan-azioni-selezione { position: fixed; left: 12px; right: 12px; bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 21; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 8px; border-radius: 16px; background: var(--pp-superficie); border: 1px solid var(--pp-linea); box-shadow: 0 10px 28px rgba(16, 24, 40, .18); }
+.scan-azioni-selezione strong { width: 100%; padding: 0 6px 4px; font-size: 13px; color: var(--pp-grigio); }
+.scan-azioni-selezione button { flex: 1; min-height: 44px; border: 0; border-radius: 10px; background: var(--pp-sfondo); color: var(--pp-inchiostro); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.scan-azioni-selezione button:disabled { opacity: .45; }
+.scan-scrim { position: fixed; inset: 0; z-index: 40; display: flex; align-items: flex-end; justify-content: center; background: rgba(16, 24, 40, .45); }
+.scan-foglio-azioni { width: min(520px, 100%); max-height: 85vh; overflow-y: auto; display: grid; gap: 8px; padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); border-radius: 22px 22px 0 0; background: var(--pp-superficie); color: var(--pp-inchiostro); box-sizing: border-box; }
+.scan-foglio-azioni h2 { margin: 0 0 4px; font-size: 18px; }
+.scan-foglio-azioni p { margin: 0 0 6px; color: var(--pp-grigio); font-size: 14px; }
+.scan-voce { display: flex; align-items: center; gap: 12px; min-height: 50px; padding: 0 12px; border: 0; border-radius: 12px; background: var(--pp-sfondo); color: var(--pp-inchiostro); font: inherit; font-size: 15px; text-align: left; cursor: pointer; }
+.scan-voce span { flex: 1; }
+.scan-voce small { color: var(--pp-grigio); }
+.scan-nuova-cartella { display: flex; gap: 8px; margin: 4px 0; }
+.scan-nuova-cartella input, .scan-campo { flex: 1; min-width: 0; min-height: 46px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--pp-linea); background: var(--pp-superficie); color: var(--pp-inchiostro); font: inherit; font-size: 16px; box-sizing: border-box; }
+.scan-pericolo { background: var(--pp-rosso) !important; color: #fff !important; }

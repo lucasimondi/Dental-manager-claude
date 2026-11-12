@@ -1,3 +1,13 @@
+# Current task — SCAN-LIBRERIA (2026-11-12) · passo 1 di «Scan professionale»
+- OWNER Claude Code; branch `ccr-01036c30-3eoy2l`, same PR309 as SCAN-MLKIT.
+- AUTHORIZATION PO 2026-11-12: "dobbiamo migliorare l'app prima di pubblicarla … grafica coordinata con home, dove possono andare i file, la gestione dell'ocr fatto bene … falla professionale come quelle a pagamento" → plan in 4 steps proposed (1 grafica+libreria+destinazioni, 2 OCR ML Kit, 3 modifica pagine+esportazioni, 4 traduci+impostazioni+firma fissa) → PO: "Grafica mi piace quella proposta come WPS".
+- PRODUCT OWNER DECISION (recorded): Scan keeps the WPS-like look (coloured hero cards, tool grid, blue accent, bottom bar Home · I miei documenti). This is a Scan-only exception to DOCK-PER-TE step 4 (green accent, rows instead of multicolour tiles), which still applies to Studio/Personal.
+- SCOPE: personal/src/lib/libreria.js (replaces lib/recenti.js; IndexedDB `poliedron-scan` v2: stores `documenti` and `cartelle`; old Recenti migrated into «Generale»; navigator.storage.persist; no count limit), scan/Documenti.jsx (search by name and recognised text, folder chips with counts, + Cartella, sort, rows with thumbnails, ⋮ Rinomina / Sposta / Salva sul telefono / Archivia in Personal o Studio / Elimina with confirmation, Seleziona → Unisci in PDF / Condividi / Sposta / Elimina; deleting a folder moves its files to Generale), scan/miniaturaFile.js (first PDF page or photo), Scan.jsx bottom bar and «Salva in I miei documenti» sheet with folder choice (scanner and Carta d'identità), every created/shared/downloaded/archived file saved in the library; automatic names «Scansione 12-11-2026 13.42»; file names keep accents/apostrophes (nomePdf, fronteRetro), download attribute without accents (Chromium saved «download»).
+- LOCKS: library only on the device; no DB/RLS/network change.
+- VALIDATION 1687/1687 Node tests; both builds PASS; Chromium Pixel 7 scan-hub (now also: save to new folder, library 3 docs with thumbnails, folder filter, search with accents, rename, select+merge, delete) and personal-scan PASS.
+- OCR: production /ocr/ assets verified reachable on the deployment; PO reports OCR "non funziona" — symptom to be described by PO; step 2 replaces Tesseract with ML Kit Text Recognition in the Android app.
+- NEXT: PO feedback; step 2 (OCR ML Kit). Signing-key decision pending.
+
 # Current task — SCAN-MLKIT (2026-11-12)
 - OWNER Claude Code; branch `ccr-01036c30-3eoy2l` (master b303da5 merged in).
 - AUTHORIZATION PO 2026-11-12: "Devi usare uno Scan che funzioni alla perfezione, hai delle librerie?" → options proposed (ML Kit native / OpenCV.js web) → "Ml kit".

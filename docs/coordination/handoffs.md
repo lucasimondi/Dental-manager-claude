@@ -4697,3 +4697,10 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Risks: ML Kit document scanner needs Google Play Services (fallback to normal camera); debug key changes per CI build (uninstall before update until a fixed signing key is configured — PO decision); WebView login separate from Chrome.
 - Rollback: revert the PR and uninstall the app; the web Scan without the app is unchanged.
 - Next: CI APK build; PO installs poliedra-scan.apk and tries the scanner; "Mergia".
+
+## Handoff — SCAN-LIBRERIA (2026-11-12) — Claude Code
+- Branch `ccr-01036c30-3eoy2l` (PR309). Files: personal/src/lib/libreria.js (new; lib/recenti.js removed with migration), personal/src/scan/{Documenti.jsx, miniaturaFile.js} (new), personal/src/scan/{Scan,ScanHome,CartaIdentita}.jsx, personal/src/Aggiungi.jsx, personal/src/lib/{pdfUnico,fronteRetro,condividi}.js, personal/src/pro.css, tests/scanHub.test.mjs, tests/visual/scan-hub.mjs, coordination docs.
+- Database: none. PO decision recorded: WPS-like look for Scan.
+- Tests: 1687/1687; builds PASS; Chromium visual PASS.
+- Rollback: revert the commit (library data stays in the browser, unused).
+- Next: PO tries on phone; step 2 OCR with ML Kit.
