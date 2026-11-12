@@ -4686,3 +4686,6 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Risks: Recenti live in browser storage (cleared if the user clears site data); ID straightening needs a card lighter than the background (corners can be set by hand); OCR speed on low-end phones.
 - Rollback: revert the commit; Recenti store is simply unused afterwards.
 - Next: PO tries Scan on the phone; decide on Traduci / Converti in Word-Excel (need a model or server) and Fototessera; "Mergia" for the PR.
+
+## Handoff — SCAN-HUB merged (2026-11-12) — Claude Code
+- PR308 squash-merged as b303da5 after PO "Mergia"; checks verify ×3, pixel7-pdf, iphone-agenda, Netlify, Vercel preview all green. Production deployment dpl_BsFkU8WCRAoaycC5ggHd5xGvLytV started on Vercel.

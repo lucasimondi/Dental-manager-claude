@@ -5,7 +5,7 @@
 - NOT DONE (PRODUCT_OWNER_DECISION_REQUIRED): Traduci immagine and Converti in Word/Excel need a translation/conversion model or server (conflicts with the "everything on the device, no model" lock); Fototessera, Scansiona libri/diapositive and an «I miei ID» wallet inside Scan (Personal's «Documenti personali» already plays that role and is linked) can be a later step.
 - LOCKS: no DB/RLS/migration/tenancy/financial change; no network upload; no model; originals never overwritten.
 - VALIDATION 1685/1685 Node tests (new tests/scanHub.test.mjs 6/6; personalSezioni accepts Scan's own pages); `npm run build` and `build:personal` PASS; Chromium Pixel 7 tests/visual/scan-hub.mjs PASS (Home 8 tools, no overflow; synthetic front/back straightened → 1-page A4 PDF downloaded → appears in Recenti → opens in PDF manager; OCR of a synthetic sheet → "REFERTO DI PROVA / PAZIENTE FITTIZIO / TUTTO NELLA NORMA"); tests/visual/personal-scan.mjs updated and PASS. Not verified: real Android camera photos of real cards, IndexedDB persistence on the installed PWA.
-- STATUS pushed; PR on request; task-specific "Mergia" required.
+- STATUS PO "Mergia e poi vediamo" 2026-11-12: PR308 squash-merged as b303da5 (all CI checks green). NEXT: PO tries Scan on the phone; decision on Traduci / Converti in Word-Excel (external model/server) pending.
 
 # Current task — PIANI-ELIMINA (2026-11-11)
 - OWNER Claude Code; branch `ccr-b7a5a599-0pxser` restarted from master 9443547 (PR306 and PR302 merged).
