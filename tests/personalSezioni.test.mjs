@@ -46,5 +46,11 @@ test('sezioni: ogni pagina aperta è registrata in una sola sezione', () => {
   // apri({ tipo }), sostituisci({ tipo }) e le voci del + in App.jsx (una per riga).
   const aperte = new Set(sorgenti.flatMap((f) => [...leggi(f).matchAll(/(?:(?:apri|sostituisci)\(|^ +\w+: )\{ tipo: '([\w-]+)'/gm)].map((m) => m[1])));
   assert.ok(aperte.size >= 12, `trovate ${aperte.size} pagine`);
+  // SCAN-HUB: le pagine proprie di Scan sono registrate in PAGINE_SCAN (scan/Scan.jsx).
+  const scan = leggi('personal/src/scan/Scan.jsx');
+  const diScan = [...scan.slice(scan.indexOf('const PAGINE_SCAN'), scan.indexOf('const paginaScan')).matchAll(/^ {2}(\w+): \{/gm)].map((m) => m[1]);
+  assert.ok(diScan.length >= 4, `pagine di Scan: ${diScan}`);
+  for (const tipo of diScan) assert.ok(!registrate.includes(tipo), `pagina di Scan '${tipo}' già registrata in una sezione`);
+  registrate.push(...diScan);
   for (const tipo of aperte) assert.ok(registrate.includes(tipo), `pagina '${tipo}' aperta ma non registrata in nessuna sezione`);
 });
