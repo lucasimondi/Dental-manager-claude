@@ -105,6 +105,19 @@ export const paidOnPlan = (payments, planId) => (payments || [])
   .filter((payment) => String(payment.pianoId) === String(planId) && String(payment.stato || '').toLowerCase() === 'pagato')
   .reduce((sum, payment) => sum + Number(payment.importo || 0), 0);
 export const removeTreatmentItem = (plan, voceIndex) => ({ ...plan, voci: (plan.voci || []).filter((_, i) => i !== voceIndex) });
+/* PREVENTIVO-DA-PRESTAZIONI (PO 2026-11-12): the «Modifica» rule Piani already used for a voce
+   (name trimmed, tooth trimmed, price as a number, 0 when empty), shared so «Denti e cure» and the
+   quote built from selected prestazioni change a voce exactly the same way. Only the given fields
+   change; every other field of the voce (eseguita, dataEsec, …) is kept. */
+export const updateTreatmentItem = (plan, voceIndex, patch = {}) => {
+  const voce = plan?.voci?.[voceIndex];
+  if (!voce) return plan;
+  const next = { ...voce };
+  if (patch.prestazione !== undefined) next.prestazione = String(patch.prestazione).trim();
+  if (patch.dente !== undefined) next.dente = String(patch.dente).trim();
+  if (patch.prezzo !== undefined) next.prezzo = Number(patch.prezzo) || 0;
+  return { ...plan, voci: plan.voci.map((v, j) => (j === voceIndex ? next : v)) };
+};
 export const treatmentItemRemovalMessage = (plan, voceIndex, totalePagato) => {
   const vociResidue = (plan.voci || []).filter((_, i) => i !== voceIndex);
   const { finale: nuovoTotale } = planTotals(vociResidue, plan.sconto || 0, plan.scontoTipo || 'pct');

@@ -151,3 +151,41 @@
 .patient-dental-home .patient-dental-confirm-no, .patient-dental-home .patient-dental-confirm-yes { flex:1; min-height:44px; border-radius:10px; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
 .patient-dental-home .patient-dental-confirm-no { border:1.5px solid #c9d6de; background:#fff; color:#33566e; }
 .patient-dental-home .patient-dental-confirm-yes { border:0; background:#b42318; color:#fff; }
+
+/* PREVENTIVO-DA-PRESTAZIONI (PO 2026-11-12): barra del preventivo subito sopra le prestazioni,
+   sempre raggiungibile mentre si scorre; ogni riga si spunta da sola e mostra il prezzo. */
+.patient-dental-quotebar { position:sticky; top:0; z-index:2; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:stretch; gap:8px; margin:0 -4px; padding:12px 4px 10px; background:#fff; border-bottom:1px solid #e5edf2; }
+.patient-dental-pickall { display:flex; align-items:center; gap:7px; min-height:40px; margin-left:auto; padding:0 2px; color:#284a61; font-size:12px; font-weight:650; cursor:pointer; }
+.patient-dental-history-head { flex-wrap:wrap; }
+.patient-dental-quote-create { display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0; min-height:48px; padding:6px 14px; border:0; border-radius:12px; background:#176ba3; color:#fff; font:inherit; text-align:left; cursor:pointer; box-shadow:0 4px 12px #176ba32e; }
+.patient-dental-quote-create span { display:flex; flex-direction:column; min-width:0; font-size:14px; font-weight:700; line-height:1.15; }
+.patient-dental-quote-create small { margin-top:2px; font-size:11px; font-weight:500; opacity:.82; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.patient-dental-quote-create b { flex:none; font-size:15px; font-weight:750; font-variant-numeric:tabular-nums; }
+.patient-dental-home .patient-dental-quote-create:disabled { opacity:1; background:#eef3f7; color:#6c8597; box-shadow:none; cursor:default; }
+.patient-dental-quote-list { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-width:76px; min-height:48px; padding:4px 10px; border:1px solid #d8e4ec; border-radius:12px; background:#fff; color:#216b99; font:inherit; font-size:11px; font-weight:650; cursor:pointer; }
+.patient-dental-quote-list svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.patient-dental-quotebar p { grid-column:1/-1; margin:0; padding:8px 10px; border-radius:10px; background:#fff4df; color:#7a5419; font-size:12px; line-height:1.4; }
+.patient-dental-home input[type="checkbox"] { width:22px; height:22px; flex:none; margin:0; accent-color:#176ba3; cursor:pointer; }
+
+.patient-dental-history li.patient-dental-row { flex-direction:column; align-items:stretch; gap:10px; padding:12px 0; }
+.patient-dental-history li.patient-dental-row.is-picked { margin:0 -10px; padding-inline:10px; background:#f1f7fc; border-bottom-color:#dbe9f3; }
+.patient-dental-row-main { display:flex; align-items:center; gap:10px; min-width:0; }
+.patient-dental-row-text { flex:1; min-width:0; }
+.patient-dental-price { flex:none; font-size:14px; font-weight:700; color:#19394f; font-variant-numeric:tabular-nums; }
+.patient-dental-row-actions { display:flex; align-items:center; gap:6px; padding-left:32px; }
+.patient-dental-home .patient-dental-row-actions .patient-dental-done-button { min-height:40px; padding:0 12px; font-size:12.5px; }
+.patient-dental-home .patient-dental-row-actions .patient-dental-status { display:inline-flex; align-items:center; min-height:40px; padding:0 4px; font-size:12px; font-weight:650; }
+.patient-dental-home .patient-dental-edit-button { display:inline-flex; align-items:center; gap:6px; min-height:40px; margin-left:auto; padding:0 12px; border:1px solid #d8e4ec; border-radius:10px; background:#fff; color:#33566e; font:inherit; font-size:12.5px; font-weight:650; cursor:pointer; }
+.patient-dental-home .patient-dental-edit-button svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.patient-dental-home .patient-dental-row-actions .patient-dental-delete-button { width:40px; height:40px; margin-left:0; }
+.patient-dental-history li.patient-dental-edit { flex-direction:column; align-items:stretch; gap:10px; margin:6px 0; padding:12px; border:1.5px solid #9cc4de; border-radius:12px; background:#f6fafd; }
+.patient-dental-edit-fields { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.patient-dental-edit-fields label { display:flex; flex-direction:column; gap:4px; min-width:0; font-size:11px; font-weight:650; color:#5c7a8f; }
+.patient-dental-edit-fields .is-wide { grid-column:1/-1; }
+.patient-dental-edit-fields input { min-height:44px; width:100%; min-width:0; padding:0 12px; border:1px solid #cfdfe9; border-radius:10px; background:#fff; color:#19394f; font:inherit; font-size:15px; }
+.patient-dental-edit-actions { display:flex; gap:8px; }
+.patient-dental-home .patient-dental-edit-save { flex:1; min-height:44px; border:0; border-radius:10px; background:#176ba3; color:#fff; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+@media(max-width:600px) {
+ .patient-dental-quote-list { min-width:64px; padding:4px 6px; }
+ .patient-dental-quote-create { padding:6px 12px; }
+}
