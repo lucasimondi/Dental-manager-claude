@@ -163,7 +163,7 @@ export function CartaIdentita({ ctx, sostituisci }) {
             <button className="pp-bottone" disabled={!file} onClick={condividiPdf}><IconaCondividi size={18} /> Condividi PDF</button>
             <button className="pp-bottone pp-bottone-chiaro" disabled={!file} onClick={() => { scaricaDocumento(file); ctx.ricorda?.([file]); }}>Scarica PDF</button>
             <button className="pp-bottone pp-bottone-chiaro" disabled={!file} onClick={() => { ctx.ricorda?.([file]); ctx.apri({ tipo: 'pdf', file }); }}>Apri · Firma</button>
-            <button className="pp-bottone pp-bottone-chiaro" disabled={!file} onClick={() => { ctx.ricorda?.([file]); sostituisci({ tipo: 'carica', file, opzioni: { descrizione: nome, fascicolo: 'identita', portafoglio: true, scelto: true } }); }}>Archivia nei documenti personali</button>
+            <button className="pp-bottone pp-bottone-chiaro" disabled={!file} onClick={() => { ctx.ricorda?.([file], { archiviato: true }); sostituisci({ tipo: 'carica', file, opzioni: { descrizione: nome, fascicolo: 'identita', portafoglio: true, scelto: true } }); }}>Archivia nei documenti personali</button>
           </div>
         </>
       )}

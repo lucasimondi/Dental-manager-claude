@@ -246,3 +246,75 @@
 .scan-impostazione small { color: var(--pp-grigio); font-size: 13px; }
 .scan-impostazione input[type="checkbox"] { width: 46px; height: 26px; flex-shrink: 0; accent-color: #1f6fe5; }
 .scan-impostazione-campo { flex-direction: column; align-items: stretch; }
+
+/* SCAN-ORGANIZZA (PO 2026-11-12: «Prova con a b d») — A: File con schede · B: categorie · D: scheda. */
+.scan-schede { left: 0; right: 0; transform: none; bottom: 0; width: auto; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; padding: 4px 4px calc(6px + env(safe-area-inset-bottom)); border-radius: 0; border-width: 1px 0 0; box-shadow: 0 -4px 16px rgba(16, 24, 40, .06); }
+.scan-schede button { border-radius: 12px; font-size: 11.5px; min-height: 56px; }
+.scan-schede button[aria-current="page"] { background: transparent; }
+.scan-schede .scan-schede-scatta { padding: 0; }
+.scan-schede .scan-schede-scatta span { width: 58px; height: 58px; margin-top: -26px; border-radius: 50%; display: grid; place-items: center; background: #1f6fe5; color: #fff; box-shadow: 0 6px 18px rgba(31, 111, 229, .42); }
+.pp-app.pp-scan { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
+.scan-rapidi { display: flex; gap: 8px; overflow-x: auto; padding: 0 0 10px; scrollbar-width: none; }
+.scan-rapidi::-webkit-scrollbar { display: none; }
+.scan-rapidi button { flex-shrink: 0; min-height: 40px; padding: 0 14px; border: 0; border-radius: 12px; background: var(--pp-superficie); font: inherit; font-size: 14px; font-weight: 650; box-shadow: var(--pp-ombra); cursor: pointer; }
+.scan-schede-file { display: flex; gap: 18px; margin: 2px 0 8px; border-bottom: 1px solid var(--pp-linea); overflow-x: auto; scrollbar-width: none; }
+.scan-schede-file button { flex-shrink: 0; padding: 8px 0 10px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--pp-grigio); font: inherit; font-size: 16px; cursor: pointer; }
+.scan-schede-file button.attiva { color: var(--pp-inchiostro); font-weight: 700; border-bottom-color: var(--pp-inchiostro); }
+.scan-tipi { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.scan-tipi button { flex-shrink: 0; min-height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--pp-linea); background: var(--pp-superficie); color: var(--pp-inchiostro); font: inherit; font-size: 13px; cursor: pointer; }
+.scan-tipi button.attivo { background: #1f6fe5; border-color: #1f6fe5; color: #fff; font-weight: 600; }
+.scan-vista { width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; color: var(--pp-grigio); display: grid; place-items: center; cursor: pointer; }
+.scan-vista[aria-pressed="true"] { background: var(--pp-superficie); color: #1f6fe5; }
+.scan-dove { display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 4px; background: #eef4ff; color: #1f4fb8; font-weight: 600; font-size: 11.5px; line-height: 18px; }
+.scan-dove.archivio { background: #ecfdf3; color: #067647; }
+.scan-recente-testo small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scan-stella { flex-shrink: 0; width: 44px; height: 44px; border: 0; background: transparent; color: #c5cbd5; font-size: 20px; cursor: pointer; }
+.scan-stella.attiva { color: #f5b400; }
+.scan-stella.grande { font-size: 26px; }
+.scan-doc-mini-box { position: relative; flex-shrink: 0; }
+.scan-doc-mini-box em, .scan-copertina-img em { position: absolute; left: 3px; bottom: 3px; padding: 0 4px; border-radius: 3px; color: #fff; font-style: normal; font-size: 9px; font-weight: 800; line-height: 14px; }
+.scan-recente-tipo { background: #667085; }
+.scan-scadenze { display: grid; gap: 4px; margin: 4px 0 10px; padding: 12px 14px; border-radius: 14px; background: #fff4e5; color: #8a4b08; font-size: 13.5px; }
+.scan-categorie { display: grid; gap: 8px; margin-bottom: 14px; }
+.scan-categoria { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 14px; border: 1px solid rgba(16, 24, 40, .06); border-radius: 16px; font: inherit; text-align: left; cursor: pointer; }
+.scan-categoria strong { flex: 1; font-size: 15.5px; }
+.scan-categoria-quanti { font-size: 13px; opacity: .85; }
+.scan-categoria-sigla { width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%; background: #fff; display: grid; place-items: center; font-size: 12.5px; font-weight: 800; }
+.scan-categoria-sigla.piccola { width: 30px; height: 30px; font-size: 11px; }
+.scan-voce-cartella { width: 100%; margin-bottom: 6px; }
+.scan-dentro { display: flex; align-items: center; gap: 10px; margin: 4px 0 6px; }
+.scan-dentro h2 { flex: 1; margin: 0; font-size: 18px; }
+.scan-griglia-doc { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 8px; }
+.scan-copertina { display: flex; flex-direction: column; gap: 4px; padding: 0; border: 0; background: transparent; color: var(--pp-inchiostro); font: inherit; text-align: left; cursor: pointer; min-width: 0; }
+.scan-copertina-img { position: relative; aspect-ratio: 3 / 4; border-radius: 10px; overflow: hidden; background: #fff; border: 1px solid var(--pp-linea); box-shadow: var(--pp-ombra); }
+.scan-copertina-img img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.scan-copertina-img b { position: absolute; right: 5px; top: 3px; color: #f5b400; }
+.scan-copertina.scelto .scan-copertina-img { outline: 3px solid #1f6fe5; }
+.scan-copertina strong { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scan-copertina small { font-size: 11px; color: var(--pp-grigio); }
+/* D · scheda del documento */
+.scan-scheda { margin: -16px -16px 0; }
+.scan-scheda-pagine { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 18px 24px; background: #1d2433; min-height: 260px; align-items: center; }
+.scan-scheda-pagine img { flex-shrink: 0; max-width: 78%; max-height: 380px; border-radius: 4px; background: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, .35); scroll-snap-align: center; }
+.scan-scheda-pagine .pp-riga-meta { color: #c4cad6; }
+.scan-scheda-vuota { margin: auto; padding: 28px 22px; border-radius: 12px; background: #667085; color: #fff; font-weight: 800; }
+.scan-scheda-info { display: grid; gap: 14px; padding: 16px; margin-top: -14px; border-radius: 20px 20px 0 0; background: var(--pp-superficie); position: relative; }
+.scan-scheda-titolo { display: flex; align-items: flex-start; gap: 8px; }
+.scan-scheda-titolo > span { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.scan-scheda-titolo strong { font-size: 18px; overflow-wrap: anywhere; }
+.scan-scheda-titolo small { color: var(--pp-grigio); font-size: 12.5px; }
+.scan-scheda-chip { display: flex; flex-wrap: wrap; gap: 6px; }
+.scan-chip { min-height: 32px; padding: 0 11px; border: 0; border-radius: 999px; background: #f2f4f7; color: #344054; font: inherit; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; cursor: pointer; }
+.scan-chip.blu { background: #eef4ff; color: #1f4fb8; }
+.scan-chip.verde { background: #ecfdf3; color: #067647; }
+.scan-chip.ambra { background: #fff4e5; color: #8a4b08; }
+.scan-chip.rosso { background: #fef0ef; color: #b42318; }
+.scan-scheda-azioni { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px 4px; }
+.scan-scheda-azioni button { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0; border: 0; background: transparent; color: var(--pp-inchiostro); font: inherit; font-size: 11.5px; cursor: pointer; }
+.scan-scheda-azioni button span { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-size: 15px; font-weight: 800; }
+.scan-scheda-altro { display: flex; justify-content: space-between; gap: 12px; padding-top: 6px; border-top: 1px solid var(--pp-linea); }
+.scan-testo-rosso { color: var(--pp-rosso) !important; }
+.scan-voce[aria-pressed="true"] { outline: 2px solid #1f6fe5; }
+.scan-voce-cartella { justify-content: flex-start; text-align: left; background: var(--pp-superficie); border: 1px solid var(--pp-linea); }
+.pp-scan .pp-toast { bottom: calc(96px + env(safe-area-inset-bottom)); }
+.scan-voce .pp-icona-contenuto { flex: 0 0 auto; }

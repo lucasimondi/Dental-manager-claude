@@ -51,7 +51,7 @@ try {
   await page.getByRole('button', { name: 'Salva in Word' }).click();
   await page.locator('.pp-toast', { hasText: 'Traduzione Inglese' }).waitFor();
   await page.locator('.pp-pagina:not([hidden]) .pp-pagina-barra button').first().click();
-  await page.locator('.pp-pagina-barra button').first().click();
+  await page.locator('.pp-pagina:not([hidden]) .pp-pagina-barra button').first().click();
 
   // Scanner with «Testo ricercabile (OCR)» → saved in a folder → found by a word of its content.
   await page.getByRole('button', { name: /^Scanner/ }).click();
@@ -60,12 +60,13 @@ try {
   await page.waitForFunction(() => [...document.querySelectorAll('button')].some((b) => /Salva in I miei documenti/.test(b.textContent) && !b.disabled), null, { timeout: 30000 });
   await page.getByRole('button', { name: 'Salva in I miei documenti' }).click();
   await page.locator('.scan-voce', { hasText: 'Generale' }).click();
-  await page.locator('.pp-pagina-barra button').first().click();
-  await page.getByRole('button', { name: 'I miei documenti' }).click();
+  await page.locator('.pp-pagina:not([hidden]) .pp-pagina-barra button').first().click();
+  await page.getByRole('button', { name: 'File', exact: true }).click();
   await page.getByLabel('Cerca nei documenti').fill('enel');
   await page.locator('.scan-documenti .scan-recente').first().waitFor({ timeout: 20000 });
   assert.equal(await page.locator('.scan-documenti .scan-recente').count(), 1, 'found by OCR text');
-  await page.getByRole('button', { name: /^Condividi Scansione/ }).click();
+  await page.getByRole('button', { name: /^Altre azioni per Scansione/ }).click();
+  await page.locator('.scan-recente-menu').getByRole('button', { name: 'Condividi' }).click();
   await page.waitForFunction(() => window.__inviati.includes('condividi'));
   await page.screenshot({ path: `${out}/2-ricerca-testo.png` });
   // SCAN-ESPORTA: Word and JPG from the scanned PDF, saved in the same folder; «Aggiungi pagine».
@@ -82,21 +83,24 @@ try {
   await page.locator('.scan-voce', { hasText: 'Immagini JPG' }).click();
   await page.waitForFunction(() => document.querySelectorAll('.scan-documenti .scan-recente').length === 4, null, { timeout: 30000 });
   await page.screenshot({ path: `${out}/4-esportati.png` });
-  await page.getByRole('button', { name: /^Altre azioni per Scansione.*\.pdf/ }).click();
+  await page.locator('.scan-documenti .scan-recente-apri', { hasText: 'PDF' }).first().click();
+  await page.locator('.scan-scheda').waitFor();
+  assert.match(await page.locator('.scan-scheda-chip').textContent(), /Bollette/, 'category chosen from the OCR text (ENEL)');
   await page.getByRole('button', { name: 'Aggiungi pagine' }).click();
   await page.locator('.pp-pagina-titolo', { hasText: 'Scanner' }).waitFor();
   await page.locator('.pp-scansione-pagina').first().waitFor();
   assert.equal(await page.locator('.pp-scansione-pagina').count(), 1, 'existing PDF loaded in the scanner');
-  // SCAN-IMPOSTAZIONI: the gear opens the settings; the default folder is chosen there.
-  await page.locator('.pp-pagina-barra button').first().click();
-  await page.getByRole('button', { name: 'Impostazioni di Scan' }).click();
-  await page.locator('.pp-pagina-titolo', { hasText: 'Impostazioni di Scan' }).waitFor();
+  // SCAN-IMPOSTAZIONI: from the bottom bar (scanner and document sheet closed first).
+  await page.locator('.pp-pagina:not([hidden]) .pp-pagina-barra button').first().click();
+  await page.locator('.pp-pagina:not([hidden]) .pp-pagina-barra button').first().click();
+  await page.locator('.scan-schede').waitFor();
+  await page.getByRole('button', { name: 'Impostazioni', exact: true }).click();
+  await page.locator('.scan-impostazioni').waitFor();
   await page.getByLabel('Inizio del nome').fill('Studio');
   assert.match(await page.locator('.scan-impostazioni').textContent(), /«Studio \d\d-\d\d-\d{4}/);
   await page.getByLabel('Lingua di arrivo predefinita').selectOption('fr');
   assert.equal(await page.evaluate(() => localStorage.getItem('scan-lingua')), 'fr');
   await page.waitForTimeout(600);
-  assert.equal(await page.locator('.scan-ingranaggio').count(), 0, 'gear hidden while a page is open');
   await page.screenshot({ path: `${out}/5-impostazioni.png` });
   assert.deepEqual(errors, []);
   console.log('scan-app PASS ·', await page.evaluate(() => window.__inviati.join(',')));

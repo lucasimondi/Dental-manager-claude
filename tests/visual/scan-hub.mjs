@@ -52,11 +52,23 @@ try {
   await page.locator('.scan-recente').first().waitFor();
   assert.match(await page.locator('.scan-recente').first().textContent(), /Carta d'identità/);
   await page.screenshot({ path: `${out}/4-home-recenti.png` });
-  // Recent PDF opens in the PDF manager.
+  // SCAN-ORGANIZZA: a recent document opens its sheet (D): pages, star, category, tags, 10 actions.
   await page.locator('.scan-recente-apri').first().click();
-  await page.locator('.pdf-manager').waitFor();
-  await page.locator('.pdf-header button', { hasText: 'Chiudi' }).click();
-  await page.locator('.pdf-manager').waitFor({ state: 'detached' });
+  await page.locator('.scan-scheda-pagine img').first().waitFor();
+  assert.match(await page.locator('.scan-scheda-chip').textContent(), /Carta d'identità/);
+  await page.getByRole('button', { name: 'Aggiungi ai preferiti' }).click();
+  await page.getByRole('button', { name: '+ scadenza' }).click();
+  await page.getByLabel('Data di scadenza').fill(new Date(Date.now() + 45 * 86400000).toISOString().slice(0, 10));
+  await page.getByRole('button', { name: 'Salva', exact: true }).click();
+  await page.locator('.scan-chip', { hasText: 'scade tra' }).waitFor();
+  await page.getByRole('button', { name: '+ etichetta' }).click();
+  await page.getByLabel('Etichetta', { exact: true }).fill('Mario');
+  await page.getByRole('button', { name: 'Salva', exact: true }).click();
+  await page.locator('.scan-chip', { hasText: '#mario' }).waitFor();
+  assert.equal(await page.locator('.scan-scheda-azioni button').count(), 10);
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: `${out}/4b-scheda.png` });
+  await page.locator('.pp-pagina:not([hidden]) .pp-pagina-barra button').first().click();
 
   // Estrai testo: synthetic sheet → local OCR.
   await page.getByRole('button', { name: 'Estrai testo' }).click();
@@ -81,14 +93,28 @@ try {
   await page.locator('.pp-pagina-barra button').first().click();
 
   // Library: 3 documents, folders, search, rename, move, merge, delete.
-  await page.getByRole('button', { name: 'I miei documenti' }).click();
+  await page.getByRole('button', { name: 'File', exact: true }).click();
   await page.locator('.scan-documenti .scan-recente').nth(2).waitFor();
   assert.equal(await page.locator('.scan-documenti .scan-recente').count(), 3);
   await page.waitForFunction(() => document.querySelectorAll('.scan-doc-mini').length >= 2, null, { timeout: 15000 });
   await page.screenshot({ path: `${out}/6-documenti.png` });
-  await page.getByRole('tab', { name: /Salute/ }).click();
+  // Cartelle: categories (B) with the deadline warning, then the user's folders.
+  await page.getByRole('tab', { name: 'Cartelle' }).click();
+  await page.locator('.scan-scadenze', { hasText: 'scade tra' }).waitFor();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${out}/6b-cartelle.png`, fullPage: true });
+  await page.locator('.scan-categoria', { hasText: "Carta d'identità" }).click();
   assert.equal(await page.locator('.scan-documenti .scan-recente').count(), 1);
-  await page.getByRole('tab', { name: /Tutti/ }).click();
+  await page.getByRole('button', { name: '‹ Cartelle' }).click();
+  await page.locator('.scan-voce-cartella', { hasText: 'Salute' }).click();
+  assert.equal(await page.locator('.scan-documenti .scan-recente').count(), 1);
+  await page.getByRole('tab', { name: 'Preferiti' }).click();
+  assert.equal(await page.locator('.scan-documenti .scan-recente').count(), 1, 'one favourite');
+  await page.getByRole('tab', { name: 'Recenti' }).click();
+  await page.getByRole('button', { name: 'Vista a griglia' }).click();
+  assert.equal(await page.locator('.scan-copertina').count(), 3);
+  await page.screenshot({ path: `${out}/6c-griglia.png` });
+  await page.getByRole('button', { name: 'Vista a elenco' }).click();
   await page.getByLabel('Cerca nei documenti').fill('carta identita');
   assert.equal(await page.locator('.scan-documenti .scan-recente').count(), 1);
   await page.getByLabel('Cerca nei documenti').fill('');

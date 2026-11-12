@@ -1,7 +1,7 @@
 // SCAN-HUB (PO 2026-11-12) — «Estrai testo»: foto o PDF → testo modificabile da copiare,
 // condividere o salvare come .txt. Riconoscimento sul telefono (Tesseract italiano, lo stesso di
 // «Testo (OCR)»): il documento non lascia il dispositivo e nessun modello esterno lo legge.
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { elaboraPagina } from '../lib/scansione.js';
 import { tipoFile } from '../lib/pdfUnico.js';
 import { validaFile } from '../pdf/filePdf.js';
@@ -11,7 +11,7 @@ import { IconaFotocamera, IconaFoto, IconaFile, IconaCondividi } from '../Icone.
 
 export const MAX_FOTO_TESTO = 10;
 
-export function EstraiTesto({ ctx }) {
+export function EstraiTesto({ ctx, fileIniziale = null }) {
   const { mostra } = ctx;
   const [testo, setTesto] = useState('');
   const [nome, setNome] = useState('');
@@ -47,6 +47,9 @@ export function EstraiTesto({ ctx }) {
     } catch (e) { mostra(e.message || 'Testo non letto.'); }
     finally { setLavoro(null); }
   };
+  // SCAN-ORGANIZZA: dalla scheda di un documento senza testo letto.
+  const avviato = useRef(false);
+  useEffect(() => { if (fileIniziale && !avviato.current) { avviato.current = true; leggi([fileIniziale]); } }, [fileIniziale]); // eslint-disable-line react-hooks/exhaustive-deps
   const fileTxt = () => new File([testo], `${(nome || 'Testo').replace(/[^\w\- ]+/g, '').trim() || 'Testo'}.txt`, { type: 'text/plain' });
   const copia = async () => {
     try { await navigator.clipboard.writeText(testo); mostra('Testo copiato.'); } catch { mostra('Copia non riuscita: seleziona il testo e copialo a mano.'); }

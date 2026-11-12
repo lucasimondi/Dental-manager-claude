@@ -34,10 +34,16 @@ export function nuovoNome(vecchio, digitato) {
 }
 const piega = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 // Ricerca nel nome e nel testo riconosciuto, filtro per cartella, ordinamento.
-export function filtraDocumenti(elenco, { cerca = '', cartella = null, ordine = 'recenti' } = {}) {
-  const parole = piega(cerca).split(/\s+/).filter(Boolean);
+// SCAN-ORGANIZZA: anche per categoria, tipo di file (pdf, foto, word, testo), preferiti, archiviati ed etichette.
+export const tipoDi = (d) => (/pdf$/i.test(d?.tipo || '') || /\.pdf$/i.test(d?.nome || '') ? 'pdf'
+  : /^image\//.test(d?.tipo || '') ? 'foto' : /wordprocessingml|msword/.test(d?.tipo || '') || /\.docx?$/i.test(d?.nome || '') ? 'word' : 'testo');
+export function filtraDocumenti(elenco, { cerca = '', cartella = null, ordine = 'recenti', categoria = null, tipo = null, preferiti = false, archiviati = false } = {}) {
+  const parole = piega(cerca).replace(/#/g, '').split(/\s+/).filter(Boolean);
   const out = elenco.filter((d) => (!cartella || d.cartella === cartella)
-    && parole.every((p) => piega(d.nome).includes(p) || piega(d.testo).includes(p)));
+    && (!categoria || (d.categoria || 'generali') === categoria)
+    && (!tipo || tipoDi(d) === tipo)
+    && (!preferiti || d.preferito) && (!archiviati || d.archiviato)
+    && parole.every((p) => piega(d.nome).includes(p) || piega(d.testo).includes(p) || (d.tag || []).some((t) => piega(t).includes(p))));
   const cmp = {
     recenti: (a, b) => b.modificato - a.modificato,
     vecchi: (a, b) => a.modificato - b.modificato,
@@ -122,7 +128,7 @@ export async function fileDocumento(id) {
 }
 // Salva i file nella libreria. Stesso nome e stesso peso nella stessa cartella = stesso file:
 // si aggiorna la data invece di duplicarlo. extra: { cartella, origine, miniature: [dataURL], testi: [string] }.
-export async function salvaDocumenti(files, { cartella = CARTELLA_BASE, origine = 'scan', miniature = [], testi = [] } = {}) {
+export async function salvaDocumenti(files, { cartella = CARTELLA_BASE, origine = 'scan', miniature = [], testi = [], categorie = [], archiviato = false } = {}) {
   const elenco = [...(files || [])].filter(Boolean);
   if (!elenco.length) return [];
   const esistenti = await elencoDocumenti();
@@ -134,7 +140,12 @@ export async function salvaDocumenti(files, { cartella = CARTELLA_BASE, origine 
       const id = uguale?.id || `${ora}-${i}-${Math.random().toString(36).slice(2, 8)}`;
       ids.push(id);
       s.put({ id, nome: f.name, tipo: f.type, dimensione: f.size, creato: uguale?.creato || ora + i, modificato: ora + i, cartella, origine,
-        miniatura: miniature[i] ?? uguale?.miniatura ?? null, testo: testi[i] ?? uguale?.testo ?? '', blob: f });
+        miniatura: miniature[i] ?? uguale?.miniatura ?? null, testo: testi[i] ?? uguale?.testo ?? '', blob: f,
+        // SCAN-ORGANIZZA: categoria scelta da sola (finché l'utente non la cambia), preferito, etichette, scadenza.
+        categoria: uguale && !uguale.categoriaAuto ? uguale.categoria : (categorie[i] || uguale?.categoria || 'generali'),
+        categoriaAuto: uguale ? uguale.categoriaAuto !== false : true,
+        preferito: !!uguale?.preferito, tag: uguale?.tag || [], scadenza: uguale?.scadenza || null,
+        archiviato: archiviato || !!uguale?.archiviato });
     });
   });
   return ids;
@@ -154,6 +165,18 @@ export async function rinominaDocumento(id, digitato) {
   const nome = nomeUnico(nuovoNome(d.nome, digitato), tutti.filter((x) => x.cartella === d.cartella && x.id !== id).map((x) => x.nome));
   await aggiorna([id], (r) => ({ ...r, nome, blob: new File([r.blob], nome, { type: r.tipo || r.blob.type }) }));
   return nome;
+}
+// Campi che l'utente cambia dalla scheda del documento.
+const MODIFICABILI = new Set(['preferito', 'categoria', 'categoriaAuto', 'tag', 'scadenza', 'archiviato']);
+export function aggiornaDocumento(id, campi) {
+  const ok = Object.fromEntries(Object.entries(campi).filter(([k]) => MODIFICABILI.has(k)));
+  return aggiorna([id], (r) => ({ ...r, ...ok }));
+}
+export async function documento(id) {
+  const d = await fai('documenti', 'readonly', (s) => s.get(id));
+  if (!d) throw new Error('File non più disponibile su questo telefono.');
+  const { blob, ...resto } = d;
+  return resto;
 }
 export const spostaDocumenti = (ids, cartella) => aggiorna(ids, (r) => ({ ...r, cartella }));
 export const aggiungiDettagli = (id, { miniatura, testo }) => aggiorna([id], (r) => ({ ...r, ...(miniatura !== undefined ? { miniatura } : {}), ...(testo !== undefined ? { testo } : {}) }));

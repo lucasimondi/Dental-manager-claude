@@ -210,7 +210,7 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
   const pronta = !lavoro && pronto?.file && pronto.chiave === chiave;
   // SCAN-HUB: in Scan i PDF archiviati, inviati o scaricati restano nei Recenti del telefono.
   const ricorda = (files) => ctx.ricorda?.(files);
-  const archiviaFile = (file) => { ricorda([file]); sostituisci({ tipo: 'carica', file, opzioni: { ...opzioni, descrizione: file.name.replace(/\.pdf$/i, ''), scelto: true, soloArchiviazione: true, nonAnalizzare: true } }); };
+  const archiviaFile = (file) => { ctx.ricorda?.([file], { archiviato: true }); sostituisci({ tipo: 'carica', file, opzioni: { ...opzioni, descrizione: file.name.replace(/\.pdf$/i, ''), scelto: true, soloArchiviazione: true, nonAnalizzare: true } }); };
   const archivia = () => { if (pronta) archiviaFile(pronto.file); };
   const modifica = async (elementi) => {
     if (inCorso.current) return;

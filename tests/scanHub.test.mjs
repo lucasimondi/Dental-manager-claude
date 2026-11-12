@@ -76,7 +76,7 @@ test('Scan opens on its Home with tools, recents and camera; everything stays on
   for (const t of ['scanner', 'tessera', 'testo', 'pdfStrumento']) assert.match(scan, new RegExp(`${t}: \\{`));
   const home = readFileSync('personal/src/scan/ScanHome.jsx', 'utf8');
   for (const n of ['Estrai testo', "Carta d'identità", 'Firma PDF', 'Comprimi PDF', 'Da album', 'Da file', 'Recenti', 'Tutti i documenti']) assert.ok(home.includes(n), n);
-  assert.match(home, /capture="environment"/);
+  assert.match(scan, /capture="environment"/); assert.match(scan, /Scatta e scansiona/); // SCAN-ORGANIZZA: fotocamera al centro della barra
   const libreria = readFileSync('personal/src/lib/libreria.js', 'utf8');
   assert.match(libreria, /indexedDB/); assert.doesNotMatch(libreria, /fetch\(|supabase|archivioDb/);
   assert.match(libreria, /objectStoreNames\.contains\('recenti'\)/, 'old Recenti migrated, not lost');
@@ -187,4 +187,49 @@ test('Impostazioni di Scan: defaults, booleans compatible with the scanner keys,
   assert.throws(() => salvaImpostazione('altro', 1, memoria));
   assert.equal(PREDEFINITE['scan-prefisso'], 'Scansione'); assert.ok(LINGUE.some(([c]) => c === 'en'));
   assert.match(readFileSync('personal/src/Aggiungi.jsx', 'utf8'), /useScelta\('scan-ocr', false\)/, 'same key as the scanner checkbox');
+});
+
+// SCAN-ORGANIZZA (PO 2026-11-12: «Prova con a b d»)
+test('Categorie: chosen from origin, name and OCR text; identity documents win over generic words', async () => {
+  const { categoriaDa, CATEGORIE, avvisoScadenza, normalizzaEtichette } = await import('../personal/src/scan/categorie.js');
+  assert.equal(CATEGORIE.length, 10);
+  assert.equal(categoriaDa({ nome: "Carta d'identità.pdf" }), 'identita');
+  assert.equal(categoriaDa({ nome: 'Patente di guida.pdf' }), 'patente');
+  assert.equal(categoriaDa({ nome: 'Scansione 12-11-2026 13.42.pdf', testo: 'ENEL Energia — bolletta della luce, importo da pagare 120 €' }), 'bollette');
+  assert.equal(categoriaDa({ nome: 'Scansione.pdf', testo: 'REFERTO ECOGRAFIA ADDOME' }), 'salute');
+  assert.equal(categoriaDa({ nome: 'Scansione.pdf', testo: 'Documento commerciale — TOTALE 12,50 €' }), 'spese');
+  assert.equal(categoriaDa({ nome: 'Passaporto Mario.pdf', testo: 'totale €' }), 'passaporto', 'name before text');
+  assert.equal(categoriaDa({ nome: 'Appunti.txt', testo: 'lista della spesa' }), 'generali');
+  const oggi = new Date(2026, 10, 12);
+  assert.equal(avvisoScadenza('2026-12-27', oggi).testo, 'scade tra 45 giorni');
+  assert.equal(avvisoScadenza('2026-11-01', oggi).scaduto, true);
+  assert.equal(avvisoScadenza('2027-06-01', oggi), null, 'more than 90 days: no warning');
+  assert.equal(avvisoScadenza('', oggi), null);
+  assert.deepEqual(normalizzaEtichette(['#Ecografia', 'ecografia', 'Mutuo Casa', '  ']), ['ecografia', 'mutuo-casa']);
+});
+test('Libreria: filters by category, file type, favourites, archived and #tag', async () => {
+  const { filtraDocumenti, tipoDi } = await import('../personal/src/lib/libreria.js');
+  const docs = [
+    { id: 1, nome: 'Referto.pdf', tipo: 'application/pdf', categoria: 'salute', preferito: true, archiviato: false, tag: ['ecografia'], modificato: 3, testo: '' },
+    { id: 2, nome: 'Luce.pdf', tipo: 'application/pdf', categoria: 'bollette', preferito: false, archiviato: true, tag: [], modificato: 2, testo: '' },
+    { id: 3, nome: 'Scontrino.jpg', tipo: 'image/jpeg', categoria: 'spese', preferito: false, archiviato: false, tag: [], modificato: 1, testo: '' },
+    { id: 4, nome: 'Preventivo.docx', tipo: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', modificato: 0, testo: '' },
+  ];
+  const ids = (f) => filtraDocumenti(docs, f).map((d) => d.id);
+  assert.deepEqual(ids({ categoria: 'salute' }), [1]);
+  assert.deepEqual(ids({ categoria: 'generali' }), [4], 'no category = Documenti generali');
+  assert.deepEqual(ids({ tipo: 'foto' }), [3]); assert.deepEqual(ids({ tipo: 'word' }), [4]);
+  assert.deepEqual(ids({ preferiti: true }), [1]); assert.deepEqual(ids({ archiviati: true }), [2]);
+  assert.deepEqual(ids({ cerca: '#ecografia' }), [1]);
+  assert.equal(tipoDi(docs[0]), 'pdf');
+});
+test('A + B + D: File tabs, categories with deadlines, document sheet with 10 actions, 5-item bottom bar', () => {
+  const doc = readFileSync('personal/src/scan/Documenti.jsx', 'utf8');
+  for (const t of ['Recenti', 'Cartelle', 'Preferiti', 'Archivio', 'PDF in Word', 'Vista a griglia', 'Telefono']) assert.ok(doc.includes(t), t);
+  assert.match(doc, /CardCategorie/); assert.match(doc, /avvisoScadenza/);
+  const scheda = readFileSync('personal/src/scan/Scheda.jsx', 'utf8');
+  for (const t of ['Condividi', 'Firma', 'Modifica', 'Pagine', 'Testo', 'Word', 'Traduci', 'Comprimi', 'Sposta', 'Archivia', '+ etichetta', '+ scadenza']) assert.ok(scheda.includes(`'${t}'`) || scheda.includes(t), t);
+  const scan = readFileSync('personal/src/scan/Scan.jsx', 'utf8');
+  for (const t of ['>Home<', '>File<', '>Strumenti<', '>Impostazioni<']) assert.ok(scan.includes(t), t);
+  assert.match(scan, /scheda: \{/); assert.match(scan, /categoriaDa/);
 });
