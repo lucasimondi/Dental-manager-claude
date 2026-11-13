@@ -145,3 +145,55 @@ test('collegamenti nell\'app: pagina, Chiedi, elenchi e scheda documento', () =>
   assert.ok(!/window\.(prompt|confirm)\(/.test(pagina), 'niente prompt/confirm: nell\'app Android non compaiono');
   assert.ok(!/localStorage|sessionStorage/.test(readFileSync('personal/src/lib/pacchetto.js', 'utf8')), 'la password non si salva');
 });
+
+/* ---------- POL-VITA-033 scrivania e trascinamento ---------- */
+import { azioneTrascina, nomeProposto } from '../personal/src/lib/cartelleMie.js';
+
+const T = [{ id: 'a', padre_id: null }, { id: 'b', padre_id: 'a' }, { id: 'c', padre_id: 'b' }, { id: 'z', padre_id: null }];
+
+test('trascina: file su cartella = sposta dentro; cartella su cartella; niente cicli', () => {
+  assert.deepEqual(azioneTrascina([{ tipo: 'doc', id: 'x' }], { tipo: 'cartella', id: 'z' }, 'a', T), { azione: 'sposta', documenti: ['x'], cartelle: [], verso: 'z' });
+  assert.deepEqual(azioneTrascina([{ tipo: 'cartella', id: 'b' }], { tipo: 'cartella', id: 'z' }, 'a', T), { azione: 'sposta', documenti: [], cartelle: ['b'], verso: 'z' });
+  assert.equal(azioneTrascina([{ tipo: 'cartella', id: 'a' }], { tipo: 'cartella', id: 'c' }, null, T), null, 'dentro una sua sottocartella');
+  assert.equal(azioneTrascina([{ tipo: 'cartella', id: 'a' }], { tipo: 'cartella', id: 'a' }, null, T), null, 'su sé stessa');
+});
+
+test('trascina: file su file = nuova cartella; mai con cartelle o sullo stesso file', () => {
+  assert.deepEqual(azioneTrascina([{ tipo: 'doc', id: 'x' }], { tipo: 'doc', id: 'y' }, null, T), { azione: 'raggruppa', documenti: ['x', 'y'] });
+  assert.deepEqual(azioneTrascina([{ tipo: 'doc', id: 'x' }, { tipo: 'doc', id: 'w' }], { tipo: 'doc', id: 'y' }, 'a', T), { azione: 'raggruppa', documenti: ['x', 'w', 'y'] });
+  assert.equal(azioneTrascina([{ tipo: 'doc', id: 'x' }], { tipo: 'doc', id: 'x' }, null, T), null);
+  assert.equal(azioneTrascina([{ tipo: 'cartella', id: 'b' }], { tipo: 'doc', id: 'y' }, 'a', T), null);
+});
+
+test('trascina: in alto = fuori dalla cartella (verso il padre o la scrivania)', () => {
+  assert.deepEqual(azioneTrascina([{ tipo: 'doc', id: 'x' }], { tipo: 'su', id: null }, 'b', T), { azione: 'sposta', documenti: ['x'], cartelle: [], verso: null });
+  assert.deepEqual(azioneTrascina([{ tipo: 'doc', id: 'x' }], { tipo: 'su', id: 'a' }, 'b', T), { azione: 'sposta', documenti: ['x'], cartelle: [], verso: 'a' });
+  assert.equal(azioneTrascina([{ tipo: 'doc', id: 'x' }], { tipo: 'su', id: 'b' }, 'b', T), null, 'già qui');
+});
+
+test('nome proposto: l\'ente comune, altrimenti «Nuova cartella»', () => {
+  assert.equal(nomeProposto([{ ente: 'Enel' }, { ente: 'Enel ' }]), 'Enel');
+  assert.equal(nomeProposto([{ ente: 'Enel' }, { ente: 'Hera' }]), 'Nuova cartella');
+  assert.equal(nomeProposto([{}, {}]), 'Nuova cartella');
+});
+
+test('migrazione scrivania: solo aggiunte, RLS, funzioni con la RLS di chi chiama, cancella solo collegamenti', () => {
+  const sql = readFileSync('supabase/archivio/migrations/20261113150000_pol_vita_033_scrivania.sql', 'utf8').toLowerCase();
+  assert.ok(!/\bdrop\s+(table|column|function|index|trigger|view|policy)\b/.test(sql));
+  assert.match(sql, /create policy proprietario on cartelle_mie_scrivania/);
+  assert.equal((sql.match(/^security invoker$/gm) || []).length, 2);
+  const cancellazioni = sql.match(/delete from \w+/g) || [];
+  assert.deepEqual([...new Set(cancellazioni)].sort(), ['delete from cartelle_mie_documenti', 'delete from cartelle_mie_scrivania']);
+  assert.match(sql, /revoke all on function sposta_documenti_mie\(uuid\[\], uuid, uuid\) from public, anon/);
+});
+
+test('scrivania a icone con trascinamento, senza prompt né emoji', () => {
+  const pagina = readFileSync('personal/src/sezioni/documenti/CartelleMie.jsx', 'utf8');
+  assert.match(pagina, /useTrascina\(/);
+  assert.match(pagina, /data-bersaglio=\{`\$\{tipo === 'cartella' \? 'cartella' : 'doc'\}:\$\{voce\.id\}`\}/);
+  assert.match(pagina, /Porta fuori da/);
+  assert.ok(!/[\u{1F4C1}\u{1F4C4}]/u.test(pagina), 'niente emoji');
+  const trascina = readFileSync('personal/src/sezioni/documenti/Trascina.jsx', 'utf8');
+  assert.match(trascina, /passive: false/);
+  assert.match(trascina, /onContextMenu/);
+});

@@ -1030,3 +1030,46 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-cosa-intestazione span { font-size: 13px; font-weight: 600; opacity: .85; }
 .pp-cosa-fatto { justify-content: space-between; gap: 12px; }
 .pp-cosa-fatto strong { font-size: 14px; text-align: right; overflow-wrap: anywhere; color: var(--pp-inchiostro); }
+
+/* ---------- POL-VITA-033: righe compatte (Tempo, Le mie cose) e scrivania a icone ---------- */
+.pp-tempo-righe { display: flex; flex-direction: column; border-radius: var(--pp-raggio); background: var(--pp-superficie); box-shadow: var(--pp-ombra); overflow: hidden; }
+.pp-riga-compatta { position: relative; display: flex; align-items: center; gap: 10px; min-height: 60px; padding: 8px 12px 8px 14px; text-align: left; color: var(--pp-inchiostro); border-bottom: 1px solid var(--pp-linea); }
+.pp-riga-compatta:last-child { border-bottom: 0; }
+.pp-riga-compatta::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 4px; border-radius: 0 3px 3px 0; background: var(--filo); }
+.pp-riga-compatta:active { background: var(--pp-sfondo); }
+.pp-riga-compatta-giorno { width: 30px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; line-height: 1.05; }
+.pp-riga-compatta-giorno strong { font-size: 17px; }
+.pp-riga-compatta-giorno span { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--pp-grigio); }
+.pp-riga-compatta .pp-mini { width: 38px; height: 46px; flex-shrink: 0; border-radius: 6px; }
+.pp-riga-compatta-testo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pp-riga-compatta-testo strong { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pp-riga-compatta-testo span { font-size: 12px; color: var(--pp-grigio); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pp-riga-compatta-importo { flex-shrink: 0; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.pp-tempo-fiume { gap: 18px; }
+.pp-tempo-mese { gap: 8px; }
+
+.pp-scrivania { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 6px; padding: 6px 0 4px; }
+@media (min-width: 560px) { .pp-scrivania { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); } }
+.pp-icona-voce { position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 6px 2px; border-radius: 16px; background: none; color: var(--pp-inchiostro);
+  -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; transition: transform .15s, background .15s; }
+.pp-icona-voce .pp-casella { position: absolute; top: 0; right: 4px; z-index: 1; }
+.pp-icona-cartella { position: relative; width: 64px; height: 64px; display: grid; place-items: center; border-radius: 18px; background: var(--pp-blu-chiaro); color: var(--pp-blu); box-shadow: var(--pp-ombra); }
+.pp-icona-cartella em { position: absolute; right: -6px; top: -6px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; display: grid; place-items: center; font-style: normal; font-size: 11px; font-weight: 800; background: var(--pp-inchiostro); color: var(--pp-superficie); }
+.pp-icona-file { width: 52px; height: 64px; display: block; }
+.pp-icona-file .pp-mini { width: 52px; height: 64px; border-radius: 8px; box-shadow: var(--pp-ombra); }
+.pp-icona-nome { width: 100%; font-size: 12px; font-weight: 600; line-height: 1.25; text-align: center; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.pp-icona-voce.scelta .pp-icona-cartella, .pp-icona-voce.scelta .pp-icona-file .pp-mini { outline: 3px solid var(--pp-blu); outline-offset: 2px; }
+.pp-icona-voce.presa { opacity: .35; }
+.pp-icona-voce.sopra { background: var(--pp-blu-chiaro); transform: scale(1.08); }
+.pp-icona-voce.sopra .pp-icona-cartella { background: var(--pp-blu); color: var(--pp-superficie); }
+.pp-mie.trascinando .pp-icona-voce:not(.presa) { animation: pp-trema .3s ease-in-out infinite alternate; }
+@keyframes pp-trema { from { transform: rotate(-1.2deg); } to { transform: rotate(1.2deg); } }
+.pp-mie.trascinando .pp-icona-voce.sopra { animation: none; }
+@media (prefers-reduced-motion: reduce) { .pp-mie.trascinando .pp-icona-voce { animation: none; } }
+.pp-mie-fuori { position: sticky; top: 8px; z-index: 5; min-height: 52px; display: grid; place-items: center; border-radius: 14px; font-size: 14px; font-weight: 700; border: 2px dashed var(--pp-blu); color: var(--pp-blu); background: var(--pp-superficie); }
+.pp-mie-fuori.sopra { background: var(--pp-blu); color: var(--pp-superficie); }
+.pp-briciole button.sopra { background: var(--pp-blu); color: var(--pp-superficie); border-radius: 8px; }
+.pp-mie-aiuto { margin: 4px 0 0; font-size: 12px; line-height: 1.4; color: var(--pp-grigio); }
+.pp-fantasma { position: fixed; z-index: 1000; pointer-events: none; transform: translate(-50%, -110%); display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.pp-fantasma > span { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 16px; background: var(--pp-superficie); color: var(--pp-blu); box-shadow: var(--pp-ombra-alta); font-size: 20px; }
+.pp-fantasma em { font-style: normal; font-size: 12px; font-weight: 800; padding: 3px 8px; border-radius: 8px; background: var(--pp-inchiostro); color: var(--pp-superficie); white-space: nowrap; }

@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { coseConPersone, riepilogoCose, documentiDellaCosa, fattiDaDocumenti } from '../../lib/vita.js';
 import { Vuoto, dataBreve, giorniA } from '../../ui.jsx';
-import { VoceDocumento } from './Selezione.jsx';
+import { RigaCompatta } from './Tempo.jsx';
 
 const quando = (data) => { const g = giorniA(data); return g < 0 ? `scaduta da ${-g} g` : g === 0 ? 'oggi' : g === 1 ? 'domani' : `tra ${g} giorni`; };
 const chiaroScuro = (hex) => { const n = parseInt(hex.slice(1), 16); const l = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; return l > 0.6 ? '#17171A' : '#FFFFFF'; };
@@ -97,7 +97,7 @@ export function PaginaCosa({ id, ctx }) {
       {conImporto.length > 0 && (
         <section aria-label="Ultimi importi">
           <h2 className="pp-chiedi-h2">Ultimi importi</h2>
-          <div className="pp-gruppo">{conImporto.map((d) => <VoceDocumento key={d.id} doc={d} modo="righe" selezione={null} onApri={(x) => apri({ tipo: 'documento', id: x.id })} onSeleziona={() => {}} />)}</div>
+          <div className="pp-tempo-righe">{conImporto.map((d) => <RigaCompatta key={d.id} doc={d} conGiorno={false} onApri={(x) => apri({ tipo: 'documento', id: x.id })} />)}</div>
         </section>
       )}
 
@@ -109,8 +109,8 @@ export function PaginaCosa({ id, ctx }) {
           )}
         </div>
         {!documenti ? <p className="pp-riga-meta">Carico…</p> : documenti.length ? (
-          <div className="pp-griglia-doc">
-            {documenti.slice(0, 12).map((d) => <VoceDocumento key={d.id} doc={d} modo="griglia" selezione={null} onApri={(x) => apri({ tipo: 'documento', id: x.id })} onSeleziona={() => {}} />)}
+          <div className="pp-tempo-righe">
+            {documenti.slice(0, 12).map((d) => <RigaCompatta key={d.id} doc={d} conGiorno={false} onApri={(x) => apri({ tipo: 'documento', id: x.id })} />)}
           </div>
         ) : <Vuoto>Nessun documento.</Vuoto>}
       </section>

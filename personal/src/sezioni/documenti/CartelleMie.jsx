@@ -10,12 +10,14 @@ import { interpretaDomanda } from '../../lib/interpreta.js';
 import {
   caricaCartelleMie, creaCartella, rinominaCartella, spostaCartelle, archiviaCartelle,
   documentiDellaCartella, aggiungiDocumenti, togliDocumenti, destinazioniPossibili, elencoConPercorso, percorso, cartelleDelDocumento,
+  documentiScrivania, aggiungiAScrivania, togliDaScrivania, spostaDocumenti, raggruppaDocumenti, nomeProposto, azioneTrascina,
 } from '../../lib/cartelleMie.js';
 import { preparaVoci, scaricaFile, creaZip, MAX_FILE_ZIP } from '../../lib/pacchetto.js';
 import { preparaFile, comeFile, condividi, scaricaDocumento } from '../../lib/condividi.js';
-import { Vuoto, Gruppo, titoloDoc, dataBreve, tokenSessione } from '../../ui.jsx';
-import { IconaChiudi, IconaDocumenti, IconaPiu, IconaCondividi, IconaLucchetto, IconaFreccia, IconaCerca } from '../../Icone.jsx';
-import { VoceDocumento } from './Selezione.jsx';
+import { Vuoto, Gruppo, titoloDoc, dataBreve, tokenSessione, colore } from '../../ui.jsx';
+import { Miniatura } from '../../Miniatura.jsx';
+import { useTrascina } from './Trascina.jsx';
+import { IconaChiudi, IconaDocumenti, IconaFile, IconaPiu, IconaCondividi, IconaLucchetto, IconaFreccia, IconaCerca } from '../../Icone.jsx';
 
 const MAX_FILE_SINGOLI = 20;
 
@@ -65,7 +67,7 @@ export function FoglioCartelleMie({ titolo, cartelle, escludi = null, radice = f
       <div className="pp-cerca pp-cerca-foglio"><IconaCerca size={16} /><input value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Cerca una cartella" aria-label="Cerca una cartella" /></div>
       <Gruppo>
         <button type="button" className="pp-riga" onClick={() => setNuova(true)}><IconaPiu size={18} /><span className="pp-riga-testo"><span className="pp-riga-titolo">Nuova cartella…</span></span></button>
-        {radice && <button type="button" className="pp-riga" onClick={() => onScegli(null, 'Le mie cartelle')}><span className="pp-riga-testo"><span className="pp-riga-titolo">Le mie cartelle</span><span className="pp-riga-meta">in cima, fuori da altre cartelle</span></span></button>}
+        {radice && <button type="button" className="pp-riga" onClick={() => onScegli(null, 'Le mie cartelle')}><span className="pp-riga-testo"><span className="pp-riga-titolo">Le mie cartelle</span><span className="pp-riga-meta">in cima, sulla scrivania</span></span></button>}
         {voci.map((v) => (
           <button key={v.id} type="button" className="pp-riga" onClick={() => onScegli(v.id, v.nome)}>
             <IconaDocumenti size={18} /><span className="pp-riga-testo"><span className="pp-riga-titolo">{v.nome}</span></span>
@@ -185,7 +187,28 @@ function FoglioInvia({ nomeIniziale, nCartelle, nDocumenti, onPrepara, stato, on
   );
 }
 
-/* ---------- pagina di una cartella (id null = Le mie cartelle) ---------- */
+/* ---------- icona della scrivania (cartella o file) ---------- */
+function IconaVoce({ voce, tipo, scelta, inSelezione, evidenziata, presa, gestori, onTocca }) {
+  const cartella = tipo === 'cartella';
+  return (
+    <button type="button" className={`pp-icona-voce${scelta ? ' scelta' : ''}${evidenziata ? ' sopra' : ''}${presa ? ' presa' : ''}`}
+      data-bersaglio={`${tipo === 'cartella' ? 'cartella' : 'doc'}:${voce.id}`} aria-pressed={inSelezione ? !!scelta : undefined}
+      aria-label={cartella ? `Cartella ${voce.nome}` : titoloDoc(voce)} onClick={onTocca} {...gestori}>
+      {inSelezione && <span className={`pp-casella${scelta ? ' scelta' : ''}`} aria-hidden="true">{scelta ? '✓' : ''}</span>}
+      {cartella ? (
+        <span className="pp-icona-cartella" aria-hidden="true">
+          <IconaDocumenti size={30} />
+          {(voce.n_documenti + voce.n_sottocartelle) > 0 && <em>{voce.n_documenti + voce.n_sottocartelle}</em>}
+        </span>
+      ) : (
+        <span className="pp-icona-file" aria-hidden="true"><Miniatura doc={voce} colore={colore(voce.fascicolo)} grande /></span>
+      )}
+      <span className="pp-icona-nome">{cartella ? voce.nome : titoloDoc(voce)}</span>
+    </button>
+  );
+}
+
+/* ---------- pagina di una cartella (id null = Le mie cartelle, con la scrivania) ---------- */
 export function PaginaCartellaMia({ id = null, ctx }) {
   const { esegui, apri, mostra, versione } = ctx;
   const [cartelle, setCartelle] = useState(null);
@@ -201,7 +224,7 @@ export function PaginaCartellaMia({ id = null, ctx }) {
     let vivo = true;
     esegui(async () => {
       const c = await caricaCartelleMie(archivioDb);
-      const d = id ? await documentiDellaCartella(archivioDb, id) : [];
+      const d = id ? await documentiDellaCartella(archivioDb, id) : await documentiScrivania(archivioDb);
       if (vivo) { setCartelle(c); setDocumenti(d); }
     });
     return () => { vivo = false; };
@@ -212,20 +235,52 @@ export function PaginaCartellaMia({ id = null, ctx }) {
     .sort((a, b) => (a.posizione - b.posizione) || a.nome.localeCompare(b.nome, 'it')), [cartelle, id]);
   const archiviate = useMemo(() => (cartelle || []).filter((c) => c.archiviata_il), [cartelle]);
   const briciole = cartelle && id ? percorso(cartelle, id) : [];
+  const padre = briciole.length > 1 ? briciole[briciole.length - 2].id : null;
   const giaDentro = useMemo(() => new Set((documenti || []).map((d) => d.id)), [documenti]);
 
   const scelteC = [...(sel?.cartelle || [])];
   const scelteD = [...(sel?.documenti || [])];
   const nScelti = scelteC.length + scelteD.length;
-  const toccaCartella = (c) => setSel((s) => { const n = new Set(s.cartelle); if (n.has(c.id)) n.delete(c.id); else n.add(c.id); return { ...s, cartelle: n }; });
-  const toccaDoc = (d, avvia = false) => setSel((s) => {
+  const tocca = (tipo, voceId) => setSel((s) => {
     const base = s || { cartelle: new Set(), documenti: new Set() };
-    const n = new Set(base.documenti);
-    if (avvia && !s) n.add(d.id); else if (n.has(d.id)) n.delete(d.id); else n.add(d.id);
-    return { ...base, documenti: n };
+    const chiave = tipo === 'cartella' ? 'cartelle' : 'documenti';
+    const n = new Set(base[chiave]);
+    if (n.has(voceId)) n.delete(voceId); else n.add(voceId);
+    return { ...base, [chiave]: n };
   });
   const tutti = () => setSel(nScelti === figli.length + (documenti?.length || 0) ? { cartelle: new Set(), documenti: new Set() } : { cartelle: new Set(figli.map((c) => c.id)), documenti: new Set((documenti || []).map((d) => d.id)) });
-  const fatto = (msg) => { setFoglio(null); setSel(null); ricarica(); ctx.aggiorna?.(); mostra(msg); };
+  const fatto = (msg) => { setFoglio(null); setSel(null); ricarica(); ctx.aggiorna?.(); if (msg) mostra(msg); };
+
+  // Cosa viene trascinato: l'icona presa, oppure tutte le scelte se l'icona fa parte della selezione.
+  const sorgentiDi = (s) => {
+    const inSel = sel && (s.tipo === 'cartella' ? sel.cartelle.has(s.id) : sel.documenti.has(s.id));
+    return inSel ? [...scelteC.map((x) => ({ tipo: 'cartella', id: x })), ...scelteD.map((x) => ({ tipo: 'doc', id: x }))] : [s];
+  };
+  const { presa, gestori, eraTrascinamento } = useTrascina({
+    valido: (s, b) => !!azioneTrascina(sorgentiDi(s), b, id, cartelle || []),
+    onFermo: (s) => tocca(s.tipo === 'cartella' ? 'cartella' : 'doc', s.id),
+    onLascia: (s, b) => {
+      const a = azioneTrascina(sorgentiDi(s), b, id, cartelle || []);
+      if (!a) return;
+      esegui(async () => {
+        if (a.azione === 'raggruppa') {
+          const scelti = (documenti || []).filter((d) => a.documenti.includes(d.id));
+          const nome = nomeProposto(scelti);
+          const nuova = await raggruppaDocumenti(archivioDb, a.documenti, id, nome);
+          fatto(null);
+          setFoglio({ tipo: 'nome-nuova', id: nuova, nome });
+          return;
+        }
+        if (a.cartelle.length) await spostaCartelle(archivioDb, a.cartelle, a.verso);
+        if (a.documenti.length) await spostaDocumenti(archivioDb, a.documenti, id, a.verso);
+        const dove = a.verso ? (cartelle.find((c) => c.id === a.verso)?.nome || 'cartella') : 'Le mie cartelle';
+        const quanti = a.cartelle.length + a.documenti.length;
+        fatto(`${quanti === 1 ? 'Spostato' : `${quanti} spostati`} in «${dove}»`);
+      });
+    },
+  });
+  const sopra = presa?.bersaglio?.chiave;
+  const tipoPresa = presa ? sorgentiDi(presa.sorgente) : [];
 
   const apriInvio = (cartelleScelte, documentiScelti, nome) => { setStatoInvio(null); setInvio({ cartelleScelte, documentiScelti, nome }); };
   const prepara = useCallback(async ({ formato, nome, password, protezione }) => {
@@ -249,58 +304,74 @@ export function PaginaCartellaMia({ id = null, ctx }) {
 
   const soloCartelle = scelteC.length > 0 && !scelteD.length;
   const soloDocumenti = scelteD.length > 0 && !scelteC.length;
+  const vuota = !figli.length && !documenti.length;
+  const toccaIcona = (tipo, voce) => () => {
+    if (eraTrascinamento()) return;
+    if (sel) { tocca(tipo, voce.id); return; }
+    apri(tipo === 'cartella' ? { tipo: 'cartella-mia', id: voce.id } : { tipo: 'documento', id: voce.id });
+  };
 
   return (
-    <div className="pp-mie">
+    <div className={`pp-mie${presa ? ' trascinando' : ''}`}>
       <nav className="pp-briciole" aria-label="Percorso">
-        <button type="button" onClick={() => id && apri({ tipo: 'cartella-mia', id: null })} aria-current={id ? undefined : 'page'}>Le mie cartelle</button>
+        <button type="button" data-bersaglio={id ? 'su:radice' : undefined} className={sopra === 'su:radice' ? 'sopra' : ''} onClick={() => id && apri({ tipo: 'cartella-mia', id: null })} aria-current={id ? undefined : 'page'}>Le mie cartelle</button>
         {briciole.map((b, i) => (
           <span key={b.id}><IconaFreccia size={12} />
-            <button type="button" onClick={() => i < briciole.length - 1 && apri({ tipo: 'cartella-mia', id: b.id })} aria-current={i === briciole.length - 1 ? 'page' : undefined}>{b.nome}</button>
+            <button type="button" data-bersaglio={i < briciole.length - 1 ? `su:${b.id}` : undefined} className={sopra === `su:${b.id}` ? 'sopra' : ''}
+              onClick={() => i < briciole.length - 1 && apri({ tipo: 'cartella-mia', id: b.id })} aria-current={i === briciole.length - 1 ? 'page' : undefined}>{b.nome}</button>
           </span>
         ))}
       </nav>
       <h1 className="pp-mie-titolo">{attuale ? attuale.nome : 'Le mie cartelle'}</h1>
 
-      {!sel && (
+      {presa && id && (
+        <div className={`pp-mie-fuori${sopra === `su:${padre || 'radice'}` ? ' sopra' : ''}`} data-bersaglio={`su:${padre || 'radice'}`}>
+          ↑ Porta fuori da «{attuale.nome}»
+        </div>
+      )}
+
+      {!sel && !presa && (
         <div className="pp-mie-comandi">
-          <button type="button" className="pp-chip-azione" onClick={() => setFoglio('nuova')}><IconaPiu size={16} /> {id ? 'Sottocartella' : 'Nuova cartella'}</button>
-          {id && <button type="button" className="pp-chip-azione" onClick={() => setFoglio('aggiungi')}><IconaPiu size={16} /> Documenti</button>}
+          <button type="button" className="pp-chip-azione" onClick={() => setFoglio('nuova')}><IconaPiu size={16} /> {id ? 'Sottocartella' : 'Cartella'}</button>
+          <button type="button" className="pp-chip-azione" onClick={() => setFoglio('aggiungi')}><IconaPiu size={16} /> Documenti</button>
           {id && <button type="button" className="pp-chip-azione" onClick={() => apriInvio([id], [], attuale.nome)}><IconaCondividi size={16} /> Invia tutta</button>}
           {id && <button type="button" className="pp-chip-azione" onClick={() => setFoglio('rinomina-attuale')}>Rinomina</button>}
-          {(figli.length > 0 || documenti.length > 0) && <button type="button" className="pp-chip-azione" onClick={() => setSel({ cartelle: new Set(), documenti: new Set() })}>Seleziona</button>}
+          {!vuota && <button type="button" className="pp-chip-azione" onClick={() => setSel({ cartelle: new Set(), documenti: new Set() })}>Seleziona</button>}
         </div>
       )}
 
-      {figli.length > 0 && (
-        <div className="pp-mie-griglia">
-          {figli.map((c) => {
-            const scelta = sel?.cartelle.has(c.id);
-            return (
-              <button key={c.id} type="button" className={`pp-mia-cartella${scelta ? ' scelta' : ''}`} aria-pressed={sel ? !!scelta : undefined}
-                onClick={() => (sel ? toccaCartella(c) : apri({ tipo: 'cartella-mia', id: c.id }))}>
-                {sel && <span className={`pp-casella${scelta ? ' scelta' : ''}`} aria-hidden="true">{scelta ? '✓' : ''}</span>}
-                <span className="pp-mia-cartella-icona" aria-hidden="true"><IconaDocumenti size={22} /></span>
-                <span className="pp-mia-cartella-nome">{c.nome}</span>
-                <span className="pp-riga-meta">{[c.n_sottocartelle ? `${c.n_sottocartelle} ${c.n_sottocartelle === 1 ? 'cartella' : 'cartelle'}` : null, `${c.n_documenti} doc.`].filter(Boolean).join(' · ')}</span>
-              </button>
-            );
-          })}
+      {!vuota && (
+        <div className="pp-scrivania" role="list">
+          {figli.map((c) => (
+            <span role="listitem" key={c.id}>
+              <IconaVoce voce={c} tipo="cartella" inSelezione={!!sel} scelta={sel?.cartelle.has(c.id)} evidenziata={sopra === `cartella:${c.id}`}
+                presa={tipoPresa.some((s) => s.tipo === 'cartella' && s.id === c.id)} gestori={gestori({ tipo: 'cartella', id: c.id })} onTocca={toccaIcona('cartella', c)} />
+            </span>
+          ))}
+          {documenti.map((d) => (
+            <span role="listitem" key={d.id}>
+              <IconaVoce voce={d} tipo="doc" inSelezione={!!sel} scelta={sel?.documenti.has(d.id)} evidenziata={sopra === `doc:${d.id}`}
+                presa={tipoPresa.some((s) => s.tipo === 'doc' && s.id === d.id)} gestori={gestori({ tipo: 'doc', id: d.id })} onTocca={toccaIcona('doc', d)} />
+            </span>
+          ))}
         </div>
       )}
 
-      {id && documenti.length > 0 && (
-        <div className="pp-gruppo pp-mie-documenti">
-          {documenti.map((d) => <VoceDocumento key={d.id} doc={d} modo="righe" selezione={sel ? sel.documenti : null} onApri={(x) => apri({ tipo: 'documento', id: x.id })} onSeleziona={toccaDoc} />)}
-        </div>
+      {vuota ? (
+        <Vuoto>{id ? 'Cartella vuota. Aggiungi documenti con «+ Documenti», oppure trascinali qui dentro dalla cartella sopra.' : 'Qui è la tua scrivania. Crea una cartella o aggiungi documenti, poi tienili premuti per spostarli: un file sopra un altro crea una cartella.'}</Vuoto>
+      ) : !sel && !presa && (
+        <p className="pp-mie-aiuto">Tieni premuto e trascina: su una cartella per metterlo dentro, su un altro file per creare una cartella{id ? ', in alto per portarlo fuori' : ''}. Tieni premuto e lascia per selezionare.</p>
       )}
 
-      {!figli.length && !documenti.length && (
-        <Vuoto>{id ? 'Cartella vuota. Aggiungi documenti con «+ Documenti», oppure da qualsiasi elenco: «Seleziona» → «Cartella».' : 'Nessuna cartella. Creane una con «Nuova cartella»: dentro puoi fare sottocartelle e mettere documenti.'}</Vuoto>
-      )}
-
-      {!id && archiviate.length > 0 && !sel && (
+      {!id && archiviate.length > 0 && !sel && !presa && (
         <button type="button" className="pp-chiedi-classica" onClick={() => setFoglio('archiviate')}>Cartelle archiviate ({archiviate.length})</button>
+      )}
+
+      {presa && (
+        <div className="pp-fantasma" style={{ left: presa.x, top: presa.y }} aria-hidden="true">
+          <span>{tipoPresa.length > 1 ? <strong>{tipoPresa.length}</strong> : tipoPresa[0]?.tipo === 'cartella' ? <IconaDocumenti size={22} /> : <IconaFile size={22} />}</span>
+          {presa.bersaglio && <em>{presa.bersaglio.tipo === 'doc' ? 'Crea cartella' : presa.bersaglio.tipo === 'su' ? 'Porta qui' : 'Metti dentro'}</em>}
+        </div>
       )}
 
       {sel && (
@@ -315,7 +386,8 @@ export function PaginaCartellaMia({ id = null, ctx }) {
           <div className="pp-barra-selezione-azioni">
             <button type="button" disabled={!nScelti} onClick={() => apriInvio(scelteC, (documenti || []).filter((d) => sel.documenti.has(d.id)), scelteC.length === 1 && !scelteD.length ? figli.find((c) => c.id === scelteC[0])?.nome : attuale?.nome || 'Documenti')}><IconaCondividi size={18} /><span>Invia</span></button>
             <button type="button" disabled={!nScelti} onClick={() => setFoglio('sposta')}><IconaDocumenti size={18} /><span>Sposta</span></button>
-            {id && <button type="button" disabled={!soloDocumenti} onClick={() => esegui(async () => { await togliDocumenti(archivioDb, id, scelteD); fatto(`${scelteD.length} tolti dalla cartella (restano in archivio)`); })}><span className="pp-tre-punti">−</span><span>Togli</span></button>}
+            <button type="button" disabled={!soloDocumenti || scelteD.length < 2} onClick={() => esegui(async () => { const scelti = documenti.filter((d) => sel.documenti.has(d.id)); const nome = nomeProposto(scelti); const nuova = await raggruppaDocumenti(archivioDb, scelteD, id, nome); fatto(null); setFoglio({ tipo: 'nome-nuova', id: nuova, nome }); })}><IconaPiu size={18} /><span>Raggruppa</span></button>
+            <button type="button" disabled={!soloDocumenti} onClick={() => esegui(async () => { if (id) await togliDocumenti(archivioDb, id, scelteD); else await togliDaScrivania(archivioDb, scelteD); fatto(`${scelteD.length} ${scelteD.length === 1 ? 'tolto' : 'tolti'} (restano in archivio)`); })}><span className="pp-tre-punti">−</span><span>Togli</span></button>
             <button type="button" disabled={!(soloCartelle && scelteC.length === 1)} onClick={() => setFoglio('rinomina')}><span className="pp-tre-punti">Aa</span><span>Rinomina</span></button>
             <button type="button" disabled={!soloCartelle} onClick={() => esegui(async () => { await archiviaCartelle(archivioDb, scelteC, true); fatto(`${scelteC.length === 1 ? 'Cartella archiviata' : `${scelteC.length} cartelle archiviate`}: le ritrovi in «Cartelle archiviate»`); })}><span className="pp-tre-punti">⌂</span><span>Archivia</span></button>
           </div>
@@ -324,19 +396,21 @@ export function PaginaCartellaMia({ id = null, ctx }) {
 
       {foglio === 'nuova' && <FoglioNome titolo={id ? `Nuova sottocartella in ${attuale.nome}` : 'Nuova cartella'} etichetta="Crea" onChiudi={() => setFoglio(null)}
         onConferma={(nome) => esegui(async () => { await creaCartella(archivioDb, { nome, padre_id: id }); fatto(`Cartella «${nome}» creata`); })} />}
+      {foglio?.tipo === 'nome-nuova' && <FoglioNome titolo="Nuova cartella: dai un nome" iniziale={foglio.nome} etichetta="Fatto" onChiudi={() => { setFoglio(null); mostra('Cartella creata'); }}
+        onConferma={(nome) => esegui(async () => { if (nome !== foglio.nome) await rinominaCartella(archivioDb, foglio.id, nome); fatto(`Cartella «${nome}» creata`); })} />}
       {foglio === 'rinomina-attuale' && <FoglioNome titolo="Rinomina la cartella" iniziale={attuale.nome} onChiudi={() => setFoglio(null)}
         onConferma={(nome) => esegui(async () => { await rinominaCartella(archivioDb, id, nome); fatto('Cartella rinominata'); })} />}
       {foglio === 'rinomina' && scelteC.length === 1 && <FoglioNome titolo="Rinomina la cartella" iniziale={figli.find((c) => c.id === scelteC[0])?.nome || ''} onChiudi={() => setFoglio(null)}
         onConferma={(nome) => esegui(async () => { await rinominaCartella(archivioDb, scelteC[0], nome); fatto('Cartella rinominata'); })} />}
       {foglio === 'aggiungi' && <FoglioAggiungi ctx={ctx} giaDentro={giaDentro} onChiudi={() => setFoglio(null)}
-        onAggiungi={(ids) => esegui(async () => { await aggiungiDocumenti(archivioDb, id, ids); fatto(`${ids.length} ${ids.length === 1 ? 'documento aggiunto' : 'documenti aggiunti'}`); })} />}
+        onAggiungi={(ids) => esegui(async () => { if (id) await aggiungiDocumenti(archivioDb, id, ids); else await aggiungiAScrivania(archivioDb, ids); fatto(`${ids.length} ${ids.length === 1 ? 'documento aggiunto' : 'documenti aggiunti'}`); })} />}
       {foglio === 'sposta' && (
-        <FoglioCartelleMie ctx={ctx} titolo={`Sposta ${nScelti} in…`} radice={scelteC.length > 0 && !scelteD.length}
+        <FoglioCartelleMie ctx={ctx} titolo={`Sposta ${nScelti} in…`} radice={!!id}
           cartelle={scelteC.length ? destinazioniPossibili(cartelle, scelteC) : cartelle.filter((c) => !c.archiviata_il)}
           escludi={id ? new Set([id]) : null} onChiudi={() => setFoglio(null)}
           onScegli={(dest, nome) => esegui(async () => {
             if (scelteC.length) await spostaCartelle(archivioDb, scelteC, dest);
-            if (scelteD.length && dest) { await aggiungiDocumenti(archivioDb, dest, scelteD); if (id) await togliDocumenti(archivioDb, id, scelteD); }
+            if (scelteD.length) await spostaDocumenti(archivioDb, scelteD, id, dest);
             fatto(`Spostati in «${nome}»`);
           })} />
       )}

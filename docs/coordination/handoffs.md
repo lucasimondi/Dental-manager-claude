@@ -4712,3 +4712,10 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Risks: «Le mie cose» groups existing categories (a home insurance sits in Soldi, not Casa); people cards search by name; Tempo month shows up to 80 documents.
 - Rollback: revert the commits; the view stays unused.
 - Next: PO tries the preview; feedback; "Mergia".
+
+## Handoff — CARTELLE-SCRIVANIA (2026-11-13) — Claude Code
+- Branch `ccr-4e256bf5-1lspk5`, PR #311. Files: supabase/archivio/migrations/20261113150000_pol_vita_033_scrivania.sql; personal/src/lib/cartelleMie.js; personal/src/sezioni/documenti/{CartelleMie.jsx, Trascina.jsx (new), Tempo.jsx, Cose.jsx, Selezione.jsx}; personal/src/personal.css; tests/{cartelleMie.test.mjs, archivioPersonale.test.mjs}; tests/visual/personal-cartelle-mie.mjs.
+- Database (applied, additive): cartelle_mie_scrivania + RPC sposta_documenti_mie, raggruppa_documenti_mie.
+- Tests: npm test 1720/1720; build PASS; Chromium touch-drag test PASS.
+- Risks: long-press timing on real devices; no free reordering of icons (alphabetical folders, newest files first).
+- Rollback: revert the commit; desktop table and RPCs unused.

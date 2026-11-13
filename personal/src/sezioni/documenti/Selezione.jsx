@@ -5,7 +5,7 @@ import { archivioDb } from '../../lib/supabasePersonal.js';
 import { aggiornaDocumenti, eliminaDocumenti, portafoglioDocumenti, cestinaSuDrive, eCaricato, daDrive } from '../../lib/archivio.js';
 import { euro } from '../../lib/coreArchivio.js';
 import { caricaCartelle } from '../../lib/cartelle.js';
-import { caricaCartelleMie, aggiungiDocumenti } from '../../lib/cartelleMie.js';
+import { caricaCartelleMie, aggiungiDocumenti, aggiungiAScrivania } from '../../lib/cartelleMie.js';
 import { FoglioCartelleMie } from './CartelleMie.jsx';
 import { impostaSalute } from '../../lib/salute.js';
 import { preparaFile, comeFile, condividi, inviaCon } from '../../lib/condividi.js';
@@ -254,8 +254,8 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione, max
         </div>
       )}
       {foglio === 'mie' && mie && (
-        <FoglioCartelleMie ctx={ctx} titolo={`Metti ${ids.length} in una tua cartella`} cartelle={mie} onChiudi={() => setFoglio(null)}
-          onScegli={(dest, nome) => esegui(async () => { await aggiungiDocumenti(archivioDb, dest, ids); fatto(`Nella cartella «${nome}»`); })} />
+        <FoglioCartelleMie ctx={ctx} titolo={`Metti ${ids.length} in una tua cartella`} cartelle={mie} radice onChiudi={() => setFoglio(null)}
+          onScegli={(dest, nome) => esegui(async () => { if (dest) await aggiungiDocumenti(archivioDb, dest, ids); else await aggiungiAScrivania(archivioDb, ids); fatto(`In «${nome}»`); })} />
       )}
       {foglio && foglio !== 'mie' && <FoglioScelta titolo={fogli[foglio].titolo} voci={fogli[foglio].voci} cerca={fogli[foglio].cerca} onScegli={fogli[foglio].scegli} onChiudi={() => setFoglio(null)} />}
     </>

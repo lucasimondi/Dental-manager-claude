@@ -7,7 +7,27 @@ import { archivioDb } from '../../lib/supabasePersonal.js';
 import { COSE, anniDaMesi, mesiDaRighe, righeTempo, documentiDelMese, coloreDi } from '../../lib/vita.js';
 import { Vuoto } from '../../ui.jsx';
 import { IconaChiudi } from '../../Icone.jsx';
-import { VoceDocumento } from './Selezione.jsx';
+import { Miniatura } from '../../Miniatura.jsx';
+import { titoloDoc } from '../../ui.jsx';
+
+const euro = (n) => Number(n).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
+
+// Riga compatta: giorno, miniatura piccola, titolo, ente, importo; filo colorato della cosa a sinistra.
+export function RigaCompatta({ doc, onApri, conGiorno = true }) {
+  const data = new Date(`${String(doc.data_documento || doc.email_data || '').slice(0, 10)}T12:00:00`);
+  const valida = !Number.isNaN(data.getTime());
+  return (
+    <button type="button" className="pp-riga-compatta" style={{ '--filo': coloreDi(doc.fascicolo) }} onClick={() => onApri(doc)}>
+      {conGiorno && <span className="pp-riga-compatta-giorno">{valida ? <><strong>{data.getDate()}</strong><span>{data.toLocaleDateString('it-IT', { weekday: 'short' })}</span></> : '—'}</span>}
+      <Miniatura doc={doc} colore={coloreDi(doc.fascicolo)} />
+      <span className="pp-riga-compatta-testo">
+        <strong>{titoloDoc(doc)}</strong>
+        <span>{[doc.ente, !conGiorno && valida ? data.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) : null].filter(Boolean).join(' · ') || doc.tipo_documento || ''}</span>
+      </span>
+      {doc.importo != null && <span className="pp-riga-compatta-importo">{euro(doc.importo)}</span>}
+    </button>
+  );
+}
 
 const PASSO = 4; // mesi caricati alla volta
 
@@ -86,12 +106,8 @@ export function VistaTempo({ ctx }) {
                   <span className="pp-tempo-nodo" aria-hidden="true" />
                   <h2 className="pp-tempo-h2">{m.etichetta} <span>· {m.n === 1 ? '1 documento' : `${m.n} documenti`}</span></h2>
                   {!elenco ? <p className="pp-riga-meta">Carico…</p> : (
-                    <div className="pp-griglia-doc">
-                      {elenco.map((d) => (
-                        <span key={d.id} className="pp-tempo-voce" style={{ '--filo': coloreDi(d.fascicolo) }}>
-                          <VoceDocumento doc={d} modo="griglia" selezione={null} onApri={(x) => apri({ tipo: 'documento', id: x.id })} onSeleziona={() => {}} />
-                        </span>
-                      ))}
+                    <div className="pp-tempo-righe">
+                      {elenco.map((d) => <RigaCompatta key={d.id} doc={d} onApri={(x) => apri({ tipo: 'documento', id: x.id })} />)}
                     </div>
                   )}
                   {elenco && m.n > elenco.length && <p className="pp-riga-meta">e altri {m.n - elenco.length} in questo mese</p>}

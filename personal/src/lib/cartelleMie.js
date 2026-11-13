@@ -142,3 +142,64 @@ export async function togliDocumenti(db, cartellaId, documentoIds) {
 export async function cartelleDelDocumento(db, documentoId) {
   return esito(await db.from('cartelle_mie_documenti').select('cartella_id').eq('documento_id', documentoId)).map((r) => r.cartella_id);
 }
+
+/* ---------- POL-VITA-033 scrivania e trascinamento ---------- */
+
+// File messi in «Le mie cartelle» fuori da ogni cartella.
+export async function documentiScrivania(db) {
+  const righe = esito(await db.from('cartelle_mie_scrivania').select(`aggiunto_il, documenti(${CAMPI_DOC})`).order('aggiunto_il', { ascending: false }).limit(1000));
+  return righe.map((r) => r.documenti).filter(Boolean);
+}
+
+export async function aggiungiAScrivania(db, documentoIds) {
+  if (!documentoIds.length) return [];
+  return esito(await db.from('cartelle_mie_scrivania').upsert(documentoIds.map((documento_id) => ({ documento_id })), { onConflict: 'documento_id', ignoreDuplicates: true }).select('documento_id'));
+}
+
+// Toglie i file dalla scrivania (restano in archivio).
+export async function togliDaScrivania(db, documentoIds) {
+  if (!documentoIds.length) return [];
+  return esito(await db.from('cartelle_mie_scrivania').delete().in('documento_id', documentoIds).select('documento_id'));
+}
+
+// Sposta file tra cartelle e scrivania in un colpo solo (da/a: id cartella o null = scrivania).
+export async function spostaDocumenti(db, ids, da, a) {
+  if (!ids.length || (da ?? null) === (a ?? null)) return 0;
+  return esito(await db.rpc('sposta_documenti_mie', { p_documenti: ids, p_da: da ?? null, p_a: a ?? null }));
+}
+
+// File sopra file: nuova cartella dentro `dove` (null = in cima) con dentro quei file.
+export async function raggruppaDocumenti(db, ids, dove, nome) {
+  return esito(await db.rpc('raggruppa_documenti_mie', { p_documenti: ids, p_dove: dove ?? null, p_nome: nome || 'Nuova cartella' }));
+}
+
+// Nome proposto per una cartella fatta mettendo un file sopra un altro: l'ente comune, se c'è.
+export function nomeProposto(documenti) {
+  const enti = [...new Set(documenti.map((d) => (d.ente || '').trim()).filter(Boolean))];
+  return enti.length === 1 ? enti[0].slice(0, 80) : 'Nuova cartella';
+}
+
+/**
+ * Cosa succede quando lasci qualcosa trascinato (puro).
+ * @param {{tipo:'doc'|'cartella', id:string}[]} sorgenti   cose trascinate
+ * @param {{tipo:'cartella'|'doc'|'su', id:string|null}} bersaglio  dove le lasci ('su' = cartella superiore, id null = in cima)
+ * @param {string|null} attuale  cartella aperta (null = Le mie cartelle)
+ * @param {object[]} cartelle    tutte le cartelle (per evitare i cicli)
+ * @returns {null | {azione:'sposta', documenti:string[], cartelle:string[], verso:string|null} | {azione:'raggruppa', documenti:string[]}}
+ */
+export function azioneTrascina(sorgenti, bersaglio, attuale, cartelle = []) {
+  if (!sorgenti?.length || !bersaglio) return null;
+  const documenti = sorgenti.filter((s) => s.tipo === 'doc').map((s) => s.id);
+  const cartelleS = sorgenti.filter((s) => s.tipo === 'cartella').map((s) => s.id);
+  if (bersaglio.tipo === 'doc') {
+    if (cartelleS.length || !documenti.length || documenti.includes(bersaglio.id)) return null;
+    return { azione: 'raggruppa', documenti: [...documenti, bersaglio.id] };
+  }
+  const verso = bersaglio.id ?? null;
+  if (bersaglio.tipo === 'cartella' && (verso === null || cartelleS.includes(verso))) return null;
+  if (bersaglio.tipo === 'su' && verso === attuale) return null;
+  if (bersaglio.tipo === 'cartella' && verso === attuale) return null;
+  // Una cartella non può finire dentro sé stessa o una sua sottocartella.
+  if (verso && cartelleS.some((c) => discendenti(cartelle, c).has(verso))) return null;
+  return { azione: 'sposta', documenti, cartelle: cartelleS, verso };
+}
