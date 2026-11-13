@@ -116,3 +116,8 @@
  .patient-record-legacy .patient-record-content { overflow:visible; scroll-margin-top:8px; }
 }
 @media(max-width:360px) { .patient-record-windows button { font-size:10px; } .patient-record-windows button > span { width:40px; height:40px; border-radius:13px; } }
+
+/* PO 2026-11-13: «Ricetta» sempre a un tocco dalla testata (e come finestra sul telefono). */
+.patient-clean-rx { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:36px; flex-shrink:0; padding:0 12px; border:0; border-radius:999px; background:#fde8ef; color:#b0294f; font:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+.patient-clean-rx:hover { background:#fbd9e4; }
+.patient-clean-rx:focus-visible { outline:2px solid #b0294f; outline-offset:2px; }

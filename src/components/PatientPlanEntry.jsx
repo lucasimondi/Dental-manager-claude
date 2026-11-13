@@ -16,7 +16,7 @@ import { dentalEntryTeeth } from '../lib/patientDentalOverview.js';
 import { expandRowsPerTooth, isMultiToothRow, rowsByTooth, toothList } from '../lib/patientToothEntry.js';
 
 const blankRow = () => ({ description: '', price: '', tooth: '' });
-export default function PatientPlanEntry({ patient, mode, initialTooth = '', plans = [], pricelist = [], si, onSave, onClose, documentClient = supabase, sourcePlan, sourceItems = null, onUpdateSourcePrices }) {
+export default function PatientPlanEntry({ patient, mode, initialTooth = '', plans = [], pricelist = [], si, onSave, onClose, documentClient = supabase, sourcePlan, sourceRefs = null, sourcePlans: refPlans = [], onUpdateSourcePrices }) {
   const quote = mode === 'quote';
   const seedTeeth = dentalEntryTeeth(initialTooth), fromChart = !!seedTeeth;
   const eligible = plans.filter(p => String(p.pazienteId) === String(patient.id) && ['attivo', 'accettato'].includes(p.stato));
@@ -24,15 +24,18 @@ export default function PatientPlanEntry({ patient, mode, initialTooth = '', pla
   const sourcePlans = sourcePlan ? [sourcePlan,...plans.filter(p=>String(p.id)!==String(sourcePlan.id))] : plans;
   // PREVENTIVO-DA-PRESTAZIONI (PO 2026-11-12): aperto da «Crea preventivo» con le voci spuntate in
   // Denti e cure. Si vedono solo quelle, ognuna col prezzo modificabile; niente sconto del piano intero.
-  const selection = !!(sourcePlan && quote && Array.isArray(sourceItems) && sourceItems.some(i => sourcePlan.voci?.[i]));
-  const [rows, setRows] = useState(() => selection ? sourceItems.filter(i => sourcePlan.voci[i]).map(i => ({ description: sourcePlan.voci[i].prestazione || 'Prestazione', price: String(sourcePlan.voci[i].prezzo ?? ''), tooth: sourcePlan.voci[i].dente || '', sourceIndex: i })) : sourcePlan ? sourcePlan.voci.map(v=>({description:v.prestazione,price:String(v.prezzo),tooth:v.dente || ''})) : [{...blankRow(),tooth:seedTeeth}]);
+  // Le voci possono venire da piani diversi: il documento resta collegato al primo (sourcePlan).
+  const voceRef = r => [...refPlans, sourcePlan].find(p => p && String(p.id) === String(r.planId))?.voci?.[r.index];
+  const multiPlan = Array.isArray(sourceRefs) && new Set(sourceRefs.map(r => String(r.planId))).size > 1;
+  const selection = !!(sourcePlan && quote && Array.isArray(sourceRefs) && sourceRefs.some(voceRef));
+  const [rows, setRows] = useState(() => selection ? sourceRefs.filter(voceRef).map(r => { const v = voceRef(r); return { description: v.prestazione || 'Prestazione', price: String(v.prezzo ?? ''), tooth: v.dente || '', sourcePlanId: r.planId, sourceIndex: r.index }; }) : sourcePlan ? sourcePlan.voci.map(v=>({description:v.prestazione,price:String(v.prezzo),tooth:v.dente || ''})) : [{...blankRow(),tooth:seedTeeth}]);
   const [planId, setPlanId] = useState(eligible.length === 1 ? String(eligible[0].id) : eligible.length ? '' : 'new');
   const [quoteScope, setQuoteScope] = useState(quote ? 'all' : 'entered');
   const [pdfPlanId, setPdfPlanId] = useState('');
   const archiveIds = useRef(new Map()), documentLock = useRef(false), deliveryLock = useRef(false);
   const [archivedDone, setArchivedDone] = useState(false);
   const [discount, setDiscount] = useState(selection ? '' : sourcePlan?.sconto || ''), [discountType, setDiscountType] = useState(sourcePlan?.scontoTipo === 'pct' || !sourcePlan?.scontoTipo ? 'pct' : 'eur');
-  const [title, setTitle] = useState(sourcePlan?.titolo || (quote ? 'Preventivo' : 'Prestazioni occasionali'));
+  const [title, setTitle] = useState(selection && multiPlan ? 'Preventivo' : sourcePlan?.titolo || (quote ? 'Preventivo' : 'Prestazioni occasionali'));
   const [saving, setSaving] = useState(false), [uncertain, setUncertain] = useState(false);
   const [error, setError] = useState(''), [success, setSuccess] = useState(null);
   const [pdf, setPdf] = useState(null), [typing, setTyping] = useState(false);
@@ -112,10 +115,10 @@ export default function PatientPlanEntry({ patient, mode, initialTooth = '', pla
         const documentPlan = {...proposed,id:source.id};
         let pricesUpdated = 0;
         if (selection && onUpdateSourcePrices) {
-          const changes = rows.filter(r => Number.isInteger(r.sourceIndex) && source.voci?.[r.sourceIndex])
-            .map(r => ({ index: r.sourceIndex, prezzo: Number(r.price) || 0, prestazione: source.voci[r.sourceIndex].prestazione || 'Prestazione', prima: Number(source.voci[r.sourceIndex].prezzo) || 0 }))
+          const changes = rows.filter(r => Number.isInteger(r.sourceIndex) && voceRef({ planId: r.sourcePlanId, index: r.sourceIndex }))
+            .map(r => { const v = voceRef({ planId: r.sourcePlanId, index: r.sourceIndex }); return { planId: r.sourcePlanId, index: r.sourceIndex, prezzo: Number(r.price) || 0, prestazione: v.prestazione || 'Prestazione', prima: Number(v.prezzo) || 0 }; })
             .filter(c => c.prezzo !== c.prima);
-          if (changes.length) { onUpdateSourcePrices(source.id, changes); pricesUpdated = changes.length; }
+          if (changes.length) { onUpdateSourcePrices(changes); pricesUpdated = changes.length; }
         }
         result = { quoteId: source.id, savedPlans: [documentPlan], documentOnly: true, pricesUpdated };
       } else result = await onSave(draft);
@@ -182,8 +185,8 @@ export default function PatientPlanEntry({ patient, mode, initialTooth = '', pla
           {patient.anamnesiAllarme && <p role="alert" className="patient-entry-warning">Allarme anamnesi: verifica le segnalazioni nella scheda paziente.</p>}
           <fieldset className="patient-entry-fields" disabled={saving || uncertain}>
             {selection ? <div className="quote-pick" role="group" aria-label="Prestazioni nel preventivo">
-              {rows.map((row, i) => <div className="quote-pick-row" key={row.sourceIndex ?? i}>
-                <div><strong>{row.description}</strong><small>{row.tooth ? `Dente ${row.tooth}` : 'Generale'}</small></div>
+              {rows.map((row, i) => <div className="quote-pick-row" key={row.sourceIndex != null ? `${row.sourcePlanId}.${row.sourceIndex}` : i}>
+                <div><strong>{row.description}</strong><small>{row.tooth ? `Dente ${row.tooth}` : 'Generale'}{multiPlan ? ` · ${refPlans.find(p => String(p.id) === String(row.sourcePlanId))?.titolo || 'Piano'}` : ''}</small></div>
                 <label><span>Prezzo €</span><input type="number" min="0" step="0.01" inputMode="decimal" aria-label={`Prezzo ${row.description}${row.tooth ? ` sul ${row.tooth}` : ''}`} value={row.price} onChange={e => { const price = e.target.value; setRows(rs => rs.map((r, j) => j === i ? { ...r, price } : r)); }} /></label>
                 <button type="button" aria-label={`Togli ${row.description} dal preventivo`} disabled={rows.length === 1} onClick={() => setRows(rs => rs.filter((_, j) => j !== i))}><Ic n="x" s={16} c="currentColor" /></button>
               </div>)}

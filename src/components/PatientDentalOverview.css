@@ -127,14 +127,15 @@
 .patient-record-legacy[data-dental-home="true"] .patient-clean-contacts { padding-bottom:8px; }
 .pw2-shell.patient-record-clean > .patient-dental-home { max-width:1220px; margin:auto; }
 /* A clinical landing needs the chart above the fold, not a large profile hero. */
-.patient-record-legacy[data-dental-home="true"] .patient-clean-header { display:grid; grid-template-columns:36px minmax(0,1fr) 34px 34px; align-items:center; gap:9px; padding-top:max(14px,env(safe-area-inset-top)); }
+.patient-record-legacy[data-dental-home="true"] .patient-clean-header { display:grid; grid-template-columns:36px minmax(0,1fr) auto 34px 34px; align-items:center; gap:9px; padding-top:max(14px,env(safe-area-inset-top)); }
 .patient-record-legacy[data-dental-home="true"] .patient-clean-toolbar,.patient-record-legacy[data-dental-home="true"] .patient-clean-profile { display:contents; }
 .patient-record-legacy[data-dental-home="true"] .patient-clean-eyebrow,.patient-record-legacy[data-dental-home="true"] .patient-clean-avatar { display:none; }
 .patient-record-legacy[data-dental-home="true"] .patient-clean-back { grid-column:1; grid-row:1; width:36px; min-width:36px; min-height:36px; height:36px; }
 .patient-record-legacy[data-dental-home="true"] .patient-clean-identity { grid-column:2; grid-row:1; }
 .patient-record-legacy[data-dental-home="true"] .patient-clean-identity h1 { font-size:21px; }
-.patient-record-legacy[data-dental-home="true"] .anamnesi-cross { grid-column:3; grid-row:1; }
-.patient-record-legacy[data-dental-home="true"] .patient-clean-edit { grid-column:4; grid-row:1; width:34px; min-width:34px; min-height:36px; height:36px; padding:0; }
+.patient-record-legacy[data-dental-home="true"] .anamnesi-cross { grid-column:4; grid-row:1; }
+.patient-record-legacy[data-dental-home="true"] .patient-clean-rx { grid-column:3; grid-row:1; }
+.patient-record-legacy[data-dental-home="true"] .patient-clean-edit { grid-column:5; grid-row:1; width:34px; min-width:34px; min-height:36px; height:36px; padding:0; }
 .patient-record-legacy[data-dental-home="true"] .patient-clean-edit span { display:none; }
 
 .patient-dental-orientation { margin:10px 0 0; color:#6c8597; font-size:9px; text-align:center; }
@@ -164,7 +165,7 @@
 .patient-dental-home .patient-dental-quote-create:disabled { opacity:1; background:#eef3f7; color:#6c8597; box-shadow:none; cursor:default; }
 .patient-dental-quote-list { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-width:76px; min-height:48px; padding:4px 10px; border:1px solid #d8e4ec; border-radius:12px; background:#fff; color:#216b99; font:inherit; font-size:11px; font-weight:650; cursor:pointer; }
 .patient-dental-quote-list svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
-.patient-dental-quotebar p { grid-column:1/-1; margin:0; padding:8px 10px; border-radius:10px; background:#fff4df; color:#7a5419; font-size:12px; line-height:1.4; }
+.patient-dental-quotebar p { grid-column:1/-1; margin:0; padding:8px 10px; border-radius:10px; background:#eaf3fa; color:#20587e; font-size:12px; line-height:1.4; }
 .patient-dental-home input[type="checkbox"] { width:22px; height:22px; flex:none; margin:0; accent-color:#176ba3; cursor:pointer; }
 
 .patient-dental-history li.patient-dental-row { flex-direction:column; align-items:stretch; gap:10px; padding:12px 0; }
@@ -189,3 +190,12 @@
  .patient-dental-quote-list { min-width:64px; padding:4px 6px; }
  .patient-dental-quote-create { padding:6px 12px; }
 }
+
+/* PO 2026-11-13: con più piani la lista è divisa per piano; «Tutto il piano» spunta solo le sue voci. */
+.patient-dental-history li.patient-dental-plan-head { gap:10px; margin-top:14px; padding:10px 12px; border:0; border-radius:12px; background:#eef4f8; }
+.patient-dental-history li.patient-dental-plan-head:first-child { margin-top:8px; }
+.patient-dental-plan-head label { flex:1; min-width:0; display:flex; align-items:center; gap:10px; cursor:pointer; }
+.patient-dental-plan-head label > span, .patient-dental-plan-head > span { display:flex; flex-direction:column; min-width:0; }
+.patient-dental-history .patient-dental-plan-head strong { font-size:13.5px; font-weight:700; color:#19394f; }
+.patient-dental-history .patient-dental-plan-head small { margin-top:1px; font-size:11px; color:#5c7a8f; }
+.patient-dental-plan-head > b { flex:none; font-size:13px; font-weight:700; color:#19394f; font-variant-numeric:tabular-nums; }

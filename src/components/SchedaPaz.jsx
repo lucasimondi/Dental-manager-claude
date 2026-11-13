@@ -280,6 +280,9 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
         <div className="patient-clean-toolbar">
           <button type="button" className="patient-clean-back" onClick={onClose} aria-label="Torna indietro"><Ic n="back" s={19} c="currentColor" /></button>
           <span className="patient-clean-eyebrow">Scheda paziente</span>
+          {/* PO 2026-11-13: "le ricette devono essere più facili da raggiungere, intendo il farle":
+              un tocco dalla testata, sempre visibile, invece di passare da Documenti. */}
+          <button type="button" className="patient-clean-rx" onClick={() => setDocumentFlow('ricetta')} aria-label="Nuova ricetta"><Ic n="pill" s={16} c="currentColor" /><span>Ricetta</span></button>
           <button type="button" onClick={() => setAnamnesiPopup(true)}
             title={anamnesiState === 'mancante' ? 'Anamnesi mancante' : anamnesiState === 'allarme' ? 'Allarme anamnesi' : 'Nessun allarme anamnesi'}
             aria-label={anamnesiState === 'mancante' ? 'Anamnesi mancante' : anamnesiState === 'allarme' ? 'Allarme anamnesi' : 'Nessun allarme anamnesi'}
@@ -297,11 +300,12 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
       {paz.telefono && <div className="patient-clean-contacts"><a href={`tel:+39${paz.telefono.replace(/\D/g, '')}`} aria-label="Chiama"><Ic n="ph" s={14} c="currentColor" />{paz.telefono}</a>{waAbilitato(features) && <a href={waUrl(paz.telefono)} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><Ic n="wa" s={15} c="currentColor" />WhatsApp</a>}</div>}
 
       <nav className="patient-record-windows" aria-label="Sezioni scheda paziente">
-        {TABS.map((t) => (
+        {TABS.flatMap((t) => [
           <button type="button" key={t.id} className={tab === t.id ? 'is-active' : ''} aria-current={tab === t.id ? 'page' : undefined} style={{ '--tab-color': TAB_COLORS[t.id] || C.pri }} onClick={() => apriSezione(t.id)}>
             <span aria-hidden="true"><Ic n={t.icon} s={20} c="currentColor" /></span>{t.id === 'info' ? 'Scheda' : t.label}
-          </button>
-        ))}
+          </button>,
+          ...(t.id === 'info' ? [<button type="button" key="ricetta" className="is-action" style={{ '--tab-color': '#d23f6b' }} onClick={() => setDocumentFlow('ricetta')}><span aria-hidden="true"><Ic n="pill" s={20} c="currentColor" /></span>Ricetta</button>] : []),
+        ])}
       </nav>
 
       {isDentistico && tab === 'info' ? <PatientDentalOverview patientId={paz.id} plans={patPlans} payments={payments} onAddTreatment={onAddTreatment} onCreateQuote={onCreateQuote} setPlans={setPlans} onOpenQuotes={() => apriSezione('preventivi')} /> : <PatientEntryActions onTreatment={onAddTreatment} onQuote={onCreateQuote} />}
