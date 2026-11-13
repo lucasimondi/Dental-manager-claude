@@ -6,6 +6,7 @@ import { suggestedIdle } from '../src/lib/poliedron/searchEngine.js';
 
 const css = fs.readFileSync(new URL('../src/components/PremiumVisualSystem.css', import.meta.url), 'utf8');
 const control = fs.readFileSync(new URL('../src/components/ControlloGestione.jsx', import.meta.url), 'utf8');
+const cleanCss = fs.readFileSync(new URL('../src/components/PatientRecordClean.css', import.meta.url), 'utf8');
 
 test('Poliedron opening panel lists no sections (POLIEDRON-RIORDINO); unified financial section stays in the navigation index', () => {
   const groups = suggestedIdle({ navigationIndex: NAVIGATION_INDEX, actions: [], context: {} });
@@ -25,13 +26,16 @@ const schedaPaz = fs.readFileSync(new URL('../src/components/SchedaPaz.jsx', imp
 // Never a horizontal scroller either way — that was already tried and
 // rejected once before this session (tests/patientQaRecoveryFinal.test.mjs
 // "M").
-test('patient record navigation is a persistent sidebar (desktop) + dropdown selector (mobile), mirroring ControlloGestione', () => {
+// PREVENTIVO-DA-PRESTAZIONI (PO 2026-11-12: "dammi le sezioni raggiungibili facilmente", layout a
+// finestre preso dalla Home di Scan): on the phone the dropdown is replaced by a grid of section
+// windows at the top of the record; the desktop sidebar is unchanged.
+test('patient record navigation is a persistent sidebar (desktop) + a grid of section windows (mobile)', () => {
   assert.match(schedaPaz, /className="patient-record-nav"/);
-  assert.match(schedaPaz, /className="patient-record-nav-mobile"/);
-  assert.doesNotMatch(schedaPaz, /className="patient-record-tabs"/);
+  assert.match(schedaPaz, /className="patient-record-windows"/);
+  assert.doesNotMatch(schedaPaz, /className="patient-record-nav-mobile"|className="patient-record-tabs"/);
   assert.match(css, /\.patient-record-nav\{display:flex;flex-direction:column/);
-  assert.match(css, /\.patient-record-nav-mobile\{display:none\}/);
-  assert.doesNotMatch(css, /\.patient-record-nav[^}]*overflow-x/);
+  assert.match(cleanCss, /\.patient-record-windows \{ display:none; \}/);
+  assert.doesNotMatch(css + cleanCss, /\.patient-record-(nav|windows)[^}]*overflow-x/);
 });
 
 test('patient record sidebar buttons use real icons (Ic set), not emoji, matching the rest of the app', () => {
@@ -45,11 +49,11 @@ test('patient record sidebar buttons use real icons (Ic set), not emoji, matchin
 // Product Owner: "la scheda paziente hai tasti per moduli un po scritti
 // piccoli (mobile)" (earlier round) — the mobile selector must stay a
 // legible, full 44px touch target, never shrunk back down.
-test('patient record mobile selector keeps a legible, full touch target', () => {
-  const mobileBlock = css.match(/@media\(max-width:719px\)\{[^]*?\.patient-record-nav-mobile select\{[^}]*\}/)?.[0] || '';
-  assert.ok(mobileBlock, 'expected a mobile .patient-record-nav-mobile select rule');
-  const minHeight = Number(mobileBlock.match(/\.patient-record-nav-mobile select\{[^}]*min-height:([\d.]+)px/)?.[1]);
-  assert.ok(minHeight >= 44, `mobile selector min-height ${minHeight}px is below the 44px touch target`);
+test('patient record mobile section windows keep a legible, full touch target', () => {
+  const tile = cleanCss.match(/\.patient-record-windows button > span \{[^}]*\}/)?.[0] || '';
+  assert.ok(tile, 'expected a .patient-record-windows tile rule');
+  assert.ok(Number(tile.match(/width:([\d.]+)px/)?.[1]) >= 44 && Number(tile.match(/height:([\d.]+)px/)?.[1]) >= 44, 'section tile below the 44px touch target');
+  assert.match(cleanCss, /\.patient-record-windows button \{[^}]*font-size:11px/);
 });
 
 // POL-FIN-007e: Product Owner — in "Piani" del paziente la pagina non

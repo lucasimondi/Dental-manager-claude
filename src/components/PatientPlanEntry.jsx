@@ -16,19 +16,22 @@ import { dentalEntryTeeth } from '../lib/patientDentalOverview.js';
 import { expandRowsPerTooth, isMultiToothRow, rowsByTooth, toothList } from '../lib/patientToothEntry.js';
 
 const blankRow = () => ({ description: '', price: '', tooth: '' });
-export default function PatientPlanEntry({ patient, mode, initialTooth = '', plans = [], pricelist = [], si, onSave, onClose, documentClient = supabase, sourcePlan }) {
+export default function PatientPlanEntry({ patient, mode, initialTooth = '', plans = [], pricelist = [], si, onSave, onClose, documentClient = supabase, sourcePlan, sourceItems = null, onUpdateSourcePrices }) {
   const quote = mode === 'quote';
   const seedTeeth = dentalEntryTeeth(initialTooth), fromChart = !!seedTeeth;
   const eligible = plans.filter(p => String(p.pazienteId) === String(patient.id) && ['attivo', 'accettato'].includes(p.stato));
   const [sourceId, setSourceId] = useState(sourcePlan ? String(sourcePlan.id) : '');
   const sourcePlans = sourcePlan ? [sourcePlan,...plans.filter(p=>String(p.id)!==String(sourcePlan.id))] : plans;
-  const [rows, setRows] = useState(() => sourcePlan ? sourcePlan.voci.map(v=>({description:v.prestazione,price:String(v.prezzo),tooth:v.dente || ''})) : [{...blankRow(),tooth:seedTeeth}]);
+  // PREVENTIVO-DA-PRESTAZIONI (PO 2026-11-12): aperto da «Crea preventivo» con le voci spuntate in
+  // Denti e cure. Si vedono solo quelle, ognuna col prezzo modificabile; niente sconto del piano intero.
+  const selection = !!(sourcePlan && quote && Array.isArray(sourceItems) && sourceItems.some(i => sourcePlan.voci?.[i]));
+  const [rows, setRows] = useState(() => selection ? sourceItems.filter(i => sourcePlan.voci[i]).map(i => ({ description: sourcePlan.voci[i].prestazione || 'Prestazione', price: String(sourcePlan.voci[i].prezzo ?? ''), tooth: sourcePlan.voci[i].dente || '', sourceIndex: i })) : sourcePlan ? sourcePlan.voci.map(v=>({description:v.prestazione,price:String(v.prezzo),tooth:v.dente || ''})) : [{...blankRow(),tooth:seedTeeth}]);
   const [planId, setPlanId] = useState(eligible.length === 1 ? String(eligible[0].id) : eligible.length ? '' : 'new');
   const [quoteScope, setQuoteScope] = useState(quote ? 'all' : 'entered');
   const [pdfPlanId, setPdfPlanId] = useState('');
   const archiveIds = useRef(new Map()), documentLock = useRef(false), deliveryLock = useRef(false);
   const [archivedDone, setArchivedDone] = useState(false);
-  const [discount, setDiscount] = useState(sourcePlan?.sconto || ''), [discountType, setDiscountType] = useState(sourcePlan?.scontoTipo === 'pct' || !sourcePlan?.scontoTipo ? 'pct' : 'eur');
+  const [discount, setDiscount] = useState(selection ? '' : sourcePlan?.sconto || ''), [discountType, setDiscountType] = useState(sourcePlan?.scontoTipo === 'pct' || !sourcePlan?.scontoTipo ? 'pct' : 'eur');
   const [title, setTitle] = useState(sourcePlan?.titolo || (quote ? 'Preventivo' : 'Prestazioni occasionali'));
   const [saving, setSaving] = useState(false), [uncertain, setUncertain] = useState(false);
   const [error, setError] = useState(''), [success, setSuccess] = useState(null);
@@ -40,7 +43,7 @@ export default function PatientPlanEntry({ patient, mode, initialTooth = '', pla
   // Multi-tooth rows become one canonical row per tooth unless the operator asks for a single combined row.
   const [perTooth, setPerTooth] = useState(true);
   const multiTooth = rows.some(row => row.description.trim() && isMultiToothRow(row));
-  const savedRows = perTooth ? expandRowsPerTooth(rows) : rows;
+  const savedRows = perTooth && !selection ? expandRowsPerTooth(rows) : rows;
   const total = totaliPreventivo({ voci: savedRows.map(row => ({ prezzo: row.price })), sconto: discount, scontoTipo: discountType }).totale;
   const rowCount = savedRows.filter(row => row.description.trim()).length;
   const toothSummary = multiTooth && perTooth ? rowsByTooth(savedRows) : [];
@@ -107,7 +110,14 @@ export default function PatientPlanEntry({ patient, mode, initialTooth = '', pla
         const proposed = preparePatientEntry({ patient, plans: [], draft }).quote;
         if (!proposed) throw new Error('Inserisci almeno una prestazione.');
         const documentPlan = {...proposed,id:source.id};
-        result = { quoteId: source.id, savedPlans: [documentPlan], documentOnly: true };
+        let pricesUpdated = 0;
+        if (selection && onUpdateSourcePrices) {
+          const changes = rows.filter(r => Number.isInteger(r.sourceIndex) && source.voci?.[r.sourceIndex])
+            .map(r => ({ index: r.sourceIndex, prezzo: Number(r.price) || 0, prestazione: source.voci[r.sourceIndex].prestazione || 'Prestazione', prima: Number(source.voci[r.sourceIndex].prezzo) || 0 }))
+            .filter(c => c.prezzo !== c.prima);
+          if (changes.length) { onUpdateSourcePrices(source.id, changes); pricesUpdated = changes.length; }
+        }
+        result = { quoteId: source.id, savedPlans: [documentPlan], documentOnly: true, pricesUpdated };
       } else result = await onSave(draft);
       inputRef.current?.blur(); setTyping(false);
       const savedPlans = result.savedPlans?.length ? result.savedPlans : [result.savedPlan || plans.find(p => String(p.id) === String(result.treatmentId))].filter(Boolean);
@@ -152,14 +162,14 @@ export default function PatientPlanEntry({ patient, mode, initialTooth = '', pla
   };
   const patientName = [patient.nome, patient.cognome].filter(Boolean).join(' ');
   return createPortal(<div ref={shellRef} className={`patient-entry-overlay${viewport.height < 500 ? ' is-compact' : ''}`} style={{ top: viewport.top, height: viewport.height }}>
-    <section role="dialog" aria-modal="true" aria-labelledby="patient-entry-title" className={`patient-entry-panel${quote ? ' is-quote' : ''}${fromChart ? ' from-dental-chart' : ''}`}>
+    <section role="dialog" aria-modal="true" aria-labelledby="patient-entry-title" className={`patient-entry-panel${quote ? ' is-quote' : ''}${fromChart && !selection ? ' from-dental-chart' : ''}`}>
       <header className="patient-entry-header">
         <div className="patient-entry-mark" aria-hidden="true"><Ic n={quote ? 'file' : 'tooth'} s={21} c="currentColor" /></div>
         <div className="patient-entry-heading"><span>{quote ? 'PREVENTIVO' : 'PRESTAZIONI'}{fromChart ? ` · ${(toothList(seedTeeth)?.length || 0) > 1 ? 'Denti' : 'Dente'} ${seedTeeth}` : ''}</span><h2 id="patient-entry-title" ref={titleRef} tabIndex={-1}>{patientName}</h2></div>
         <button type="button" className="patient-entry-close" aria-label="Chiudi" disabled={saving} onClick={close}><Ic n="x" s={20} c="currentColor" /></button>
       </header>
       <div className="patient-entry-scroll" ref={scrollRef} onFocusCapture={event => { if (event.target.matches('input,textarea')) { inputRef.current = event.target; setTyping(true); } }} onBlurCapture={event => { if (event.target === inputRef.current && !event.relatedTarget?.matches('input,textarea')) setTyping(false); }}>
-        {success ? <div className="patient-entry-success" role="status"><div className="patient-entry-success-icon"><Ic n="ok" s={28} c="currentColor" /></div><span>OPERAZIONE COMPLETATA</span><h3>{quote ? archivedDone ? 'Preventivo archiviato' : 'Voci salvate · prepara il documento' : 'Prestazioni salvate'}</h3><p>{success.skipped ? `${success.skipped} prestazioni erano già presenti nel piano e non sono state duplicate.` : success.documentOnly ? 'Documento preparato dal piano. Il piano clinico non è stato modificato.' : 'Le voci sono ora nella scheda del paziente.'}</p>
+        {success ? <div className="patient-entry-success" role="status"><div className="patient-entry-success-icon"><Ic n="ok" s={28} c="currentColor" /></div><span>OPERAZIONE COMPLETATA</span><h3>{quote ? archivedDone ? 'Preventivo archiviato' : 'Voci salvate · prepara il documento' : 'Prestazioni salvate'}</h3><p>{success.skipped ? `${success.skipped} prestazioni erano già presenti nel piano e non sono state duplicate.` : success.documentOnly ? success.pricesUpdated ? `Documento preparato dal piano. ${success.pricesUpdated === 1 ? 'Il prezzo cambiato è aggiornato' : `I ${success.pricesUpdated} prezzi cambiati sono aggiornati`} anche nelle prestazioni.` : 'Documento preparato dal piano. Il piano clinico non è stato modificato.' : 'Le voci sono ora nella scheda del paziente.'}</p>
           {documentPlan && <>
             {success.savedPlans.length > 1 && <label className="patient-entry-option-field">Piano per il preventivo<select value={pdfPlanId} onChange={e=>setPdfPlanId(e.target.value)}>{success.savedPlans.map(p=><option key={p.id} value={p.id}>{p.titolo}</option>)}</select></label>}
             {!quote && scopeChoices}
@@ -168,9 +178,17 @@ export default function PatientPlanEntry({ patient, mode, initialTooth = '', pla
             {!quote && <button type="button" className="patient-entry-pdf" disabled={!projection} onClick={async () => { try { setPdf(await prepareDocument()); } catch (e) { setError(e.message); } }}><Ic n="file" s={19} c="currentColor" />Apri PDF del preventivo<Ic n="eye" s={16} c="currentColor" /></button>}
           </>}
         </div> : <>
-          <div className="patient-entry-intro"><h3>{quote ? 'Prepara il preventivo' : 'Quali prestazioni vuoi inserire?'}</h3><p>{fromChart && (toothList(seedTeeth)?.length || 0) > 1 ? `Ogni prestazione vale per i denti ${seedTeeth}. Aggiungi più prestazioni con “Altra prestazione”; i denti di ogni riga restano modificabili.` : 'Cerca nel tuo listino o scrivi una voce libera.'}</p></div>
+          <div className="patient-entry-intro"><h3>{selection ? 'Preventivo pronto' : quote ? 'Prepara il preventivo' : 'Quali prestazioni vuoi inserire?'}</h3><p>{selection ? `${rows.length === 1 ? '1 prestazione' : `${rows.length} prestazioni`} da «Denti e cure». Controlla i prezzi, poi invia o salva.` : fromChart && (toothList(seedTeeth)?.length || 0) > 1 ? `Ogni prestazione vale per i denti ${seedTeeth}. Aggiungi più prestazioni con “Altra prestazione”; i denti di ogni riga restano modificabili.` : 'Cerca nel tuo listino o scrivi una voce libera.'}</p></div>
           {patient.anamnesiAllarme && <p role="alert" className="patient-entry-warning">Allarme anamnesi: verifica le segnalazioni nella scheda paziente.</p>}
           <fieldset className="patient-entry-fields" disabled={saving || uncertain}>
+            {selection ? <div className="quote-pick" role="group" aria-label="Prestazioni nel preventivo">
+              {rows.map((row, i) => <div className="quote-pick-row" key={row.sourceIndex ?? i}>
+                <div><strong>{row.description}</strong><small>{row.tooth ? `Dente ${row.tooth}` : 'Generale'}</small></div>
+                <label><span>Prezzo €</span><input type="number" min="0" step="0.01" inputMode="decimal" aria-label={`Prezzo ${row.description}${row.tooth ? ` sul ${row.tooth}` : ''}`} value={row.price} onChange={e => { const price = e.target.value; setRows(rs => rs.map((r, j) => j === i ? { ...r, price } : r)); }} /></label>
+                <button type="button" aria-label={`Togli ${row.description} dal preventivo`} disabled={rows.length === 1} onClick={() => setRows(rs => rs.filter((_, j) => j !== i))}><Ic n="x" s={16} c="currentColor" /></button>
+              </div>)}
+              <p className="quote-pick-note">Un prezzo cambiato qui cambia anche nella prestazione del piano, e quindi in «Da pagare».</p>
+            </div> : <>
             {quote && sourcePlans.some(p=>String(p.pazienteId)===String(patient.id)) && <label className="patient-entry-option-field">Prestazioni da preventivare<select value={sourceId} onChange={e=>selectSource(e.target.value)}><option value="" disabled={!onSave}>Nuovo preventivo · voci libere</option>{sourcePlans.filter(p=>String(p.pazienteId)===String(patient.id)).map(p=><option key={p.id} value={p.id}>{p.titolo} · {p.data}</option>)}</select><small>Dal piano: rimuovi le voci da escludere. Si salva un documento, senza duplicare il piano.</small></label>}
             <EntryRows rows={rows} onChange={setRows} pricelist={pricelist} dentist={!si?.vertical || si.vertical === 'dentistico'} name="Prestazione" allowDuplicate={false} compactTeeth collapseTeeth={fromChart || quote} newRowTooth={seedTeeth} />
             {multiTooth && <fieldset className="patient-tooth-mode"><legend>Più denti nella stessa riga</legend><div>
@@ -178,6 +196,7 @@ export default function PatientPlanEntry({ patient, mode, initialTooth = '', pla
               <label className={!perTooth ? 'is-selected' : ''}><input type="radio" name="patient-tooth-mode" checked={!perTooth} onChange={()=>setPerTooth(false)} /><span>Voce unica<small>Un solo prezzo per tutti i denti (es. ponte, igiene)</small></span></label>
             </div></fieldset>}
             {toothSummary.length > 0 && <div className="patient-tooth-summary" aria-label="Riepilogo per dente"><strong>Riepilogo per dente</strong><ul>{toothSummary.map(group=><li key={group.site}><span>{group.site}</span><div>{group.items.map((item,i)=><p key={i}>{item.description}<b>{euroIt(Number(item.price) || 0)}</b></p>)}</div></li>)}</ul></div>}
+            </>}
             {!quote && scopeChoices}
             {quote && <div className="quote-discount"><label>Sconto sul totale<input aria-label="Sconto sul totale" type="number" min="0" max={discountType === 'pct' ? 100 : undefined} inputMode="decimal" value={discount} placeholder="0" onChange={e=>setDiscount(e.target.value)} /></label><label>Tipo sconto<select value={discountType} onChange={e=>setDiscountType(e.target.value)}><option value="pct">%</option><option value="eur">€</option></select></label></div>}
             <details className="patient-entry-options" open={!quote && eligible.length > 1 && !planId}><summary>{quote ? 'Nome del preventivo' : 'Piano di destinazione'}</summary><div>

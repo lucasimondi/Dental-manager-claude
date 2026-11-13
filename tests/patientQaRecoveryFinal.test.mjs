@@ -175,7 +175,8 @@ test('L5. Nessun frame di posizione bloccata "stantia" dopo lo sblocco (lock sol
 // no-horizontal-scroll guarantee, different implementation.
 test('M. Tutte le sezioni della Scheda Paziente sono raggiungibili senza scroll orizzontale', () => {
   assert.match(schedaPaz, /className="patient-record-nav"/);
-  assert.match(schedaPaz, /className="patient-record-nav-mobile"/);
+  // PREVENTIVO-DA-PRESTAZIONI: on the phone a wrapping grid of section windows (5 per row), no scroller.
+  assert.match(schedaPaz, /className="patient-record-windows"/);
   assert.doesNotMatch(schedaPaz, /overflowX: 'auto', WebkitOverflowScrolling: 'touch'/);
   // Tutte le tab, incluse Documenti, restano presenti e invariate nel comportamento.
   for (const id of ['info', 'clinical', 'piani', 'paga', 'foto', 'app', 'doc']) assert.match(schedaPaz, new RegExp(`id: '${id}'`));

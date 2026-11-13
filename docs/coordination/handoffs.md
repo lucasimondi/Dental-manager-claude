@@ -4686,3 +4686,12 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Risks: Recenti live in browser storage (cleared if the user clears site data); ID straightening needs a card lighter than the background (corners can be set by hand); OCR speed on low-end phones.
 - Rollback: revert the commit; Recenti store is simply unused afterwards.
 - Next: PO tries Scan on the phone; decide on Traduci / Converti in Word-Excel (need a model or server) and Fototessera; "Mergia" for the PR.
+
+## Handoff — PREVENTIVO-DA-PRESTAZIONI (2026-11-12) — Claude Code
+- Branch `claude/patient-quote-workflow-gvzblu` from master b303da5. Objective: quote straight from the ticked prestazioni in «Denti e cure», prices editable everywhere, sections reachable as windows on the phone.
+- Files: src/lib/domain/treatmentPlanService.js (updateTreatmentItem), src/components/{PatientDentalOverview.jsx/.css, PatientPlanEntry.jsx/.css, PatientWorkspaceBoundary.jsx, PianoDrillDown.jsx, SchedaPaz.jsx, PatientRecordClean.css, PremiumVisualSystem.css}, tests/{preventivoDaPrestazioni.test.mjs (new), incassiPoliedronAndControlUi.test.mjs, patientQaRecoveryFinal.test.mjs}, tests/visual/preventivo-prestazioni.mjs (new), coordination docs.
+- Database: none. Deployment: normal build only.
+- Tests: npm test 1690/1690; npm run build PASS; Pixel 7 visual PASS (run with CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium in this container).
+- Risks: price write-back happens when the quote is saved/sent, before archiving: if archiving then fails the plan price is already changed (it is what the operator typed). Phone record now scrolls as one page in all sections (was only Info): sections with their own sticky elements should be checked on the phone.
+- Rollback: revert the commit (dropdown and old rows return; no data to migrate).
+- Next: PO tries it on the phone; "Mergia" for the PR.

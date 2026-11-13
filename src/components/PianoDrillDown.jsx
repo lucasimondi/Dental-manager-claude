@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Btn, Crd, EmptyState, Fld, Ic, Inp, Modal, Sel } from './ui';
 import { C, fmt, fmtD, today, SCADENZA_PRESET, addMesi, rilevaRichiamo } from '../lib/utils';
-import { markTreatmentItemCompleted, isTreatmentPlanCompleted, planTotals, paidOnPlan, removeTreatmentItem, treatmentItemRemovalMessage } from '../lib/domain/treatmentPlanService.js';
+import { markTreatmentItemCompleted, isTreatmentPlanCompleted, planTotals, paidOnPlan, removeTreatmentItem, treatmentItemRemovalMessage, updateTreatmentItem } from '../lib/domain/treatmentPlanService.js';
 import IncassoModal from './IncassoModal.jsx';
 import PdfView from './PdfView.jsx';
 
@@ -122,9 +122,7 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
   const openEditVoce = (plan, index) => { const v = plan.voci[index]; setEditVoceForm({ prestazione: v.prestazione, dente: v.dente || '', prezzo: String(v.prezzo) }); setEditingVoce({ planId: plan.id, index }); };
   const saveEditVoce = () => {
     if (!editVoceForm.prestazione.trim()) return;
-    setPlans((current) => current.map((pl) => (pl.id === editingVoce.planId ? {
-      ...pl, voci: pl.voci.map((v, j) => (j === editingVoce.index ? { ...v, prestazione: editVoceForm.prestazione.trim(), dente: editVoceForm.dente.trim(), prezzo: Number(editVoceForm.prezzo) || 0 } : v)),
-    } : pl)));
+    setPlans((current) => current.map((pl) => (pl.id === editingVoce.planId ? updateTreatmentItem(pl, editingVoce.index, editVoceForm) : pl)));
     setEditingVoce(null);
   };
 

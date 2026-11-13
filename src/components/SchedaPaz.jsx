@@ -1,5 +1,5 @@
 import Preventivi from './Preventivi.jsx';
-import React, { Suspense, lazy, useState } from 'react';
+import React, { Suspense, lazy, useRef, useState } from 'react';
 import { Btn, Crd, Bdg, Ic, Modal } from './ui';
 import { C, fmt, fmtD, today } from '../lib/utils';
 import { documentoAperto, segnaDocumentoAperto } from '../lib/posizioneNavigazione.js';
@@ -30,6 +30,11 @@ function SezioneComparsa({ titolo, badge, aperta, onToggle, children }) {
   );
 }
 
+// PREVENTIVO-DA-PRESTAZIONI (PO 2026-11-12: "dammi le sezioni raggiungibili facilmente", "prendi spunto"
+// dalla Home di Scan): sul telefono le sezioni sono una griglia di finestre in cima alla scheda,
+// ognuna col suo colore, al posto del menu a tendina in fondo. Sul computer resta la barra laterale.
+const TAB_COLORS = { info: '#2563eb', clinical: '#d9483b', piani: '#0f8b8d', preventivi: '#7c3aed', impl: '#475569', fisio: '#c2680c', paga: '#15803d', foto: '#c0398a', app: '#c2680c', doc: '#4f46e5', privacy: '#64748b' };
+
 const DocMedico = lazy(() => import('./DocMedico.jsx'));
 const DocFiscale = lazy(() => import('./DocFiscale.jsx'));
 const PatientPhotos = lazy(() => import('./PatientPhotos.jsx'));
@@ -43,6 +48,9 @@ const PatientWorkspaceConsentFlow = lazy(() => import('./PatientWorkspaceDocumen
 
 export default function SchedaPaz({ paz, plans, payments, appointments, si, onClose, onNuovoPiano, setPlans, initTab, documentClient, initialDocumentRequest, onDocumentRequestHandled = () => {}, initialAction, onAddTreatment, onCreateQuote, implants = [], setImplants, setPatients, setPayments, richiami = [], setRichiami, onNuovoAppuntamento, onPatientChange, studioMembership, currentUserId, isStudioAdmin, saldiPiani = {}, pricelist = [], features }) {
   const [tab, setTab] = useState(initTab || 'info');
+  const contentRef = useRef(null);
+  // Dalla griglia: apre la sezione e la porta in vista (la scheda sul telefono scorre come una pagina).
+  const apriSezione = (id) => { setTab(id); requestAnimationFrame(() => contentRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })); };
   // Il documento aperto (ricetta, documento medico, fattura, consenso) si riapre da solo se l'app
   // viene ricaricata da zero tornando da un'altra app (iPhone); il testo lo tiene la sua bozza.
   const [documentFlow, setDocumentFlowStato] = useState(() => {
@@ -288,7 +296,15 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
       </header>
       {paz.telefono && <div className="patient-clean-contacts"><a href={`tel:+39${paz.telefono.replace(/\D/g, '')}`} aria-label="Chiama"><Ic n="ph" s={14} c="currentColor" />{paz.telefono}</a>{waAbilitato(features) && <a href={waUrl(paz.telefono)} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><Ic n="wa" s={15} c="currentColor" />WhatsApp</a>}</div>}
 
-      {isDentistico && tab === 'info' ? <PatientDentalOverview patientId={paz.id} plans={patPlans} payments={payments} onAddTreatment={onAddTreatment} onCreateQuote={onCreateQuote} setPlans={setPlans} /> : <PatientEntryActions onTreatment={onAddTreatment} onQuote={onCreateQuote} />}
+      <nav className="patient-record-windows" aria-label="Sezioni scheda paziente">
+        {TABS.map((t) => (
+          <button type="button" key={t.id} className={tab === t.id ? 'is-active' : ''} aria-current={tab === t.id ? 'page' : undefined} style={{ '--tab-color': TAB_COLORS[t.id] || C.pri }} onClick={() => apriSezione(t.id)}>
+            <span aria-hidden="true"><Ic n={t.icon} s={20} c="currentColor" /></span>{t.id === 'info' ? 'Scheda' : t.label}
+          </button>
+        ))}
+      </nav>
+
+      {isDentistico && tab === 'info' ? <PatientDentalOverview patientId={paz.id} plans={patPlans} payments={payments} onAddTreatment={onAddTreatment} onCreateQuote={onCreateQuote} setPlans={setPlans} onOpenQuotes={() => apriSezione('preventivi')} /> : <PatientEntryActions onTreatment={onAddTreatment} onQuote={onCreateQuote} />}
 
       {onNuovoAppuntamento && <button type="button" className="patient-clean-appointment" onClick={() => onNuovoAppuntamento(paz.id)}>Fissa prossimo nell’agenda</button>}
 
@@ -310,13 +326,8 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
             </button>
           ))}
         </aside>
-        <label className="patient-record-nav-mobile">Sezione
-          <select value={tab} onChange={(event) => setTab(event.target.value)}>
-            {TABS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
-          </select>
-        </label>
 
-      <div className="patient-record-content">
+      <div className="patient-record-content" ref={contentRef}>
         {/* POL-UI-021: Product Owner — "la scheda paziente nel mobile deve
             essere scrollabile come una landing page" con sezioni in
             quest'ordine: anagrafica (cliccabile, non a vista) → azioni

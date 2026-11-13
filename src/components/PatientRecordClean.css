@@ -85,8 +85,6 @@
  .patient-record-kpis > button { min-height:45px; padding:0 8px; }
  .patient-record-kpis strong { font-size:16px; }
  .patient-record-kpis span { font-size:10px; }
- .patient-record-clean .patient-record-nav-mobile { background:none; padding:20px 20px 0; border:0; color:#526c80; font-size:12px; font-weight:550; }
- .patient-record-clean .patient-record-nav-mobile select { min-height:46px; padding:10px 12px; border:1px solid #dce5ec; border-radius:11px; background:#fff; color:#284a61; font-size:13px; font-weight:600; }
  .patient-record-clean .patient-quick-action-grid { grid-template-columns:repeat(2,minmax(0,1fr))!important; }
  .pw2-shell.patient-record-clean .pw2-hero { padding:20px; }
  .pw2-shell.patient-record-clean .pw2-hero-top { grid-template-columns:40px minmax(0,1fr); gap:13px; }
@@ -99,3 +97,22 @@
  .pw2-shell.patient-record-clean .pw2-main { padding:20px 20px 80px; }
  .pw2-shell.patient-record-clean .pw2-action-buttons { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
+
+/* PREVENTIVO-DA-PRESTAZIONI (PO 2026-11-12): sezioni come finestre in cima alla scheda sul telefono
+   (spunto: Home di Scan). Sul computer resta la barra laterale. Sul telefono la scheda scorre come
+   una sola pagina anche nelle altre sezioni, così la griglia non toglie spazio al contenuto. */
+.patient-record-windows { display:none; }
+@media(max-width:719px) {
+ .patient-record-windows { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px 4px; margin:0 20px 14px; padding:14px 6px 12px; border:1px solid var(--patient-line); border-radius:20px; background:#fff; flex-shrink:0; }
+ .patient-record-windows button { display:flex; flex-direction:column; align-items:center; gap:6px; min-width:0; padding:0; border:0; background:none; color:#3b5468; font:inherit; font-size:11px; font-weight:550; line-height:1.15; text-align:center; cursor:pointer; touch-action:manipulation; }
+ .patient-record-windows button > span { display:grid; place-items:center; width:46px; height:46px; border-radius:15px; color:var(--tab-color); background:color-mix(in srgb,var(--tab-color) 11%,#fff); transition:background .15s,color .15s,transform .1s; }
+ .patient-record-windows button:active > span { transform:scale(.94); }
+ .patient-record-windows button.is-active { color:var(--patient-ink); font-weight:700; }
+ .patient-record-windows button.is-active > span { color:#fff; background:var(--tab-color); box-shadow:0 4px 10px color-mix(in srgb,var(--tab-color) 30%,transparent); }
+ .patient-record-windows button:focus-visible { outline:2px solid var(--patient-blue); outline-offset:3px; border-radius:12px; }
+ .patient-record-legacy { overflow-y:auto; overscroll-behavior:contain; }
+ .patient-record-legacy > * { flex-shrink:0; }
+ .patient-record-legacy .patient-record-body { flex:0 0 auto; min-height:360px; }
+ .patient-record-legacy .patient-record-content { overflow:visible; scroll-margin-top:8px; }
+}
+@media(max-width:360px) { .patient-record-windows button { font-size:10px; } .patient-record-windows button > span { width:40px; height:40px; border-radius:13px; } }
