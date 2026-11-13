@@ -4695,3 +4695,12 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Risks: ranking is rule-based (may need tuning, e.g. fuzzy matches on long words); synonyms are generic seeds; the app needs a new deploy to show Chiedi.
 - Rollback: revert the commits (app goes back to the old view; cercaChiedi already falls back). DB objects are additive and unused after revert; removal would need a PO-approved migration.
 - Next: PO tries Chiedi on the phone; then step 2 Tempo, step 3 Le mie cose; "Mergia" for the PR.
+
+## Handoff — CARTELLE-MIE (2026-11-13) — Claude Code
+- Branch `ccr-4e256bf5-1lspk5` (after ARCHIVIO-CHIEDI passo 1). Objective: user folders/subfolders, mixed selection, send as files or ZIP with optional password.
+- Files: supabase/archivio/migrations/20261113090000_pol_vita_031_cartelle_mie.sql; personal/src/lib/{cartelleMie.js, pacchetto.js} (new); personal/src/sezioni/documenti/{CartelleMie.jsx (new), index.jsx, Chiedi.jsx, Selezione.jsx, Documento.jsx}; personal/src/personal.css; package.json/package-lock.json (@zip.js/zip.js 2.23.0 exact); tests/{cartelleMie.test.mjs (new), archivioPersonale.test.mjs}; tests/visual/personal-cartelle-mie.{html,fixture.jsx,mjs} (new).
+- Database (applied, additive): cartelle_mie, cartelle_mie_documenti, trigger cartelle_mie_controlla_trg, view v_cartelle_mie; RLS proprietario on both tables.
+- Tests: npm test 1707/1707; build:personal PASS; Chromium personal-cartelle-mie and personal-chiedi PASS (synthetic).
+- Risks: AES ZIPs do not open in Windows Explorer / macOS Archive Utility (explained in the sheet; «Compatibile» option); large folders limited to 80 files; files come through the Apps Script preview (same path as Condividi).
+- Rollback: revert the commits; tables stay unused (removal needs a PO-approved migration).
+- Next: PO tries on the phone; then Tempo and Le mie cose; "Mergia" for the PR.

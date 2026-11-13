@@ -5,6 +5,8 @@ import { archivioDb } from '../../lib/supabasePersonal.js';
 import { aggiornaDocumenti, eliminaDocumenti, portafoglioDocumenti, cestinaSuDrive, eCaricato, daDrive } from '../../lib/archivio.js';
 import { euro } from '../../lib/coreArchivio.js';
 import { caricaCartelle } from '../../lib/cartelle.js';
+import { caricaCartelleMie, aggiungiDocumenti } from '../../lib/cartelleMie.js';
+import { FoglioCartelleMie } from './CartelleMie.jsx';
 import { impostaSalute } from '../../lib/salute.js';
 import { preparaFile, comeFile, condividi, inviaCon } from '../../lib/condividi.js';
 import { unisciInPdf } from '../../lib/pdfUnico.js';
@@ -55,7 +57,7 @@ function usaPressione(onLungo) {
   return { onTouchStart: inizio, onTouchEnd: fine, onTouchMove: fine, onMouseDown: inizio, onMouseUp: fine, onMouseLeave: fine, eraLungo: () => lungo.current };
 }
 
-function VoceDocumento({ doc, modo, selezione, onApri, onSeleziona }) {
+export function VoceDocumento({ doc, modo, selezione, onApri, onSeleziona }) {
   const scelto = selezione?.has(doc.id);
   const p = usaPressione(() => onSeleziona(doc, true));
   const tocco = () => { if (p.eraLungo()) return; if (selezione) onSeleziona(doc); else onApri(doc); };
@@ -101,6 +103,7 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione, max
   const [conferma, setConferma] = useState(false);
   const [avanzamento, setAvanzamento] = useState(null);
   const [cartelle, setCartelle] = useState(null);
+  const [mie, setMie] = useState(null); // CARTELLE-MIE: le cartelle di Luca, per «Cartella»
   const [pronti, setPronti] = useState(null); // { chiave, file } dei documenti scelti, per Condividi
   const [unico, setUnico] = useState(false); // MIA-SALUTE: unisci i documenti scelti in un solo PDF
   const setModo = (m) => { setModoStato(m); try { localStorage.setItem(MODO_KEY, m); } catch { /* facoltativo */ } };
@@ -163,7 +166,7 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione, max
       scegli: (id) => cambia({ rilevanza: id }, `Segnati: ${RILEVANZA[id].toLowerCase()}`) },
     persona: { titolo: 'Di chi è', voci: [{ id: '', nome: 'Nessuno' }, ...impostazioni.persone.map((p) => ({ id: p, nome: p }))],
       scegli: (id) => cambia({ persona: id }, id ? `Assegnati a ${id}` : 'Persona tolta') },
-    cartella: { titolo: `Metti ${ids.length} in una cartella`, cerca: true,
+    cartella: { titolo: `Cartella automatica (ente) per ${ids.length}`, cerca: true,
       voci: [{ id: '__nuova', nome: 'Nuova cartella…' }, ...(cartelle || []).map((c) => ({ id: c.ente, nome: c.ente, meta: `${c.n} documenti`, colore: colore(c.fascicolo) }))],
       scegli: (id) => {
         if (id === '__nuova') {
@@ -174,7 +177,8 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione, max
         cambia({ ente: id }, `Nella cartella ${id}`);
       } },
     altro: { titolo: 'Altre azioni', voci: [
-      { id: 'ente', nome: 'Togli dalla cartella', meta: 'restano in archivio, in "Senza cartella"' },
+      { id: 'cartella_ente', nome: 'Cartella automatica (ente)', meta: 'la cartella per mittente o ente' },
+      { id: 'ente', nome: 'Togli dalla cartella automatica', meta: 'restano in archivio, in "Senza cartella"' },
       { id: 'importanza', nome: 'Importanza', meta: 'importante, normale, poco utile' },
       { id: 'personali_si', nome: 'Aggiungi ai Personali' },
       { id: 'personali_no', nome: 'Togli dai Personali' },
@@ -185,6 +189,7 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione, max
       if (id === 'persona') { setFoglio('persona'); return; }
       if (id === 'importanza') { setFoglio('importanza'); return; }
       if (id === 'ente') { cambia({ ente: '' }, 'Tolti dalla cartella'); return; }
+      if (id === 'cartella_ente') { esegui(async () => setCartelle(await caricaCartelle(archivioDb))); setFoglio('cartella'); return; }
       if (id === 'salute_si' || id === 'salute_no') { esegui(async () => { await impostaSalute(archivioDb, scelti, id === 'salute_si'); fatto(id === 'salute_si' ? 'Aggiunti a La mia salute' : 'Tolti da La mia salute'); }); return; }
       esegui(async () => { await portafoglioDocumenti(archivioDb, scelti, id === 'personali_si'); fatto(id === 'personali_si' ? 'Aggiunti ai Personali' : 'Tolti dai Personali'); });
     } },
@@ -239,7 +244,7 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione, max
               </>}
               <div className="pp-barra-selezione-azioni">
                 {!invio && <button disabled={!ids.length || !!statoCondividi} onClick={condividiScelti}><IconaCondividi size={18} /><span>{statoCondividi || 'Condividi'}</span></button>}
-                <button disabled={!ids.length} onClick={() => { esegui(async () => setCartelle(await caricaCartelle(archivioDb))); setFoglio('cartella'); }}><IconaDocumenti size={18} /><span>Cartella</span></button>
+                <button disabled={!ids.length} onClick={() => { esegui(async () => setMie(await caricaCartelleMie(archivioDb, { ancheArchiviate: false }))); setFoglio('mie'); }}><IconaDocumenti size={18} /><span>Cartella</span></button>
                 <button disabled={!ids.length} onClick={() => setFoglio('sposta')}><IconaStella size={18} /><span>Categoria</span></button>
                 <button disabled={!ids.length} onClick={() => setFoglio('altro')}><span className="pp-tre-punti">•••</span><span>Altro</span></button>
                 <button disabled={!ids.length} className="pp-rosso" onClick={() => setConferma(true)}><IconaCestino size={18} /><span>Elimina</span></button>
@@ -248,7 +253,11 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione, max
             )}
         </div>
       )}
-      {foglio && <FoglioScelta titolo={fogli[foglio].titolo} voci={fogli[foglio].voci} cerca={fogli[foglio].cerca} onScegli={fogli[foglio].scegli} onChiudi={() => setFoglio(null)} />}
+      {foglio === 'mie' && mie && (
+        <FoglioCartelleMie ctx={ctx} titolo={`Metti ${ids.length} in una tua cartella`} cartelle={mie} onChiudi={() => setFoglio(null)}
+          onScegli={(dest, nome) => esegui(async () => { await aggiungiDocumenti(archivioDb, dest, ids); fatto(`Nella cartella «${nome}»`); })} />
+      )}
+      {foglio && foglio !== 'mie' && <FoglioScelta titolo={fogli[foglio].titolo} voci={fogli[foglio].voci} cerca={fogli[foglio].cerca} onScegli={fogli[foglio].scegli} onChiudi={() => setFoglio(null)} />}
     </>
   );
 }

@@ -950,3 +950,39 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-chiedi-secondario { background: color-mix(in srgb, var(--pp-superficie) 18%, var(--pp-inchiostro)); color: var(--pp-superficie); }
 .pp-chiedi-classica, .pp-chiedi-torna { align-self: flex-start; min-height: 44px; padding: 0 4px; font-size: 14px; font-weight: 600; color: var(--pp-blu); background: none; text-align: left; }
 .pp-chiedi-classica { margin-top: 10px; }
+
+/* ---------- POL-VITA-031 CARTELLE-MIE: le tue cartelle e sottocartelle ---------- */
+.pp-mie { display: flex; flex-direction: column; gap: 12px; padding-bottom: 140px; }
+.pp-briciole { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; font-size: 13px; color: var(--pp-grigio); }
+.pp-briciole span { display: inline-flex; align-items: center; gap: 2px; }
+.pp-briciole button { min-height: 32px; padding: 0 4px; font-size: 13px; font-weight: 600; color: var(--pp-blu); background: none; }
+.pp-briciole button[aria-current="page"] { color: var(--pp-inchiostro); }
+.pp-mie-titolo { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; color: var(--pp-inchiostro); overflow-wrap: anywhere; }
+.pp-mie-comandi, .pp-mie-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.pp-mie-comandi .pp-chip-azione, .pp-mie-chips .pp-chip-azione { min-height: 40px; display: inline-flex; align-items: center; gap: 6px; }
+.pp-mie-griglia { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.pp-mia-cartella { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 104px; padding: 14px; border-radius: var(--pp-raggio); background: var(--pp-superficie); box-shadow: var(--pp-ombra); text-align: left; color: var(--pp-inchiostro); border: 2px solid transparent; }
+.pp-mia-cartella.scelta { border-color: var(--pp-blu); }
+.pp-mia-cartella .pp-casella { position: absolute; top: 10px; right: 10px; }
+.pp-mia-cartella-icona { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 10px; background: var(--pp-blu-chiaro); color: var(--pp-blu); }
+.pp-mia-cartella-nome { font-size: 15px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.pp-mie-testa { display: flex; align-items: baseline; justify-content: space-between; }
+.pp-mie-fila { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: none; }
+.pp-mie-fila::-webkit-scrollbar { display: none; }
+.pp-mia-cartella-piccola { flex: 0 0 132px; min-height: 96px; }
+.pp-mia-nuova { border: 1.5px dashed var(--pp-linea); box-shadow: none; background: transparent; }
+.pp-mie-documenti { margin-top: 4px; }
+.pp-mie-largo { width: 100%; margin-top: 16px; }
+.pp-mie-riassunto { margin: 4px 0 8px; }
+.pp-mie-segmenti { margin-top: 8px; }
+.pp-mie-opzione { display: flex; align-items: center; gap: 8px; margin-top: 14px; min-height: 44px; font-weight: 600; color: var(--pp-inchiostro); }
+.pp-mie-protezione { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.pp-mie-protezione label { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: var(--pp-sfondo); font-size: 13px; line-height: 1.4; color: var(--pp-grigio); }
+.pp-mie-protezione strong { color: var(--pp-inchiostro); font-size: 14px; }
+.pp-mie-protezione input { margin-top: 3px; }
+.pp-mie-errore { margin: 10px 0 0; font-size: 14px; font-weight: 600; color: var(--pp-rosso); }
+.pp-mie-pronto { margin: 6px 0; font-size: 16px; font-weight: 700; color: var(--pp-inchiostro); overflow-wrap: anywhere; }
+.pp-mie-azioni-finali { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.pp-mie-azioni-finali .pp-bottone { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.pp-mie-nel-doc { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.pp-mie .pp-barra-selezione-testa > span { display: flex; align-items: center; gap: 8px; }

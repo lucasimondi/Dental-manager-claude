@@ -11,6 +11,7 @@ import { interpretaDomanda, riepilogoImporti } from '../../lib/interpreta.js';
 import { Vuoto, dataBreve, giorniA, titoloDoc, colore } from '../../ui.jsx';
 import { IconaCerca, IconaChiudi } from '../../Icone.jsx';
 import { ElencoSelezionabile } from './Selezione.jsx';
+import { CartelleInCima } from './CartelleMie.jsx';
 
 const euro = (n) => Number(n).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
 const quandoDoc = (d) => dataBreve(d.data_documento || d.email_data);
@@ -72,6 +73,7 @@ export function VistaChiedi({ ctx, onClassica }) {
           <div className="pp-chiedi-suggerimenti">
             {suggerimenti(persone).map((s) => <button key={s} type="button" className="pp-chiedi-sugg" onClick={() => setTesto(s)}>{s}</button>)}
           </div>
+          <CartelleInCima ctx={ctx} />
           {scadenze && scadenze.length > 0 && (
             <section className="pp-chiedi-blocco" aria-label="Da fare">
               <h2 className="pp-chiedi-h2">Da fare</h2>
