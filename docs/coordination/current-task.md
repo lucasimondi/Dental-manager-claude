@@ -1,3 +1,11 @@
+# Current task — DENTI-E-CURE-SEMPLICE (2026-11-13)
+- OWNER Claude Code; branch `claude/patient-quote-workflow-gvzblu` from master 0dfa1e9 (PR312 merged).
+- REQUEST PO 2026-11-13: "La visualizzazione grafica ancora non va bene, falla più semplice ed intuitiva".
+- SCOPE (PatientDentalOverview presentation only): (1) each prestazione is one line — checkbox · tooth · name/status · price · chevron; tapping the line shows its actions (✓ Eseguito · Modifica · Cancella) under it; same rules and in-row confirmations as before. (2) «Denti e cure» title has «+ Aggiungi» (prestazione without tooth); the teeth bar appears only when teeth are selected («N denti · Deseleziona · + Aggiungi qui»), in one compact row. (3) The «Preventivo» button of the teeth bar is removed: one quote entry point, the «Crea preventivo» bar above the list (a new quote with free items stays in Preventivi «Nuovo preventivo»). With several plans the plan name is shown only in the plan header.
+- LOCKS: no data/DB/RLS/financial change.
+- VALIDATION 1692/1692 Node tests (new simplicity test); build PASS; Pixel 7 tests/visual/preventivo-prestazioni.mjs and preventivo-piani.mjs PASS (updated: actions open on tap).
+- STATUS pushed; PR on request; task-specific "Mergia" required.
+
 # Current task — PREVENTIVO-PIANI-RICETTA (2026-11-13)
 - OWNER Claude Code; branch `claude/patient-quote-workflow-gvzblu` from master f75cd08 (PR310 merged; the old already-merged head fa90e20 was merged in instead of a force-push, final tree = 110b577). PR312.
 - REQUEST PO 2026-11-13 (phone screenshot of the «4 piani diversi» block): "Non deve bloccare così, io posso generare preventivi anche su piani diversi, ma in ogni caso se sono piani diversi vanno anche potuti selezionare tutte le prestazioni di un determinato piano o tutto o solo alcune, inoltre le ricette devono essere più facili da raggiungere intendo il farle". AUTHORIZATION "Mergia" 2026-11-13 (task-specific, PR312).

@@ -71,3 +71,13 @@ test('on the phone the sections are a grid of windows at the top of the record',
   const css = read('../src/components/PatientRecordClean.css');
   assert.match(css, /\.patient-record-windows \{ display:grid; grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
 });
+
+// PO 2026-11-13: "La visualizzazione grafica ancora non va bene, falla più semplice ed intuitiva".
+test('simpler «Denti e cure»: one-line rows, actions on tap, one quote entry point, teeth bar only with teeth', () => {
+  const overview = read('../src/components/PatientDentalOverview.jsx');
+  assert.match(overview, /onClick=\{\(\)=>setAzioni\(a => a === row\.key \? null : row\.key\)\}/);
+  assert.match(overview, /\{aperta && <div className="patient-dental-row-actions">/);
+  assert.match(overview, /\{canAdd && !!selected\.length && <div className="patient-dental-actionbar has-selection"/);
+  assert.doesNotMatch(overview, /className="patient-dental-quote" /);
+  assert.match(overview, /className="patient-dental-add-top" onClick=\{\(\)=>open\(onAddTreatment\)\}/);
+});

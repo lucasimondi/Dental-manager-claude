@@ -32,7 +32,7 @@ try {
   await page.getByRole('button', { name: /Salva senza inviare/ }).click();
   await page.getByText(/Il prezzo cambiato è aggiornato anche nelle prestazioni/).waitFor(); // archive fails without a session: expected
   await page.getByRole('button', { name: /Torna al paziente/ }).click();
-  assert.match(await page.locator('.patient-dental-row', { hasText: 'Prestazioni occasionali' }).nth(1).innerText(), /170/);
+  assert.match(await page.getByRole('button', { name: 'Estrazione complessa sul 32: azioni' }).innerText(), /170/);
   // Ricetta: one tap from the header.
   await page.locator('.patient-record-legacy').evaluate((el) => el.scrollTo(0, 0));
   await page.screenshot({ path: `${out}/3-testata.png` });
