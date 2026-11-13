@@ -10,12 +10,17 @@ const patient = {id:7,nome:'Paziente',cognome:'Sintetico',telefono:'0000000000',
 const params = new URLSearchParams(location.search);
 const count = Number(params.get('plans') || 0);
 let stored = Array.from({length:count},(_,i)=>({id:20+i,pazienteId:7,titolo:`Piano ${i+1}`,stato:'attivo',data:'2026-11-01',sconto:Number(params.get('discount')||0),scontoTipo:'eur',voci:params.get('seed')==='1'?[{prestazione:'Controllo precedente',prezzo:60,dente:'36',eseguita:false}]:[]}));
-if (params.get('history') === '1') stored = [{id:20,pazienteId:7,titolo:'Piano di cura',stato:'attivo',data:'2026-10-01',sconto:0,voci:[
+if (['1','2'].includes(params.get('history'))) stored = [{id:20,pazienteId:7,titolo:'Piano di cura',stato:'attivo',data:'2026-10-01',sconto:0,voci:[
  {prestazione:'Otturazione estetica',dente:'36',prezzo:100,eseguita:true,dataEsec:'2026-10-20'},
  {prestazione:'Igiene professionale',dente:'',prezzo:85,eseguita:true,dataEsec:'2026-10-15'},
  {prestazione:'Otturazione estetica',dente:'16',prezzo:100,eseguita:true,dataEsec:'2026-10-05'},
  {prestazione:'Corona',dente:'36',prezzo:500,eseguita:false},
  {prestazione:'Otturazione estetica',dente:'46',prezzo:100,eseguita:false},
+]}];
+// PREVENTIVO-DA-PRESTAZIONI: a second plan, to check quotes across plans and «Tutto il piano».
+if (params.get('history') === '2') stored = [...stored, {id:21,pazienteId:7,titolo:'Prestazioni occasionali',stato:'attivo',data:'2026-11-05',sconto:0,voci:[
+ {prestazione:'Estrazione complessa',dente:'45',prezzo:150,eseguita:false},
+ {prestazione:'Estrazione complessa',dente:'32',prezzo:150,eseguita:false},
 ]}];
 window.__writes = [];
 const db = {getById:async(table,id)=>table==='dm_p'?patient:stored.find(p=>p.id===id),getAll:async()=>stored,

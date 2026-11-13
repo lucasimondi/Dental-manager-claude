@@ -4695,3 +4695,13 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Risks: price write-back happens when the quote is saved/sent, before archiving: if archiving then fails the plan price is already changed (it is what the operator typed). Phone record now scrolls as one page in all sections (was only Info): sections with their own sticky elements should be checked on the phone.
 - Rollback: revert the commit (dropdown and old rows return; no data to migrate).
 - Next: PO tries it on the phone; "Mergia" for the PR.
+
+## Handoff — PREVENTIVO-DA-PRESTAZIONI merged (2026-11-13) — Claude Code
+- PR310 squash-merged as f75cd08 after all checks green; production dpl_GysmPV4F3rvciAuSGeS6BgJZLeBs READY (poliedrasoft.it).
+
+## Handoff — PREVENTIVO-PIANI-RICETTA (2026-11-13) — Claude Code
+- Branch `claude/patient-quote-workflow-gvzblu` from master f75cd08, PR312. Objective: quotes across plans, «Tutto il piano», Ricetta one tap away.
+- Files: src/components/{PatientDentalOverview.jsx/.css, PatientPlanEntry.jsx, PatientWorkspaceBoundary.jsx, SchedaPaz.jsx, PatientRecordClean.css}, tests/preventivoDaPrestazioni.test.mjs, tests/visual/{patient-entry.fixture.jsx (history=2), preventivo-piani.mjs (new)}, coordination docs.
+- Database: none. Tests 1691/1691; build PASS; both Pixel 7 visual scripts PASS.
+- Risks: a multi-plan quote is archived under the first plan (Preventivi «Modifica / nuova versione» starts from that snapshot).
+- Rollback: revert the squash commit.

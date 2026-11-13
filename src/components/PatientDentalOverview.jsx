@@ -57,11 +57,49 @@ export default function PatientDentalOverview({ patientId, plans, payments, onAd
   const allOn = rows.length > 0 && rows.every(r => picked.includes(r.key));
   const togglePick = key => setPicked(p => p.includes(key) ? p.filter(k => k !== key) : [...p, key]);
   const toggleAll = () => setPicked(p => allOn ? p.filter(k => !rows.some(r => r.key === k)) : [...new Set([...p, ...rows.map(r => r.key)])]);
-  // Un preventivo nasce da un piano: le voci spuntate devono stare nello stesso piano.
+  // PO 2026-11-13: "posso generare preventivi anche su piani diversi" — le voci spuntate possono
+  // stare in piani diversi; con più piani la lista è divisa per piano e ogni piano ha «Tutto il piano».
   const creaPreventivo = () => {
     const voci = pickedRows.filter(r => voceDi(r));
-    if (!canQuote || pickedPlans.length !== 1 || !voci.length) return;
-    onCreateQuote({ tooth: dentalEntryTeeth(voci.flatMap(r => r.teeth)), sourcePlanId: voci[0].planId, sourceItems: voci.map(r => r.itemIndex).sort((a, b) => a - b) });
+    if (!canQuote || !voci.length) return;
+    onCreateQuote({ tooth: dentalEntryTeeth(voci.flatMap(r => r.teeth)), sourcePlanId: voci[0].planId, sourceRefs: voci.map(r => ({ planId: r.planId, index: r.itemIndex })) });
+  };
+  const planOrder = (plans || []).map(p => String(p.id));
+  const groups = new Set(rows.map(r => String(r.planId))).size > 1
+    ? planOrder.map(id => ({ id, title: rows.find(r => String(r.planId) === id)?.planTitle, rows: rows.filter(r => String(r.planId) === id) })).filter(g => g.rows.length)
+    : null;
+  const togglePlan = g => { const on = g.rows.every(r => picked.includes(r.key)); setPicked(p => on ? p.filter(k => !g.rows.some(r => r.key === k)) : [...new Set([...p, ...g.rows.map(r => r.key)])]); };
+  const planHead = g => {
+    const on = g.rows.every(r => picked.includes(r.key)), some = !on && g.rows.some(r => picked.includes(r.key));
+    return <li key={`plan:${g.id}`} className="patient-dental-plan-head">
+      {canQuote ? <label><input type="checkbox" checked={on} ref={el => { if (el) el.indeterminate = some; }} onChange={() => togglePlan(g)} aria-label={`Spunta tutto il piano ${g.title}`} /><span><strong>{g.title}</strong><small>{g.rows.length === 1 ? '1 prestazione' : `${g.rows.length} prestazioni`} · Tutto il piano</small></span></label> : <span><strong>{g.title}</strong></span>}
+      <b>{fmt(g.rows.reduce((sum, r) => sum + r.price, 0))}</b>
+    </li>;
+  };
+  const renderRow = row => {
+        const etichetta = `${row.name}${row.site !== 'Generale' ? ` sul ${row.site}` : ''}`, on = picked.includes(row.key);
+        if (conferma?.key === row.key) return <li key={row.key} className="patient-dental-confirm" role="alertdialog" aria-label={`Cancellare ${etichetta}?`}><div><strong>Cancellare «{etichetta}»?</strong><small>{conferma.messaggio === 'Rimuovere questa prestazione dal piano?' ? row.planTitle : conferma.messaggio}</small></div><button type="button" className="patient-dental-confirm-no" onClick={()=>setConferma(null)}>Annulla</button><button type="button" className="patient-dental-confirm-yes" onClick={()=>elimina(row)}>Cancella</button></li>;
+        if (modifica?.key === row.key) return <li key={row.key} className="patient-dental-edit" role="group" aria-label={`Modifica ${etichetta}`}>
+          <div className="patient-dental-edit-fields">
+            <label className="is-wide">Prestazione<input value={modifica.prestazione} onChange={e=>setModifica(m=>({...m,prestazione:e.target.value}))} /></label>
+            <label>Dente<input inputMode="numeric" placeholder="Generale" value={modifica.dente} onChange={e=>setModifica(m=>({...m,dente:e.target.value}))} /></label>
+            <label>Prezzo €<input type="number" min="0" step="0.01" inputMode="decimal" value={modifica.prezzo} onChange={e=>setModifica(m=>({...m,prezzo:e.target.value}))} /></label>
+          </div>
+          <div className="patient-dental-edit-actions"><button type="button" className="patient-dental-confirm-no" onClick={()=>setModifica(null)}>Annulla</button><button type="button" className="patient-dental-edit-save" disabled={!modifica.prestazione.trim()} onClick={()=>salvaModifica(row)}>Salva</button></div>
+        </li>;
+        return <li key={row.key} className={`patient-dental-row${on ? ' is-picked' : ''}`}>
+          <div className="patient-dental-row-main">
+            {canQuote && <input type="checkbox" className="patient-dental-pick" checked={on} onChange={()=>togglePick(row.key)} aria-label={`Includi nel preventivo: ${etichetta}`} />}
+            <span className={`patient-dental-site ${row.kind}`}>{row.site}</span>
+            <div className="patient-dental-row-text"><strong>{row.name}</strong><small>{row.kind === 'done' ? `Eseguita · ${row.dataEsec ? fmtD(row.dataEsec) : 'data non registrata'}` : row.status} · {row.planTitle}</small></div>
+            <b className="patient-dental-price">{fmt(row.price)}</b>
+          </div>
+          <div className="patient-dental-row-actions">
+            {row.kind === 'pending' && setPlans ? <button type="button" className="patient-dental-done-button" aria-label={`Segna eseguito: ${etichetta}`} onClick={()=>segnaEseguito(row)}>✓ Eseguito</button> : <span className={`patient-dental-status ${row.kind}`} aria-label={row.status}>{row.kind === 'done' ? '✓ Eseguita' : '○'}</span>}
+            {setPlans && <button type="button" className="patient-dental-edit-button" aria-label={`Modifica prestazione: ${etichetta}`} onClick={()=>apriModifica(row)}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></svg>Modifica</button>}
+            {setPlans && <button type="button" className="patient-dental-delete-button" title="Cancella prestazione" aria-label={`Cancella prestazione: ${etichetta}`} onClick={()=>chiediElimina(row)}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>}
+          </div>
+        </li>;
   };
   return <section className="patient-dental-home" aria-label="Odontogramma e cure">
     <div className="patient-dental-heading"><div><span>CARTELLA ODONTOIATRICA</span><h2>Denti e cure</h2></div><span className="patient-dental-hint">Tocca uno o più denti, poi scegli cosa aggiungere</span></div>
@@ -87,35 +125,11 @@ export default function PatientDentalOverview({ patientId, plans, payments, onAd
     </div><div className="patient-dental-history">
       <div className="patient-dental-history-head"><div role="group" aria-label="Filtra prestazioni">{[['all','Tutte',tutte.length],['pending','Da eseguire',model.pending.length],['done','Eseguite',model.done.length]].map(([id,nome,n])=><button type="button" key={id} aria-pressed={filter === id} onClick={()=>setFilter(id)}>{nome} <b>{n}</b></button>)}</div>{canQuote && !!rows.length && <label className="patient-dental-pickall"><input type="checkbox" checked={allOn} onChange={toggleAll} />Tutte</label>}{!!selected.length && <button type="button" className="patient-dental-reset" onClick={()=>setSelected([])}>{selected.length === 1 ? `Dente ${selected[0]}` : `${selected.length} denti`} ×</button>}</div>
       {canQuote && <div className="patient-dental-quotebar" role="region" aria-label="Preventivo dalle prestazioni">
-        <button type="button" className="patient-dental-quote-create" disabled={pickedPlans.length !== 1} onClick={creaPreventivo}><span>Crea preventivo<small>{pickedRows.length ? (pickedRows.length === 1 ? '1 prestazione' : `${pickedRows.length} prestazioni`) : 'Spunta le prestazioni'}</small></span>{!!pickedRows.length && <b>{fmt(pickedTotal)}</b>}</button>
+        <button type="button" className="patient-dental-quote-create" disabled={!pickedRows.length} onClick={creaPreventivo}><span>Crea preventivo<small>{pickedRows.length ? (pickedRows.length === 1 ? '1 prestazione' : `${pickedRows.length} prestazioni`) : 'Spunta le prestazioni'}</small></span>{!!pickedRows.length && <b>{fmt(pickedTotal)}</b>}</button>
         {onOpenQuotes && <button type="button" className="patient-dental-quote-list" onClick={onOpenQuotes}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h4"/></svg>Preventivi</button>}
-        {pickedPlans.length > 1 && <p role="alert">Le prestazioni spuntate sono in {pickedPlans.length} piani diversi: il preventivo si prepara su un piano alla volta.</p>}
+        {pickedPlans.length > 1 && <p>Prestazioni da {pickedPlans.length} piani: vanno tutte nello stesso preventivo.</p>}
       </div>}
-      {!rows.length ? <p className="patient-dental-empty">{filter === 'done' ? 'Nessuna cura eseguita registrata' : filter === 'pending' ? 'Nessuna prestazione da eseguire' : 'Nessuna prestazione registrata'}{selected.length === 1 ? ` sul ${selected[0]}` : selected.length ? ' sui denti selezionati' : ''}.</p> : <ul>{rows.map(row=>{
-        const etichetta = `${row.name}${row.site !== 'Generale' ? ` sul ${row.site}` : ''}`, on = picked.includes(row.key);
-        if (conferma?.key === row.key) return <li key={row.key} className="patient-dental-confirm" role="alertdialog" aria-label={`Cancellare ${etichetta}?`}><div><strong>Cancellare «{etichetta}»?</strong><small>{conferma.messaggio === 'Rimuovere questa prestazione dal piano?' ? row.planTitle : conferma.messaggio}</small></div><button type="button" className="patient-dental-confirm-no" onClick={()=>setConferma(null)}>Annulla</button><button type="button" className="patient-dental-confirm-yes" onClick={()=>elimina(row)}>Cancella</button></li>;
-        if (modifica?.key === row.key) return <li key={row.key} className="patient-dental-edit" role="group" aria-label={`Modifica ${etichetta}`}>
-          <div className="patient-dental-edit-fields">
-            <label className="is-wide">Prestazione<input value={modifica.prestazione} onChange={e=>setModifica(m=>({...m,prestazione:e.target.value}))} /></label>
-            <label>Dente<input inputMode="numeric" placeholder="Generale" value={modifica.dente} onChange={e=>setModifica(m=>({...m,dente:e.target.value}))} /></label>
-            <label>Prezzo €<input type="number" min="0" step="0.01" inputMode="decimal" value={modifica.prezzo} onChange={e=>setModifica(m=>({...m,prezzo:e.target.value}))} /></label>
-          </div>
-          <div className="patient-dental-edit-actions"><button type="button" className="patient-dental-confirm-no" onClick={()=>setModifica(null)}>Annulla</button><button type="button" className="patient-dental-edit-save" disabled={!modifica.prestazione.trim()} onClick={()=>salvaModifica(row)}>Salva</button></div>
-        </li>;
-        return <li key={row.key} className={`patient-dental-row${on ? ' is-picked' : ''}`}>
-          <div className="patient-dental-row-main">
-            {canQuote && <input type="checkbox" className="patient-dental-pick" checked={on} onChange={()=>togglePick(row.key)} aria-label={`Includi nel preventivo: ${etichetta}`} />}
-            <span className={`patient-dental-site ${row.kind}`}>{row.site}</span>
-            <div className="patient-dental-row-text"><strong>{row.name}</strong><small>{row.kind === 'done' ? `Eseguita · ${row.dataEsec ? fmtD(row.dataEsec) : 'data non registrata'}` : row.status} · {row.planTitle}</small></div>
-            <b className="patient-dental-price">{fmt(row.price)}</b>
-          </div>
-          <div className="patient-dental-row-actions">
-            {row.kind === 'pending' && setPlans ? <button type="button" className="patient-dental-done-button" aria-label={`Segna eseguito: ${etichetta}`} onClick={()=>segnaEseguito(row)}>✓ Eseguito</button> : <span className={`patient-dental-status ${row.kind}`} aria-label={row.status}>{row.kind === 'done' ? '✓ Eseguita' : '○'}</span>}
-            {setPlans && <button type="button" className="patient-dental-edit-button" aria-label={`Modifica prestazione: ${etichetta}`} onClick={()=>apriModifica(row)}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></svg>Modifica</button>}
-            {setPlans && <button type="button" className="patient-dental-delete-button" title="Cancella prestazione" aria-label={`Cancella prestazione: ${etichetta}`} onClick={()=>chiediElimina(row)}><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>}
-          </div>
-        </li>;
-      })}</ul>}
+      {!rows.length ? <p className="patient-dental-empty">{filter === 'done' ? 'Nessuna cura eseguita registrata' : filter === 'pending' ? 'Nessuna prestazione da eseguire' : 'Nessuna prestazione registrata'}{selected.length === 1 ? ` sul ${selected[0]}` : selected.length ? ' sui denti selezionati' : ''}.</p> : <ul>{groups ? groups.flatMap(g => [planHead(g), ...g.rows.map(renderRow)]) : rows.map(renderRow)}</ul>}
     </div></div>
   </section>;
 }
