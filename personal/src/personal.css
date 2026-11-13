@@ -986,3 +986,47 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-mie-azioni-finali .pp-bottone { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .pp-mie-nel-doc { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
 .pp-mie .pp-barra-selezione-testa > span { display: flex; align-items: center; gap: 8px; }
+
+/* ---------- POL-VITA-032: tre porte, Tempo e Le mie cose ---------- */
+.pp-porte { margin: 2px 0 6px; }
+.pp-porte button { min-height: 40px; }
+.pp-tempo { display: flex; flex-direction: column; gap: 12px; }
+.pp-tempo-testa { display: flex; flex-direction: column; gap: 10px; }
+.pp-tempo-zoom { margin: 0; max-width: 220px; }
+.pp-tempo-fili { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.pp-tempo-fili::-webkit-scrollbar { display: none; }
+.pp-tempo-filo { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 700; background: var(--pp-superficie); color: var(--pp-inchiostro); border: 1px solid var(--pp-linea); }
+.pp-tempo-filo.attivo { background: var(--pp-inchiostro); color: var(--pp-superficie); border-color: var(--pp-inchiostro); }
+.pp-tempo-punto { width: 9px; height: 9px; flex-shrink: 0; border-radius: 50%; display: inline-block; }
+.pp-tempo-anni { display: flex; flex-direction: column; gap: 8px; }
+.pp-tempo-anno { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-radius: var(--pp-raggio); background: var(--pp-superficie); box-shadow: var(--pp-ombra); text-align: left; color: var(--pp-inchiostro); }
+.pp-tempo-anno-testa { display: flex; justify-content: space-between; align-items: baseline; }
+.pp-tempo-anno-testa strong { font-size: 22px; letter-spacing: -0.01em; }
+.pp-tempo-anno-testa span { font-size: 13px; color: var(--pp-grigio); }
+.pp-tempo-barra { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--pp-linea); }
+.pp-tempo-barra span { display: block; height: 100%; }
+.pp-tempo-solo { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; }
+.pp-tempo-fiume { position: relative; display: flex; flex-direction: column; gap: 22px; padding-left: 20px; }
+.pp-tempo-fiume::before { content: ''; position: absolute; left: 5px; top: 10px; bottom: 0; width: 2px; background: var(--pp-linea); }
+.pp-tempo-mese { position: relative; display: flex; flex-direction: column; gap: 10px; }
+.pp-tempo-nodo { position: absolute; left: -20px; top: 5px; width: 12px; height: 12px; border-radius: 50%; background: var(--pp-inchiostro); border: 3px solid var(--pp-sfondo); }
+.pp-tempo-h2 { margin: 0; font-size: 16px; font-weight: 800; color: var(--pp-inchiostro); }
+.pp-tempo-h2 span { font-weight: 500; color: var(--pp-grigio); }
+.pp-tempo-voce { display: block; min-width: 0; }
+.pp-tempo-voce .pp-scheda-doc { box-shadow: inset 0 -4px 0 var(--filo), var(--pp-ombra); width: 100%; }
+.pp-cose { display: flex; flex-direction: column; gap: 12px; }
+.pp-cose-intro { margin: 0; }
+.pp-cose-griglia { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.pp-cosa { display: flex; flex-direction: column; justify-content: space-between; gap: 12px; min-height: 160px; padding: 16px; border-radius: 22px; background: var(--sfondo); color: var(--testo); text-align: left; box-shadow: var(--pp-ombra); }
+.pp-cosa-testa { display: flex; flex-direction: column; gap: 2px; }
+.pp-cosa-testa strong { font-size: 22px; letter-spacing: -0.01em; }
+.pp-cosa-testa span, .pp-cosa-n { font-size: 12px; opacity: .82; }
+.pp-cosa-piede { display: flex; flex-direction: column; gap: 4px; }
+.pp-cosa-chiave { font-size: 14px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+.pp-cosa-pagina { display: flex; flex-direction: column; gap: 18px; padding-bottom: 24px; }
+.pp-cosa-pagina section { display: flex; flex-direction: column; gap: 8px; }
+.pp-cosa-intestazione { display: flex; flex-direction: column; gap: 4px; padding: 20px; border-radius: 24px; background: var(--sfondo); color: var(--testo); }
+.pp-cosa-intestazione h1 { margin: 0; font-size: 32px; letter-spacing: -0.02em; }
+.pp-cosa-intestazione span { font-size: 13px; font-weight: 600; opacity: .85; }
+.pp-cosa-fatto { justify-content: space-between; gap: 12px; }
+.pp-cosa-fatto strong { font-size: 14px; text-align: right; overflow-wrap: anywhere; color: var(--pp-inchiostro); }

@@ -8,6 +8,8 @@ import { archivioDb } from '../../lib/supabasePersonal.js';
 import { documentiPersonaliStorici, documentiDaDrive, cercaArchivio, enti as caricaEnti, pratiche as caricaPratiche, cambiaStatoPratica } from '../../lib/archivio.js';
 import { VistaCartelle } from './Cartelle.jsx';
 import { VistaChiedi } from './Chiedi.jsx';
+import { VistaCose } from './Cose.jsx';
+import { VistaTempo } from './Tempo.jsx';
 import { colore, Vuoto, Sezione, Gruppo, Chips, Segmenti, ElencoPratiche } from '../../ui.jsx';
 import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaFoto } from '../../Icone.jsx';
 import { ElencoSelezionabile } from './Selezione.jsx';
@@ -15,19 +17,35 @@ import { BarraFiltri, filtriVuoti, conFiltri } from './Filtri.jsx';
 import { personali } from '../personali/index.jsx';
 
 /* ---------- vista Documenti ---------- */
-// POL-VITA-030: si apre su «Chiedi» (una sola casella che capisce); la vista di prima resta
-// raggiungibile come «Vista classica» e la scelta si ricorda sul telefono.
+// POL-VITA-030/032: Documenti si apre su tre porte — «Chiedi» (una casella che capisce),
+// «Le mie cose» (Casa, Auto, Famiglia, Studio, Soldi, persone) e «Tempo» (la linea del tempo).
+// La vista di prima resta come «Vista classica»; la scelta si ricorda sul telefono.
 const MODO_DOCUMENTI_KEY = 'poliedron-personal-documenti-modo';
-const leggiModoDocumenti = () => { try { return localStorage.getItem(MODO_DOCUMENTI_KEY) === 'classica' ? 'classica' : 'chiedi'; } catch { return 'chiedi'; } };
+const MODI = ['chiedi', 'cose', 'tempo', 'classica'];
+const leggiModoDocumenti = () => { try { const m = localStorage.getItem(MODO_DOCUMENTI_KEY); return MODI.includes(m) ? m : 'chiedi'; } catch { return 'chiedi'; } };
 
 export function VistaDocumenti({ ctx }) {
   const [modo, setModoStato] = useState(() => (ctx.sotto ? 'classica' : leggiModoDocumenti()));
   const setModo = (m) => { setModoStato(m); try { localStorage.setItem(MODO_DOCUMENTI_KEY, m); } catch { /* facoltativo */ } };
-  if (modo === 'chiedi') return <VistaChiedi ctx={ctx} onClassica={() => setModo('classica')} />;
+  if (modo === 'classica') {
+    return (
+      <>
+        <button type="button" className="pp-chiedi-torna" onClick={() => setModo('chiedi')}>← Torna a «Chiedi»</button>
+        <VistaClassica ctx={ctx} />
+      </>
+    );
+  }
   return (
     <>
-      <button type="button" className="pp-chiedi-torna" onClick={() => setModo('chiedi')}>← Torna a «Chiedi»</button>
-      <VistaClassica ctx={ctx} />
+      <div className="pp-segmenti pp-porte" role="tablist" aria-label="Documenti">
+        {[['chiedi', 'Chiedi'], ['cose', 'Le mie cose'], ['tempo', 'Tempo']].map(([k, nome]) => (
+          <button key={k} type="button" role="tab" aria-selected={modo === k} className={modo === k ? 'attivo' : ''} onClick={() => setModo(k)}>{nome}</button>
+        ))}
+      </div>
+      {modo === 'chiedi' && <VistaChiedi ctx={ctx} onClassica={() => setModo('classica')} />}
+      {modo === 'cose' && <VistaCose ctx={ctx} />}
+      {modo === 'tempo' && <VistaTempo ctx={ctx} />}
+      {modo !== 'chiedi' && <button type="button" className="pp-chiedi-classica" onClick={() => setModo('classica')}>Vista classica: cartelle, categorie, pratiche e strumenti</button>}
     </>
   );
 }

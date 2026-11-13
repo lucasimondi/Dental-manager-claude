@@ -4704,3 +4704,11 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Risks: AES ZIPs do not open in Windows Explorer / macOS Archive Utility (explained in the sheet; «Compatibile» option); large folders limited to 80 files; files come through the Apps Script preview (same path as Condividi).
 - Rollback: revert the commits; tables stay unused (removal needs a PO-approved migration).
 - Next: PO tries on the phone; then Tempo and Le mie cose; "Mergia" for the PR.
+
+## Handoff — ARCHIVIO-TEMPO e ARCHIVIO-COSE (2026-11-13) — Claude Code
+- Branch `ccr-4e256bf5-1lspk5`. Files: supabase/archivio/migrations/20261113120000_pol_vita_032_tempo.sql; personal/src/lib/vita.js (new); personal/src/sezioni/documenti/{Tempo.jsx, Cose.jsx (new), Documenti.jsx, index.jsx}; personal/src/personal.css; tests/{archivioTempoCose.test.mjs (new), archivioPersonale.test.mjs}; tests/visual/personal-tempo-cose.{html,fixture.jsx,mjs} (new).
+- Database (applied, additive): view v_tempo_mesi (security_invoker).
+- Tests: npm test 1714/1714; build:personal PASS; Chromium personal-tempo-cose, personal-cartelle-mie, personal-chiedi PASS (synthetic).
+- Risks: «Le mie cose» groups existing categories (a home insurance sits in Soldi, not Casa); people cards search by name; Tempo month shows up to 80 documents.
+- Rollback: revert the commits; the view stays unused.
+- Next: PO tries the preview; feedback; "Mergia".
