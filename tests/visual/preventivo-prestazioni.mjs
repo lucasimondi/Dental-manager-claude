@@ -29,6 +29,7 @@ try {
   await page.locator('.patient-dental-pickall input').uncheck();
   assert.equal(await page.locator('.patient-dental-row.is-picked').count(), 0);
   // «Modifica» in place.
+  await page.getByRole('button', { name: 'Corona sul 36: azioni' }).click(); // actions open on tap (PO 2026-11-13)
   await page.getByRole('button', { name: 'Modifica prestazione: Corona sul 36' }).click();
   await page.locator('.patient-dental-edit input[type=number]').fill('550');
   await page.locator('.patient-dental-edit-save').click();

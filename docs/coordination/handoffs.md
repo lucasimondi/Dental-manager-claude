@@ -4705,3 +4705,11 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Database: none. Tests 1691/1691; build PASS; both Pixel 7 visual scripts PASS.
 - Risks: a multi-plan quote is archived under the first plan (Preventivi «Modifica / nuova versione» starts from that snapshot).
 - Rollback: revert the squash commit.
+
+## Handoff — PREVENTIVO-PIANI-RICETTA merged (2026-11-13) — Claude Code
+- PR312 squash-merged as 0dfa1e9 after all checks green; production dpl_EUzTpRWwMDkAE15LhWGu2uXuLqVG READY.
+
+## Handoff — DENTI-E-CURE-SEMPLICE (2026-11-13) — Claude Code
+- Branch `claude/patient-quote-workflow-gvzblu` from master 0dfa1e9. Files: src/components/PatientDentalOverview.{jsx,css}, tests/preventivoDaPrestazioni.test.mjs, tests/visual/{preventivo-prestazioni,preventivo-piani}.mjs, coordination docs.
+- Database: none. Tests 1692/1692; build PASS; Pixel 7 visual PASS. Rollback: revert the commit.
+- Note: the old remote head (already squash-merged) is merged in with `-s ours` instead of a force-push; the tree equals the task commit.
