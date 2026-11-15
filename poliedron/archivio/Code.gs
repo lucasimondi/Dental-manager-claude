@@ -130,6 +130,9 @@ function elabora() {
     // Cartelle di Drive per categoria e persona (POL-VITA-013): un po' a ogni giro.
     try { ordinaDrive_(inizio + ORDINA_DRIVE_MS); } catch (e) { logErrore_('ordine Drive', e); }
 
+    // Nome dei file su Drive allineato al titolo dell'archivio (drive_rinomina): un po' a ogni giro.
+    try { rinominaDrive_(Date.now() + RINOMINA_DRIVE_MS); } catch (e) { logErrore_('rinomina Drive', e); }
+
     if (!apiInPausa_()) {
       // Documenti importati senza Claude: analisi completa, pochi a ogni giro.
       try { accodaRilettura_(); analizzaRimasti_(inizio + ANALISI_RIMASTI_MS); } catch (e) { if (e.message !== 'RIPROVA') logErrore_('analisi rimasti', e); }
@@ -1430,6 +1433,41 @@ function ordinaDrive_(scadenza) {
     sb_('documenti?id=eq.' + d.id, { method: 'patch', body: { drive_cartella: segnato } });
   }
   return false;
+}
+
+/* Rinomina su Drive (2026-11-15, Luca: "Rinomina anche i file su drive"). I documenti con
+ * drive_rinomina = true prendono il nome "<data>_<titolo>.<estensione>", come all'importazione.
+ * Mai i documenti dei pazienti, mai i file caricati dall'app o messi su Drive da Luca (tengono il
+ * loro nome). Si rinomina soltanto: niente spostamenti, copie o cancellazioni; id e link restano uguali. */
+const RINOMINA_DRIVE_MS = 45 * 1000;
+function nomeDrive_(d) {
+  const data = dataValida_(d.data_documento) || String(d.email_data || '').slice(0, 10) || 'senza-data';
+  const estensione = (String(d.nome_file_originale || '').match(/\.[a-z0-9]+$/i) || [''])[0].toLowerCase();
+  return data + '_' + pulisciNome_(d.titolo || String(d.nome_file_originale || '').replace(/\.[^.]+$/, '')) + estensione;
+}
+function rinominaDrive_(scadenza) {
+  for (;;) {
+    const docs = sb_('documenti?select=id,drive_file_id,titolo,data_documento,email_data,nome_file_originale,fascicolo,gmail_message_id' +
+      '&drive_rinomina=is.true&order=id&limit=100');
+    if (!docs.length) return false;
+    for (let i = 0; i < docs.length; i++) {
+      if (Date.now() > scadenza) return true;
+      const d = docs[i];
+      const proprio = /^(caricato|drivefile|drivefoto):/.test(String(d.gmail_message_id || ''));
+      if (d.drive_file_id && !proprio && d.fascicolo !== 'clinico_pazienti') {
+        try { DriveApp.getFileById(d.drive_file_id).setName(nomeDrive_(d)); }
+        catch (e) { logErrore_('rinomina Drive ' + d.id, e); } // file sparito: non si riprova
+      }
+      sb_('documenti?id=eq.' + d.id, { method: 'patch', body: { drive_rinomina: false } });
+    }
+  }
+}
+
+// Da eseguire a mano dall'editor per rinominare in una volta (gira per ~5 minuti; se restano file,
+// eseguila di nuovo o lascia fare al giro automatico).
+function rinominaDriveTutto() {
+  const restano = rinominaDrive_(Date.now() + 5 * 60 * 1000);
+  console.log(restano ? 'Restano file da rinominare: eseguila di nuovo.' : 'Nomi su Drive allineati.');
 }
 
 // Da eseguire a mano dall'editor per sistemare tutto l'archivio in una volta (gira per ~5 minuti;
