@@ -37,7 +37,7 @@ Tempo di installazione: circa 30 minuti.
    | `SUPABASE_KEY` | secret key di Supabase |
    | `ANTHROPIC_API_KEY` | chiave di Claude |
    | `GEMINI_API_KEY` | (facoltativo) chiave di Google AI Studio: analisi con Gemini quando Claude è in pausa |
-   | `GEMINI_MODELLO` | (facoltativo) modello Gemini, predefinito `gemini-flash-latest` |
+   | `GEMINI_MODELLO` | (facoltativo) modelli Gemini separati da virgola, in ordine; predefiniti Flash-Lite, Flash, 2.5 Flash-Lite, 2.5 Flash. Finita la quota gratuita del giorno su uno, lo script passa al successivo. `riprovaGemini` toglie le pause |
    | `DASHBOARD_URL` | (facoltativo) indirizzo della dashboard |
    | `EMAIL_DIGEST` | (facoltativo) a chi mandare il riepilogo |
 

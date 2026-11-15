@@ -14,15 +14,17 @@
  *   ANTHROPIC_API_KEY  chiave API di Claude
  * Facoltative:
  *   GEMINI_API_KEY     chiave di Google AI Studio: analisi con Gemini quando Claude è in pausa
- *   GEMINI_MODELLO     modello Gemini (predefinito: CONFIG.MODELLO_GEMINI)
+ *   GEMINI_MODELLO     modelli Gemini separati da virgola, in ordine (predefinito: CONFIG.MODELLI_GEMINI)
  *   EMAIL_DIGEST       destinatario del riepilogo (predefinito: il tuo indirizzo)
  *   DASHBOARD_URL      indirizzo della dashboard, per il link nel riepilogo
  */
 
 const CONFIG = {
   MODELLO: 'claude-haiku-5-5',
-  // Riserva quando Claude è in pausa (PO 2026-10-18). Alias di Google che segue l'ultimo Flash.
-  MODELLO_GEMINI: 'gemini-flash-latest',
+  // Riserva quando Claude è in pausa (PO 2026-10-18), piano gratuito. Nel piano gratuito la quota del
+  // giorno vale per ogni modello: finita su uno si passa al successivo (2026-11-15, Luca: "sistema Gemini").
+  // Prima Flash-Lite, che ha la quota giornaliera più alta. Un modello che non esiste più viene saltato.
+  MODELLI_GEMINI: ['gemini-flash-lite-latest', 'gemini-flash-latest', 'gemini-2.5-flash-lite', 'gemini-2.5-flash'],
   ETICHETTA_PADRE: 'Archivio',
   ETICHETTA_FATTO: 'Archivio/Elaborato',
   ETICHETTA_ERRORE: 'Archivio/Errore',
@@ -647,18 +649,68 @@ function apiInPausa_() {
  * di analizza_() li escludono prima (eClinico_ e fascicolo clinico_pazienti).
  * ===================================================================*/
 const GEMINI_INTERVALLO_MS = 5000;               // piano gratuito: al massimo ~12 richieste al minuto
-const GEMINI_PAUSA_MS = 3 * 60 * 60 * 1000;      // quota del giorno finita o chiave rifiutata
+const GEMINI_PAUSA_MS = 3 * 60 * 60 * 1000;      // chiave rifiutata: tutto Gemini in pausa
+const GEMINI_ASSENTE_MS = 7 * 24 * 60 * 60 * 1000; // modello inesistente o non disponibile per la chiave
 let GEMINI_ULTIMA = 0;
+
+// Modelli in ordine di preferenza: proprietà GEMINI_MODELLO (anche più nomi separati da virgola) o CONFIG.
+function modelliGemini_() {
+  const p = PropertiesService.getScriptProperties().getProperty('GEMINI_MODELLO');
+  const elenco = p ? p.split(',').map(function (m) { return m.trim(); }).filter(Boolean) : CONFIG.MODELLI_GEMINI;
+  return elenco.length ? elenco : CONFIG.MODELLI_GEMINI;
+}
+
+// Pause per modello: { "<modello>": <ms fino a quando> } nella proprietà GEMINI_PAUSE.
+function pauseGemini_() {
+  try { return JSON.parse(PropertiesService.getScriptProperties().getProperty('GEMINI_PAUSE') || '{}') || {}; } catch (e) { return {}; }
+}
+
+// Primo modello non in pausa, oppure null.
+function modelloGeminiLibero_() {
+  const pause = pauseGemini_();
+  const adesso = Date.now();
+  const liberi = modelliGemini_().filter(function (m) { return Number(pause[m] || 0) <= adesso; });
+  return liberi.length ? liberi[0] : null;
+}
 
 function geminiDisponibile_() {
   const sp = PropertiesService.getScriptProperties();
-  return Boolean(sp.getProperty('GEMINI_API_KEY')) && Number(sp.getProperty('GEMINI_PAUSA_FINO') || 0) <= Date.now();
+  return Boolean(sp.getProperty('GEMINI_API_KEY')) && Number(sp.getProperty('GEMINI_PAUSA_FINO') || 0) <= Date.now()
+    && Boolean(modelloGeminiLibero_());
 }
 
+// La quota giornaliera del piano gratuito si azzera a mezzanotte, ora del Pacifico: si riprova da lì.
+function prossimoAzzeramentoGemini_() {
+  const adesso = new Date();
+  const oraPacifico = Utilities.formatDate(adesso, 'America/Los_Angeles', 'HH:mm:ss').split(':').map(Number);
+  const trascorsi = ((oraPacifico[0] * 60 + oraPacifico[1]) * 60 + oraPacifico[2]) * 1000;
+  if (!(trascorsi >= 0)) return adesso.getTime() + GEMINI_PAUSA_MS;   // ora non leggibile: si riprova tra 3 ore
+  return adesso.getTime() - trascorsi + 24 * 60 * 60 * 1000 + 5 * 60 * 1000;
+}
+
+// Un modello in pausa (quota del giorno finita o modello assente); gli altri restano utilizzabili.
+function pausaModelloGemini_(modello, finoA, motivo, testo) {
+  const pause = pauseGemini_();
+  pause[modello] = finoA;
+  PropertiesService.getScriptProperties().setProperty('GEMINI_PAUSE', JSON.stringify(pause));
+  const quota = (String(testo).match(/quotaId"?\s*:\s*"([^"]+)"/) || [])[1] || '';
+  logErrore_('Gemini ' + modello + ' in pausa fino alle ' + Utilities.formatDate(new Date(finoA), CONFIG.FUSO, 'dd/MM HH:mm') + ' (' + motivo + ')',
+    new Error((quota ? 'quota: ' + quota + ' — ' : '') + String(testo).slice(0, 600)));
+}
+
+// Chiave rifiutata: tutto Gemini in pausa.
 function pausaGemini_(testo) {
   const sp = PropertiesService.getScriptProperties();
   sp.setProperty('GEMINI_PAUSA_FINO', String(Date.now() + GEMINI_PAUSA_MS));
-  logErrore_('Gemini in pausa per 3 ore', new Error(String(testo).slice(0, 300)));
+  logErrore_('Gemini in pausa per 3 ore (chiave)', new Error(String(testo).slice(0, 300)));
+}
+
+// Da eseguire a mano dall'editor: toglie tutte le pause di Gemini.
+function riprovaGemini() {
+  const sp = PropertiesService.getScriptProperties();
+  sp.deleteProperty('GEMINI_PAUSE');
+  sp.deleteProperty('GEMINI_PAUSA_FINO');
+  console.log('Pause di Gemini tolte. Modelli: ' + modelliGemini_().join(', '));
 }
 
 // Claude se disponibile, altrimenti Gemini; anche quando Claude va in pausa proprio ora.
@@ -691,11 +743,14 @@ function gemini_(system, content) {
 }
 
 // Una richiesta a Gemini → il primo candidato (con content). Gestisce quote, chiave e ritentativi.
+// Quota del giorno finita su un modello: quel modello va in pausa fino all'azzeramento e si passa al successivo.
 function geminiChiamata_(body) {
   const sp = PropertiesService.getScriptProperties();
-  const modello = sp.getProperty('GEMINI_MODELLO') || CONFIG.MODELLO_GEMINI;
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(modello) + ':generateContent';
-  for (let tentativo = 1; tentativo <= 3; tentativo++) {
+  let tentativi = 0;
+  while (tentativi < 3) {
+    const modello = modelloGeminiLibero_();
+    if (!modello || Number(sp.getProperty('GEMINI_PAUSA_FINO') || 0) > Date.now()) throw new Error('RIPROVA');
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(modello) + ':generateContent';
     const attesa = GEMINI_ULTIMA + GEMINI_INTERVALLO_MS - Date.now();
     if (attesa > 0) Utilities.sleep(attesa);
     GEMINI_ULTIMA = Date.now();
@@ -712,13 +767,21 @@ function geminiChiamata_(body) {
       if (c.finishReason === 'MAX_TOKENS') throw new Error('Risposta di Gemini troncata (max tokens)');
       return c;
     }
-    // Quota del giorno finita (piano gratuito) o chiave non valida: Gemini in pausa, si cataloga a regole.
-    if ((code === 429 && /PerDay|per day|daily/i.test(testo)) || code === 401 || code === 403 || /API_KEY_INVALID|API key not valid/i.test(testo)) {
-      pausaGemini_(testo);
-      throw new Error('RIPROVA');
+    // Chiave non valida o rifiutata: tutto Gemini in pausa, si cataloga a regole.
+    if (code === 401 || code === 403 || /API_KEY_INVALID|API key not valid/i.test(testo)) { pausaGemini_(testo); throw new Error('RIPROVA'); }
+    // Modello inesistente o non disponibile nel piano gratuito ("limit: 0"): si salta per una settimana.
+    if (code === 404 || (code === 429 && /limit:\s*0\b/.test(testo))) {
+      pausaModelloGemini_(modello, Date.now() + GEMINI_ASSENTE_MS, 'modello non disponibile', testo);
+      continue;
     }
-    if (code === 429) { Utilities.sleep(tentativo * 20000); continue; }   // troppe richieste al minuto
-    if (code >= 500) { Utilities.sleep(tentativo * 8000); continue; }
+    // Quota del giorno finita: pausa fino all'azzeramento, poi il modello successivo (senza contare il tentativo).
+    if (code === 429 && /PerDay|per day|daily/i.test(testo)) {
+      pausaModelloGemini_(modello, prossimoAzzeramentoGemini_(), 'quota del giorno', testo);
+      continue;
+    }
+    tentativi++;
+    if (code === 429) { Utilities.sleep(tentativi * 20000); continue; }   // troppe richieste al minuto: si aspetta
+    if (code >= 500) { Utilities.sleep(tentativi * 8000); continue; }
     throw new Error('API Gemini ' + code + ': ' + testo.slice(0, 500));
   }
   throw new Error('RIPROVA');
