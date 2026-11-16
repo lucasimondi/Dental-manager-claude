@@ -527,10 +527,16 @@ function estraiTesti_(scadenza) {
         riga = { stato: 'errore', fonte: null, testo: null, errore: String(e.message || e).slice(0, 300) };
       }
     }
-    sb_('documenti_testo?on_conflict=documento_id', { method: 'post', prefer: 'resolution=merge-duplicates,return=minimal', body: {
-      documento_id: d.id, stato: riga.stato, fonte: riga.fonte, testo: riga.testo, errore: riga.errore || null,
+    const salva = (r) => sb_('documenti_testo?on_conflict=documento_id', { method: 'post', prefer: 'resolution=merge-duplicates,return=minimal', body: {
+      documento_id: d.id, stato: r.stato, fonte: r.fonte, testo: r.testo, errore: r.errore || null,
       tentativi: (Number(d.tentativi) || 0) + 1, aggiornato_il: new Date().toISOString(),
     } });
+    try {
+      salva(riga);
+    } catch (e) {
+      // Un testo che Supabase non accetta non deve fermare la coda: il documento passa in errore.
+      salva({ stato: 'errore', fonte: riga.fonte, testo: null, errore: ('Salvataggio: ' + String(e.message || e)).slice(0, 300) });
+    }
   }
   return docs.length === TESTO_LOTTO;
 }
@@ -563,7 +569,8 @@ function testoDelDocumento_(d, nome) {
   }
   const corpo = corpoEmail_(d.gmail_message_id);
   if (corpo) testo = (testo ? testo + '\n\n' : '') + 'Email: ' + corpo;
-  testo = String(testo || '').replace(/[ \t\u00a0]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
+  // Postgres rifiuta il carattere nullo (\u0000) nei testi: via lui e gli altri caratteri di controllo.
+  testo = String(testo || '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\ufffe\uffff]/g, ' ').replace(/[ \t\u00a0]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
   if (testo) return { stato: 'letto', fonte: fonte || 'email', testo: testo.slice(0, 100000) };
   return { stato: fonte && fonte !== 'troppo_grande' ? 'vuoto' : 'non_leggibile', fonte: fonte, testo: null };
 }
