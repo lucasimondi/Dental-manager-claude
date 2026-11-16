@@ -73,7 +73,7 @@ test('documenti su Drive: la pagina successiva resta per il giro dopo', () => {
 
 test('script: i file di Luca da Drive non si spostano, non si rinominano, non sono email', () => {
   assert.match(codice, /gmail_message_id=not\.like\.drivefoto:\*&gmail_message_id=not\.like\.drivefile:\*/);
-  assert.match(codice, /if \(!daDrive\) try \{ file\.setName/);
+  assert.match(codice, /if \(file && !daDrive\) try \{ file\.setName/);
   assert.match(codice, /if \(!caricato && !daDrive\)/);
   assert.match(codice, /importaDocumentiDrive_\(Date\.now\(\) \+ 15000\)/);
   assert.equal((codice.match(/!\/\^\(caricato\|drivefile\|drivefoto\):\/\.test/g) || []).length, 2);

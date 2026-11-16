@@ -44,6 +44,8 @@ Chat di Poliedron: con Claude in pausa risponde Gemini (`chatGemini_`, stessi st
 
 Rinomina su Drive (2026-11-15, Luca: "Rinomina anche i file su drive"): i documenti con `drive_rinomina = true` prendono il nome `<data>_<titolo>.<ext>` a ogni giro di `elabora` (`rinominaDrive_`, a mano `rinominaDriveTutto()`); mai i clinici, mai i file caricati dall'app o messi su Drive da Luca; solo rinomina, id e link invariati.
 
+Email importanti senza allegati (2026-11-16, Luca: "Iniziamo così 1 2 basta link 3 si"): `importaEmail_()` a ogni giro guarda le conversazioni senza allegati (mai Promozioni, Social, chat) dal `EMAIL_DAL` (ultimi 12 mesi; `emailAncheStorico()` allarga di altri 12) e ne registra una scheda per conversazione se un partecipante è un mittente già in archivio nelle categorie importanti o una PEC, se l'oggetto ha parole come diffida/sollecito/preavviso/pignoramento/decreto/udienza, o se Luca ha risposto a un indirizzo non personale. Esclusi i messaggi automatici (Klarna, AliExpress, ricevute pagoPA/IO, codici) e tutto ciò che sembra clinico (`EMAIL_CLINICO`, più severo di `eClinico_`). La scheda ha `mime_type = 'message/rfc822'`, `hash_sha256 = 'email:<threadId>'`, nessun file su Drive e `drive_url` = link a Gmail; etichette `Archivio/Email` (importata) e `Archivio/Email vista` (scartata). `analizzaRimasti_()` legge il testo della conversazione (mai i clinici); i messaggi nuovi in una conversazione già importata la rimettono da leggere (`aggiornaEmail_`). Solo lettura ed etichette: niente invii, spostamenti o cancellazioni.
+
 `Code.gs` implementa già tutto questo. Se modifichi lo script, la specifica resta il riferimento.
 
 ## 3. Regole non negoziabili

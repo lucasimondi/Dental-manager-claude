@@ -133,6 +133,9 @@ function elabora() {
     // Nome dei file su Drive allineato al titolo dell'archivio (drive_rinomina): un po' a ogni giro.
     try { rinominaDrive_(Date.now() + RINOMINA_DRIVE_MS); } catch (e) { logErrore_('rinomina Drive', e); }
 
+    // Email importanti senza allegati (2026-11-16): un lotto a ogni giro, catalogo a regole.
+    try { importaEmail_(Date.now() + EMAIL_MS); } catch (e) { logErrore_('email senza allegati', e); }
+
     if (!apiInPausa_()) {
       // Documenti importati senza Claude: analisi completa, pochi a ogni giro.
       try { accodaRilettura_(); analizzaRimasti_(inizio + ANALISI_RIMASTI_MS); } catch (e) { if (e.message !== 'RIPROVA') logErrore_('analisi rimasti', e); }
@@ -1319,7 +1322,7 @@ function analisiDiRiserva_(meta, nome, mime) {
 
 // Analisi completa dei documenti importati senza Claude; false quando non ne restano.
 function analizzaRimasti_(scadenza) {
-  const docs = sb_('documenti?select=id,fascicolo,gmail_message_id,email_oggetto,email_mittente,email_data,nome_file_originale,mime_type,drive_file_id,tag' +
+  const docs = sb_('documenti?select=id,fascicolo,gmail_message_id,gmail_thread_id,email_oggetto,email_mittente,email_data,nome_file_originale,mime_type,drive_file_id,tag' +
     '&da_analizzare=is.true&order=email_data.desc.nullslast&limit=' + ANALISI_RIMASTI_LOTTO);
   if (!docs.length) return false;
   let pratiche = null;
@@ -1337,17 +1340,32 @@ function analizzaRimasti_(scadenza) {
     }
     const caricato = String(d.gmail_message_id || '').indexOf('caricato:') === 0;
     const daDrive = String(d.gmail_message_id || '').indexOf('drivefile:') === 0;
+    const email = d.mime_type === MIME_EMAIL;
     try {
-      if (!caricato && !daDrive) {
-        try { meta.corpo = (GmailApp.getMessageById(d.gmail_message_id).getPlainBody() || '').replace(/\s+\n/g, '\n').slice(0, CONFIG.TESTO_MAX_CARATTERI); } catch (e) {}
+      let file = null;
+      let contenuto;
+      if (email) {
+        // Email senza allegati: si legge il testo della conversazione, mai un file.
+        const conv = testoConversazione_(d.gmail_thread_id);
+        meta.destinatari = conv.partecipanti;
+        if (eClinico_(meta, '') || EMAIL_CLINICO.test(meta.oggetto + ' ' + conv.testo.slice(0, 3000))) {
+          sb_('documenti?id=eq.' + d.id, { method: 'patch', body: { fascicolo: 'clinico_pazienti', rilevanza: 'alta', da_analizzare: false,
+            riassunto: 'Email clinica: archiviata senza analisi del contenuto.' } });
+          continue;
+        }
+        contenuto = { type: 'text', text: 'CONVERSAZIONE EMAIL (nessun allegato)\n\n' + conv.testo };
+      } else {
+        if (!caricato && !daDrive) {
+          try { meta.corpo = (GmailApp.getMessageById(d.gmail_message_id).getPlainBody() || '').replace(/\s+\n/g, '\n').slice(0, CONFIG.TESTO_MAX_CARATTERI); } catch (e) {}
+        }
+        file = DriveApp.getFileById(d.drive_file_id);
+        const bytes = file.getBlob().getBytes();
+        // Documenti, Fogli e Presentazioni Google: getBlob() li esporta in PDF.
+        const google = String(d.mime_type || '').indexOf('application/vnd.google-apps.') === 0;
+        contenuto = contenutoPerAnalisi_(bytes, google ? 'application/pdf' : String(d.mime_type || '').toLowerCase(), nome, file);
       }
-      const file = DriveApp.getFileById(d.drive_file_id);
-      const bytes = file.getBlob().getBytes();
-      // Documenti, Fogli e Presentazioni Google: getBlob() li esporta in PDF.
-      const google = String(d.mime_type || '').indexOf('application/vnd.google-apps.') === 0;
-      const contenuto = contenutoPerAnalisi_(bytes, google ? 'application/pdf' : String(d.mime_type || '').toLowerCase(), nome, file);
       pratiche = pratiche || praticheAperte_();
-      const analisi = analizza_(meta, nome, contenuto, pratiche);
+      const analisi = analizza_(meta, email ? 'conversazione email (senza allegati)' : nome, contenuto, pratiche);
       // Le decisioni espresse da Luca sopravvivono alla rilettura.
       analisi.tag = (analisi.tag || []).concat((d.tag || []).filter(function (t) { return t.indexOf('pagamento-verificato:') === 0; }));
       const esito = sb_('rpc/completa_analisi', { method: 'post', body: { p_id: d.id, p: {
@@ -1365,7 +1383,7 @@ function analizzaRimasti_(scadenza) {
       const estensione = (nome.match(/\.[a-z0-9]+$/i) || [''])[0].toLowerCase();
       const dataRif = dataValida_(analisi.data_documento) || Utilities.formatDate(meta.data, CONFIG.FUSO, 'yyyy-MM-dd');
       // I file messi su Drive da Luca tengono il loro nome: il titolo giusto vive nell'archivio.
-      if (!daDrive) try { file.setName(dataRif + '_' + pulisciNome_(analisi.titolo || nome.replace(/\.[^.]+$/, '')) + estensione); } catch (e) {}
+      if (file && !daDrive) try { file.setName(dataRif + '_' + pulisciNome_(analisi.titolo || nome.replace(/\.[^.]+$/, '')) + estensione); } catch (e) {}
     } catch (e) {
       if (e.message === 'RIPROVA') throw e;
       logErrore_('analisi ' + d.id, e);
@@ -1468,6 +1486,186 @@ function rinominaDrive_(scadenza) {
 function rinominaDriveTutto() {
   const restano = rinominaDrive_(Date.now() + 5 * 60 * 1000);
   console.log(restano ? 'Restano file da rinominare: eseguila di nuovo.' : 'Nomi su Drive allineati.');
+}
+
+/* =====================================================================
+ * EMAIL IMPORTANTI SENZA ALLEGATI (2026-11-16, Luca: "Iniziamo così 1 2 basta link 3 si")
+ * Entra una conversazione senza allegati (mai Promozioni, Social, chat) se almeno uno di:
+ *   - un partecipante è un mittente già in archivio nelle categorie importanti, o è una PEC;
+ *   - l'oggetto ha parole come diffida, sollecito, preavviso, pignoramento, decreto, udienza…;
+ *   - Luca ha risposto e l'altro indirizzo non è una casella personale (gmail, libero…).
+ * Esclusi i messaggi automatici inutili (Klarna, AliExpress, Amazon, ricevute pagoPA/IO, codici e
+ * password) salvo parole forti come diffida o fermo, e qualsiasi cosa sembri clinica (pazienti).
+ * Una scheda per conversazione, senza file su Drive: drive_url è il link a Gmail. Catalogo a regole,
+ * poi analizzaRimasti_ legge il testo (mai i clinici). Si parte dagli ultimi 12 mesi (EMAIL_DAL).
+ * Solo lettura di Gmail ed etichette: niente invii, niente spostamenti, niente cancellazioni.
+ * ===================================================================*/
+const MIME_EMAIL = 'message/rfc822';
+const EMAIL_MS = 30 * 1000;
+const EMAIL_PER_GIRO = 40;
+const EMAIL_MESI_INDIETRO = 12;
+const ETICHETTA_EMAIL = 'Archivio/Email';
+const ETICHETTA_EMAIL_VISTA = 'Archivio/Email vista';
+const FASCICOLI_IMPORTANTI = ['legale', 'fiscale', 'conti', 'immobili', 'assicurazioni', 'utenze', 'successione', 'previdenza',
+  'identita', 'studio_fornitori', 'veicoli', 'riscaldamento', 'famiglia_scuola', 'sanitario_famiglia'];
+const EMAIL_PAROLE = /(diffid|mora\b|sollecit|preavviso|fermo amministrativo|pignorament|decreto|udienza|avviso di pagamento|intimazion|risoluzione|cessazione|recesso|condizioni (contrattuali|economiche)|modifica (unilaterale|delle condizioni)|scadenz|rinnovo|cartella (esattoriale|di pagamento)|accertamento|notifica|contestazione|rimborso|piano di rientro|rateizzazion)/i;
+const EMAIL_FORTI = /(diffid|mora\b|ultimo sollecito|preavviso di (sospensione|fermo|distacco|interruzione)|fermo amministrativo|pignorament|decreto|udienza|intimazion|risoluzione)/i;
+const EMAIL_RUMORE_MITTENTI = /(klarna|aliexpress|amazon\.|github|google\.com|apple\.com|paypal|ebay|decathlon|zalando|io\.italia\.it|pagopa|facebook|instagram|linkedin|netflix|spotify|booking\.com|airbnb|vercel|satispay|revolut\.com|n26)/i;
+const EMAIL_RUMORE_OGGETTI = /(password|codice (di verifica|otp|di accesso)|\botp\b|verifica (il tuo|la tua)|nuovo accesso|newsletter|webinar|il tuo ordine|ordine n?\.? ?\d+.*(spedito|consegnato|in attesa))/i;
+const EMAIL_PEC = /@([\w-]+\.)*(pec|legalmail|postacert|cert)\.|@[\w.-]*\.pec\.it\b/i;
+const DOMINI_PERSONALI = /@(gmail|googlemail|libero|hotmail|outlook|live|yahoo|icloud|me|tiscali|alice|virgilio|tin|fastwebnet|email|inwind|aruba)\./i;
+// Più severo di eClinico_ (che resta com'è): una email che parla di cure non entra mai.
+const EMAIL_CLINICO = /\b(paziente|pazienti|appuntament\w*|visita|seduta|dente|denti|impiant\w* dentale|otturazion\w*|devitalizzazion\w*|igiene orale|apparecchio|allineator\w*|carie|estrazion\w*|referto|referti|radiograf\w*|ortopanoramica|cbct|anamnesi|cartella clinica|consenso informato|piano di cura|preventivo paziente)\b/i;
+
+function indirizzi_(s) {
+  return (String(s || '').toLowerCase().match(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g) || []);
+}
+
+// Indirizzi dei mittenti già in archivio nelle categorie importanti (cache di 6 ore).
+function mittentiImportanti_() {
+  const cache = typeof CacheService !== 'undefined' ? CacheService.getScriptCache() : null;
+  const salvati = cache && cache.get('MITTENTI_IMPORTANTI');
+  if (salvati) return JSON.parse(salvati);
+  const insieme = {};
+  for (let da = 0; ; da += 1000) {
+    const pagina = sb_('documenti?select=email_mittente&email_mittente=not.is.null&fascicolo=in.(' + FASCICOLI_IMPORTANTI.join(',') +
+      ')&order=id&limit=1000&offset=' + da);
+    pagina.forEach(function (d) { indirizzi_(d.email_mittente).forEach(function (a) { if (a !== PROPRIETARIO) insieme[a] = 1; }); });
+    if (pagina.length < 1000) break;
+  }
+  const elenco = Object.keys(insieme);
+  if (cache) try { cache.put('MITTENTI_IMPORTANTI', JSON.stringify(elenco), 6 * 60 * 60); } catch (e) {}
+  return elenco;
+}
+
+// Decide se una conversazione entra: { motivo, forte } oppure null. messaggi = [{ da, a }].
+function emailImportante_(oggetto, messaggi, importanti) {
+  oggetto = String(oggetto || '');
+  const tutti = messaggi.map(function (m) { return m.da + ',' + m.a; }).join(',');
+  if (eClinico_({ oggetto: oggetto, mittente: tutti, destinatari: '' }, '') || EMAIL_CLINICO.test(oggetto)) return null;
+  const altri = [];
+  messaggi.forEach(function (m) { indirizzi_(m.da).forEach(function (a) { if (a !== PROPRIETARIO && altri.indexOf(a) < 0) altri.push(a); }); });
+  const forte = EMAIL_FORTI.test(oggetto);
+  const rumoreMittenti = altri.length && altri.every(function (a) { return EMAIL_RUMORE_MITTENTI.test(a); });
+  if ((rumoreMittenti && !EMAIL_PAROLE.test(oggetto)) || (EMAIL_RUMORE_OGGETTI.test(oggetto) && !forte)) return null;
+  const partecipanti = indirizzi_(tutti).filter(function (a) { return a !== PROPRIETARIO; });
+  const elenco = {};
+  (importanti || []).forEach(function (a) { elenco[a] = 1; });
+  if (partecipanti.some(function (a) { return elenco[a]; })) return { motivo: 'mittente', forte: forte };
+  if (partecipanti.some(function (a) { return EMAIL_PEC.test(a); })) return { motivo: 'pec', forte: forte };
+  if (EMAIL_PAROLE.test(oggetto)) return { motivo: 'oggetto', forte: forte };
+  const haRisposto = messaggi.some(function (m) { return indirizzi_(m.da).indexOf(PROPRIETARIO) >= 0; });
+  if (haRisposto && altri.some(function (a) { return !DOMINI_PERSONALI.test(a); })) return { motivo: 'risposta', forte: forte };
+  return null;
+}
+
+function messaggiInfo_(msgs) {
+  return msgs.map(function (m) { return { da: m.getFrom() || '', a: [m.getTo(), m.getCc()].filter(Boolean).join(', ') }; });
+}
+
+function importaEmail_(scadenza) {
+  const sp = PropertiesService.getScriptProperties();
+  let dal = sp.getProperty('EMAIL_DAL');
+  if (!dal) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - EMAIL_MESI_INDIETRO);
+    dal = Utilities.formatDate(d, CONFIG.FUSO, 'yyyy/MM/dd');
+    sp.setProperty('EMAIL_DAL', dal);
+  }
+  aggiornaEmail_(scadenza);
+  if (Date.now() > scadenza) return true;
+  const vista = etichetta_(ETICHETTA_EMAIL_VISTA);
+  const importata = etichetta_(ETICHETTA_EMAIL);
+  const threads = GmailApp.search('-has:attachment -in:chats -in:spam -in:trash -category:promotions -category:social after:' + dal +
+    ' -label:' + etichettaQuery_(ETICHETTA_EMAIL) + ' -label:' + etichettaQuery_(ETICHETTA_EMAIL_VISTA), 0, EMAIL_PER_GIRO);
+  if (!threads.length) return false;
+  const importanti = mittentiImportanti_();
+  for (let i = 0; i < threads.length; i++) {
+    if (Date.now() > scadenza) return true;
+    const t = threads[i];
+    try {
+      const msgs = t.getMessages();
+      const scelta = emailImportante_(t.getFirstMessageSubject(), messaggiInfo_(msgs), importanti);
+      if (scelta) {
+        registraEmail_(t, msgs, scelta);
+        importata.addToThread(t);
+      } else {
+        vista.addToThread(t);
+      }
+    } catch (e) {
+      if (QUOTA_GOOGLE.test(String(e && e.message))) return true;
+      logErrore_('email ' + t.getId(), e);
+      try { vista.addToThread(t); } catch (x) {} // non si riprova all'infinito
+    }
+  }
+  return true;
+}
+
+function registraEmail_(t, msgs, scelta) {
+  const ultimo = msgs[msgs.length - 1];
+  const esterno = msgs.filter(function (m) { return indirizzi_(m.getFrom()).indexOf(PROPRIETARIO) < 0; })[0] || msgs[0];
+  const oggetto = t.getFirstMessageSubject() || '(senza oggetto)';
+  const meta = { oggetto: oggetto, mittente: esterno.getFrom() || '', destinatari: '', data: ultimo.getDate() };
+  const riserva = analisiDiRiserva_(meta, 'Email', MIME_EMAIL);
+  const esito = sb_('rpc/registra_documento', { method: 'post', body: { p: {
+    hash_sha256: 'email:' + t.getId(), gmail_message_id: ultimo.getId(), gmail_thread_id: t.getId(),
+    email_oggetto: oggetto, email_mittente: meta.mittente, email_data: ultimo.getDate().toISOString(),
+    nome_file_originale: 'Email', mime_type: MIME_EMAIL, dimensione_byte: null,
+    drive_file_id: null, drive_url: 'https://mail.google.com/mail/u/0/#all/' + t.getId(),
+    fascicolo: riserva.fascicolo, tipo_documento: riserva.tipo_documento || 'comunicazione', titolo: riserva.titolo,
+    riassunto: 'Email (' + msgs.length + (msgs.length === 1 ? ' messaggio' : ' messaggi') + '): verrà letta appena possibile.',
+    data_documento: null, azione_richiesta: false, analisi_contenuto: false, tag: ['email', 'da analizzare'],
+    dati_estratti: { motivo: scelta.motivo }, soggetti: [], scadenze: [], pratica: {},
+  } } });
+  if (!esito || !esito.documento_id) throw new Error('Email: registrazione non confermata');
+  if (esito.esistente) return;
+  sb_('documenti?id=eq.' + esito.documento_id, { method: 'patch', body: {
+    ente: riserva.ente || null, rilevanza: scelta.forte ? 'alta' : (riserva.rilevanza === 'bassa' ? 'normale' : riserva.rilevanza),
+    da_analizzare: true, riordinato_il: new Date().toISOString(),
+  } });
+}
+
+// Conversazioni già in archivio con messaggi nuovi: la scheda si aggiorna e torna da leggere.
+function aggiornaEmail_(scadenza) {
+  const sp = PropertiesService.getScriptProperties();
+  const ora = Math.floor(Date.now() / 1000);
+  const dal = Number(sp.getProperty('EMAIL_AGG_DAL') || ora);
+  const threads = GmailApp.search('label:' + etichettaQuery_(ETICHETTA_EMAIL) + ' after:' + (dal - 3600), 0, 30);
+  for (let i = 0; i < threads.length; i++) {
+    if (Date.now() > scadenza) return;
+    const t = threads[i];
+    const ultimo = t.getMessages().slice(-1)[0];
+    const doc = sb_('documenti?select=id,email_data,gmail_message_id&hash_sha256=eq.' + enc_('email:' + t.getId()))[0];
+    if (!doc || doc.gmail_message_id === ultimo.getId()) continue;
+    sb_('documenti?id=eq.' + doc.id, { method: 'patch', body: {
+      gmail_message_id: ultimo.getId(), email_data: ultimo.getDate().toISOString(), da_analizzare: true,
+    } });
+  }
+  sp.setProperty('EMAIL_AGG_DAL', String(ora));
+}
+
+// Testo di una conversazione per l'analisi: ultimi messaggi, senza le parti citate.
+function testoConversazione_(threadId) {
+  const msgs = GmailApp.getThreadById(threadId).getMessages().slice(-8);
+  const parti = [];
+  const partecipanti = [];
+  msgs.forEach(function (m) {
+    partecipanti.push(m.getFrom(), m.getTo(), m.getCc());
+    const corpo = String(m.getPlainBody() || '').split(/\n(?=(Il|On) [^\n]{5,120}(ha scritto|wrote):)/)[0]
+      .split('\n').filter(function (r) { return !/^\s*>/.test(r); }).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    parti.push('— Da: ' + m.getFrom() + ' · ' + Utilities.formatDate(m.getDate(), CONFIG.FUSO, 'yyyy-MM-dd HH:mm') + '\n' + corpo.slice(0, 6000));
+  });
+  return { testo: parti.join('\n\n').slice(-CONFIG.TESTO_MAX_CARATTERI), partecipanti: partecipanti.filter(Boolean).join(', ') };
+}
+
+// Da eseguire a mano: allarga lo storico delle email indietro di altri 12 mesi.
+function emailAncheStorico() {
+  const sp = PropertiesService.getScriptProperties();
+  const attuale = sp.getProperty('EMAIL_DAL');
+  const d = attuale ? new Date(attuale.replace(/\//g, '-') + 'T00:00:00') : new Date();
+  d.setMonth(d.getMonth() - 12);
+  sp.setProperty('EMAIL_DAL', Utilities.formatDate(d, CONFIG.FUSO, 'yyyy/MM/dd'));
+  console.log('Email importate dal ' + sp.getProperty('EMAIL_DAL'));
 }
 
 // Da eseguire a mano dall'editor per sistemare tutto l'archivio in una volta (gira per ~5 minuti;
