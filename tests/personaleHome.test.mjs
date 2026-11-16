@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 const read = (p) => readFileSync(p, 'utf8');
 
 test('dock: «Personale» apre direttamente la Home personale, in Personal e in Studio', () => {
-  assert.match(read('personal/src/App.jsx'), /<span>Personale<\/span>/);
+  assert.match(read('personal/src/App.jsx'), /<span className="pp-dock-nome">Personale<\/span>/);
   assert.doesNotMatch(read('personal/src/App.jsx'), /<span>Per te<\/span>/);
   assert.match(read('src/components/poliedron/PoliedronMobileDock.jsx'), /\{ id: 'perte', label: 'Personale', icon: 'user' \}/);
   assert.match(read('personal/src/sezioni/altro/index.jsx'), /id: 'altro', nome: 'Personale', Icona: IconaPerTe, Vista: VistaPersonale/);
@@ -56,6 +56,29 @@ test('PERSONALE-GRAFICA: niente più «Per te»; Home con testata propria; dock 
   const css = read('personal/src/personale.css');
   assert.match(css, /\.pp-testata\.pp-testata-personale \{ display: none; \}/);
   assert.match(css, /env\(safe-area-inset-top\)/);
-  assert.match(css, /\.pp-schede \.pp-scheda\.attiva/);
   assert.match(css, /\.pp-vista-dafare \.pp-dafare-riepilogo \{/);
+});
+
+test('DOCK-UGUALE: il dock di Personal ha le misure e le icone di quello di Studio', async () => {
+  const { MOBILE_DOCK_BOTTOM, MOBILE_DOCK_HEIGHT, MOBILE_DOCK_MAX_WIDTH, MOBILE_DOCK_WIDTH_RATIO } = await import('../src/lib/poliedron/poliedronMobileDock.js');
+  const css = read('personal/src/personale.css');
+  assert.match(css, new RegExp(`bottom: calc\\(${MOBILE_DOCK_BOTTOM}px \\+ env\\(safe-area-inset-bottom, 0px\\)\\)`));
+  assert.match(css, new RegExp(`height: ${MOBILE_DOCK_HEIGHT}px;`));
+  assert.match(css, new RegExp(`width: min\\(${MOBILE_DOCK_WIDTH_RATIO * 100}vw, ${MOBILE_DOCK_MAX_WIDTH}px`));
+  assert.match(css, /\.pp-schede\.pp-dock \.pp-scheda \{\n  position: relative; width: 44px; height: 44px;/);
+  const app = read('personal/src/App.jsx');
+  assert.match(app, /<nav className="pp-schede pp-dock" aria-label="Sezioni">/);
+  assert.match(app, /ICONE_DOCK = \{ agenda: 'cal', documenti: 'folder' \}/);
+  assert.match(app, /<Ic n="brief" s=\{22\} \/>[^\n]*Studio/);
+  assert.match(app, /<Ic n="user" s=\{22\} \/>[^\n]*Personale/);
+  assert.match(app, /className="pp-dock-gemma" src=\{gemmaPoliedron\}/);
+  // stessi disegni delle icone di Studio
+  const ic = read('src/components/ui/Ic.jsx'), mie = read('personal/src/IconeDock.jsx');
+  for (const d of ['M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z', 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2', 'M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16']) { assert.ok(ic.includes(d)); assert.ok(mie.includes(d)); }
+});
+
+test('PERSONALE-GRAFICA 2: in Conti i tasti affiancati vanno a capo invece di uscire dal bordo', () => {
+  const css = read('personal/src/personale.css');
+  assert.match(css, /\.pp-vista-conti \.pp-azioni-due \{ display: grid; grid-template-columns: repeat\(auto-fit, minmax\(min\(100%, 168px\), 1fr\)\)/);
+  assert.match(css, /\.pp-vista-conti \.pp-chip-azione \{ white-space: nowrap;/);
 });

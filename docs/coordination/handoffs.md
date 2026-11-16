@@ -4809,4 +4809,5 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Database: none. Tests: npm test 1777/1777; builds PASS; visual PASS light/dark.
 - Risks: low; the dock active colour changes in every Personal section (teal instead of blue).
 - Rollback: revert the squash commit. Next: PO review on the preview → "Mergia".
+- Round 2 (same branch): Conti buttons layout, DOCK-UGUALE. Files added: `personal/src/IconeDock.jsx`, `tests/visual/personal-dock.{html,fixture.jsx,mjs}`; changed `personal/src/App.jsx` (dock markup), `personal/src/personale.css`, tests `appUnica`, `personaleHome`. Tests 1779/1779, builds PASS, visual PASS. Risk: the dock labels are now hidden (aria-label kept), as in Studio.
 
