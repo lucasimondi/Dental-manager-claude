@@ -308,7 +308,9 @@ async function vistaFascicolo(aggiungi){
 }
 
 async function vistaRicerca(){
-  const { data, error } = await sb.rpc('cerca_documenti', { q: st.q, fasc: null, lim: 100 });
+  // Stessa ricerca di «Chiedi» (sinonimi, errori di battitura, testo completo); se manca, quella di prima.
+  let { data, error } = await sb.rpc('cerca_archivio_v2', { p_testo: st.q, p_filtri: { poco_utili: true }, p_lim: 100 });
+  if (error) ({ data, error } = await sb.rpc('cerca_documenti', { q: st.q, fasc: null, lim: 100 }));
   if (error) throw error;
   $('#contenuto').innerHTML = `<h2>Risultati per “${esc(st.q)}”</h2><p class="sotto">${data.length} documenti trovati.</p>
     ${elenco(data.map(rigaDoc), 'Nessun risultato. Prova con il nome di un ente, un fornitore o un tipo di documento.')}`;

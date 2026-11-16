@@ -85,3 +85,12 @@ Quando ha finito, apri **Pratiche** nella dashboard e usa **Archivia le pratiche
 ## Foto da Drive (PERSONAL-FOTO-DOCK-DRIVE)
 Dopo la pubblicazione di questo script, il trigger `elabora` indicizza anche le immagini di proprietà dell'account presenti su Drive, comprese quelle caricate dal cellulare. A ogni giro tratta una pagina di massimo 25 file (budget 15 secondi), riprende il cursore e, finita la scansione, ricomincia per trovare i nuovi caricamenti. Il primo recupero può richiedere più giri.
 Gli originali restano dove sono. L'album iniziale è il nome della cartella e la data è quella di scatto nei metadati, altrimenti quella di caricamento su Drive. La catalogazione è modificabile nell'area Foto; non identifica persone o luoghi dall'immagine. Nessun contenuto passa all'AI. File già indicizzati e nomi riconoscibili come clinici vengono esclusi. Duplicati evitati per ID Drive, non fra copie con ID diversi. Google Foto e il rullino iPhone non sono Drive: le immagini devono essere effettivamente caricate su Drive. Nessuna nuova autorizzazione OAuth o migrazione.
+
+## Ricerca nel testo completo dei documenti
+
+Dal 16 novembre 2026 lo script legge anche il **testo intero** di ogni documento, non solo la scheda (titolo, riassunto, tag). Così la ricerca e la chat di Poliedron trovano anche una parola che sta a pagina 3 di un PDF o in una scansione.
+
+- Il testo lo legge **Google Drive** (OCR in italiano per PDF e foto, conversione per Word ed Excel), non l'AI: non costa nulla. Per farlo Drive crea una copia temporanea "tmp-conversione" che finisce subito nel Cestino di Drive.
+- Lo script ne legge un po' a ogni giro: per tutto l'archivio (circa 7.500 documenti) servono alcuni giorni. Per accelerare, nell'editor esegui `leggiTestiOra` (circa 5 minuti per volta).
+- I **documenti clinici dei pazienti** non vengono mai aperti e il loro testo non viene mai salvato.
+

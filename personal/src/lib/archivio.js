@@ -17,7 +17,12 @@ const esito = ({ data, error }) => {
 const oggiIso = () => new Date().toISOString().slice(0, 10);
 const traGiorni = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
 
+// POL-VITA-034: stessa ricerca di «Chiedi» (cerca_archivio_v2: sinonimi, errori di battitura,
+// pertinenza, testo completo dei file); se non risponde, la ricerca di prima.
 export async function cercaDocumenti(db, testo, fascicolo = null, limite = 50) {
+  const p_filtri = { poco_utili: true, ...(fascicolo ? { fascicoli: [fascicolo] } : {}) };
+  const r = await db.rpc('cerca_archivio_v2', { p_testo: testo || '', p_filtri, p_lim: limite });
+  if (!r.error) return r.data || [];
   return esito(await db.rpc('cerca_documenti', { q: testo || '', fasc: fascicolo, lim: limite }));
 }
 

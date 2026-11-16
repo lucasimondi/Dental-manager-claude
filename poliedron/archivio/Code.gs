@@ -128,6 +128,9 @@ function elabora() {
     // Cartelle di Drive per categoria e persona (POL-VITA-013): un po' a ogni giro.
     try { ordinaDrive_(inizio + ORDINA_DRIVE_MS); } catch (e) { logErrore_('ordine Drive', e); }
 
+    // Testo completo dei file per la ricerca (POL-VITA-034): un po' a ogni giro.
+    try { estraiTesti_(Date.now() + TESTO_MS); } catch (e) { logErrore_('testo completo', e); }
+
     if (!apiInPausa_()) {
       // Documenti importati senza Claude: analisi completa, pochi a ogni giro.
       try { accodaRilettura_(); analizzaRimasti_(inizio + ANALISI_RIMASTI_MS); } catch (e) { if (e.message !== 'RIPROVA') logErrore_('analisi rimasti', e); }
@@ -198,6 +201,8 @@ function elabora() {
     while (!claudeInPausa_() && Date.now() - inizio < CONFIG.TEMPO_MAX_MS - 60000) {
       if (!riordinaLotto_()) break;
     }
+    // Tempo ancora avanzato: altri testi completi (POL-VITA-034).
+    try { if (Date.now() - inizio < CONFIG.TEMPO_MAX_MS - 60000) estraiTesti_(inizio + CONFIG.TEMPO_MAX_MS - 30000); } catch (e) { logErrore_('testo completo', e); }
   } finally {
     lock.releaseLock();
   }
@@ -449,23 +454,124 @@ function estraiXmlDaP7m_(bytes, giaDecodificato) {
 // Word/Excel: richiede il servizio avanzato "Drive API" attivo nel progetto
 function convertiInTesto_(file, tipo) {
   if (typeof Drive === 'undefined') return null;
-  let copia = null;
   try {
-    copia = Drive.Files.copy(
-      { name: 'tmp-conversione', mimeType: tipo === 'doc' ? MimeType.GOOGLE_DOCS : MimeType.GOOGLE_SHEETS },
-      file.getId()
-    );
-    if (tipo === 'doc') return DocumentApp.openById(copia.id).getBody().getText();
-    return SpreadsheetApp.openById(copia.id).getSheets().map(function (sh) {
-      return '## ' + sh.getName() + '\n' + sh.getDataRange().getDisplayValues().slice(0, 300)
-        .map(function (r) { return r.join('\t'); }).join('\n');
-    }).join('\n\n');
+    return copiaInTesto_(file.getId(), tipo);
   } catch (e) {
     console.warn('Conversione non riuscita per ' + file.getName() + ': ' + e);
     return null;
+  }
+}
+
+// Copia temporanea convertita da Drive (Documento o Foglio Google), letta e messa nel Cestino.
+// Per PDF e immagini Drive fa l'OCR (lingua italiana). Gli errori risalgono al chiamante.
+function copiaInTesto_(id, tipo) {
+  let copia = null;
+  try {
+    copia = Drive.Files.copy(
+      { name: 'tmp-conversione', mimeType: tipo === 'foglio' ? MimeType.GOOGLE_SHEETS : MimeType.GOOGLE_DOCS },
+      id, tipo === 'ocr' ? { ocrLanguage: 'it' } : {}
+    );
+    if (tipo !== 'foglio') return DocumentApp.openById(copia.id).getBody().getText();
+    return testoFoglio_(SpreadsheetApp.openById(copia.id));
   } finally {
     if (copia) { try { DriveApp.getFileById(copia.id).setTrashed(true); } catch (e) {} }
   }
+}
+
+function testoFoglio_(foglio) {
+  return foglio.getSheets().map(function (sh) {
+    return '## ' + sh.getName() + '\n' + sh.getDataRange().getDisplayValues().slice(0, 300)
+      .map(function (r) { return r.join('\t'); }).join('\n');
+  }).join('\n\n');
+}
+
+/* =====================================================================
+ * TESTO COMPLETO DEI FILE (POL-VITA-034)
+ * Per cercare dentro i documenti, non solo nella scheda: Drive legge il file (OCR per PDF e
+ * immagini, conversione per Word/Excel), il testo va in documenti_testo. Nessun modello: il testo
+ * non esce da Google e Supabase. Mai i documenti clinici dei pazienti (né letti né salvati).
+ * Pochi documenti a ogni giro di elabora; leggiTestiOra() per ~5 minuti a mano.
+ * ===================================================================*/
+const TESTO_LOTTO = 25;
+const TESTO_MS = 45 * 1000;
+const TESTO_MAX_BYTE = 15 * 1024 * 1024;   // oltre, Drive non converte in modo affidabile
+const TESTO_CORPO_EMAIL = 5000;
+const ESTENSIONI_IMMAGINE = /^(jpe?g|png|gif|webp|bmp|tiff?|heic)$/;
+
+function estraiTesti_(scadenza) {
+  if (typeof Drive === 'undefined') return false;
+  const docs = sb_('rpc/documenti_senza_testo', { method: 'post', body: { p_lim: TESTO_LOTTO } }) || [];
+  for (let i = 0; i < docs.length; i++) {
+    if (Date.now() > scadenza) return true;
+    const d = docs[i];
+    const nome = d.nome_file_originale || 'documento';
+    const meta = { oggetto: d.email_oggetto || '', mittente: d.email_mittente || '', destinatari: '' };
+    let riga;
+    if (d.fascicolo === 'clinico_pazienti' || eClinico_(meta, nome)) {
+      riga = { stato: 'escluso', fonte: null, testo: null };   // il file non viene nemmeno aperto
+    } else {
+      try {
+        riga = testoDelDocumento_(d, nome);
+      } catch (e) {
+        if (QUOTA_GOOGLE.test(e.message)) return true;      // quote di Google: si riprende al giro dopo
+        riga = { stato: 'errore', fonte: null, testo: null, errore: String(e.message || e).slice(0, 300) };
+      }
+    }
+    sb_('documenti_testo?on_conflict=documento_id', { method: 'post', prefer: 'resolution=merge-duplicates,return=minimal', body: {
+      documento_id: d.id, stato: riga.stato, fonte: riga.fonte, testo: riga.testo, errore: riga.errore || null,
+      tentativi: (Number(d.tentativi) || 0) + 1, aggiornato_il: new Date().toISOString(),
+    } });
+  }
+  return docs.length === TESTO_LOTTO;
+}
+
+// Testo del file (e, per gli allegati Gmail, del corpo dell'email che lo accompagnava).
+function testoDelDocumento_(d, nome) {
+  const ext = ((nome.match(/\.([a-z0-9]+)$/i) || [])[1] || '').toLowerCase();
+  const mime = String(d.mime_type || '').toLowerCase();
+  let testo = null, fonte = null;
+  if (Number(d.dimensione_byte) > TESTO_MAX_BYTE) {
+    fonte = 'troppo_grande';
+  } else if (mime === 'application/vnd.google-apps.document') {
+    testo = DocumentApp.openById(d.drive_file_id).getBody().getText(); fonte = 'google_doc';
+  } else if (mime === 'application/vnd.google-apps.spreadsheet') {
+    testo = testoFoglio_(SpreadsheetApp.openById(d.drive_file_id)); fonte = 'foglio';
+  } else if (mime === 'application/pdf' || ext === 'pdf') {
+    testo = copiaInTesto_(d.drive_file_id, 'ocr'); fonte = 'pdf';
+  } else if (mime.indexOf('image/') === 0 || ESTENSIONI_IMMAGINE.test(ext)) {
+    testo = copiaInTesto_(d.drive_file_id, 'ocr'); fonte = 'immagine';
+  } else if (['docx', 'doc', 'odt', 'rtf'].indexOf(ext) >= 0 || /msword|wordprocessingml|opendocument\.text/.test(mime)) {
+    testo = copiaInTesto_(d.drive_file_id, 'doc'); fonte = 'word';
+  } else if (['xlsx', 'xls', 'ods'].indexOf(ext) >= 0 || /ms-excel|spreadsheetml|opendocument\.spreadsheet/.test(mime)) {
+    testo = copiaInTesto_(d.drive_file_id, 'foglio'); fonte = 'foglio';
+  } else if (ext === 'p7m') {
+    testo = senzaTag_(estraiXmlDaP7m_(DriveApp.getFileById(d.drive_file_id).getBlob().getBytes(), false)); fonte = 'xml';
+  } else if (ext === 'xml' || /xml/.test(mime)) {
+    testo = senzaTag_(DriveApp.getFileById(d.drive_file_id).getBlob().getDataAsString()); fonte = 'xml';
+  } else if (['txt', 'csv', 'eml', 'htm', 'html'].indexOf(ext) >= 0 || mime.indexOf('text/') === 0) {
+    testo = senzaTag_(DriveApp.getFileById(d.drive_file_id).getBlob().getDataAsString()); fonte = 'testo';
+  }
+  const corpo = corpoEmail_(d.gmail_message_id);
+  if (corpo) testo = (testo ? testo + '\n\n' : '') + 'Email: ' + corpo;
+  testo = String(testo || '').replace(/[ \t\u00a0]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
+  if (testo) return { stato: 'letto', fonte: fonte || 'email', testo: testo.slice(0, 100000) };
+  return { stato: fonte && fonte !== 'troppo_grande' ? 'vuoto' : 'non_leggibile', fonte: fonte, testo: null };
+}
+
+function senzaTag_(s) { return s ? String(s).replace(/<[^>]+>/g, ' ') : null; }
+
+// Corpo dell'email da cui arriva l'allegato (non per i file caricati dall'app o presi da Drive).
+function corpoEmail_(idMessaggio) {
+  const id = String(idMessaggio || '');
+  if (!id || id.indexOf(':') >= 0) return null;
+  try { return (GmailApp.getMessageById(id).getPlainBody() || '').trim().slice(0, TESTO_CORPO_EMAIL) || null; } catch (e) { return null; }
+}
+
+// Da eseguire a mano nell'editor: legge testi per ~5 minuti (poi ci pensa elabora, un po' a ogni giro).
+function leggiTestiOra() {
+  const restano = estraiTesti_(Date.now() + 5 * 60 * 1000);
+  const av = sb_('v_testo_avanzamento?select=stato,n') || [];
+  console.log((restano ? 'Ancora documenti da leggere. ' : 'Testi letti. ') + av.map(function (r) { return r.stato + ': ' + r.n; }).join(', '));
 }
 
 /* =====================================================================
@@ -1403,8 +1509,14 @@ const CRITERI_DOC_ = { type: 'object', properties: {
 } };
 const PROPOSTA_MAX = 300;
 const STRUMENTI_CHAT = [
-  { name: 'cerca_documenti', description: 'Cerca documenti nell\'archivio per parole (nome di un ente, fornitore, tipo di documento, numero) e/o per fascicolo. Restituisce titolo, data, importo e riassunto.',
-    input_schema: { type: 'object', properties: { testo: { type: 'string' }, fascicolo: { type: 'string', description: 'codice del fascicolo, facoltativo' }, limite: { type: 'integer' } } } },
+  { name: 'cerca_documenti', description: 'Cerca documenti nell\'archivio per parole chiave (ente, fornitore, tipo di documento, numero, codice) e/o per fascicolo e periodo. Cerca in titolo, ente, riassunto, email e anche nel testo completo letto dai file; capisce sinonimi, accenti ed errori di battitura. Ogni parola deve comparire: usa 1-3 parole chiave, non frasi; se non trovi nulla riprova con meno parole o con un sinonimo. Restituisce titolo, data, importo e riassunto, i più pertinenti per primi.',
+    input_schema: { type: 'object', properties: { testo: { type: 'string', description: 'parole chiave, es. "enel luce" o "polizza casa"' },
+      fascicolo: { type: 'string', description: 'codice del fascicolo, facoltativo' },
+      da: { type: 'string', description: 'solo documenti da questa data (YYYY-MM-DD), facoltativo' },
+      a: { type: 'string', description: 'solo documenti fino a questa data (YYYY-MM-DD), facoltativo' },
+      limite: { type: 'integer' } } } },
+  { name: 'testo_documento', description: 'Testo completo letto dal file di un documento (anche le scansioni). Usalo per un dato preciso che non è nel riassunto: numeri, codici, nomi, importi di dettaglio, clausole. Con "cerca" restituisce solo i passaggi che contengono quelle parole.',
+    input_schema: { type: 'object', properties: { id: { type: 'string' }, cerca: { type: 'string', description: 'parole da trovare nel testo, facoltativo' } }, required: ['id'] } },
   { name: 'documento', description: 'Dettaglio di un documento per id: dati estratti, scadenze, pratica.',
     input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
   { name: 'scadenze', description: 'Pagamenti e scadenze. Filtri facoltativi: da/a (YYYY-MM-DD), solo_aperte (default true), testo nella descrizione.',
@@ -1506,10 +1618,11 @@ function strumentoChat_(nome, input, ctx) {
   if (nome === 'proponi_promemoria') return promemoria_(input, ctx);
   if (nome === 'cerca_documenti') {
     const lim = Math.min(Math.max(Number(input.limite) || 15, 1), 30);
-    const docs = sb_('rpc/cerca_documenti', { method: 'post', body: { q: String(input.testo || ''), fasc: input.fascicolo || null, lim: lim + 10 } });
+    const docs = cercaArchivio_(input, lim + 10);
     const visibili = senzaClinici_(docs || []);
     return { documenti: visibili.slice(0, lim).map(breve_), esclusi_clinici: (docs || []).length - visibili.length };
   }
+  if (nome === 'testo_documento') return testoDocumento_(input);
   if (nome === 'documento') {
     const d = sb_('documenti?select=' + CAMPI_CHAT + ',dati_estratti,scadenze(id,data,descrizione,importo,completata),pratica:pratiche(id,titolo,stato)&id=eq.' + enc_(String(input.id || '')))[0];
     if (!d) return { errore: 'Documento non trovato' };
@@ -1536,6 +1649,55 @@ function strumentoChat_(nome, input, ctx) {
   return { errore: 'Strumento sconosciuto' };
 }
 
+// Ricerca della chat (POL-VITA-034): la stessa di «Chiedi» nell'app (cerca_archivio_v2: sinonimi,
+// accenti, errori di battitura, pertinenza, testo completo). Se non risponde, quella di prima.
+const DATA_ISO_ = /^\d{4}-\d{2}-\d{2}$/;
+function cercaArchivio_(input, lim) {
+  const testo = String(input.testo || '').slice(0, 200);
+  const filtri = { poco_utili: true };
+  if (input.fascicolo) filtri.fascicoli = [String(input.fascicolo)];
+  if (DATA_ISO_.test(String(input.da || ''))) filtri.da = String(input.da);
+  if (DATA_ISO_.test(String(input.a || ''))) filtri.a = String(input.a);
+  try {
+    return sb_('rpc/cerca_archivio_v2?select=' + CAMPI_CHAT, { method: 'post', body: { p_testo: testo, p_filtri: filtri, p_lim: lim } }) || [];
+  } catch (e) {
+    logErrore_('ricerca chat', e);
+    return sb_('rpc/cerca_documenti', { method: 'post', body: { q: testo, fasc: input.fascicolo || null, lim: lim } }) || [];
+  }
+}
+
+// Testo completo di un documento per la chat: mai dei pazienti; se è lungo, solo i passaggi utili.
+const TESTO_CHAT_MAX = 8000;
+function testoDocumento_(input) {
+  const id = String(input.id || '');
+  const d = (sb_('documenti?select=id,titolo,fascicolo&id=eq.' + enc_(id)) || [])[0];
+  if (!d) return { errore: 'Documento non trovato' };
+  if (d.fascicolo === 'clinico_pazienti') return { errore: 'Documento clinico di un paziente: il contenuto non è consultabile dall\'assistente.' };
+  const t = (sb_('documenti_testo?select=stato,testo&documento_id=eq.' + enc_(id)) || [])[0];
+  if (!t) return { errore: 'Il testo di questo documento non è ancora stato letto: è in coda.' };
+  if (!t.testo) return { errore: t.stato === 'non_leggibile' ? 'Il file non contiene testo leggibile.' : 'Testo non disponibile per questo documento.' };
+  return { id: d.id, titolo: d.titolo, caratteri: t.testo.length, testo: passaggi_(t.testo, input.cerca, TESTO_CHAT_MAX) };
+}
+
+// Senza accenti e in minuscolo, stessa lunghezza del testo (gli indici restano validi).
+const piano_ = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+function passaggi_(testo, cerca, max) {
+  if (testo.length <= max) return testo;
+  const t = piano_(testo);
+  const parole = piano_(cerca).split(/[^a-z0-9]+/).filter(function (w) { return w.length >= 3; }).slice(0, 6);
+  const finestre = [];
+  parole.forEach(function (w) {
+    for (let i = t.indexOf(w), n = 0; i >= 0 && n < 20; i = t.indexOf(w, i + w.length), n++) finestre.push([Math.max(0, i - 300), Math.min(testo.length, i + w.length + 500)]);
+  });
+  if (!finestre.length) return testo.slice(0, max) + ' […testo troncato]';
+  finestre.sort(function (a, b) { return a[0] - b[0]; });
+  const unite = [finestre[0].slice()];
+  finestre.slice(1).forEach(function (f) { const u = unite[unite.length - 1]; if (f[0] <= u[1]) u[1] = Math.max(u[1], f[1]); else unite.push(f.slice()); });
+  let out = '';
+  for (let i = 0; i < unite.length && out.length < max; i++) out += (i || unite[i][0] ? ' […] ' : '') + testo.slice(unite[i][0], unite[i][1]);
+  return out.slice(0, max);
+}
+
 function chiediPoliedron_(req) {
   const domanda = String(req.domanda || '').slice(0, 2000).trim();
   if (!domanda) return { ok: false, errore: 'Domanda vuota' };
@@ -1547,6 +1709,7 @@ function chiediPoliedron_(req) {
     'Sei proattiva: se nella domanda o nei dati vedi una scadenza vicina, un impegno in conflitto o qualcosa da fare, segnalalo in una riga. Quando Luca ti chiede di ricordargli o segnare qualcosa (impegno, chiamata, pagamento, bolletta, bollo, assicurazione) usa proponi_promemoria con la data esatta (calcola "domani", "lunedì", "il 30" a partire da oggi) e di\' che basta toccare Aggiungi.',
     'L\'agenda dei prossimi giorni, se è collegata, arriva insieme alla domanda: per gli appuntamenti dello studio conosci solo quanti sono e gli orari, non i pazienti.',
     'Rispondi in italiano, breve e concreto, usando SOLO i dati che ottieni con gli strumenti: se un dato non c\'è, dillo. Non inventare importi, date o nomi.',
+    'Per cercare usa poche parole chiave; se non trovi nulla riprova con meno parole, un sinonimo o un altro fascicolo prima di dire che non c\'è. Per un dato preciso che non è nel riassunto (numero, codice, nome, dettaglio di un importo, clausola) leggi il documento con testo_documento.',
     'Quando citi un documento scrivi [[doc:ID|titolo breve]] con l\'id esatto, così Luca può aprirlo. Per i pagamenti indica data e importo.',
     'Fascicoli: ' + Object.keys(FASCICOLI).join(', ') + '. I documenti clinici dei pazienti non sono consultabili: se servono, rimanda all\'app dello studio.',
     'Non mandi email né messaggi: se Luca chiede di scrivere a qualcuno, prepara solo il testo come bozza.',
