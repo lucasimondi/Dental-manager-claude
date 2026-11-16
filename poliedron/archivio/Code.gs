@@ -130,6 +130,8 @@ function elabora() {
 
     // Testo completo dei file per la ricerca (POL-VITA-034): un po' a ogni giro.
     try { estraiTesti_(Date.now() + TESTO_MS); } catch (e) { logErrore_('testo completo', e); }
+    // Vettori per la ricerca per significato (POL-VITA-035): un lotto a ogni giro.
+    try { calcolaVettori_(Date.now() + 30000); } catch (e) { logErrore_('vettori', e); }
 
     if (!apiInPausa_()) {
       // Documenti importati senza Claude: analisi completa, pochi a ogni giro.
@@ -203,6 +205,7 @@ function elabora() {
     }
     // Tempo ancora avanzato: altri testi completi (POL-VITA-034).
     try { if (Date.now() - inizio < CONFIG.TEMPO_MAX_MS - 60000) estraiTesti_(inizio + CONFIG.TEMPO_MAX_MS - 30000); } catch (e) { logErrore_('testo completo', e); }
+    try { if (Date.now() - inizio < CONFIG.TEMPO_MAX_MS - 30000) calcolaVettori_(inizio + CONFIG.TEMPO_MAX_MS - 20000); } catch (e) { logErrore_('vettori', e); }
   } finally {
     lock.releaseLock();
   }
@@ -572,6 +575,119 @@ function leggiTestiOra() {
   const restano = estraiTesti_(Date.now() + 5 * 60 * 1000);
   const av = sb_('v_testo_avanzamento?select=stato,n') || [];
   console.log((restano ? 'Ancora documenti da leggere. ' : 'Testi letti. ') + av.map(function (r) { return r.stato + ': ' + r.n; }).join(', '));
+}
+
+/* =====================================================================
+ * RICERCA PER SIGNIFICATO (POL-VITA-035)
+ * Ogni documento non clinico ha un vettore (embedding di Gemini) calcolato da scheda e inizio del
+ * testo completo (testo_per_vettore nel database); la domanda diventa un vettore e
+ * cerca_significato trova i documenti più vicini. Usa la chiave GEMINI_API_KEY già presente.
+ * Mai i documenti clinici: la coda non li restituisce e la tabella rifiuta il loro vettore.
+ * ===================================================================*/
+const VETTORI_MODELLO = 'gemini-embedding-001';
+const VETTORI_DIM = 768;
+const VETTORI_LOTTO = 20;                       // ~20k token: dentro il limite al minuto del piano gratuito
+const VETTORI_PAUSA_MS = 3 * 60 * 60 * 1000;    // quota del giorno finita o chiave rifiutata
+const CAMPI_APP = 'id,titolo,riassunto,fascicolo,tipo_documento,data_documento,email_data,email_oggetto,email_mittente,importo,azione_richiesta,azione_descrizione,urgenza,drive_url,drive_file_id,nome_file_originale,mime_type,pratica_id,tag,gmail_message_id,creato_il,persona,categoria,ente,rilevanza,analisi_contenuto,dati_estratti';
+
+function vettoriDisponibili_() {
+  const sp = PropertiesService.getScriptProperties();
+  return Boolean(sp.getProperty('GEMINI_API_KEY')) && Number(sp.getProperty('VETTORI_PAUSA_FINO') || 0) <= Date.now();
+}
+
+function modelloVettori_() {
+  return PropertiesService.getScriptProperties().getProperty('GEMINI_VETTORI_MODELLO') || VETTORI_MODELLO;
+}
+
+// Vettori di più testi in una chiamata. tipo: RETRIEVAL_DOCUMENT (archivio) o RETRIEVAL_QUERY (domanda).
+function vettoriGemini_(testi, tipo) {
+  const sp = PropertiesService.getScriptProperties();
+  const modello = modelloVettori_();
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(modello) + ':batchEmbedContents';
+  const body = { requests: testi.map(function (t) {
+    return { model: 'models/' + modello, content: { parts: [{ text: String(t || ' ').slice(0, 8000) }] }, taskType: tipo, outputDimensionality: VETTORI_DIM };
+  }) };
+  for (let tentativo = 1; tentativo <= 3; tentativo++) {
+    const res = UrlFetchApp.fetch(url, {
+      method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+      headers: { 'x-goog-api-key': sp.getProperty('GEMINI_API_KEY') }, payload: JSON.stringify(body),
+    });
+    const code = res.getResponseCode();
+    const testo = res.getContentText();
+    if (code === 200) {
+      const v = (JSON.parse(testo).embeddings || []).map(function (e) { return normalizza_(e.values || []); });
+      if (v.length !== testi.length || v.some(function (x) { return x.length !== VETTORI_DIM; })) throw new Error('Vettori di Gemini incompleti');
+      return v;
+    }
+    if ((code === 429 && /PerDay|per day|daily/i.test(testo)) || code === 401 || code === 403 || /API_KEY_INVALID|API key not valid/i.test(testo)) {
+      sp.setProperty('VETTORI_PAUSA_FINO', String(Date.now() + VETTORI_PAUSA_MS));
+      throw new Error('RIPROVA');
+    }
+    if (code === 429) { Utilities.sleep(tentativo * 20000); continue; }
+    if (code >= 500) { Utilities.sleep(tentativo * 8000); continue; }
+    throw new Error('Vettori Gemini ' + code + ': ' + testo.slice(0, 300));
+  }
+  throw new Error('RIPROVA');
+}
+
+// Lunghezza 1 (con 768 dimensioni Gemini non normalizza) e 6 decimali.
+function normalizza_(v) {
+  const n = Math.sqrt(v.reduce(function (s, x) { return s + x * x; }, 0)) || 1;
+  return v.map(function (x) { return Math.round((x / n) * 1e6) / 1e6; });
+}
+
+const testoVettore_ = (v) => '[' + v.join(',') + ']';
+
+// Un lotto di vettori per giro (la coda arriva dal database: testo già letto, mai clinici).
+function calcolaVettori_(scadenza) {
+  if (!vettoriDisponibili_() || Date.now() > scadenza) return false;
+  const righe = sb_('rpc/documenti_senza_vettore', { method: 'post', body: { p_lim: VETTORI_LOTTO } }) || [];
+  if (!righe.length) return false;
+  let vettori;
+  try { vettori = vettoriGemini_(righe.map(function (r) { return r.testo; }), 'RETRIEVAL_DOCUMENT'); } catch (e) {
+    if (e.message === 'RIPROVA' || QUOTA_GOOGLE.test(e.message)) return true;
+    throw e;
+  }
+  const ora = new Date().toISOString();
+  const modello = modelloVettori_();
+  sb_('documenti_vettori?on_conflict=documento_id', { method: 'post', prefer: 'resolution=merge-duplicates,return=minimal',
+    body: righe.map(function (r, i) { return { documento_id: r.id, vettore: testoVettore_(vettori[i]), modello: modello, impronta: r.impronta, aggiornato_il: ora }; }) });
+  return righe.length === VETTORI_LOTTO;
+}
+
+// Documenti vicini per significato alla domanda (mai i clinici). Senza Gemini: nessun risultato.
+function cercaPerSignificato_(testo, filtri, lim, campi) {
+  testo = String(testo || '').trim().slice(0, 500);
+  if (testo.length < 3 || !vettoriDisponibili_()) return [];
+  try {
+    const v = vettoriGemini_([testo], 'RETRIEVAL_QUERY')[0];
+    const docs = sb_('rpc/cerca_significato?select=' + campi, { method: 'post', body: { p_vettore: testoVettore_(v), p_filtri: filtri || {}, p_lim: lim } }) || [];
+    return senzaClinici_(docs);
+  } catch (e) {
+    if (e.message !== 'RIPROVA') logErrore_('ricerca per significato', e);
+    return [];
+  }
+}
+
+// Unisce parole e significato (reciprocal rank fusion): in cima chi compare in entrambe.
+function fondiRisultati_(parole, significato, lim) {
+  const punti = {}, doc = {}, ordine = [];
+  const aggiungi = function (d, i, perSignificato) {
+    if (!doc[d.id]) { doc[d.id] = perSignificato ? Object.assign({}, d, { per_significato: true }) : d; ordine.push(d.id); }
+    punti[d.id] = (punti[d.id] || 0) + 1 / (60 + i);
+  };
+  parole.forEach(function (d, i) { aggiungi(d, i, false); });
+  significato.forEach(function (d, i) { aggiungi(d, i, true); });
+  return ordine.slice().sort(function (a, b) { return punti[b] - punti[a] || ordine.indexOf(a) - ordine.indexOf(b); })
+    .slice(0, lim).map(function (id) { return doc[id]; });
+}
+
+// Da eseguire a mano nell'editor: calcola vettori per ~5 minuti (un lotto al minuto).
+function calcolaVettoriOra() {
+  const fine = Date.now() + 5 * 60 * 1000;
+  while (Date.now() < fine && calcolaVettori_(fine)) Utilities.sleep(60000);
+  const av = sb_('v_significato_avanzamento?select=stato,n') || [];
+  console.log(av.map(function (r) { return r.stato + ': ' + r.n; }).join(', ') + (vettoriDisponibili_() ? '' : ' — Gemini in pausa o senza chiave'));
 }
 
 /* =====================================================================
@@ -1015,6 +1131,10 @@ function doPost(e) {
     if (req.azione === 'cartella') return rispostaJson_(analizzaCartella_(req));
     if (req.azione === 'bozza') return rispostaJson_(bozzaRisposta_(req));
     if (req.azione === 'suggerisci') return rispostaJson_(suggerisciCartelle_());
+    if (req.azione === 'significato') {
+      const filtri = req.filtri && typeof req.filtri === 'object' ? req.filtri : {};
+      return rispostaJson_({ ok: true, disponibile: vettoriDisponibili_(), documenti: cercaPerSignificato_(req.testo, filtri, 20, CAMPI_APP) });
+    }
     if (!req.dati || !req.nome) return rispostaJson_({ ok: false, errore: 'File mancante' });
 
     const nome = pulisciNome_(String(req.nome)) || 'documento';
@@ -1494,7 +1614,7 @@ const senzaClinici_ = (docs) => docs.filter(function (d) { return d.fascicolo !=
 const breve_ = (d) => ({
   id: d.id, titolo: d.titolo, fascicolo: d.fascicolo, tipo: d.tipo_documento, data: d.data_documento || String(d.email_data || '').slice(0, 10),
   da: d.email_mittente, importo: d.importo, riassunto: d.riassunto, da_fare: d.azione_richiesta ? (d.azione_descrizione || true) : undefined,
-  persona: d.persona || undefined, categoria: d.categoria || undefined,
+  persona: d.persona || undefined, categoria: d.categoria || undefined, per_significato: d.per_significato || undefined,
 });
 const enc_ = encodeURIComponent;
 
@@ -1509,7 +1629,7 @@ const CRITERI_DOC_ = { type: 'object', properties: {
 } };
 const PROPOSTA_MAX = 300;
 const STRUMENTI_CHAT = [
-  { name: 'cerca_documenti', description: 'Cerca documenti nell\'archivio per parole chiave (ente, fornitore, tipo di documento, numero, codice) e/o per fascicolo e periodo. Cerca in titolo, ente, riassunto, email e anche nel testo completo letto dai file; capisce sinonimi, accenti ed errori di battitura. Ogni parola deve comparire: usa 1-3 parole chiave, non frasi; se non trovi nulla riprova con meno parole o con un sinonimo. Restituisce titolo, data, importo e riassunto, i più pertinenti per primi.',
+  { name: 'cerca_documenti', description: 'Cerca documenti nell\'archivio per parole chiave (ente, fornitore, tipo di documento, numero, codice) e/o per fascicolo e periodo. Cerca in titolo, ente, riassunto, email e anche nel testo completo letto dai file; capisce sinonimi, accenti ed errori di battitura, e aggiunge i documenti vicini per significato (per_significato: true, da verificare). Usa 1-3 parole chiave, non frasi; se non trovi nulla riprova con meno parole o con un sinonimo. Restituisce titolo, data, importo e riassunto, i più pertinenti per primi.',
     input_schema: { type: 'object', properties: { testo: { type: 'string', description: 'parole chiave, es. "enel luce" o "polizza casa"' },
       fascicolo: { type: 'string', description: 'codice del fascicolo, facoltativo' },
       da: { type: 'string', description: 'solo documenti da questa data (YYYY-MM-DD), facoltativo' },
@@ -1658,12 +1778,16 @@ function cercaArchivio_(input, lim) {
   if (input.fascicolo) filtri.fascicoli = [String(input.fascicolo)];
   if (DATA_ISO_.test(String(input.da || ''))) filtri.da = String(input.da);
   if (DATA_ISO_.test(String(input.a || ''))) filtri.a = String(input.a);
+  let parole;
   try {
-    return sb_('rpc/cerca_archivio_v2?select=' + CAMPI_CHAT, { method: 'post', body: { p_testo: testo, p_filtri: filtri, p_lim: lim } }) || [];
+    parole = sb_('rpc/cerca_archivio_v2?select=' + CAMPI_CHAT, { method: 'post', body: { p_testo: testo, p_filtri: filtri, p_lim: lim } }) || [];
   } catch (e) {
     logErrore_('ricerca chat', e);
-    return sb_('rpc/cerca_documenti', { method: 'post', body: { q: testo, fasc: input.fascicolo || null, lim: lim } }) || [];
+    parole = sb_('rpc/cerca_documenti', { method: 'post', body: { q: testo, fasc: input.fascicolo || null, lim: lim } }) || [];
   }
+  // Anche per significato (POL-VITA-035): trova "caldaia" nelle fatture del tecnico della stufa.
+  const significato = cercaPerSignificato_(testo, filtri, Math.min(lim, 20), CAMPI_CHAT);
+  return significato.length ? fondiRisultati_(parole, significato, lim) : parole;
 }
 
 // Testo completo di un documento per la chat: mai dei pazienti; se è lungo, solo i passaggi utili.

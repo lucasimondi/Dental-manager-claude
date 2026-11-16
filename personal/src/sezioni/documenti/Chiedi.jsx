@@ -3,12 +3,13 @@
 // l'interprete sul telefono riconosce anni, mesi, importi e persone (etichette «Ho capito»),
 // la ricerca nel database usa sinonimi, accenti, errori di battitura e ordina per pertinenza.
 // In cima la risposta (il documento più probabile, o il totale), sotto gli altri.
-// Nessun modello: i documenti dei pazienti non escono dall'archivio.
+// La ricerca per parole non usa modelli. POL-VITA-035: sotto, «Simili per significato» — la sola
+// domanda va a Gemini (vettore), i documenti dei pazienti non hanno vettori e non escono mai.
 import { useEffect, useMemo, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { cercaChiedi, scadenzeAperte } from '../../lib/archivio.js';
+import { cercaChiedi, cercaPerSignificato, scadenzeAperte } from '../../lib/archivio.js';
 import { interpretaDomanda, riepilogoImporti } from '../../lib/interpreta.js';
-import { Vuoto, dataBreve, giorniA, titoloDoc, colore } from '../../ui.jsx';
+import { Vuoto, dataBreve, giorniA, titoloDoc, colore, tokenSessione } from '../../ui.jsx';
 import { IconaCerca, IconaChiudi } from '../../Icone.jsx';
 import { ElencoSelezionabile } from './Selezione.jsx';
 import { CartelleInCima } from './CartelleMie.jsx';
@@ -30,6 +31,7 @@ export function VistaChiedi({ ctx, onClassica }) {
   const [testo, setTesto] = useState('');
   const [anchePocoUtili, setAnchePocoUtili] = useState(false);
   const [risultati, setRisultati] = useState(null);
+  const [simili, setSimili] = useState(null);
   const [scadenze, setScadenze] = useState(null);
   const [rinfresca, setRinfresca] = useState(0);
   const capito = useMemo(() => interpretaDomanda(testo, { persone }), [testo, persone]);
@@ -53,6 +55,20 @@ export function VistaChiedi({ ctx, onClassica }) {
     }, 300);
     return () => { vivo = false; clearTimeout(t); };
   }, [attiva, capito, anchePocoUtili, esegui, versione, rinfresca]);
+
+  // Per significato: dopo le parole, solo per le domande (non per i totali), senza bloccare la pagina.
+  useEffect(() => {
+    setSimili(null);
+    if (!attiva || !risultati || capito.somma || capito.testo.trim().length < 3) return undefined;
+    let vivo = true;
+    const t = setTimeout(async () => {
+      try {
+        const r = await cercaPerSignificato({ token: await tokenSessione(), testo: capito.testo, filtri: capito.filtri, esclusi: risultati.map((d) => d.id) });
+        if (vivo) setSimili(r.slice(0, 12));
+      } catch { if (vivo) setSimili([]); }
+    }, 500);
+    return () => { vivo = false; clearTimeout(t); };
+  }, [attiva, risultati, capito]);
 
   const primo = risultati?.[0];
   const somma = capito.somma && risultati ? riepilogoImporti(risultati) : null;
@@ -144,6 +160,9 @@ export function VistaChiedi({ ctx, onClassica }) {
                 <ElencoSelezionabile elenco={altri} ctx={ctx} onCambiato={() => setRinfresca((n) => n + 1)} intestazione={somma ? 'I documenti del totale' : `Altri ${altri.length}`} />
               )}
             </>
+          )}
+          {simili && simili.length > 0 && (
+            <ElencoSelezionabile elenco={simili} ctx={ctx} onCambiato={() => setRinfresca((n) => n + 1)} intestazione={`Simili per significato · ${simili.length}`} />
           )}
           <div className="pp-filtri">
             <button type="button" className={`pp-filtro${anchePocoUtili ? ' attivo' : ''}`} onClick={() => setAnchePocoUtili(!anchePocoUtili)}>{anchePocoUtili ? 'Anche poco utili ✓' : 'Anche poco utili'}</button>

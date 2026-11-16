@@ -4767,3 +4767,14 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Rollback: revert the commit and `clasp push`; documenti_testo stays unused (removal needs a PO-approved migration); restoring the POL-VITA-030 `cerca_archivio_v2` = re-run 20261112120000_pol_vita_030_ricerca_indici.sql.
 - Next: PO review → "Mergia" → `clasp push -f` from master → watch `v_testo_avanzamento`; optional step 3 (semantic search with embeddings) needs PO decision.
 
+## Handoff — RICERCA-SIGNIFICATO (POL-VITA-035, 2026-11-16) — Claude Code
+- Task RICERCA-SIGNIFICATO; previous agent Claude Code; branch `ccr-b7b42716-8dtp7v` (after RICERCA-TESTO-COMPLETO).
+- Objective: semantic search like Gemini, then merge (PO: "Facciamo ricerca per significato anche, e poi mergia").
+- Files: `poliedron/archivio/Code.gs` (vettoriGemini_, normalizza_, calcolaVettori_, cercaPerSignificato_, fondiRisultati_, calcolaVettoriOra, doPost `significato`, chat fusion, elabora calls), `personal/src/lib/archivio.js` (cercaPerSignificato), `personal/src/sezioni/documenti/Chiedi.jsx`, migrations `20261116150000_pol_vita_035_significato.sql` and `20261116151000_pol_vita_035_significato_esclusi.sql` (new), `poliedron/archivio/{CLAUDE.md,LEGGIMI.md}`, tests `archivioSignificato.test.mjs` (new), `archivioChiedi.test.mjs`, `archivioTestoCompleto.test.mjs`, `archivioPersonale.test.mjs`.
+- Database (applied, additive): see current-task.
+- Tests: npm test 1746/1746; build:personal PASS; Chromium personal-chiedi PASS; rolled-back production checks with synthetic vectors.
+- Deployment: Personal front-end with the merge; Apps Script `clasp push -f` from master (credentials not available here) — until then the database objects stay empty and searches behave as before.
+- Risks: Gemini free-tier quotas (pause 3 h, words search keeps working); distance threshold 0.6 to tune on real data; vectors only after the full text is read (several days for the backlog); free-tier Gemini terms allow Google to use inputs (same as the PO's 2026-10-18 choice).
+- Rollback: revert and `clasp push`; tables/RPCs stay unused (removal needs a PO-approved migration).
+- Next: `clasp push -f` from master; watch `v_testo_avanzamento` and `v_significato_avanzamento`; tune `p_distanza` after real use.
+

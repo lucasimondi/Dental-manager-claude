@@ -116,5 +116,8 @@ test('Documenti si apre su Chiedi e la vista classica resta raggiungibile', () =
   const chiedi = readFileSync('personal/src/sezioni/documenti/Chiedi.jsx', 'utf8');
   assert.match(chiedi, /Vista classica/);
   assert.match(chiedi, /cercaChiedi\(/);
-  assert.ok(!/anthropic|gemini|fetch\(/i.test(chiedi), 'nessun modello o servizio esterno');
+  // PO 2026-11-16 (POL-VITA-035, "Facciamo ricerca per significato anche"): la sola domanda può andare
+  // allo script per i «Simili per significato»; il componente non chiama mai servizi esterni da sé.
+  assert.ok(!/anthropic|fetch\(/i.test(chiedi), 'nessun modello o servizio esterno chiamato direttamente');
+  assert.match(chiedi, /cercaPerSignificato\(\{ token: await tokenSessione\(\)/);
 });

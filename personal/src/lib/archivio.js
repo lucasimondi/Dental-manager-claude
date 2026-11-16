@@ -315,6 +315,25 @@ export async function chiediPoliedronCompleto({ token, domanda, documentoId, sto
   return { risposta: r.risposta, proposte: Array.isArray(r.proposte) ? r.proposte : [] };
 }
 
+// POL-VITA-035: documenti vicini per significato alla domanda (lo script calcola il vettore della
+// domanda con Gemini e cerca tra i vettori dei documenti; mai i clinici). Senza risposta: nessuno.
+// `esclusi`: id già mostrati dalla ricerca per parole.
+export async function cercaPerSignificato({ token, testo, filtri = {}, esclusi = [] }, fetchImpl = fetch) {
+  const domanda = String(testo || '').trim();
+  if (!token || domanda.length < 3) return [];
+  const { fascicoli, da, a } = filtri || {};
+  const res = await fetchImpl(URL_CARICAMENTO, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ token, azione: 'significato', testo: domanda.slice(0, 500), filtri: { ...(fascicoli ? { fascicoli } : {}), ...(da ? { da } : {}), ...(a ? { a } : {}) } }),
+  });
+  let r;
+  try { r = await res.json(); } catch { return []; }
+  if (!r.ok || !Array.isArray(r.documenti)) return [];
+  const gia = new Set(esclusi);
+  return r.documenti.filter((d) => d && d.fascicolo !== 'clinico_pazienti' && !gia.has(d.id));
+}
+
 // Testo della risposta → parti: testo semplice e link ai documenti [[doc:ID|titolo]].
 export function partiRisposta(testo) {
   const parti = [];

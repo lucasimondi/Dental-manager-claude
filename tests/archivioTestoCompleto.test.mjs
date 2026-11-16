@@ -69,7 +69,7 @@ test('chat: se la ricerca nuova non risponde usa quella di prima', () => {
 
 test('chat: istruzioni e strumenti — poche parole chiave, testo_documento per i dati precisi', () => {
   assert.match(codice, /name: 'testo_documento'/);
-  assert.match(codice, /Ogni parola deve comparire: usa 1-3 parole chiave/);
+  assert.match(codice, /Usa 1-3 parole chiave, non frasi/);
   assert.match(codice, /leggi il documento con testo_documento/);
 });
 
