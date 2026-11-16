@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { caricaDaFare, cambiaStato, rimanda, dataTra, rimandato, filtri, filtra, riepilogo, categoria, CATEGORIE, PRIORITA, passi, puoRispondere, bozzaPerPromemoria } from '../../lib/daFare.js';
+import { caricaDaFare, cambiaStato, rimanda, dataTra, rimandato, filtri, filtra, riepilogo, categoria, CATEGORIE, PRIORITA, passi, puoRispondere, bozzaPerPromemoria, testoCondivisione, telefoni, linkIA, linkWhatsApp, linkEmail, linkCalendario } from '../../lib/daFare.js';
 import { dataBreve, Vuoto, tokenSessione } from '../../ui.jsx';
 
 // DA-FARE v2 (2026-11-16): filtri per urgenza e categoria, riepilogo, Risolta/Elimina con Annulla, Rimanda.
@@ -79,12 +79,14 @@ function Promemoria({ p, ctx, onChiudi, onRimanda }) {
         {puoRispondere(p) && <button className={`pp-bottone ${p.bozza_risposta ? '' : 'pp-bottone-chiaro'}`} onClick={() => apri('rispondi')}>✉ Rispondi</button>}
         <button className="pp-bottone pp-bottone-chiaro" onClick={() => apri('passi')}>☰ Passi</button>
         <span className="pp-promemoria-icone">
+          <button className="pp-bottone pp-bottone-chiaro" aria-label="Altre azioni" title="Chiama, condividi, chiedi all'IA" onClick={() => apri('altro')}>⋯</button>
           <button className="pp-bottone pp-bottone-chiaro" aria-label="Rimanda" title="Rimanda" onClick={() => apri('rimanda')}>⏰</button>
           <button className="pp-bottone pp-bottone-chiaro" aria-label="Elimina" title="Elimina" onClick={() => apri('elimina')}>🗑</button>
         </span>
       </div>
       {aperto === 'passi' && <Passi p={p} />}
       {aperto === 'rispondi' && <Rispondi p={p} ctx={ctx} onChiudi={() => setAperto(null)} />}
+      {aperto === 'altro' && <AltreAzioni p={p} ctx={ctx} />}
       {aperto === 'rimanda' && (
         <div className="pp-promemoria-passi pp-form-azioni">
           <span className="pp-riga-meta">Nascondila fino a:</span>
@@ -102,6 +104,45 @@ function Promemoria({ p, ctx, onChiudi, onRimanda }) {
         </div>
       )}
     </article>
+  );
+}
+
+// Chiama, condividi (sistema, WhatsApp, email), chiedi all'IA, calendario, copia. Tutto parte da un tocco.
+function AltreAzioni({ p, ctx }) {
+  const tel = telefoni(p);
+  const testo = testoCondivisione(p);
+  const condividi = async () => {
+    if (navigator.share) { try { await navigator.share({ title: p.titolo, text: testo }); } catch { /* annullato */ } return; }
+    await copia();
+  };
+  const copia = async () => {
+    try { await navigator.clipboard.writeText(testo); ctx.mostra('Testo copiato'); } catch { ctx.mostra('Copia non riuscita'); }
+  };
+  const link = (href, etichetta) => <a className="pp-chip" href={href} target="_blank" rel="noreferrer">{etichetta}</a>;
+  return (
+    <div className="pp-promemoria-passi pp-promemoria-altro">
+      {tel.length > 0 && (
+        <div><span className="pp-riga-meta">Chiama</span><div className="pp-promemoria-chip">
+          {tel.map((t) => <a key={t.tel} className="pp-chip" href={`tel:${t.tel}`}>📞 {t.mostra}</a>)}
+          {tel.filter((t) => t.cellulare).map((t) => <a key={`w${t.tel}`} className="pp-chip" href={linkWhatsApp(p, t.tel)} target="_blank" rel="noreferrer">💬 WhatsApp {t.mostra}</a>)}
+        </div></div>
+      )}
+      <div><span className="pp-riga-meta">Chiedi all'IA (le passi il promemoria)</span><div className="pp-promemoria-chip">
+        {link(linkIA(p, 'claude'), '✨ Claude')}
+        {link(linkIA(p, 'chatgpt'), '🤖 ChatGPT')}
+      </div></div>
+      <div><span className="pp-riga-meta">Condividi con qualcuno</span><div className="pp-promemoria-chip">
+        <button className="pp-chip" onClick={condividi}>📤 Condividi…</button>
+        {link(linkWhatsApp(p), '💬 WhatsApp')}
+        <a className="pp-chip" href={linkEmail(p)}>✉ Email</a>
+        <button className="pp-chip" onClick={copia}>📋 Copia</button>
+      </div></div>
+      <div><span className="pp-riga-meta">Organizza</span><div className="pp-promemoria-chip">
+        {link(linkCalendario(p), `📅 Calendario${p.scadenza ? '' : ' (domani)'}`)}
+        {p.documento?.drive_url && link(p.documento.drive_url, p.email ? '📨 Apri l\'email' : '📄 Apri il documento')}
+      </div></div>
+      <p className="pp-riga-meta">Condividendo, il testo del promemoria esce dall'app: scegli tu con chi.</p>
+    </div>
   );
 }
 

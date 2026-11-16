@@ -78,3 +78,22 @@ test('rimandate escono dalla lista e hanno il loro filtro', () => {
   assert.equal(riepilogo(v, '2026-11-16').urgenti, 1);
   assert.equal(dataTra(7, new Date('2026-11-16T12:00:00Z')), '2026-11-23');
 });
+
+// DA-FARE v3: altre azioni.
+import { telefoni, testoCondivisione, linkIA, linkWhatsApp, linkCalendario } from '../personal/src/lib/daFare.js';
+test('trova i telefoni nel testo', () => {
+  const t = telefoni({ spiegazione: 'scrivi su WhatsApp al 340 492 4007 o chiama 06 2019 4580', cosa_fare: 'Ge.Ri. allo 06 9594 4100' });
+  assert.deepEqual(t.map((x) => x.tel), ['+393404924007', '+390620194580', '+390695944100']);
+  assert.equal(t[0].cellulare, true);
+});
+test('condivisione e link', () => {
+  const p = { titolo: 'Intrum', ente: 'Intrum', importo: 152.5, spiegazione: 'Da contestare', cosa_fare: '1. Controlla\n2. Paga' };
+  assert.match(testoCondivisione(p), /Cosa fare:\n1\. Controlla\n2\. Paga/);
+  assert.match(linkIA(p), /^https:\/\/claude\.ai\/new\?q=/);
+  assert.match(linkIA(p, 'chatgpt'), /^https:\/\/chatgpt\.com\/\?q=/);
+  assert.match(linkWhatsApp(p, '+393404924007'), /^https:\/\/wa\.me\/393404924007\?text=/);
+  assert.match(linkCalendario({ ...p, scadenza: '2026-12-01' }), /dates=20261201\/20261202/);
+});
+test('il numero non si mangia la riga dopo', () => {
+  assert.deepEqual(telefoni({ cosa_fare: '2. Manda la ricevuta al 340 492 4007\n3. Chiedi' }).map((x) => x.mostra), ['340 492 4007']);
+});

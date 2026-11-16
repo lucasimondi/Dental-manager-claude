@@ -937,3 +937,6 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-promemoria-icone { display: flex; gap: 6px; margin-left: auto; }
 .pp-promemoria-icone .pp-bottone { padding-inline: 10px; }
 .pp-promemoria-azioni .pp-bottone { padding-inline: 10px; }
+.pp-promemoria-altro { gap: 10px; }
+.pp-promemoria-chip { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.pp-promemoria-chip .pp-chip { text-decoration: none; font-size: 13.5px; }

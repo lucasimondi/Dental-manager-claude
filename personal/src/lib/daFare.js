@@ -110,3 +110,48 @@ export async function bozzaPerPromemoria({ token, documento, ente, testo, istruz
   if (!r.ok) throw new Error(r.errore || 'Poliedron non disponibile.');
   return r;
 }
+
+// DA-FARE v3 (2026-11-16, Luca: "metti anche altre azioni tipo chiama condividi ... condividerlo con ia
+// piuttosto che con qualcuno"). Tutto parte da un tocco di Luca: nessun invio automatico.
+const euroTesto = (n) => (n == null ? '' : Number(n).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }));
+
+// Testo completo e leggibile del promemoria, per condividerlo con una persona o con un'IA.
+export function testoCondivisione(p) {
+  const righe = [p.titolo];
+  const meta = [p.ente, p.importo != null ? euroTesto(p.importo) : null, p.scadenza ? `scadenza ${p.scadenza}` : null].filter(Boolean).join(' · ');
+  if (meta) righe.push(meta);
+  if (p.spiegazione) righe.push('', p.spiegazione);
+  const ps = passi(p.cosa_fare);
+  if (ps.length) righe.push('', 'Cosa fare:', ...ps.map((x, i) => `${i + 1}. ${x}`));
+  return righe.join('\n');
+}
+
+// Numeri di telefono citati nel promemoria (fissi e cellulari italiani), normalizzati per tel:/WhatsApp.
+export function telefoni(p) {
+  const testo = [p.spiegazione, p.cosa_fare, p.bozza_risposta].filter(Boolean).join(' ');
+  const visti = new Set();
+  const out = [];
+  for (const m of testo.matchAll(/(?<!\d)(?:\+39[ .]?)?(?:3\d{2}|0\d{1,3})(?:[ .]?\d){5,8}(?![\d])/g)) {
+    const cifre = m[0].replace(/\D/g, '').replace(/^39(?=[03]\d{6,})/, '');
+    if (cifre.length < 8 || cifre.length > 11 || visti.has(cifre)) continue;
+    visti.add(cifre);
+    out.push({ mostra: m[0].trim(), tel: `+39${cifre}`, cellulare: cifre.startsWith('3') });
+  }
+  return out;
+}
+
+const PROMPT_IA = 'Sono Luca. Aiutami a gestire questa pratica: spiegami in parole semplici cosa rischio, quali opzioni ho e cosa conviene fare per primo. Se serve, proponimi il testo di una risposta.\n\n';
+export function linkIA(p, servizio = 'claude') {
+  const q = encodeURIComponent(PROMPT_IA + testoCondivisione(p));
+  return servizio === 'chatgpt' ? `https://chatgpt.com/?q=${q}` : `https://claude.ai/new?q=${q}`;
+}
+export const linkWhatsApp = (p, numero) => `https://wa.me/${numero ? numero.replace(/\D/g, '') : ''}?text=${encodeURIComponent(testoCondivisione(p))}`;
+export const linkEmail = (p) => `mailto:?subject=${encodeURIComponent(p.titolo)}&body=${encodeURIComponent(testoCondivisione(p))}`;
+
+// Evento di Google Calendar: il giorno di scadenza, o domani se non c'è.
+export function linkCalendario(p, da = new Date()) {
+  const giorno = (p.scadenza || dataTra(1, da)).replace(/-/g, '');
+  const dopo = new Date(`${p.scadenza || dataTra(1, da)}T12:00:00Z`); dopo.setUTCDate(dopo.getUTCDate() + 1);
+  const fine = dopo.toISOString().slice(0, 10).replace(/-/g, '');
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(p.titolo)}&dates=${giorno}/${fine}&details=${encodeURIComponent(testoCondivisione(p))}`;
+}
