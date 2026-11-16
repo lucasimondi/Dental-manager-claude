@@ -4792,3 +4792,14 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Tests: npm test (see PR); DB checks on real vectors (30 → 11 results, 9/9 same ente, 0 clinical).
 - Rollback: re-apply `20261116150000_pol_vita_035_significato.sql`'s `cerca_significato` (fixed threshold); script: `clasp push` of the previous online version (`ccr-a4df4c71-pys1hm` Code.gs) and redeploy @19 content.
 
+## Handoff — PERSONALE-HOME (2026-11-16) — Claude Code
+- Task PERSONALE-HOME; previous agent Claude Code; branch `claude/personale-home-conti` from master adea2d7.
+- Objective: implement the approved «Personale» mockup (Home + Conti) and merge (PO: "Porta al codice mergia").
+- Files: `personal/src/sezioni/altro/{index.jsx,Personale.jsx (new)}`, `personal/src/sezioni/conti/Conti.jsx`, `personal/src/App.jsx` (dock label, ctx.apriAggiungi), `personal/src/main.jsx`, `personal/src/personale.css` (new), `src/components/poliedron/PoliedronMobileDock.jsx`, `src/App.jsx` (title/group «Personale»), tests `personaleHome.test.mjs` (new), `appUnica`, `mobileHomeRound2`, `dashboardPremiumV2`, `personalPdf`, visual `tests/visual/personal-personale.{html,fixture.jsx,mjs}` (new), coordination docs.
+- Database: none.
+- Tests: npm test 1776/1776; build:personal PASS; build PASS; visual personal-personale PASS (light/dark).
+- Unresolved: «+» sheet group and notes category are still labelled «Per te» (not in the mockup); the Personal header gear stays above the Home.
+- Risks: low (presentation); the Home makes two extra reads (promemoria_azioni, latest documenti) on open.
+- Rollback: revert the squash commit.
+- Next: check the production deploy on the phone.
+

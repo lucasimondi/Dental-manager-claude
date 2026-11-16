@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import './personal.css';
 import './pro.css';
 import './icone-base.css';
+import './personale.css'; // PERSONALE-HOME: Home Personale e stile coordinato di Conti
 import { AspettoProvider } from './Aspetto.jsx';
 import { applicaAspetto, leggiAspetto, storageAspetto } from './lib/aspetto.js';
 import App from './App.jsx';

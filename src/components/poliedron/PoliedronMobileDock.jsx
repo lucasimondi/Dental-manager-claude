@@ -40,7 +40,7 @@ export const MOBILE_DOCK_ITEMS = Object.freeze([
   { id: 'archivio', label: 'Documenti', icon: 'folder' },
   { id: '__poliedron__', label: 'Poliedron', icon: null },
   { id: 'studio', label: 'Studio', icon: 'brief' },
-  { id: 'perte', label: 'Per te', icon: 'user' },
+  { id: 'perte', label: 'Personale', icon: 'user' }, // PERSONALE-HOME (PO 2026-11-16)
 ]);
 export const mobileDockItems = ({ archivio = true } = {}) => MOBILE_DOCK_ITEMS.map((item) => (
   item.id === 'archivio' && !archivio ? { id: 'paz', label: 'Pazienti', icon: 'pz' } : item

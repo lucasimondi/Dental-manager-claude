@@ -556,7 +556,7 @@ test('DOCK: structure, order, destinations and geometry are unchanged; only the 
   assert.match(dockSrc, /\{ id: 'archivio', label: 'Documenti', icon: 'folder' \}/);
   // DOCK-PER-TE (PO 2026-11-08): Agenda · Documenti · Poliedron · Studio · Per te.
   assert.match(dockSrc, /\{ id: 'studio', label: 'Studio', icon: 'brief' \}/);
-  assert.match(dockSrc, /\{ id: 'perte', label: 'Per te', icon: 'user' \}/);
+  assert.match(dockSrc, /\{ id: 'perte', label: 'Personale', icon: 'user' \}/);
   assert.doesNotMatch(dockSrc, /id: 'set'/, 'Impostazioni must not come back to the dock');
   // Geometry constants untouched.
   assert.equal(MOBILE_DOCK_BOTTOM, 16);

@@ -1,0 +1,111 @@
+/* PERSONALE-HOME (PO 2026-11-16, mockup approvato): Home «Personale» e stile coordinato di Conti.
+   Sfumature verde acqua, icone in rilievo (luce in alto, ombra morbida sotto), angoli ampi.
+   Solo presentazione: le classi pps-* sono della Home, le regole di Conti stanno sotto .pp-vista-conti. */
+:root {
+  --pps-acqua: #0b7f72;
+  --pps-acqua-chiaro: #1fb89c;
+  --pps-acqua-testo: #0b6e64;
+  --pps-tenue: #d5f1eb;
+  --pps-ombra: 0 6px 16px -10px rgba(8, 79, 72, .4);
+  --pps-rilievo: inset 0 2px 0 rgba(255, 255, 255, .42), inset 0 -3px 0 rgba(0, 0, 0, .12), 0 6px 14px -6px rgba(8, 79, 72, .45);
+}
+@media (prefers-color-scheme: dark) {
+  :root { --pps-acqua-testo: #5fe0c5; --pps-tenue: #123a35; --pps-ombra: none; }
+}
+
+/* ---------- Home Personale ---------- */
+.pps { display: flex; flex-direction: column; gap: 14px; padding-bottom: 24px; }
+.pps-testa { display: flex; flex-direction: column; gap: 2px; }
+.pps-marchio { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--pps-acqua-testo); }
+.pps-marchio img { border-radius: 4px; }
+.pps-testa h1 { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+.pps-testa p { margin: 0; color: var(--pp-grigio); font-size: 14px; }
+
+.pps-cerca-riga { display: flex; gap: 10px; align-items: center; }
+.pps-cerca { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 14px; border-radius: 14px; background: var(--pp-superficie); box-shadow: var(--pps-ombra); border: 1px solid var(--pp-linea); box-sizing: border-box; }
+.pps-cerca svg { width: 18px; height: 18px; fill: none; stroke: var(--pp-grigio); stroke-width: 2; stroke-linecap: round; flex-shrink: 0; }
+.pps-cerca input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 15px; color: var(--pp-inchiostro); }
+.pps-piu { width: 46px; height: 46px; flex-shrink: 0; border: 0; border-radius: 14px; display: grid; place-items: center; color: #fff; background: linear-gradient(145deg, #2bc4a8, var(--pps-acqua)); box-shadow: var(--pps-rilievo); cursor: pointer; }
+.pps-piu svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
+
+.pps-icona { width: 44px; height: 44px; flex-shrink: 0; border-radius: 14px; display: grid; place-items: center; box-shadow: var(--pps-rilievo); }
+.pps-icona svg { width: 22px; height: 22px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pps-icona-grande { width: 50px; height: 50px; border-radius: 16px; }
+.pps-icona-grande svg { width: 25px; height: 25px; }
+.pps-verde { background: linear-gradient(145deg, #34d1b2, #0b8a7a); }
+.pps-cielo { background: linear-gradient(145deg, #7dd3fc, #2c8bd6); }
+.pps-ambra { background: linear-gradient(145deg, #fcc46a, #d97a06); }
+.pps-viola { background: linear-gradient(145deg, #c4a5fa, #7c4ddb); }
+.pps-blu { background: linear-gradient(145deg, #6ba6f7, #2459c2); }
+.pps-smeraldo { background: linear-gradient(145deg, #4fd1a5, #12866a); }
+.pps-oro { background: linear-gradient(145deg, #fdd167, #c98f00); }
+.pps-lilla { background: linear-gradient(145deg, #d6a8f7, #9a4fd6); }
+.pps-vetro { background: rgba(255, 255, 255, .18); box-shadow: inset 0 2px 0 rgba(255, 255, 255, .35); }
+
+.pps-dafare, .pps-scan { display: flex; align-items: center; gap: 14px; width: 100%; padding: 16px; border: 0; border-radius: 20px; color: #fff; text-align: left; font: inherit; cursor: pointer; text-decoration: none; box-sizing: border-box; }
+.pps-dafare { background: linear-gradient(135deg, var(--pps-acqua-chiaro) 0%, var(--pps-acqua) 100%); box-shadow: 0 14px 28px -14px rgba(8, 79, 72, .7); }
+.pps-scan { padding: 12px 16px; border-radius: 18px; background: linear-gradient(135deg, #3b82f6 0%, #1d4fbf 100%); box-shadow: 0 10px 22px -12px rgba(29, 79, 191, .7); }
+.pps-scan:hover, .pps-scan:visited { color: #fff; }
+.pps-dafare-testo, .pps-scan > span:not(.pps-icona) { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pps-dafare-testo > span { font-size: 12.5px; font-weight: 600; opacity: .92; }
+.pps-dafare-testo strong { font-size: 19px; font-weight: 800; }
+.pps-scan strong { font-size: 16px; }
+.pps-scan span span { font-size: 12.5px; opacity: .92; }
+.pps-dafare > i, .pps-scan > i { font-style: normal; font-size: 24px; line-height: 1; opacity: .9; }
+
+.pps-coppia { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.pps-carta { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 14px 12px; border: 1px solid var(--pp-linea); border-radius: 18px; background: var(--pp-superficie); box-shadow: var(--pps-ombra); color: var(--pp-inchiostro); text-align: left; font: inherit; cursor: pointer; }
+.pps-carta > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.pps-carta strong { font-size: 15px; }
+.pps-carta span span { font-size: 12px; line-height: 1.3; color: var(--pp-grigio); }
+
+.pps-titoletto { margin: 4px 0 10px; font-size: 16px; font-weight: 800; }
+.pps-griglia { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 8px; }
+.pps-tessera { display: flex; flex-direction: column; align-items: center; gap: 7px; min-height: 72px; padding: 0; border: 0; background: none; font: inherit; font-size: 12px; font-weight: 600; color: var(--pp-inchiostro); cursor: pointer; }
+.pps-tessera .pps-icona { width: 52px; height: 52px; border-radius: 16px; }
+.pps-tessera .pps-icona svg { width: 25px; height: 25px; }
+
+.pps-recenti, .pps-trovate { display: flex; flex-direction: column; gap: 8px; }
+.pps-riga { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 10px 12px; border: 1px solid var(--pp-linea); border-radius: 16px; background: var(--pp-superficie); box-shadow: var(--pps-ombra); color: var(--pp-inchiostro); text-align: left; font: inherit; cursor: pointer; box-sizing: border-box; }
+.pps-riga-testo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pps-riga-testo strong { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pps-riga-testo span { font-size: 12px; color: var(--pp-grigio); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pps-riga > i, .pps-piede > i { font-style: normal; font-size: 20px; color: var(--pp-grigio); }
+.pps-formato { width: 38px; height: 38px; flex-shrink: 0; border-radius: 10px; display: grid; place-items: center; background: var(--pps-tenue); color: var(--pps-acqua-testo); font-size: 10.5px; font-weight: 800; }
+.pps-formato.pdf { background: #fde7e4; color: #b42318; }
+.pps-formato svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+.pps-vuoto { margin: 4px 2px; color: var(--pp-grigio); font-size: 14px; }
+.pps-piede { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 4px; border: 0; background: none; font: inherit; font-size: 14px; font-weight: 600; color: var(--pp-grigio); cursor: pointer; }
+.pps-piede span { flex: 1; text-align: left; }
+.pps-piede svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+@media (prefers-color-scheme: dark) { .pps-formato.pdf { background: #3a1714; color: #f97066; } }
+
+/* ---------- Conti, stesso stile ---------- */
+.pp-vista-conti .pp-saldo { background: linear-gradient(135deg, var(--pps-acqua-chiaro) 0%, var(--pps-acqua) 100%); color: #fff; border: 0; box-shadow: 0 16px 30px -14px rgba(8, 79, 72, .7); border-radius: 22px; }
+.pp-vista-conti .pp-saldo-titolo { color: #fff; opacity: .9; }
+.pp-vista-conti .pp-saldo-numero.negativo { color: #fff1ef; }
+.pp-vista-conti .pp-saldo-righe > span { background: rgba(255, 255, 255, .14); }
+.pp-vista-conti .pp-saldo-righe i.entrata { background: rgba(255, 255, 255, .28); }
+.pp-vista-conti .pp-saldo-righe i.uscita { background: rgba(10, 40, 36, .28); }
+.pp-vista-conti .pp-segmenti { background: var(--pp-superficie); border: 1px solid var(--pp-linea); box-shadow: var(--pps-ombra); border-radius: 16px; padding: 4px; }
+.pp-vista-conti .pp-segmenti button { min-height: 40px; border-radius: 12px; color: var(--pp-grigio); }
+.pp-vista-conti .pp-segmenti button.attivo { background: linear-gradient(145deg, #2bc4a8, var(--pps-acqua)); color: #fff; box-shadow: inset 0 2px 0 rgba(255, 255, 255, .35); }
+.pp-vista-conti .pp-movimento-icona { width: 40px; height: 40px; border-radius: 13px; color: #fff; box-shadow: var(--pps-rilievo); }
+.pp-vista-conti .pp-movimento.entrata .pp-movimento-icona { color: #fff; background: linear-gradient(145deg, #4fd1a5, #12866a); }
+.pp-vista-conti .pp-movimento.uscita .pp-movimento-icona { color: #fff; background: linear-gradient(145deg, #6ba6f7, #2459c2); }
+.pp-vista-conti .pp-bottone-verde { background: linear-gradient(145deg, #2bc4a8, var(--pps-acqua)); box-shadow: var(--pps-rilievo); border-radius: 14px; }
+.pp-vista-conti .pp-bottone-rosso { background: linear-gradient(145deg, #f2786d, #b42318); box-shadow: inset 0 2px 0 rgba(255, 255, 255, .35), 0 6px 14px -6px rgba(180, 35, 24, .5); border-radius: 14px; }
+
+.pp-prossima { display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 12px; padding: 12px 14px; border: 0; border-radius: 18px; background: #fff4e0; color: #3d2600; text-align: left; font: inherit; cursor: pointer; box-shadow: 0 6px 14px -10px rgba(180, 110, 0, .5); box-sizing: border-box; }
+.pp-prossima.scaduta { background: #fde7e4; color: #5c130c; }
+.pp-prossima-icona { width: 40px; height: 40px; flex-shrink: 0; border-radius: 13px; display: grid; place-items: center; background: linear-gradient(145deg, #fdc25a, #d98200); box-shadow: inset 0 2px 0 rgba(255, 255, 255, .42), 0 6px 14px -6px rgba(180, 110, 0, .5); }
+.pp-prossima.scaduta .pp-prossima-icona { background: linear-gradient(145deg, #f2786d, #b42318); }
+.pp-prossima-icona svg { width: 20px; height: 20px; fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; }
+.pp-prossima-testo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pp-prossima-testo span { font-size: 12px; font-weight: 600; }
+.pp-prossima-testo strong { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pp-prossima-importo { font-size: 15px; font-variant-numeric: tabular-nums; }
+@media (prefers-color-scheme: dark) {
+  .pp-prossima { background: #3a2a0c; color: #fde7c2; }
+  .pp-prossima.scaduta { background: #3a1714; color: #fecdca; }
+}
