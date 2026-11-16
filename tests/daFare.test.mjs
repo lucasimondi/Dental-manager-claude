@@ -80,7 +80,7 @@ test('rimandate escono dalla lista e hanno il loro filtro', () => {
 });
 
 // DA-FARE v3: altre azioni.
-import { telefoni, testoCondivisione, linkIA, linkWhatsApp, linkCalendario } from '../personal/src/lib/daFare.js';
+import { telefoni, testoCondivisione, linkIA, linkWhatsApp, eventoDaPromemoria, datiPagamento, conNota, normalizzaContatti } from '../personal/src/lib/daFare.js';
 test('trova i telefoni nel testo', () => {
   const t = telefoni({ spiegazione: 'scrivi su WhatsApp al 340 492 4007 o chiama 06 2019 4580', cosa_fare: 'Ge.Ri. allo 06 9594 4100' });
   assert.deepEqual(t.map((x) => x.tel), ['+393404924007', '+390620194580', '+390695944100']);
@@ -92,8 +92,17 @@ test('condivisione e link', () => {
   assert.match(linkIA(p), /^https:\/\/claude\.ai\/new\?q=/);
   assert.match(linkIA(p, 'chatgpt'), /^https:\/\/chatgpt\.com\/\?q=/);
   assert.match(linkWhatsApp(p, '+393404924007'), /^https:\/\/wa\.me\/393404924007\?text=/);
-  assert.match(linkCalendario({ ...p, scadenza: '2026-12-01' }), /dates=20261201\/20261202/);
+  const ev = eventoDaPromemoria({ ...p, scadenza: '2026-12-01' }, { ora: '09:30' });
+  assert.equal(ev.data_inizio, '2026-12-01'); assert.equal(ev.ora_fine, '10:30'); assert.equal(ev.visibile_studio, false); assert.equal(ev.tutto_il_giorno, false);
+  assert.equal(eventoDaPromemoria(p, { data: '2026-12-02' }).tutto_il_giorno, true);
 });
 test('il numero non si mangia la riga dopo', () => {
   assert.deepEqual(telefoni({ cosa_fare: '2. Manda la ricevuta al 340 492 4007\n3. Chiedi' }).map((x) => x.mostra), ['340 492 4007']);
+});
+
+test('paga, note, contatti', () => {
+  const d = datiPagamento({ importo: 84.93, cosa_fare: 'bonifico a IT02B0503433710000000000233 con causale "FT 2366 cliente 1842"' });
+  assert.deepEqual(d.iban, ['IT02B0503433710000000000233']); assert.equal(d.causale, 'FT 2366 cliente 1842');
+  assert.equal(conNota('vecchia', 'chiamato', new Date('2026-11-18T10:00:00')), '18/11/2026 – chiamato\nvecchia');
+  assert.deepEqual(normalizzaContatti([{ nome: 'Avv', email: 'a@b.it' }, { nome: '', email: 'x' }, { nome: 'Senza' }]), [{ nome: 'Avv', email: 'a@b.it', telefono: '' }]);
 });

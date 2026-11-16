@@ -940,3 +940,10 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-promemoria-altro { gap: 10px; }
 .pp-promemoria-chip { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .pp-promemoria-chip .pp-chip { text-decoration: none; font-size: 13.5px; }
+.pp-promemoria-contatto { display: inline-flex; align-items: center; gap: 4px; padding-right: 4px; }
+.pp-promemoria-contatto b { font-size: 13.5px; margin-right: 2px; }
+.pp-promemoria-modulo { display: grid; gap: 6px; margin-top: 4px; }
+.pp-promemoria-modulo input { min-height: 38px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--pp-linea); background: transparent; color: inherit; font: inherit; min-width: 0; }
+.pp-promemoria-riga { grid-template-columns: minmax(140px, 1.4fr) minmax(90px, 1fr) auto; align-items: center; }
+.pp-promemoria-riga:has(> input:only-of-type) { grid-template-columns: 1fr auto; }
+.pp-promemoria-nota { margin: 0; font-size: 13.5px; padding: 6px 10px; border-radius: 10px; background: color-mix(in srgb, #d97706 10%, transparent); }

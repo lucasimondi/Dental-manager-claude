@@ -10,7 +10,7 @@ const esito = ({ data, error }) => {
 
 export const PRIORITA = { alta: 'Urgente', media: 'Da fare', bassa: 'Quando puoi' };
 const PESO = { alta: 0, media: 1, bassa: 2 };
-const CAMPI = 'id, documento_id, ente, titolo, spiegazione, cosa_fare, bozza_risposta, scadenza, importo, priorita, stato, stato_il, creato_il, categoria, rimanda_al';
+const CAMPI = 'id, documento_id, ente, titolo, spiegazione, cosa_fare, bozza_risposta, scadenza, importo, priorita, stato, stato_il, creato_il, categoria, rimanda_al, note';
 
 // DA-FARE v2: categorie per i filtri. Se la riga non ha categoria la deduce dal titolo.
 export const CATEGORIE = [
@@ -78,7 +78,7 @@ export const puoRispondere = (p) => Boolean(p?.documento_id && p?.email);
 export async function caricaDaFare(db) {
   const righe = esito(await db.from('promemoria_azioni').select(CAMPI).eq('stato', 'aperto').limit(500));
   const ids = [...new Set(righe.map((r) => r.documento_id).filter(Boolean))];
-  const docs = ids.length ? esito(await db.from('documenti').select('id, gmail_message_id, titolo, drive_url, fascicolo').in('id', ids)) : [];
+  const docs = ids.length ? esito(await db.from('documenti').select('id, gmail_message_id, titolo, drive_url, fascicolo, riassunto').in('id', ids)) : [];
   const perId = new Map(docs.map((d) => [d.id, d]));
   return ordina(righe.map((r) => {
     const d = perId.get(r.documento_id);
@@ -148,10 +148,51 @@ export function linkIA(p, servizio = 'claude') {
 export const linkWhatsApp = (p, numero) => `https://wa.me/${numero ? numero.replace(/\D/g, '') : ''}?text=${encodeURIComponent(testoCondivisione(p))}`;
 export const linkEmail = (p) => `mailto:?subject=${encodeURIComponent(p.titolo)}&body=${encodeURIComponent(testoCondivisione(p))}`;
 
-// Evento di Google Calendar: il giorno di scadenza, o domani se non c'è.
-export function linkCalendario(p, da = new Date()) {
-  const giorno = (p.scadenza || dataTra(1, da)).replace(/-/g, '');
-  const dopo = new Date(`${p.scadenza || dataTra(1, da)}T12:00:00Z`); dopo.setUTCDate(dopo.getUTCDate() + 1);
-  const fine = dopo.toISOString().slice(0, 10).replace(/-/g, '');
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(p.titolo)}&dates=${giorno}/${fine}&details=${encodeURIComponent(testoCondivisione(p))}`;
+
+// Evento nell'agenda di Poliedron (impegni_personali dello studio, solo agenda personale: non lo vede lo studio).
+export function eventoDaPromemoria(p, { data, ora } = {}) {
+  const giorno = data || p.scadenza || dataTra(1);
+  const conOra = /^\d{2}:\d{2}$/.test(ora || '');
+  const [h, m] = conOra ? ora.split(':').map(Number) : [0, 0];
+  const fine = conOra ? `${String(Math.min(h + 1, 23)).padStart(2, '0')}:${String(m).padStart(2, '0')}` : null;
+  return {
+    titolo: `Da fare: ${p.titolo}`.slice(0, 200), tipo: 'personale', data_inizio: giorno, data_fine: giorno,
+    tutto_il_giorno: !conOra, ora_inizio: conOra ? ora : null, ora_fine: fine,
+    note: testoCondivisione(p), visibile_personal: true, visibile_studio: false,
+  };
 }
+
+// Paga: IBAN citati nel promemoria o nel riassunto del documento collegato, con la causale se scritta.
+export function datiPagamento(p) {
+  const testo = [p.spiegazione, p.cosa_fare, p.bozza_risposta, p.documento?.riassunto].filter(Boolean).join('\n');
+  const iban = [...new Set([...testo.matchAll(/\bIT\s?\d{2}\s?[A-Z]\s?(?:[0-9A-Z]\s?){22}/g)].map((m) => m[0].replace(/\s/g, '')))]
+    .filter((x) => x.length === 27);
+  const causale = testo.match(/causale[^:"“]*[:"“]\s*["“]?([^"”\n.;)]{4,90})/i)?.[1]?.trim() || '';
+  return { iban, causale, importo: p.importo ?? null };
+}
+
+// Note di avanzamento: una riga datata in cima.
+export function conNota(note, testo, quando = new Date()) {
+  const riga = `${quando.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })} – ${String(testo).trim()}`;
+  return [riga, note].filter(Boolean).join('\n');
+}
+export async function salvaNota(db, id, note) {
+  return esito(await db.from('promemoria_azioni').update({ note }).eq('id', id).select('id, note').single());
+}
+
+// Inoltra: contatti salvati una volta (avvocato, commercialista, Anna…) in impostazioni_app.
+const CHIAVE_CONTATTI = 'contatti_dafare';
+export function normalizzaContatti(xs) {
+  return (Array.isArray(xs) ? xs : []).map((c) => ({ nome: String(c?.nome || '').trim(), email: String(c?.email || '').trim(), telefono: String(c?.telefono || '').trim() }))
+    .filter((c) => c.nome && (c.email || c.telefono)).slice(0, 30);
+}
+export async function leggiContatti(db) {
+  const r = esito(await db.from('impostazioni_app').select('valore').eq('chiave', CHIAVE_CONTATTI).maybeSingle());
+  return normalizzaContatti(r?.valore);
+}
+export async function salvaContatti(db, contatti) {
+  const valore = normalizzaContatti(contatti);
+  esito(await db.from('impostazioni_app').upsert({ chiave: CHIAVE_CONTATTI, valore, aggiornato_il: new Date().toISOString() }, { onConflict: 'chiave' }).select('chiave'));
+  return valore;
+}
+export const linkEmailA = (p, email) => `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(p.titolo)}&body=${encodeURIComponent(testoCondivisione(p))}`;

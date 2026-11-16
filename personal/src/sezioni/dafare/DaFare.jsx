@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { caricaDaFare, cambiaStato, rimanda, dataTra, rimandato, filtri, filtra, riepilogo, categoria, CATEGORIE, PRIORITA, passi, puoRispondere, bozzaPerPromemoria, testoCondivisione, telefoni, linkIA, linkWhatsApp, linkEmail, linkCalendario } from '../../lib/daFare.js';
+import { caricaDaFare, cambiaStato, rimanda, dataTra, rimandato, filtri, filtra, riepilogo, categoria, CATEGORIE, PRIORITA, passi, puoRispondere, bozzaPerPromemoria, testoCondivisione, telefoni, linkIA, linkWhatsApp, linkEmail, eventoDaPromemoria, datiPagamento, conNota, salvaNota, leggiContatti, salvaContatti, linkEmailA } from '../../lib/daFare.js';
+import { salvaImpegno } from '../../lib/studio.js';
 import { dataBreve, Vuoto, tokenSessione } from '../../ui.jsx';
 
 // DA-FARE v2 (2026-11-16): filtri per urgenza e categoria, riepilogo, Risolta/Elimina con Annulla, Rimanda.
@@ -47,7 +48,7 @@ export function VistaDaFare({ ctx, db = archivioDb }) {
           </button>
         ))}
       </div>
-      {lista.length ? lista.map((p) => <Promemoria key={p.id} p={p} ctx={ctx} onChiudi={(stato) => chiudi(p, stato)} onRimanda={(g) => posticipa(p, g)} />)
+      {lista.length ? lista.map((p) => <Promemoria key={p.id} p={p} ctx={ctx} db={db} onChiudi={(stato) => chiudi(p, stato)} onRimanda={(g) => posticipa(p, g)} onAggiorna={(campi) => sost(p.id, campi)} />)
         : <Vuoto>Niente in questo filtro.</Vuoto>}
     </div>
   );
@@ -55,7 +56,7 @@ export function VistaDaFare({ ctx, db = archivioDb }) {
 
 const NOME_CAT = Object.fromEntries(CATEGORIE.map((c) => [c.id, c.nome]));
 
-function Promemoria({ p, ctx, onChiudi, onRimanda }) {
+function Promemoria({ p, ctx, db, onChiudi, onRimanda, onAggiorna }) {
   const [aperto, setAperto] = useState(null); // 'passi' | 'rispondi' | 'rimanda' | 'elimina' | null
   const [esteso, setEsteso] = useState(false);
   const apri = (x) => setAperto(aperto === x ? null : x);
@@ -74,19 +75,20 @@ function Promemoria({ p, ctx, onChiudi, onRimanda }) {
       {p.spiegazione && (
         <p className={`pp-testo-lungo pp-promemoria-spiega${esteso ? '' : ' pp-chiuso'}`} onClick={() => setEsteso(!esteso)}>{p.spiegazione}</p>
       )}
+      {p.note && <p className="pp-promemoria-nota">📝 {String(p.note).split('\n')[0]}</p>}
       <div className="pp-promemoria-azioni">
         <button className="pp-bottone" onClick={() => onChiudi('gestito')}>✓ Risolta</button>
         {puoRispondere(p) && <button className={`pp-bottone ${p.bozza_risposta ? '' : 'pp-bottone-chiaro'}`} onClick={() => apri('rispondi')}>✉ Rispondi</button>}
         <button className="pp-bottone pp-bottone-chiaro" onClick={() => apri('passi')}>☰ Passi</button>
         <span className="pp-promemoria-icone">
-          <button className="pp-bottone pp-bottone-chiaro" aria-label="Altre azioni" title="Chiama, condividi, chiedi all'IA" onClick={() => apri('altro')}>⋯</button>
+          <button className="pp-bottone pp-bottone-chiaro" aria-label="Altre azioni" title="Chiama, inoltra, paga, IA, agenda, nota" onClick={() => apri('altro')}>⋯</button>
           <button className="pp-bottone pp-bottone-chiaro" aria-label="Rimanda" title="Rimanda" onClick={() => apri('rimanda')}>⏰</button>
           <button className="pp-bottone pp-bottone-chiaro" aria-label="Elimina" title="Elimina" onClick={() => apri('elimina')}>🗑</button>
         </span>
       </div>
       {aperto === 'passi' && <Passi p={p} />}
       {aperto === 'rispondi' && <Rispondi p={p} ctx={ctx} onChiudi={() => setAperto(null)} />}
-      {aperto === 'altro' && <AltreAzioni p={p} ctx={ctx} />}
+      {aperto === 'altro' && <AltreAzioni p={p} ctx={ctx} db={db} onAggiorna={onAggiorna} />}
       {aperto === 'rimanda' && (
         <div className="pp-promemoria-passi pp-form-azioni">
           <span className="pp-riga-meta">Nascondila fino a:</span>
@@ -107,40 +109,89 @@ function Promemoria({ p, ctx, onChiudi, onRimanda }) {
   );
 }
 
-// Chiama, condividi (sistema, WhatsApp, email), chiedi all'IA, calendario, copia. Tutto parte da un tocco.
-function AltreAzioni({ p, ctx }) {
+// Altre azioni: chiama, inoltra ai contatti salvati, paga, IA, condividi, agenda di Poliedron, nota.
+// Tutto parte da un tocco di Luca: niente viene inviato da solo.
+function AltreAzioni({ p, ctx, db, onAggiorna }) {
   const tel = telefoni(p);
   const testo = testoCondivisione(p);
+  const pag = datiPagamento(p);
+  const [contatti, setContatti] = useState(null);
+  const [nuovo, setNuovo] = useState(null);
+  const [agenda, setAgenda] = useState({ data: p.scadenza || dataTra(1), ora: '' });
+  const [nota, setNota] = useState('');
+  useEffect(() => { leggiContatti(db).then(setContatti).catch(() => setContatti([])); }, [db]);
+  const copia = async (t, msg = 'Copiato') => {
+    try { await navigator.clipboard.writeText(t); ctx.mostra(msg); } catch { ctx.mostra('Copia non riuscita'); }
+  };
   const condividi = async () => {
     if (navigator.share) { try { await navigator.share({ title: p.titolo, text: testo }); } catch { /* annullato */ } return; }
-    await copia();
-  };
-  const copia = async () => {
-    try { await navigator.clipboard.writeText(testo); ctx.mostra('Testo copiato'); } catch { ctx.mostra('Copia non riuscita'); }
+    await copia(testo, 'Testo copiato');
   };
   const link = (href, etichetta) => <a className="pp-chip" href={href} target="_blank" rel="noreferrer">{etichetta}</a>;
+  const blocco = (titolo, figli) => <div><span className="pp-riga-meta">{titolo}</span><div className="pp-promemoria-chip">{figli}</div></div>;
+  const aggiungiContatto = () => ctx.esegui(async () => {
+    setContatti(await salvaContatti(db, [...(contatti || []), nuovo])); setNuovo(null); ctx.mostra('Contatto salvato');
+  });
+  const inAgenda = () => ctx.esegui(async () => {
+    try { await salvaImpegno(eventoDaPromemoria(p, agenda)); ctx.mostra(`In agenda il ${dataBreve(agenda.data)}`); }
+    catch (e) { ctx.mostra(/sessione|session|jwt|auth/i.test(e.message) ? 'Collega l\'agenda dello studio da Impostazioni' : e.message); }
+  });
+  const salvaN = () => ctx.esegui(async () => {
+    const note = conNota(p.note, nota); await salvaNota(db, p.id, note); onAggiorna({ note }); setNota(''); ctx.mostra('Nota salvata');
+  });
   return (
     <div className="pp-promemoria-passi pp-promemoria-altro">
-      {tel.length > 0 && (
-        <div><span className="pp-riga-meta">Chiama</span><div className="pp-promemoria-chip">
-          {tel.map((t) => <a key={t.tel} className="pp-chip" href={`tel:${t.tel}`}>📞 {t.mostra}</a>)}
-          {tel.filter((t) => t.cellulare).map((t) => <a key={`w${t.tel}`} className="pp-chip" href={linkWhatsApp(p, t.tel)} target="_blank" rel="noreferrer">💬 WhatsApp {t.mostra}</a>)}
-        </div></div>
+      {tel.length > 0 && blocco('Chiama', <>
+        {tel.map((t) => <a key={t.tel} className="pp-chip" href={`tel:${t.tel}`}>📞 {t.mostra}</a>)}
+        {tel.filter((t) => t.cellulare).map((t) => <a key={`w${t.tel}`} className="pp-chip" href={linkWhatsApp(p, t.tel)} target="_blank" rel="noreferrer">💬 {t.mostra}</a>)}
+      </>)}
+      {blocco('Inoltra a', <>
+        {(contatti || []).map((c) => (
+          <span key={c.nome} className="pp-promemoria-contatto">
+            <b>{c.nome}</b>
+            {c.email && <a className="pp-chip" href={linkEmailA(p, c.email)}>✉</a>}
+            {c.telefono && <a className="pp-chip" href={linkWhatsApp(p, c.telefono)} target="_blank" rel="noreferrer">💬</a>}
+          </span>
+        ))}
+        {!nuovo && <button className="pp-chip" onClick={() => setNuovo({ nome: '', email: '', telefono: '' })}>＋ Contatto</button>}
+      </>)}
+      {nuovo && (
+        <div className="pp-promemoria-modulo">
+          <input placeholder="Nome (es. Avv. Dottore)" value={nuovo.nome} onChange={(e) => setNuovo({ ...nuovo, nome: e.target.value })} />
+          <input placeholder="Email" type="email" value={nuovo.email} onChange={(e) => setNuovo({ ...nuovo, email: e.target.value })} />
+          <input placeholder="Cellulare per WhatsApp" type="tel" value={nuovo.telefono} onChange={(e) => setNuovo({ ...nuovo, telefono: e.target.value })} />
+          <div className="pp-form-azioni"><button className="pp-bottone" disabled={!nuovo.nome || !(nuovo.email || nuovo.telefono)} onClick={aggiungiContatto}>Salva contatto</button><button className="pp-testo-link" onClick={() => setNuovo(null)}>Annulla</button></div>
+        </div>
       )}
-      <div><span className="pp-riga-meta">Chiedi all'IA (le passi il promemoria)</span><div className="pp-promemoria-chip">
-        {link(linkIA(p, 'claude'), '✨ Claude')}
-        {link(linkIA(p, 'chatgpt'), '🤖 ChatGPT')}
-      </div></div>
-      <div><span className="pp-riga-meta">Condividi con qualcuno</span><div className="pp-promemoria-chip">
+      {(pag.iban.length > 0 || p.importo != null) && blocco('Paga', <>
+        {pag.iban.map((iban) => <button key={iban} className="pp-chip" onClick={() => copia(iban, 'IBAN copiato: incollalo nella tua banca')}>🏦 Copia IBAN {iban.slice(0, 4)}…{iban.slice(-4)}</button>)}
+        {p.importo != null && <button className="pp-chip" onClick={() => copia(String(p.importo).replace('.', ','), 'Importo copiato')}>💶 Copia {euro(p.importo)}</button>}
+        {pag.causale && <button className="pp-chip" onClick={() => copia(pag.causale, 'Causale copiata')}>🧾 Copia causale</button>}
+        {!pag.iban.length && <span className="pp-riga-meta">IBAN non trovato: lo trovi nell'email o nel documento.</span>}
+      </>)}
+      {blocco('Chiedi all\'IA (le passi il promemoria)', <>{link(linkIA(p, 'claude'), '✨ Claude')}{link(linkIA(p, 'chatgpt'), '🤖 ChatGPT')}</>)}
+      {blocco('Condividi con qualcuno', <>
         <button className="pp-chip" onClick={condividi}>📤 Condividi…</button>
         {link(linkWhatsApp(p), '💬 WhatsApp')}
         <a className="pp-chip" href={linkEmail(p)}>✉ Email</a>
-        <button className="pp-chip" onClick={copia}>📋 Copia</button>
-      </div></div>
-      <div><span className="pp-riga-meta">Organizza</span><div className="pp-promemoria-chip">
-        {link(linkCalendario(p), `📅 Calendario${p.scadenza ? '' : ' (domani)'}`)}
+        <button className="pp-chip" onClick={() => copia(testo, 'Testo copiato')}>📋 Copia</button>
         {p.documento?.drive_url && link(p.documento.drive_url, p.email ? '📨 Apri l\'email' : '📄 Apri il documento')}
-      </div></div>
+      </>)}
+      <div>
+        <span className="pp-riga-meta">Metti in agenda (Poliedron, solo agenda personale)</span>
+        <div className="pp-promemoria-modulo pp-promemoria-riga">
+          <input type="date" value={agenda.data} onChange={(e) => setAgenda({ ...agenda, data: e.target.value })} />
+          <input type="time" value={agenda.ora} onChange={(e) => setAgenda({ ...agenda, ora: e.target.value })} aria-label="Ora (facoltativa)" />
+          <button className="pp-bottone" disabled={!agenda.data} onClick={inAgenda}>📅 Aggiungi</button>
+        </div>
+      </div>
+      <div>
+        <span className="pp-riga-meta">Nota (cosa hai fatto, chi hai sentito)</span>
+        <div className="pp-promemoria-modulo pp-promemoria-riga">
+          <input placeholder="es. chiamato, mi richiamano lunedì" value={nota} onChange={(e) => setNota(e.target.value)} />
+          <button className="pp-bottone" disabled={!nota.trim()} onClick={salvaN}>📝 Salva</button>
+        </div>
+      </div>
       <p className="pp-riga-meta">Condividendo, il testo del promemoria esce dall'app: scegli tu con chi.</p>
     </div>
   );
