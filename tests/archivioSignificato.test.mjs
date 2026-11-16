@@ -134,3 +134,15 @@ test('migrazione: solo aggiunte, RLS, mai vettori per i clinici, coda solo per l
   assert.match(sqlEsclusi, /and t\.stato <> 'escluso'/);
   assert.match(sqlEsclusi, /revoke all on function documenti_senza_vettore\(integer\) from public, anon, authenticated;\s+grant execute on function documenti_senza_vettore\(integer\) to service_role;/);
 });
+
+test('soglia relativa (dati reali 2026-11-16): vicini quasi quanto il migliore, mai i clinici, stessa firma', () => {
+  const soglia = readFileSync('supabase/archivio/migrations/20261116170000_pol_vita_035_significato_soglia.sql', 'utf8');
+  assert.doesNotMatch(soglia, /\bdrop\s+(table|column|function|view|policy|trigger|extension)\b/i);
+  assert.match(soglia, /create or replace function cerca_significato\(p_vettore text, p_filtri jsonb default '\{\}'::jsonb,\s+p_lim integer default 30, p_distanza real default 0\.6\)/);
+  assert.match(soglia, /perform '\[1,0\]'::extensions\.vector\(2\) <=> '\[0,1\]'::extensions\.vector\(2\)/, 'modulo caricato prima di set hnsw.ef_search');
+  assert.match(soglia, /where d\.fascicolo <> 'clinico_pazienti'/);
+  assert.match(soglia, /migliore as \(select min\(distanza\) as m from ammessi\)/);
+  assert.match(soglia, /where a\.distanza <= least\(p_distanza, migliore\.m \+ 0\.12\)/);
+  assert.match(soglia, /security invoker/);
+  assert.match(soglia, /revoke all on function cerca_significato\(text, jsonb, integer, real\) from public, anon;/);
+});
