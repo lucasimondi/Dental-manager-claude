@@ -14,6 +14,8 @@ const PaginaCarica = differito(() => import('./Carica.jsx'), 'PaginaCarica');
 const PaginaCartella = differito(() => import('./Cartelle.jsx'), 'PaginaCartella');
 const PaginaSuggerimenti = differito(() => import('./Cartelle.jsx'), 'PaginaSuggerimenti');
 const PaginaNuovaCartella = differito(() => import('./Cartelle.jsx'), 'PaginaNuovaCartella');
+const PaginaCartellaMia = differito(() => import('./CartelleMie.jsx'), 'PaginaCartellaMia');
+const PaginaCosa = differito(() => import('./Cose.jsx'), 'PaginaCosa');
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { documentiSenzaCartella } from '../../lib/cartelle.js';
 import { CAMPI_DOC } from '../../lib/archivio.js';
@@ -28,6 +30,8 @@ export const documenti = {
     documento: { titolo: 'Documento', render: (p, { ctx, chiudi }) => <PaginaDocumento id={p.id} ctx={ctx} chiudi={chiudi} /> },
     cartella: { titolo: 'Cartella', render: (p, { ctx, chiudi, sostituisci }) => <PaginaCartella key={p.ente} ente={p.ente} ctx={ctx} chiudi={chiudi} sostituisci={sostituisci} /> },
     'nuova-cartella': { titolo: 'Nuova cartella', render: (p, { ctx, sostituisci }) => <PaginaNuovaCartella ctx={ctx} sostituisci={sostituisci} /> },
+    cosa: { titolo: 'Le mie cose', render: (p, { ctx }) => <PaginaCosa key={p.id} id={p.id} ctx={ctx} /> },
+    'cartella-mia': { titolo: 'Le mie cartelle', render: (p, { ctx }) => <PaginaCartellaMia key={p.id || 'radice'} id={p.id || null} ctx={ctx} /> },
     'suggerimenti-cartelle': { titolo: 'Cartelle da unire', render: (p, { ctx }) => <PaginaSuggerimenti ctx={ctx} /> },
     'senza-cartella': { render: (p, { ctx }) => <PaginaRicerca carica={caricaSenzaCartella} ctx={ctx} /> },
     pratica: { titolo: 'Pratica', render: (p, { ctx }) => <PaginaPratica p={p.p} ctx={ctx} /> },

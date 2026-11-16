@@ -4723,3 +4723,35 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Tests: `npm test` 1694/1694; `npm run build:personal` PASS; `CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium node tests/visual/personal-cartelle.mjs` PASS.
 - Risks: deleting with documents trashes Drive files (30 days) and removes archive rows — only after explicit confirmation, per the PO exception of 2026-10-16. Empty folders not supported (needs schema change).
 - Rollback: revert the commit. Next action: PO review; PR on request.
+## Handoff — ARCHIVIO-CHIEDI passo 1 (2026-11-12) — Claude Code
+- Branch `ccr-4e256bf5-1lspk5` from master b303da5. Objective: archive search that understands, Documenti opening on «Chiedi».
+- Files: supabase/archivio/migrations/20261112{100000_pol_vita_030_ricerca_chiedi,110000_pol_vita_030_ricerca_veloce,120000_pol_vita_030_ricerca_indici}.sql; personal/src/lib/{interpreta.js (new), archivio.js}; personal/src/sezioni/documenti/{Chiedi.jsx (new), Documenti.jsx}; personal/src/personal.css; tests/{archivioChiedi.test.mjs (new), archivioPersonale.test.mjs}; tests/visual/personal-chiedi.{html,fixture.jsx,mjs} (new).
+- Database (applied to archivio-documenti tkcwvjzjkfhcuebrjvsp, additive): extensions unaccent/pg_trgm, table sinonimi_ricerca (RLS proprietario), column documenti.testo_ricerca (backfilled for 7497 rows) + trigger + GIN trigram index, RPC cerca_archivio_v2 (security invoker, execute for authenticated only). Old cerca_documenti/cercaArchivio untouched.
+- Tests: npm test 1696/1696; build:personal PASS; Chromium Pixel 7 personal-chiedi PASS (synthetic).
+- Risks: ranking is rule-based (may need tuning, e.g. fuzzy matches on long words); synonyms are generic seeds; the app needs a new deploy to show Chiedi.
+- Rollback: revert the commits (app goes back to the old view; cercaChiedi already falls back). DB objects are additive and unused after revert; removal would need a PO-approved migration.
+- Next: PO tries Chiedi on the phone; then step 2 Tempo, step 3 Le mie cose; "Mergia" for the PR.
+
+## Handoff — CARTELLE-MIE (2026-11-13) — Claude Code
+- Branch `ccr-4e256bf5-1lspk5` (after ARCHIVIO-CHIEDI passo 1). Objective: user folders/subfolders, mixed selection, send as files or ZIP with optional password.
+- Files: supabase/archivio/migrations/20261113090000_pol_vita_031_cartelle_mie.sql; personal/src/lib/{cartelleMie.js, pacchetto.js} (new); personal/src/sezioni/documenti/{CartelleMie.jsx (new), index.jsx, Chiedi.jsx, Selezione.jsx, Documento.jsx}; personal/src/personal.css; package.json/package-lock.json (@zip.js/zip.js 2.23.0 exact); tests/{cartelleMie.test.mjs (new), archivioPersonale.test.mjs}; tests/visual/personal-cartelle-mie.{html,fixture.jsx,mjs} (new).
+- Database (applied, additive): cartelle_mie, cartelle_mie_documenti, trigger cartelle_mie_controlla_trg, view v_cartelle_mie; RLS proprietario on both tables.
+- Tests: npm test 1707/1707; build:personal PASS; Chromium personal-cartelle-mie and personal-chiedi PASS (synthetic).
+- Risks: AES ZIPs do not open in Windows Explorer / macOS Archive Utility (explained in the sheet; «Compatibile» option); large folders limited to 80 files; files come through the Apps Script preview (same path as Condividi).
+- Rollback: revert the commits; tables stay unused (removal needs a PO-approved migration).
+- Next: PO tries on the phone; then Tempo and Le mie cose; "Mergia" for the PR.
+
+## Handoff — ARCHIVIO-TEMPO e ARCHIVIO-COSE (2026-11-13) — Claude Code
+- Branch `ccr-4e256bf5-1lspk5`. Files: supabase/archivio/migrations/20261113120000_pol_vita_032_tempo.sql; personal/src/lib/vita.js (new); personal/src/sezioni/documenti/{Tempo.jsx, Cose.jsx (new), Documenti.jsx, index.jsx}; personal/src/personal.css; tests/{archivioTempoCose.test.mjs (new), archivioPersonale.test.mjs}; tests/visual/personal-tempo-cose.{html,fixture.jsx,mjs} (new).
+- Database (applied, additive): view v_tempo_mesi (security_invoker).
+- Tests: npm test 1714/1714; build:personal PASS; Chromium personal-tempo-cose, personal-cartelle-mie, personal-chiedi PASS (synthetic).
+- Risks: «Le mie cose» groups existing categories (a home insurance sits in Soldi, not Casa); people cards search by name; Tempo month shows up to 80 documents.
+- Rollback: revert the commits; the view stays unused.
+- Next: PO tries the preview; feedback; "Mergia".
+
+## Handoff — CARTELLE-SCRIVANIA (2026-11-13) — Claude Code
+- Branch `ccr-4e256bf5-1lspk5`, PR #311. Files: supabase/archivio/migrations/20261113150000_pol_vita_033_scrivania.sql; personal/src/lib/cartelleMie.js; personal/src/sezioni/documenti/{CartelleMie.jsx, Trascina.jsx (new), Tempo.jsx, Cose.jsx, Selezione.jsx}; personal/src/personal.css; tests/{cartelleMie.test.mjs, archivioPersonale.test.mjs}; tests/visual/personal-cartelle-mie.mjs.
+- Database (applied, additive): cartelle_mie_scrivania + RPC sposta_documenti_mie, raggruppa_documenti_mie.
+- Tests: npm test 1720/1720; build PASS; Chromium touch-drag test PASS.
+- Risks: long-press timing on real devices; no free reordering of icons (alphabetical folders, newest files first).
+- Rollback: revert the commit; desktop table and RPCs unused.
