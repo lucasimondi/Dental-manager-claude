@@ -1502,7 +1502,7 @@ function rinominaDriveTutto() {
  * ===================================================================*/
 const MIME_EMAIL = 'message/rfc822';
 const EMAIL_MS = 30 * 1000;
-const EMAIL_PER_GIRO = 40;
+const EMAIL_PER_GIRO = 100;
 const EMAIL_MESI_INDIETRO = 12;
 const ETICHETTA_EMAIL = 'Archivio/Email';
 const ETICHETTA_EMAIL_VISTA = 'Archivio/Email vista';
