@@ -62,3 +62,19 @@ test('migrazione: tabella con RLS del proprietario e nessuna cancellazione per Â
   assert.match(sql, /e_proprietario\(\)/);
   assert.match(sql, /stato in \('aperto', 'gestito', 'rimosso'\)/);
 });
+
+// DA-FARE v2: categorie, filtri, rimanda.
+import { categoria, filtri, filtra, riepilogo, dataTra } from '../personal/src/lib/daFare.js';
+test('categoria dedotta dal titolo se manca', () => {
+  assert.equal(categoria({ titolo: 'Nominare un nuovo avvocato' }), 'legale');
+  assert.equal(categoria({ titolo: 'x', categoria: 'fisco' }), 'fisco');
+  assert.equal(categoria({ titolo: 'Intrum 152 â‚¬' }), 'soldi');
+});
+test('rimandate escono dalla lista e hanno il loro filtro', () => {
+  const v = [{ id: 1, titolo: 'a', priorita: 'alta', importo: 10 }, { id: 2, titolo: 'b', priorita: 'media', rimanda_al: '2099-01-01' }];
+  assert.deepEqual(filtra(v, 'tutte', '2026-11-16').map((p) => p.id), [1]);
+  assert.deepEqual(filtra(v, 'rimandate', '2026-11-16').map((p) => p.id), [2]);
+  assert.ok(filtri(v, '2026-11-16').some((f) => f.id === 'rimandate' && f.n === 1));
+  assert.equal(riepilogo(v, '2026-11-16').urgenti, 1);
+  assert.equal(dataTra(7, new Date('2026-11-16T12:00:00Z')), '2026-11-23');
+});

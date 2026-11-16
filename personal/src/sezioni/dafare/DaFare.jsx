@@ -1,56 +1,107 @@
 import { useCallback, useEffect, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { caricaDaFare, cambiaStato, raggruppa, passi, puoRispondere, bozzaPerPromemoria } from '../../lib/daFare.js';
-import { dataBreve, quando, Vuoto, Sezione, tokenSessione } from '../../ui.jsx';
+import { caricaDaFare, cambiaStato, rimanda, dataTra, rimandato, filtri, filtra, riepilogo, categoria, CATEGORIE, PRIORITA, passi, puoRispondere, bozzaPerPromemoria } from '../../lib/daFare.js';
+import { dataBreve, Vuoto, tokenSessione } from '../../ui.jsx';
 
+// DA-FARE v2 (2026-11-16): filtri per urgenza e categoria, riepilogo, Risolta/Elimina con Annulla, Rimanda.
 // DA-FARE (2026-11-16): ogni promemoria è breve (titolo) e spiegato (spiegazione), con quattro tasti:
 // Gestita, Rimuovi (non cancella: lo segna rimosso), Dimmi cosa fare (i passi), Rispondi all'email
 // (bozza in Gmail con il testo già pronto o scritto da Luca; non parte nulla).
 const euro = (n) => (n == null ? '' : Number(n).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }));
 
-export function VistaDaFare({ ctx }) {
+export function VistaDaFare({ ctx, db = archivioDb }) {
   const { esegui, mostra } = ctx;
   const [voci, setVoci] = useState(null);
-  const carica = useCallback(() => esegui(async () => setVoci(await caricaDaFare(archivioDb))), [esegui]);
+  const [filtro, setFiltro] = useState('tutte');
+  const carica = useCallback(() => esegui(async () => setVoci(await caricaDaFare(db))), [esegui, db]);
   useEffect(() => { carica(); }, [carica]);
-  const togli = (id) => setVoci((v) => v.filter((p) => p.id !== id));
   if (!voci) return <Vuoto>Carico…</Vuoto>;
   if (!voci.length) return <Vuoto>Niente da fare: tutto gestito.</Vuoto>;
+  const sost = (id, campi) => setVoci((v) => (campi ? v.map((p) => (p.id === id ? { ...p, ...campi } : p)) : v.filter((p) => p.id !== id)));
+  // Risolta / Elimina: la voce sparisce subito e l'avviso offre Annulla (riporta lo stato ad aperto).
+  const chiudi = (p, stato) => esegui(async () => {
+    await cambiaStato(db, p.id, stato);
+    sost(p.id);
+    mostra(stato === 'gestito' ? 'Segnata come risolta' : 'Eliminata dai promemoria', {
+      etichetta: 'Annulla', fai: async () => { await cambiaStato(db, p.id, 'aperto'); setVoci((v) => [...v, p]); return 'Ripristinata'; },
+    });
+  });
+  const posticipa = (p, giorno) => esegui(async () => {
+    await rimanda(db, p.id, giorno);
+    sost(p.id, { rimanda_al: giorno });
+    mostra(giorno ? `Rimandata al ${dataBreve(giorno)}` : 'Tornata nella lista');
+  });
+  const r = riepilogo(voci);
+  const lista = filtra(voci, filtro);
   return (
     <div className="pp-dafare">
-      <p className="pp-riga-meta">{voci.length} cose da gestire, lette dalle tue email e dai tuoi documenti.</p>
-      {raggruppa(voci).map((g) => (
-        <Sezione key={g.id} titolo={`${g.nome} · ${g.voci.length}`}>
-          {g.voci.map((p) => (
-            <Promemoria key={p.id} p={p} ctx={ctx}
-              onStato={(stato) => esegui(async () => { await cambiaStato(archivioDb, p.id, stato); togli(p.id); mostra(stato === 'gestito' ? 'Segnata come gestita' : 'Rimossa dai promemoria'); })} />
-          ))}
-        </Sezione>
-      ))}
+      <div className="pp-dafare-riepilogo">
+        <div><strong>{r.aperte}</strong><span>da gestire</span></div>
+        <div className="pp-dafare-rosso"><strong>{r.urgenti}</strong><span>urgenti</span></div>
+        <div><strong>{euro(r.importo)}</strong><span>in ballo</span></div>
+      </div>
+      <div className="pp-dafare-filtri" role="tablist">
+        {filtri(voci).map((f) => (
+          <button key={f.id} role="tab" aria-selected={filtro === f.id} className={`pp-chip${filtro === f.id ? ' attiva' : ''}`} onClick={() => setFiltro(f.id)}>
+            {f.nome} <span>{f.n}</span>
+          </button>
+        ))}
+      </div>
+      {lista.length ? lista.map((p) => <Promemoria key={p.id} p={p} ctx={ctx} onChiudi={(stato) => chiudi(p, stato)} onRimanda={(g) => posticipa(p, g)} />)
+        : <Vuoto>Niente in questo filtro.</Vuoto>}
     </div>
   );
 }
 
-function Promemoria({ p, ctx, onStato }) {
-  const [aperto, setAperto] = useState(null); // 'passi' | 'rispondi' | null
-  const [confermaRimuovi, setConfermaRimuovi] = useState(false);
-  const meta = [p.ente, p.scadenza ? `entro ${dataBreve(p.scadenza)} · ${quando(p.scadenza)}` : null, p.importo != null ? euro(p.importo) : null].filter(Boolean).join(' · ');
+const NOME_CAT = Object.fromEntries(CATEGORIE.map((c) => [c.id, c.nome]));
+
+function Promemoria({ p, ctx, onChiudi, onRimanda }) {
+  const [aperto, setAperto] = useState(null); // 'passi' | 'rispondi' | 'rimanda' | 'elimina' | null
+  const [esteso, setEsteso] = useState(false);
+  const apri = (x) => setAperto(aperto === x ? null : x);
+  const scaduta = p.scadenza && p.scadenza < new Date().toISOString().slice(0, 10);
   return (
-    <div className={`pp-pannello pp-promemoria pp-priorita-${p.priorita}`}>
+    <article className={`pp-pannello pp-promemoria pp-priorita-${p.priorita}`}>
+      <div className="pp-promemoria-testa">
+        <span className={`pp-etichetta pp-etichetta-${p.priorita}`}>{PRIORITA[p.priorita] || 'Da fare'}</span>
+        <span className="pp-etichetta">{NOME_CAT[categoria(p)]}</span>
+        {p.importo != null && <span className="pp-promemoria-importo">{euro(p.importo)}</span>}
+      </div>
       <strong className="pp-promemoria-titolo">{p.titolo}</strong>
-      {meta && <p className="pp-riga-meta">{meta}</p>}
-      {p.spiegazione && <p className="pp-testo-lungo">{p.spiegazione}</p>}
-      <div className="pp-form-azioni pp-promemoria-azioni">
-        <button className="pp-bottone" onClick={() => onStato('gestito')}>✓ Gestita</button>
-        <button className="pp-bottone pp-bottone-chiaro" onClick={() => setAperto(aperto === 'passi' ? null : 'passi')}>Dimmi cosa fare</button>
-        {puoRispondere(p) && <button className="pp-bottone pp-bottone-chiaro" onClick={() => setAperto(aperto === 'rispondi' ? null : 'rispondi')}>Rispondi all'email</button>}
-        {!confermaRimuovi
-          ? <button className="pp-bottone pp-bottone-chiaro" onClick={() => setConfermaRimuovi(true)}>Rimuovi</button>
-          : <><button className="pp-bottone pp-bottone-pericolo" onClick={() => onStato('rimosso')}>Sì, rimuovi</button><button className="pp-testo-link" onClick={() => setConfermaRimuovi(false)}>Annulla</button></>}
+      <p className="pp-riga-meta">
+        {[p.ente, p.scadenza ? `${scaduta ? 'scaduta' : 'entro'} ${dataBreve(p.scadenza)}` : null, rimandato(p) ? `rimandata al ${dataBreve(p.rimanda_al)}` : null].filter(Boolean).join(' · ')}
+      </p>
+      {p.spiegazione && (
+        <p className={`pp-testo-lungo pp-promemoria-spiega${esteso ? '' : ' pp-chiuso'}`} onClick={() => setEsteso(!esteso)}>{p.spiegazione}</p>
+      )}
+      <div className="pp-promemoria-azioni">
+        <button className="pp-bottone" onClick={() => onChiudi('gestito')}>✓ Risolta</button>
+        {puoRispondere(p) && <button className={`pp-bottone ${p.bozza_risposta ? '' : 'pp-bottone-chiaro'}`} onClick={() => apri('rispondi')}>✉ Rispondi</button>}
+        <button className="pp-bottone pp-bottone-chiaro" onClick={() => apri('passi')}>☰ Passi</button>
+        <span className="pp-promemoria-icone">
+          <button className="pp-bottone pp-bottone-chiaro" aria-label="Rimanda" title="Rimanda" onClick={() => apri('rimanda')}>⏰</button>
+          <button className="pp-bottone pp-bottone-chiaro" aria-label="Elimina" title="Elimina" onClick={() => apri('elimina')}>🗑</button>
+        </span>
       </div>
       {aperto === 'passi' && <Passi p={p} />}
       {aperto === 'rispondi' && <Rispondi p={p} ctx={ctx} onChiudi={() => setAperto(null)} />}
-    </div>
+      {aperto === 'rimanda' && (
+        <div className="pp-promemoria-passi pp-form-azioni">
+          <span className="pp-riga-meta">Nascondila fino a:</span>
+          <button className="pp-chip" onClick={() => onRimanda(dataTra(1))}>Domani</button>
+          <button className="pp-chip" onClick={() => onRimanda(dataTra(7))}>Tra una settimana</button>
+          <button className="pp-chip" onClick={() => onRimanda(dataTra(30))}>Tra un mese</button>
+          {rimandato(p) && <button className="pp-chip" onClick={() => onRimanda(null)}>Rimetti ora</button>}
+        </div>
+      )}
+      {aperto === 'elimina' && (
+        <div className="pp-promemoria-passi pp-form-azioni">
+          <span className="pp-riga-meta">Non serve più? Esce dai promemoria (l'email e il documento restano).</span>
+          <button className="pp-bottone pp-bottone-pericolo" onClick={() => onChiudi('rimosso')}>Elimina</button>
+          <button className="pp-testo-link" onClick={() => setAperto(null)}>Annulla</button>
+        </div>
+      )}
+    </article>
   );
 }
 
