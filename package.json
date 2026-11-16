@@ -16,6 +16,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
     "@tesseract.js-data/ita": "1.0.0",
+    "@zip.js/zip.js": "2.23.0",
     "jspdf": "^2.5.1",
     "pdf-lib": "1.17.1",
     "pdfjs-dist": "^3.11.174",
