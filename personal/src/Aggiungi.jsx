@@ -17,7 +17,7 @@ import {
 // DOCK-PER-TE passo 3 (PO 2026-11-08): + → Per te con Documento, Spesa, Foto, Nota e Password;
 // Documento, Spesa e Foto aprono le loro tre scelte. Il resto (incassi, agenda) sotto.
 const VOCI = [
-  ['Per te', [
+  ['Personale', [ // PERSONALE-GRAFICA: stesso nome del dock
     ['documento', 'Documento', 'scansiona, foto o PDF → un PDF', IconaScansiona],
     ['spesa', 'Spesa', 'scontrino, foto o a mano', IconaEuro],
     ['foto', 'Foto', "nell'album personale", IconaFoto],

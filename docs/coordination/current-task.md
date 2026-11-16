@@ -1,3 +1,13 @@
+# Current task — PERSONALE-GRAFICA (2026-11-16)
+- OWNER Claude Code; branch `claude/personale-grafica-2` from master 5ee25a5 (PR318 merged).
+- REQUEST PO 2026-11-16: "Continua a lavorare su quello su cui stavi lavorando della grafica" (follow-ups listed after PERSONALE-HOME).
+- SCOPE (presentation only): (1) remaining «Per te» labels → «Personale»: + sheet group (Personal Aggiungi, Personal agenda grid, Studio Agenda) and the notes area name (id `personale` unchanged, display name only). (2) Home Personale: own header with a round Impostazioni button; the app header is hidden on the Home (`classeTestata: 'pp-testata-personale'`), top safe area kept. (3) Dock active item: teal pill (same palette). (4) Da fare: summary as teal gradient card, teal active filter, rounded cards with priority border kept, teal main action.
+- LOCKS: no DB/RLS/migration/financial change.
+- VALIDATION npm test 1777/1777; build:personal PASS; build PASS; Chromium Pixel 7 tests/visual/personal-personale.mjs PASS light and dark (now also Da fare and the header Impostazioni button).
+- ROUND 2 (PO 2026-11-16 20:17: "devi ancora impaginare meglio i tasti (quello dei pagamenti straborda), fare il dock uguale per tutti come in home di Poliedron"): (5) Conti: «Carica bolletta / Inserisci a mano» and «Incasso / Spesa» side by side only when each fits (≥168 px), otherwise stacked, one line each; «Pagato» chip never wraps; spacing between cards and texts; «da pagare» tile teal. (6) DOCK-UGUALE: Personal dock = Studio PoliedronMobileDock (16 px from bottom, 64 px high, min(84vw, 390px), pill, 44×44 icon-only buttons, active = blue wash + small bar, Studio gem raised in the centre); Studio icons copied into `personal/src/IconeDock.jsx` (Personal must not import Studio code); gem from `src/assets/icon-poliedra-gem.png`; the round-1 teal dock pill removed.
+- VALIDATION round 2: npm test 1779/1779; build:personal PASS; build PASS; visual personal-personale PASS; new tests/visual/personal-dock.mjs PASS on Pixel 7 and iPhone SE (whole app with a fake local session: geometry equal to Studio, gem raised, icons only, active state, no horizontal scroll); no element wider than the screen at 360 px in Conti.
+- STATUS PR for preview; task-specific "Mergia" required.
+
 # Current task — PERSONALE-HOME (2026-11-16)
 - OWNER Claude Code; branch `claude/personale-home-conti` from master adea2d7.
 - REQUEST PO 2026-11-16: mockup «Poliedron · Personale» (Home Personale + Conti, gradients, raised icons, Scan in evidence, one dock) → «Così mi piace vai» → «Fammi vedere cosa faresti… e fai» (canvas) → «Porta al codice mergia» (task-specific merge authorization).

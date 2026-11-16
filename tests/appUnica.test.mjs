@@ -42,8 +42,8 @@ test('DOCK-PER-TE: Agenda · Documenti · Poliedron · Studio · Per te, in Stud
   assert.doesNotMatch(dock, /__personal__|agendaDestination|id: 'altro'|id: 'note'/);
   assert.match(dock, /\{ id: 'agenda'[^\n]*\n\s*\{ id: 'archivio'[^\n]*\n\s*\{ id: '__poliedron__'[^\n]*\n\s*\{ id: 'studio', label: 'Studio'[^\n]*\n\s*\{ id: 'perte', label: 'Personale'/);
   const pApp = read('personal/src/App.jsx');
-  assert.match(pApp, /href=\{sectionDestination\('studio', 'studio'\)\}[^\n]*<span>Studio<\/span>/);
-  assert.match(pApp, /<span>Personale<\/span>/);
+  assert.match(pApp, /href=\{sectionDestination\('studio', 'studio'\)\}[^\n]*<span className="pp-dock-nome">Studio<\/span>/);
+  assert.match(pApp, /<span className="pp-dock-nome">Personale<\/span>/);
   assert.doesNotMatch(pApp, /<span>Altro<\/span>/);
   assert.match(read('personal/src/sezioni/index.js'), /export const DOCK = \[agenda, documenti\];/);
   assert.match(read('personal/src/pro.css'), /\.pp-schede \{\n  grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)/);

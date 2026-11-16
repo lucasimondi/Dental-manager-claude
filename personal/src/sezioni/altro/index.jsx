@@ -17,4 +17,6 @@ export const PER_TE = [
   ['didattica', 'Biblioteca', 'biblioteca', 'pulsante'], ['password', 'Password', 'password', 'pulsante'], ['oggi', 'Oggi', 'oggi', 'pulsante'],
 ];
 
-export const altro = { id: 'altro', nome: 'Personale', Icona: IconaPerTe, Vista: VistaPersonale, pagine: {}, senzaPiu: true, senzaTitolo: true };
+export const altro = { id: 'altro', nome: 'Personale', Icona: IconaPerTe, Vista: VistaPersonale, pagine: {}, senzaPiu: true, senzaTitolo: true,
+  // PERSONALE-GRAFICA: la Home ha la sua testata (titolo e Impostazioni): quella dell'app si nasconde.
+  classeTestata: 'pp-testata-personale' };

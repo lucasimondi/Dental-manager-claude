@@ -15,7 +15,13 @@
 
 /* ---------- Home Personale ---------- */
 .pps { display: flex; flex-direction: column; gap: 14px; padding-bottom: 24px; }
-.pps-testa { display: flex; flex-direction: column; gap: 2px; }
+.pps-testa { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.pps-testa-testi { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pps-profilo { width: 44px; height: 44px; flex-shrink: 0; border: 1px solid var(--pp-linea); border-radius: 50%; display: grid; place-items: center; background: var(--pp-superficie); color: var(--pps-acqua-testo); box-shadow: var(--pps-ombra); cursor: pointer; }
+.pps-profilo svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+/* PERSONALE-GRAFICA: la testata dell'app sparisce sulla Home (ne ha una sua); l'area sicura resta. */
+.pp-testata.pp-testata-personale { display: none; }
+.pp-vista-altro .pps { padding-top: calc(12px + env(safe-area-inset-top)); }
 .pps-marchio { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--pps-acqua-testo); }
 .pps-marchio img { border-radius: 4px; }
 .pps-testa h1 { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
@@ -109,3 +115,86 @@
   .pp-prossima { background: #3a2a0c; color: #fde7c2; }
   .pp-prossima.scaduta { background: #3a1714; color: #fecdca; }
 }
+
+/* ---------- PERSONALE-GRAFICA: dock e Da fare con lo stesso stile ---------- */
+
+.pp-vista-dafare .pp-dafare-riepilogo { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; padding: 16px 8px; border-radius: 20px; color: #fff;
+  background: linear-gradient(135deg, var(--pps-acqua-chiaro) 0%, var(--pps-acqua) 100%); box-shadow: 0 14px 28px -14px rgba(8, 79, 72, .7); }
+.pp-vista-dafare .pp-dafare-riepilogo > div { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0 6px; background: none; border: 0; box-shadow: none; color: #fff; text-align: center; min-width: 0; }
+.pp-vista-dafare .pp-dafare-riepilogo > div + div { border-left: 1px solid rgba(255, 255, 255, .25); }
+.pp-vista-dafare .pp-dafare-riepilogo strong { font-size: 22px; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pp-vista-dafare .pp-dafare-riepilogo span { font-size: 12px; font-weight: 600; color: #fff; opacity: .92; }
+.pp-vista-dafare .pp-dafare-riepilogo .pp-dafare-rosso strong { color: #fff; }
+.pp-vista-dafare .pp-dafare-riepilogo .pp-dafare-rosso strong::before { content: ''; display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 50%; background: #ffb4a8; vertical-align: middle; }
+.pp-vista-dafare .pp-chip { border: 1px solid var(--pp-linea); box-shadow: var(--pps-ombra); }
+.pp-vista-dafare .pp-chip.attiva { background: linear-gradient(145deg, #2bc4a8, var(--pps-acqua)); border-color: transparent; color: #fff; box-shadow: inset 0 2px 0 rgba(255, 255, 255, .35); }
+.pp-vista-dafare .pp-promemoria { border-radius: 18px; border: 1px solid var(--pp-linea); border-left: 5px solid #94a3b8; box-shadow: var(--pps-ombra); }
+.pp-vista-dafare .pp-promemoria.pp-priorita-alta { border-left-color: #dc2626; }
+.pp-vista-dafare .pp-promemoria.pp-priorita-media { border-left-color: #d97706; }
+.pp-vista-dafare .pp-promemoria.pp-priorita-bassa { border-left-color: #64748b; }
+.pp-vista-dafare .pp-promemoria-azioni .pp-bottone:not(.pp-bottone-chiaro) { background: linear-gradient(145deg, #2bc4a8, var(--pps-acqua)); color: #fff; box-shadow: var(--pps-rilievo); border-radius: 12px; }
+
+/* ---------- PERSONALE-GRAFICA 2: tasti impaginati (mai fuori dal bordo) ---------- */
+/* Due tasti affiancati solo se ci stanno su una riga (≥168 px l'uno), altrimenti uno sotto l'altro. */
+.pp-vista-conti .pp-azioni-due { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 168px), 1fr)); gap: 10px; margin: 14px 0 10px; }
+.pp-vista-conti .pp-azioni-due .pp-bottone { width: 100%; min-width: 0; min-height: 50px; padding: 0 14px; gap: 8px; font-size: 15px; line-height: 1.2; border-radius: 14px; white-space: nowrap; box-sizing: border-box; }
+.pp-vista-conti .pp-azioni-due .pp-bottone svg { flex-shrink: 0; }
+.pp-vista-conti .pp-azioni .pp-bottone:not(.pp-bottone-chiaro):not(.pp-bottone-rosso) { background: linear-gradient(145deg, #2bc4a8, var(--pps-acqua)); color: #fff; box-shadow: var(--pps-rilievo); }
+.pp-vista-conti .pp-azioni .pp-bottone-chiaro { background: var(--pps-tenue); color: var(--pps-acqua-testo); box-shadow: none; }
+/* Respiro tra riquadri e testi che seguono. */
+.pp-vista-conti .pp-invito { display: block; width: 100%; margin-bottom: 12px; border-radius: 18px; box-sizing: border-box; }
+.pp-vista-conti .pp-prossima { margin-bottom: 12px; }
+.pp-vista-conti .pp-spiegazione { margin: 4px 2px 14px; line-height: 1.45; }
+.pp-vista-conti .pp-riassunto { gap: 10px; }
+.pp-vista-conti .pp-tessera { border-radius: 18px; }
+.pp-vista-conti .pp-tessera-forte { background: linear-gradient(135deg, var(--pps-acqua-chiaro) 0%, var(--pps-acqua) 100%); color: #fff; box-shadow: 0 12px 24px -14px rgba(8, 79, 72, .7); }
+.pp-vista-conti .pp-tessera-forte * { color: #fff; }
+/* Tasto «Pagato» nelle righe: largo quanto basta, mai tagliato. */
+.pp-vista-conti .pp-scadenza-destra { flex-shrink: 0; align-items: flex-end; }
+.pp-vista-conti .pp-chip-azione { white-space: nowrap; min-height: 36px; padding: 0 14px; display: inline-flex; align-items: center; color: var(--pps-acqua-testo); background: var(--pps-tenue); }
+
+/* ---------- DOCK-UGUALE (PO 2026-11-16): lo stesso dock della Home di Poliedron (Studio) ----------
+   Stesse misure di PoliedronMobileDock (poliedronMobileDock.js): 16 px dal fondo, alto 64, largo
+   84% fino a 390 px, pillola, tasti 44×44 con sole icone, attivo = velo blu + trattino; la gemma di
+   Poliedron sta al centro, alzata di ~20 px come l'orb di Studio. */
+.pp-schede.pp-dock {
+  left: 50%; right: auto; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 30;
+  width: min(84vw, 390px, calc(100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - 24px)); max-width: none;
+  height: 64px; margin: 0; padding: 4px 8px; box-sizing: border-box; overflow: visible;
+  display: grid; grid-template-columns: repeat(5, minmax(44px, 1fr)); align-items: center; gap: 0;
+  border: 1px solid rgba(15, 23, 42, .14); border-radius: 999px;
+  background: rgba(255, 255, 255, .90); box-shadow: 0 10px 30px -12px rgba(15, 23, 42, .28), 0 2px 6px rgba(15, 23, 42, .06);
+  backdrop-filter: blur(18px) saturate(145%); -webkit-backdrop-filter: blur(18px) saturate(145%);
+  transform: translateX(-50%);
+}
+.pp-schede.pp-dock .pp-scheda {
+  position: relative; width: 44px; height: 44px; min-width: 0; min-height: 0; margin: 0 auto; padding: 0;
+  display: grid; place-items: center; gap: 0; border: 1px solid transparent; border-radius: 15px;
+  color: #5f6b7a; background: transparent; opacity: 1; font-size: 0; text-decoration: none;
+  transition: color .15s ease, background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.pp-schede.pp-dock .pp-scheda:active { transform: scale(.94); }
+.pp-schede.pp-dock .pp-scheda.attiva, .pp-schede.pp-dock .pp-scheda.sotto {
+  color: #185fa5; border-color: color-mix(in srgb, #185fa5 34%, transparent); background: color-mix(in srgb, #185fa5 18%, transparent);
+}
+.pp-schede.pp-dock .pp-scheda.attiva::after, .pp-schede.pp-dock .pp-scheda.sotto::after {
+  content: ''; position: absolute; left: 50%; bottom: 4px; width: 14px; height: 2px; border-radius: 999px; background: currentColor; transform: translateX(-50%);
+}
+.pp-schede.pp-dock .pp-scheda:focus-visible { outline: 2px solid #185fa5; outline-offset: 2px; }
+.pp-dock-nome { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* Centro: la gemma, senza superficie dietro, come l'orb di Studio. */
+.pp-schede.pp-dock .pp-scheda-poliedron, .pp-schede.pp-dock .pp-scheda-poliedron.attiva {
+  width: clamp(58px, 17vw, 72px); height: clamp(58px, 17vw, 72px); border: 0; background: transparent; transform: translateY(-20px);
+}
+.pp-schede.pp-dock .pp-scheda-poliedron::after { display: none; }
+.pp-schede.pp-dock .pp-scheda-poliedron:active { transform: translateY(-20px) scale(.92); }
+.pp-dock-gemma { width: 100%; height: 100%; object-fit: contain; pointer-events: none;
+  filter: drop-shadow(0 5px 7px rgba(15, 23, 42, .30)) drop-shadow(0 1px 2px rgba(15, 23, 42, .22)); }
+.pp-schede.pp-dock .pp-scheda-poliedron.attiva .pp-dock-gemma { filter: drop-shadow(0 5px 8px rgba(15, 23, 42, .34)) drop-shadow(0 0 8px rgba(25, 154, 174, .42)); }
+@media (prefers-color-scheme: dark) {
+  .pp-schede.pp-dock { background: rgba(27, 35, 51, .90); border-color: rgba(255, 255, 255, .14); }
+  .pp-schede.pp-dock .pp-scheda { color: #93a0b4; }
+  .pp-schede.pp-dock .pp-scheda.attiva, .pp-schede.pp-dock .pp-scheda.sotto { color: #3b82f6; border-color: color-mix(in srgb, #3b82f6 34%, transparent); background: color-mix(in srgb, #3b82f6 18%, transparent); }
+}
+@media (min-width: 720px) { .pp-schede.pp-dock { width: 390px; } }
+@media (prefers-reduced-motion: reduce) { .pp-schede.pp-dock .pp-scheda { transition: none; } }

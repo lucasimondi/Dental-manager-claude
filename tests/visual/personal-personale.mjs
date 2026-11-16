@@ -7,7 +7,7 @@ const out = 'tests/visual/results-personal-personale'; await mkdir(out, { recurs
 const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', '5181', '--strictPort'], { stdio: 'ignore' });
 const oggi = new Date(); const tra = (g) => { const x = new Date(oggi); x.setDate(x.getDate() + g); return x.toISOString().slice(0, 10); };
 const mese = tra(0).slice(0, 7);
-const PROMEMORIA = [{ id: 'a1', stato: 'aperto', priorita: 'alta', titolo: 'Sollecito prova' }, { id: 'a2', stato: 'aperto', priorita: 'media', titolo: 'Rispondere prova' }, { id: 'a3', stato: 'aperto', priorita: 'bassa', titolo: 'Rinnovo prova' }];
+const PROMEMORIA = [{ id: 'a1', stato: 'aperto', priorita: 'alta', titolo: 'Sollecito prova', spiegazione: 'Spiegazione prova', importo: 120 }, { id: 'a2', stato: 'aperto', priorita: 'media', titolo: 'Rispondere prova', spiegazione: 'Spiegazione prova' }, { id: 'a3', stato: 'aperto', priorita: 'bassa', titolo: 'Rinnovo prova', spiegazione: 'Spiegazione prova' }];
 const DOCS = [
   { id: 'd1', titolo: 'Ricevuta acquisto', fascicolo: 'conti', mime_type: 'application/pdf', creato_il: `${tra(0)}T09:00:00Z`, ente: 'Negozio Prova' },
   { id: 'd2', titolo: 'Referto paziente', fascicolo: 'clinico_pazienti', mime_type: 'application/pdf', creato_il: `${tra(0)}T08:00:00Z` },
@@ -48,6 +48,7 @@ try {
     assert.equal(await page.getByText('Referto paziente').count(), 0, 'niente documenti clinici');
     for (const n of ['Identità', 'Foto', 'Note', 'Pratiche', 'Diario', 'Biblioteca', 'Password', 'Oggi']) assert.ok(await page.locator('.pps-tessera', { hasText: n }).isVisible(), n);
     assert.match(await page.locator('.pps-scan').getAttribute('href'), /scan\/$/);
+    assert.ok(await page.getByRole('button', { name: 'Impostazioni', exact: true }).isVisible());
     await page.screenshot({ path: `${out}/home-${tema}.png`, fullPage: true });
     await page.getByRole('button', { name: 'Aggiungi' }).click();
     await page.getByRole('searchbox', { name: 'Cerca nelle tue cose' }).fill('bibli');
@@ -67,6 +68,13 @@ try {
     assert.equal(t.aperti[0].id, 's1');
     await page.locator('.pp-segmenti button', { hasText: 'Da pagare' }).first().click();
     await page.getByText('Condominio prova').waitFor();
+    await page.getByRole('button', { name: 'Torna' }).click();
+    await page.locator('.pps-dafare').click();
+    await page.getByText('Sollecito prova').waitFor();
+    await page.screenshot({ path: `${out}/dafare-${tema}.png`, fullPage: true });
+    await page.getByRole('button', { name: 'Torna' }).click();
+    await page.getByRole('button', { name: 'Impostazioni', exact: true }).click();
+    assert.equal((await page.evaluate(() => window.personaleTest.aperti.at(-1).tipo)), 'impostazioni');
     const larga = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
     assert.equal(larga, false, 'nessuno scorrimento orizzontale');
     assert.deepEqual(scritture, [], 'solo letture');

@@ -4803,3 +4803,11 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Rollback: revert the squash commit.
 - Next: check the production deploy on the phone.
 
+## Handoff — PERSONALE-GRAFICA (2026-11-16) — Claude Code
+- Branch `claude/personale-grafica-2` from master 5ee25a5. Objective: finish the Personale visual pass (labels, Home header, dock, Da fare).
+- Files: `personal/src/{Aggiungi.jsx,personale.css}`, `personal/src/sezioni/altro/{index.jsx,Personale.jsx}`, `personal/src/sezioni/agenda/AgendaGriglia.jsx`, `src/components/Agenda.jsx`, `shared/note/note.js`, tests `personaleHome.test.mjs`, visual `personal-personale.{fixture.jsx,mjs}`, coordination docs.
+- Database: none. Tests: npm test 1777/1777; builds PASS; visual PASS light/dark.
+- Risks: low; the dock active colour changes in every Personal section (teal instead of blue).
+- Rollback: revert the squash commit. Next: PO review on the preview → "Mergia".
+- Round 2 (same branch): Conti buttons layout, DOCK-UGUALE. Files added: `personal/src/IconeDock.jsx`, `tests/visual/personal-dock.{html,fixture.jsx,mjs}`; changed `personal/src/App.jsx` (dock markup), `personal/src/personale.css`, tests `appUnica`, `personaleHome`. Tests 1779/1779, builds PASS, visual PASS. Risk: the dock labels are now hidden (aria-label kept), as in Studio.
+
