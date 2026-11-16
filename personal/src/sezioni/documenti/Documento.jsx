@@ -6,6 +6,7 @@ import { euro } from '../../lib/coreArchivio.js';
 import { colore, dataBreve, titoloDoc, tokenSessione, Vuoto, Sezione, Gruppo, ConfermaElimina, BottoneCondividi, BottoniInvio } from '../../ui.jsx';
 import { DocumentoIntero } from './DocumentoIntero.jsx';
 import { CodiciDocumento } from './CodiciDocumento.jsx';
+import { NelleMieCartelle } from './CartelleMie.jsx';
 import { avvisoDocumento, dataScadenza, salvaValidita, storicoPersonale, archiviaPersonale } from '../../lib/portafoglio.js';
 import { IconaPratiche, IconaFreccia, IconaApri, IconaEmail, IconaStella, IconaCestino, IconaChat } from '../../Icone.jsx';
 
@@ -53,6 +54,7 @@ export function PaginaDocumento({ id, ctx, chiudi }) {
           <IconaStella size={18} piena={portafoglio} /> {portafoglio ? 'Nei Personali' : 'Tieni a portata di mano'}
         </button>
       </div>
+      <NelleMieCartelle doc={doc} ctx={ctx} />
       {doc.fascicolo !== 'clinico_pazienti' && (
         <button className="pp-chiedi-doc" onClick={() => ctx.apriChat({ id: doc.id, titolo: titoloDoc(doc) })}>
           <IconaChat size={18} /> Chiedi a Poliedron su questo documento

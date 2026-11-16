@@ -220,3 +220,37 @@ test('script, bozza: solo bozza in Gmail (nulla inviato), mai su email cliniche,
   assert.ok(doPost.indexOf("req.azione === 'cartella'") > doPost.indexOf('PROPRIETARIO || !utente.email_confirmed_at'));
   assert.ok(doPost.indexOf("req.azione === 'bozza'") > doPost.indexOf('PROPRIETARIO || !utente.email_confirmed_at'));
 });
+
+// CARTELLE-ELENCO-GESTIONE — nuova cartella dai documenti scelti; eliminazione di più cartelle.
+import { nomeNuovaCartella, creaCartella, eliminaCartelle } from '../personal/src/lib/cartelle.js';
+
+test('nuova cartella: nome pulito, almeno un documento, mai i clinici', async () => {
+  assert.equal(nomeNuovaCartella('  Condominio   via Roma '), 'Condominio via Roma');
+  assert.throws(() => nomeNuovaCartella('   '), /nome/);
+  const db = clientFinto([{ id: 'a' }, { id: 'b' }]);
+  await assert.rejects(creaCartella(db, 'Enel', []), /almeno un documento/);
+  const r = await creaCartella(db, ' Enel ', ['a', 'b', 'a']);
+  assert.deepEqual(r, { ente: 'Enel', n: 2 });
+  const q = db.chiamate.at(-1);
+  assert.equal(q.tabella, 'documenti');
+  assert.deepEqual(plain(passi(q, 'update')), [[{ ente: 'Enel' }]]);
+  assert.deepEqual(plain(passi(q, 'in')), [['id', ['a', 'b']]]);
+  assert.deepEqual(plain(passi(q, 'neq')), [['fascicolo', 'clinico_pazienti']]);
+});
+
+test('elimina più cartelle: solo le cartelle, oppure i documenti con Drive; una cartella incompleta si ferma', async () => {
+  const log = [];
+  const deps = {
+    sciogli: async (e) => log.push(['sciogli', e]),
+    documentiDi: async (e) => (e === 'Kerdos' ? [{ id: 1 }, { id: 2 }] : [{ id: 3 }]),
+    eliminaConDrive: async (docs) => log.push(['drive', docs.map((d) => d.id)]),
+  };
+  const cs = [{ ente: 'Kerdos', n: 2 }, { ente: 'Enel', n: 5 }];
+  const solo = await eliminaCartelle(cs, false, deps);
+  assert.deepEqual(solo, { fatte: ['Kerdos', 'Enel'], errori: [] });
+  assert.deepEqual(log.splice(0), [['sciogli', 'Kerdos'], ['sciogli', 'Enel']]);
+  const tutto = await eliminaCartelle(cs, true, deps);
+  assert.deepEqual(tutto.fatte, ['Kerdos']);
+  assert.equal(tutto.errori[0].ente, 'Enel');
+  assert.deepEqual(log, [['drive', [1, 2]]]);
+});

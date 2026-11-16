@@ -4713,3 +4713,82 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Lettura documenti 2023-oggi: legale, fiscale, conti, immobili, assicurazioni, utenze, famiglia_scuola, studio_fornitori, personale, formazione, acquisti DONE (titoli/riassunti in documenti, drive_rinomina=true). «altro»: routine senders and court/legal groups titled from metadata. REMAINING: 440 docs da_analizzare (query: da_analizzare and rilevanza<>'bassa' and fascicolo<>'clinico_pazienti' and date>=2023), mostly self-sent emails and Drive files; to check first: "SEGNALAZIONE MANCATO PAGAMENTO", "fatture ll Medical ancora non saldate", "Sollecito Butterfly Italia", "Revoca mandato". Then documents before 2023.
 - Tests: tests/daFare.test.mjs + archivioPersonale + personalSezioni 23/23; build:personal PASS. Agenda insert not tested against the real studio DB.
 - Next: (1) PR/merge + deploy so Luca sees Da fare on the phone (PR only if Luca asks — he said yes to proceeding in a new session); (2) continue reading the 440; (3) Luca liked the extra actions; nothing else pending.
+## Handoff — PREVENTIVO-PIANI-RICETTA merged (2026-11-13) — Claude Code
+- PR312 squash-merged as 0dfa1e9 after all checks green; production dpl_EUzTpRWwMDkAE15LhWGu2uXuLqVG READY.
+
+## Handoff — DENTI-E-CURE-SEMPLICE (2026-11-13) — Claude Code
+- Branch `claude/patient-quote-workflow-gvzblu` from master 0dfa1e9. Files: src/components/PatientDentalOverview.{jsx,css}, tests/preventivoDaPrestazioni.test.mjs, tests/visual/{preventivo-prestazioni,preventivo-piani}.mjs, coordination docs.
+- Database: none. Tests 1692/1692; build PASS; Pixel 7 visual PASS. Rollback: revert the commit.
+- Note: the old remote head (already squash-merged) is merged in with `-s ours` instead of a force-push; the tree equals the task commit.
+
+
+## Handoff — CARTELLE-ELENCO-GESTIONE (2026-11-16) — Claude Code
+- Task CARTELLE-ELENCO-GESTIONE; previous agent Claude Code; branch `ccr-10c1ba61-ggtxnm` from master 00dbd28.
+- Objective: Icons/List view like Windows, delete whole folders, create new folders (Personal › Documenti › Cartelle).
+- Files: `personal/src/lib/cartelle.js` (nomeNuovaCartella, creaCartella, eliminaCartelle), `personal/src/sezioni/documenti/Cartelle.jsx` (CommutaVista, ConfermaCartelle, selection bar, PaginaNuovaCartella), `personal/src/sezioni/documenti/index.jsx` (page `nuova-cartella`), `personal/src/personal.css`, `tests/personalCartelle.test.mjs`, `tests/visual/personal-cartelle.{html,fixture.jsx,mjs}`, `.gitignore`.
+- DB: none (updates `documenti.ente` as the existing "Metti in una cartella"/"Togli la cartella" actions already do). Deployment: Personal front-end only.
+- Tests: `npm test` 1694/1694; `npm run build:personal` PASS; `CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium node tests/visual/personal-cartelle.mjs` PASS.
+- Risks: deleting with documents trashes Drive files (30 days) and removes archive rows — only after explicit confirmation, per the PO exception of 2026-10-16. Empty folders not supported (needs schema change).
+- Rollback: revert the commit. Next action: PO review; PR on request.
+## Handoff — ARCHIVIO-CHIEDI passo 1 (2026-11-12) — Claude Code
+- Branch `ccr-4e256bf5-1lspk5` from master b303da5. Objective: archive search that understands, Documenti opening on «Chiedi».
+- Files: supabase/archivio/migrations/20261112{100000_pol_vita_030_ricerca_chiedi,110000_pol_vita_030_ricerca_veloce,120000_pol_vita_030_ricerca_indici}.sql; personal/src/lib/{interpreta.js (new), archivio.js}; personal/src/sezioni/documenti/{Chiedi.jsx (new), Documenti.jsx}; personal/src/personal.css; tests/{archivioChiedi.test.mjs (new), archivioPersonale.test.mjs}; tests/visual/personal-chiedi.{html,fixture.jsx,mjs} (new).
+- Database (applied to archivio-documenti tkcwvjzjkfhcuebrjvsp, additive): extensions unaccent/pg_trgm, table sinonimi_ricerca (RLS proprietario), column documenti.testo_ricerca (backfilled for 7497 rows) + trigger + GIN trigram index, RPC cerca_archivio_v2 (security invoker, execute for authenticated only). Old cerca_documenti/cercaArchivio untouched.
+- Tests: npm test 1696/1696; build:personal PASS; Chromium Pixel 7 personal-chiedi PASS (synthetic).
+- Risks: ranking is rule-based (may need tuning, e.g. fuzzy matches on long words); synonyms are generic seeds; the app needs a new deploy to show Chiedi.
+- Rollback: revert the commits (app goes back to the old view; cercaChiedi already falls back). DB objects are additive and unused after revert; removal would need a PO-approved migration.
+- Next: PO tries Chiedi on the phone; then step 2 Tempo, step 3 Le mie cose; "Mergia" for the PR.
+
+## Handoff — CARTELLE-MIE (2026-11-13) — Claude Code
+- Branch `ccr-4e256bf5-1lspk5` (after ARCHIVIO-CHIEDI passo 1). Objective: user folders/subfolders, mixed selection, send as files or ZIP with optional password.
+- Files: supabase/archivio/migrations/20261113090000_pol_vita_031_cartelle_mie.sql; personal/src/lib/{cartelleMie.js, pacchetto.js} (new); personal/src/sezioni/documenti/{CartelleMie.jsx (new), index.jsx, Chiedi.jsx, Selezione.jsx, Documento.jsx}; personal/src/personal.css; package.json/package-lock.json (@zip.js/zip.js 2.23.0 exact); tests/{cartelleMie.test.mjs (new), archivioPersonale.test.mjs}; tests/visual/personal-cartelle-mie.{html,fixture.jsx,mjs} (new).
+- Database (applied, additive): cartelle_mie, cartelle_mie_documenti, trigger cartelle_mie_controlla_trg, view v_cartelle_mie; RLS proprietario on both tables.
+- Tests: npm test 1707/1707; build:personal PASS; Chromium personal-cartelle-mie and personal-chiedi PASS (synthetic).
+- Risks: AES ZIPs do not open in Windows Explorer / macOS Archive Utility (explained in the sheet; «Compatibile» option); large folders limited to 80 files; files come through the Apps Script preview (same path as Condividi).
+- Rollback: revert the commits; tables stay unused (removal needs a PO-approved migration).
+- Next: PO tries on the phone; then Tempo and Le mie cose; "Mergia" for the PR.
+
+## Handoff — ARCHIVIO-TEMPO e ARCHIVIO-COSE (2026-11-13) — Claude Code
+- Branch `ccr-4e256bf5-1lspk5`. Files: supabase/archivio/migrations/20261113120000_pol_vita_032_tempo.sql; personal/src/lib/vita.js (new); personal/src/sezioni/documenti/{Tempo.jsx, Cose.jsx (new), Documenti.jsx, index.jsx}; personal/src/personal.css; tests/{archivioTempoCose.test.mjs (new), archivioPersonale.test.mjs}; tests/visual/personal-tempo-cose.{html,fixture.jsx,mjs} (new).
+- Database (applied, additive): view v_tempo_mesi (security_invoker).
+- Tests: npm test 1714/1714; build:personal PASS; Chromium personal-tempo-cose, personal-cartelle-mie, personal-chiedi PASS (synthetic).
+- Risks: «Le mie cose» groups existing categories (a home insurance sits in Soldi, not Casa); people cards search by name; Tempo month shows up to 80 documents.
+- Rollback: revert the commits; the view stays unused.
+- Next: PO tries the preview; feedback; "Mergia".
+
+## Handoff — CARTELLE-SCRIVANIA (2026-11-13) — Claude Code
+- Branch `ccr-4e256bf5-1lspk5`, PR #311. Files: supabase/archivio/migrations/20261113150000_pol_vita_033_scrivania.sql; personal/src/lib/cartelleMie.js; personal/src/sezioni/documenti/{CartelleMie.jsx, Trascina.jsx (new), Tempo.jsx, Cose.jsx, Selezione.jsx}; personal/src/personal.css; tests/{cartelleMie.test.mjs, archivioPersonale.test.mjs}; tests/visual/personal-cartelle-mie.mjs.
+- Database (applied, additive): cartelle_mie_scrivania + RPC sposta_documenti_mie, raggruppa_documenti_mie.
+- Tests: npm test 1720/1720; build PASS; Chromium touch-drag test PASS.
+- Risks: long-press timing on real devices; no free reordering of icons (alphabetical folders, newest files first).
+- Rollback: revert the commit; desktop table and RPCs unused.
+
+## Handoff — RICERCA-TESTO-COMPLETO (POL-VITA-034, 2026-11-16) — Claude Code
+- Task RICERCA-TESTO-COMPLETO; previous agent Claude Code; branch `ccr-b7b42716-8dtp7v` from master e729b61.
+- Objective: search as good as Gemini — chat on the new search engine, then full text of every document searchable.
+- Files: `poliedron/archivio/Code.gs` (cercaArchivio_, testoDocumento_, passaggi_, tool testo_documento, copiaInTesto_/testoFoglio_ split from convertiInTesto_, estraiTesti_, testoDelDocumento_, corpoEmail_, leggiTestiOra, calls in elabora), `poliedron/archivio/index.html`, `personal/src/lib/archivio.js` (cercaDocumenti), `supabase/archivio/migrations/20261116120000_pol_vita_034_testo_completo.sql` (new), `poliedron/archivio/CLAUDE.md`, `poliedron/archivio/LEGGIMI.md`, tests `archivioTestoCompleto.test.mjs` (new), `archivioPersonale.test.mjs`, `poliedronPersonal.test.mjs`, `personalChat.test.mjs`.
+- Database (applied to archivio-documenti tkcwvjzjkfhcuebrjvsp, additive): documenti_testo + triggers documenti_testo_prepara_trg, documenti_clinico_senza_testo_trg, RPC documenti_senza_testo, view v_testo_avanzamento, cerca_archivio_v2 replaced (same results while documenti_testo is empty). Old cerca_documenti untouched.
+- Tests: npm test 1739/1739; build:personal PASS; production checks in a rolled-back transaction (see current-task).
+- Deployment: Apps Script needs `clasp push -f` from master after merge (credentials not available in this session); Personal front-end deploy with the merge; dashboard `index.html` with the merge.
+- Risks: Drive OCR quality on poor scans; Drive quota/runtime (stops and resumes); temporary "tmp-conversione" copies go to the Drive Cestino (one per document, emptied after 30 days); full backlog (~7.200 non-clinical documents) takes several days; ranking of full-text matches may need tuning.
+- Rollback: revert the commit and `clasp push`; documenti_testo stays unused (removal needs a PO-approved migration); restoring the POL-VITA-030 `cerca_archivio_v2` = re-run 20261112120000_pol_vita_030_ricerca_indici.sql.
+- Next: PO review → "Mergia" → `clasp push -f` from master → watch `v_testo_avanzamento`; optional step 3 (semantic search with embeddings) needs PO decision.
+
+## Handoff — RICERCA-SIGNIFICATO (POL-VITA-035, 2026-11-16) — Claude Code
+- Task RICERCA-SIGNIFICATO; previous agent Claude Code; branch `ccr-b7b42716-8dtp7v` (after RICERCA-TESTO-COMPLETO).
+- Objective: semantic search like Gemini, then merge (PO: "Facciamo ricerca per significato anche, e poi mergia").
+- Files: `poliedron/archivio/Code.gs` (vettoriGemini_, normalizza_, calcolaVettori_, cercaPerSignificato_, fondiRisultati_, calcolaVettoriOra, doPost `significato`, chat fusion, elabora calls), `personal/src/lib/archivio.js` (cercaPerSignificato), `personal/src/sezioni/documenti/Chiedi.jsx`, migrations `20261116150000_pol_vita_035_significato.sql` and `20261116151000_pol_vita_035_significato_esclusi.sql` (new), `poliedron/archivio/{CLAUDE.md,LEGGIMI.md}`, tests `archivioSignificato.test.mjs` (new), `archivioChiedi.test.mjs`, `archivioTestoCompleto.test.mjs`, `archivioPersonale.test.mjs`.
+- Database (applied, additive): see current-task.
+- Tests: npm test 1746/1746; build:personal PASS; Chromium personal-chiedi PASS; rolled-back production checks with synthetic vectors.
+- Deployment: Personal front-end with the merge; Apps Script `clasp push -f` from master (credentials not available here) — until then the database objects stay empty and searches behave as before.
+- Risks: Gemini free-tier quotas (pause 3 h, words search keeps working); distance threshold 0.6 to tune on real data; vectors only after the full text is read (several days for the backlog); free-tier Gemini terms allow Google to use inputs (same as the PO's 2026-10-18 choice).
+- Rollback: revert and `clasp push`; tables/RPCs stay unused (removal needs a PO-approved migration).
+- Next: `clasp push -f` from master; watch `v_testo_avanzamento` and `v_significato_avanzamento`; tune `p_distanza` after real use.
+
+## Handoff — RICERCA-SIGNIFICATO-SOGLIA e pubblicazione script (2026-11-16) — Claude Code
+- Branch `ccr-b7b42716-8dtp7v` from master bc633f4. Files: `supabase/archivio/migrations/20261116170000_pol_vita_035_significato_soglia.sql` (new, applied), `tests/archivioSignificato.test.mjs`, `tests/archivioPersonale.test.mjs`, coordination docs.
+- Apps Script published by Claude with clasp (PO login): online = three-way merge of master bc633f4 and `ccr-a4df4c71-pys1hm` (other session); web app @20. Master does NOT yet contain the other session's script changes: merging `ccr-a4df4c71-pys1hm` must keep both blocks in `elabora` (rinominaDrive_/importaEmail_ then estraiTesti_/calcolaVettori_).
+- Note: documents created by importaEmail_ have no Drive file, so they get no full text and no vector yet (queue requires drive_file_id) — possible follow-up.
+- Tests: npm test (see PR); DB checks on real vectors (30 → 11 results, 9/9 same ente, 0 clinical).
+- Rollback: re-apply `20261116150000_pol_vita_035_significato.sql`'s `cerca_significato` (fixed threshold); script: `clasp push` of the previous online version (`ccr-a4df4c71-pys1hm` Code.gs) and redeploy @19 content.
+

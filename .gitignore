@@ -14,3 +14,4 @@ shared/__agendaBaseline/
 android/**/.gradle/
 android/**/build/
 android/**/local.properties
+tests/visual/results-personal-cartelle/

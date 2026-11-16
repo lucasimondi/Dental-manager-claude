@@ -17,7 +17,12 @@ const esito = ({ data, error }) => {
 const oggiIso = () => new Date().toISOString().slice(0, 10);
 const traGiorni = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
 
+// POL-VITA-034: stessa ricerca di «Chiedi» (cerca_archivio_v2: sinonimi, errori di battitura,
+// pertinenza, testo completo dei file); se non risponde, la ricerca di prima.
 export async function cercaDocumenti(db, testo, fascicolo = null, limite = 50) {
+  const p_filtri = { poco_utili: true, ...(fascicolo ? { fascicoli: [fascicolo] } : {}) };
+  const r = await db.rpc('cerca_archivio_v2', { p_testo: testo || '', p_filtri, p_lim: limite });
+  if (!r.error) return r.data || [];
   return esito(await db.rpc('cerca_documenti', { q: testo || '', fasc: fascicolo, lim: limite }));
 }
 
@@ -310,6 +315,25 @@ export async function chiediPoliedronCompleto({ token, domanda, documentoId, sto
   return { risposta: r.risposta, proposte: Array.isArray(r.proposte) ? r.proposte : [] };
 }
 
+// POL-VITA-035: documenti vicini per significato alla domanda (lo script calcola il vettore della
+// domanda con Gemini e cerca tra i vettori dei documenti; mai i clinici). Senza risposta: nessuno.
+// `esclusi`: id già mostrati dalla ricerca per parole.
+export async function cercaPerSignificato({ token, testo, filtri = {}, esclusi = [] }, fetchImpl = fetch) {
+  const domanda = String(testo || '').trim();
+  if (!token || domanda.length < 3) return [];
+  const { fascicoli, da, a } = filtri || {};
+  const res = await fetchImpl(URL_CARICAMENTO, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ token, azione: 'significato', testo: domanda.slice(0, 500), filtri: { ...(fascicoli ? { fascicoli } : {}), ...(da ? { da } : {}), ...(a ? { a } : {}) } }),
+  });
+  let r;
+  try { r = await res.json(); } catch { return []; }
+  if (!r.ok || !Array.isArray(r.documenti)) return [];
+  const gia = new Set(esclusi);
+  return r.documenti.filter((d) => d && d.fascicolo !== 'clinico_pazienti' && !gia.has(d.id));
+}
+
 // Testo della risposta → parti: testo semplice e link ai documenti [[doc:ID|titolo]].
 export function partiRisposta(testo) {
   const parti = [];
@@ -356,6 +380,17 @@ export async function cercaArchivio(db, { testo = '', fascicolo, ente, anno, tip
   if (!anchePocoUtili && !fascicolo && !ente) q = q.or('rilevanza.is.null,rilevanza.neq.bassa');
   q = ordine === 'titolo' ? q.order('titolo', { ascending: true }) : q.order('email_data', { ascending: false, nullsFirst: false });
   return esito(await q.limit(limite));
+}
+
+// POL-VITA-030 ARCHIVIO-CHIEDI: ricerca con sinonimi, accenti, errori di battitura e ordine per
+// pertinenza (RPC cerca_archivio_v2, RLS del proprietario). `filtri` arriva da interpretaDomanda.
+// Se la funzione non c'è o risponde con un errore, torna alla ricerca di prima.
+export async function cercaChiedi(db, { testo = '', filtri = {}, anchePocoUtili = false, limite = 200 } = {}) {
+  const p_filtri = { ...filtri, poco_utili: anchePocoUtili };
+  const r = await db.rpc('cerca_archivio_v2', { p_testo: testo, p_filtri, p_lim: limite }).select(CAMPI_DOC);
+  if (!r.error) return r.data || [];
+  const anno = filtri.da && filtri.a && filtri.da.slice(0, 4) === filtri.a.slice(0, 4) ? filtri.da.slice(0, 4) : undefined;
+  return cercaArchivio(db, { testo, anno, anchePocoUtili, limite });
 }
 
 export async function enti(db) {
