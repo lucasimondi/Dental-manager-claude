@@ -4778,3 +4778,10 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Rollback: revert and `clasp push`; tables/RPCs stay unused (removal needs a PO-approved migration).
 - Next: `clasp push -f` from master; watch `v_testo_avanzamento` and `v_significato_avanzamento`; tune `p_distanza` after real use.
 
+## Handoff — RICERCA-SIGNIFICATO-SOGLIA e pubblicazione script (2026-11-16) — Claude Code
+- Branch `ccr-b7b42716-8dtp7v` from master bc633f4. Files: `supabase/archivio/migrations/20261116170000_pol_vita_035_significato_soglia.sql` (new, applied), `tests/archivioSignificato.test.mjs`, `tests/archivioPersonale.test.mjs`, coordination docs.
+- Apps Script published by Claude with clasp (PO login): online = three-way merge of master bc633f4 and `ccr-a4df4c71-pys1hm` (other session); web app @20. Master does NOT yet contain the other session's script changes: merging `ccr-a4df4c71-pys1hm` must keep both blocks in `elabora` (rinominaDrive_/importaEmail_ then estraiTesti_/calcolaVettori_).
+- Note: documents created by importaEmail_ have no Drive file, so they get no full text and no vector yet (queue requires drive_file_id) — possible follow-up.
+- Tests: npm test (see PR); DB checks on real vectors (30 → 11 results, 9/9 same ente, 0 clinical).
+- Rollback: re-apply `20261116150000_pol_vita_035_significato.sql`'s `cerca_significato` (fixed threshold); script: `clasp push` of the previous online version (`ccr-a4df4c71-pys1hm` Code.gs) and redeploy @19 content.
+

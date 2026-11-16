@@ -1,3 +1,11 @@
+# Current task — RICERCA-SIGNIFICATO-SOGLIA e pubblicazione script (2026-11-16)
+- OWNER Claude Code; branch `ccr-b7b42716-8dtp7v` restarted from master bc633f4 (PR315 merged, "mergia").
+- REQUEST PO 2026-11-16: "Mandami il clasp" → "Fallo tu mi mandi il link e io ti autorizzo" (clasp login authorized by the PO; credentials only in this ephemeral container).
+- PUBLICATION: the online script was NOT master: it equalled branch `ccr-a4df4c71-pys1hm` (other session, unmerged: Gemini multi-model, Drive renaming, important emails without attachments, Da fare). Published a three-way merge (base 0dfa1e9, master bc633f4, that branch; one conflict in `elabora`, both kept: rinomina + email, then testo + vettori). Trial merge of master + that branch: npm test 1763/1763. `clasp push -f` verified by pulling back; web app deployment AKfycbzQf7… updated @19 → @20 (same URL). ATTENTION: when `ccr-a4df4c71-pys1hm` is merged, resolve the `Code.gs` conflict the same way (keep both blocks), or the online script and master diverge.
+- FIRST REAL RUN (10:53 UTC): 34 texts read (pdf 23, immagine 4, google_doc 3, foglio, word, xml, email), 1 escluso, 30 vectors; 0 clinical with text or vector.
+- FIX (POL-VITA-035 third part, applied): real Gemini distances are all < 0.32 (same ente ~0.02, median 0.26), so the fixed 0.6 threshold returned everything (30/30). `cerca_significato` keeps documents within best + 0.12 (same-ente docs within 0.105, unrelated from 0.187): test doc 30 → 11 results, 9/9 same ente. Migration loads pgvector first (`set hnsw.ef_search` otherwise "permission denied").
+- STATUS: commit + PR; merge needs a task-specific "Mergia" (DB already applied; the repo only records it).
+
 # Current task — RICERCA-SIGNIFICATO (POL-VITA-035, 2026-11-16)
 - OWNER Claude Code; branch `ccr-b7b42716-8dtp7v` (on top of RICERCA-TESTO-COMPLETO, same PR).
 - REQUEST/AUTHORIZATION PO 2026-11-16: "Facciamo ricerca per significato anche, e poi mergia" (task-specific merge authorization for this PR).
