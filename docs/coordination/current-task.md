@@ -1,3 +1,11 @@
+# Current task — CARTELLE-ELENCO-GESTIONE (2026-11-16)
+- OWNER Claude Code; branch `ccr-10c1ba61-ggtxnm` from master 00dbd28.
+- REQUEST PO 2026-11-16: "Dammi la possibilità di vedere anche elenco oltre che cartelle come le finestre di win, dammi anche la possibilità di eliminare cartelle intere e crearne di nuove".
+- SCOPE (Personal › Documenti › Cartelle): (1) «▦ Icone / ☰ Elenco» switch with text labels at every level, also the six archive areas (choice remembered on the device). (2) «Seleziona» in the folder list: tap folders (or «Tutte»), «Elimina» → confirmation: by default only the folders are removed (documents stay in «Senza cartella»); ticking «Elimina anche i N documenti» deletes them after Drive has moved the files to the Cestino (same rule and completeness check as swipe delete). (3) «＋ Nuova cartella»: name + documents to put in it (default «Senza cartella», or search); an existing name adds them to that folder; opens the new folder.
+- LOCKS: no DB/schema/RLS change. A folder is the `ente` of its documents (v_cartelle), so a folder is born with at least one document; empty folders would need a view/schema change (PO decision). Clinical documents excluded everywhere (`fascicolo <> clinico_pazienti`).
+- VALIDATION 1694/1694 Node tests (2 new); build:personal PASS; Pixel 7 tests/visual/personal-cartelle.mjs PASS (synthetic data).
+- STATUS pushed; PR on request; task-specific "Mergia" required.
+
 # Current task — DENTI-E-CURE-SEMPLICE (2026-11-13)
 - OWNER Claude Code; branch `claude/patient-quote-workflow-gvzblu` from master 0dfa1e9 (PR312 merged).
 - REQUEST PO 2026-11-13: "La visualizzazione grafica ancora non va bene, falla più semplice ed intuitiva".
