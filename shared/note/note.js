@@ -6,7 +6,7 @@ export const AREE_NOTE = Object.freeze([
   { id: 'famiglia', nome: 'Famiglia', colore: '#E5484D' },
   { id: 'casa', nome: 'Casa', colore: '#D9822B' },
   { id: 'idee', nome: 'Idee', colore: '#7C5CFF' },
-  { id: 'personale', nome: 'Per te', colore: '#12A594' },
+  { id: 'personale', nome: 'Personale', colore: '#12A594' },
 ]);
 export const areaNota = (id) => AREE_NOTE.find((a) => a.id === id) || AREE_NOTE[AREE_NOTE.length - 1];
 const CAMPI = 'id,testo,area,fissata,paziente_id,created_at,updated_at';

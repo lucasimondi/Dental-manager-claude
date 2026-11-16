@@ -53,9 +53,14 @@ export function VistaPersonale({ ctx }) {
   return (
     <div className="pps">
       <header className="pps-testa">
-        <span className="pps-marchio"><img src="/poliedron-v2-192.png" alt="" width="16" height="16" />Poliedron</span>
-        <h1>Personale</h1>
-        <p>{saluto()}</p>
+        <span className="pps-testa-testi">
+          <span className="pps-marchio"><img src="/poliedron-v2-192.png" alt="" width="16" height="16" />Poliedron</span>
+          <h1>Personale</h1>
+          <p>{saluto()}</p>
+        </span>
+        <button type="button" className="pps-profilo" onClick={() => apri({ tipo: 'impostazioni' })} aria-label="Impostazioni">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d={ICONE_ALTRO.impostazioni} /></svg>
+        </button>
       </header>
 
       <div className="pps-cerca-riga">

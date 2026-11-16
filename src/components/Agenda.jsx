@@ -1071,7 +1071,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       ricerca?.nuovo && { id: 'spesa', nome: 'Spesa', colore: '#A8323E', fai: () => ricerca.nuovo('spese') },
       ricerca?.acquisisci && { id: 'documento', nome: 'Documento', colore: '#5D6979', fai: ricerca.acquisisci },
     ].filter(Boolean) },
-    { nome: 'Per te', voci: [
+    { nome: 'Personale', voci: [
       // DOCK-PER-TE passo 3: Documento, Spesa e Foto personali si aprono in Personal sulle loro scelte.
       ...[['documento', 'Documento', '#5D6979'], ['spesa', 'Spesa', '#A8323E'], ['foto', 'Foto', '#C23D78']].map(([id, nome, colore]) => ({ id: `perte-${id}`, icona: id, nome, colore, fai: () => globalThis.location.assign(aggiungiPerTe(id)) })),
       ricerca?.scriviNota && { id: 'nota', nome: 'Nota', colore: '#C98A10', fai: ricerca.scriviNota },

@@ -69,7 +69,7 @@ export function GrigliaPoliedra({ view, setView, giorno, setGiorno, mese, setMes
       { id: 'appuntamento', nome: 'Appuntamento', colore: '#2D6BC4', fai: () => ctx.apri({ tipo: 'evento', cosa: 'appuntamento', evento: { data_inizio: giorno } }) },
       { id: 'impegno', nome: 'Impegno', colore: '#E3772A', fai: () => ctx.apri({ tipo: 'evento', evento: { data_inizio: giorno } }) },
     ] },
-    { nome: 'Per te', voci: [
+    { nome: 'Personale', voci: [
       // DOCK-PER-TE passo 3: Documento, Spesa e Foto aprono le loro tre scelte.
       { id: 'documento', nome: 'Documento', colore: '#5D6979', fai: () => ctx.aggiungi('documento') },
       { id: 'spesa', nome: 'Spesa', colore: '#A8323E', fai: () => ctx.aggiungi('spesa') },

@@ -47,3 +47,15 @@ test('stile: personale.css caricato dopo pro.css; Conti restilizzato solo nella 
   assert.match(css, /prefers-color-scheme: dark/);
   assert.doesNotMatch(css.replace(/\.pp-vista-conti [^{]+\{[^}]*\}/g, ''), /\.pp-saldo|\.pp-segmenti|\.pp-movimento/);
 });
+
+test('PERSONALE-GRAFICA: niente più «Per te»; Home con testata propria; dock e Da fare coordinati', () => {
+  for (const f of ['personal/src/Aggiungi.jsx', 'personal/src/sezioni/agenda/AgendaGriglia.jsx', 'src/components/Agenda.jsx', 'shared/note/note.js']) assert.doesNotMatch(read(f), /'Per te'/, f);
+  assert.match(read('shared/note/note.js'), /\{ id: 'personale', nome: 'Personale'/);
+  assert.match(read('personal/src/sezioni/altro/index.jsx'), /classeTestata: 'pp-testata-personale'/);
+  assert.match(read('personal/src/sezioni/altro/Personale.jsx'), /className="pps-profilo" onClick=\{\(\) => apri\(\{ tipo: 'impostazioni' \}\)\} aria-label="Impostazioni"/);
+  const css = read('personal/src/personale.css');
+  assert.match(css, /\.pp-testata\.pp-testata-personale \{ display: none; \}/);
+  assert.match(css, /env\(safe-area-inset-top\)/);
+  assert.match(css, /\.pp-schede \.pp-scheda\.attiva/);
+  assert.match(css, /\.pp-vista-dafare \.pp-dafare-riepilogo \{/);
+});

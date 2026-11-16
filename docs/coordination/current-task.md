@@ -1,3 +1,11 @@
+# Current task — PERSONALE-GRAFICA (2026-11-16)
+- OWNER Claude Code; branch `claude/personale-grafica-2` from master 5ee25a5 (PR318 merged).
+- REQUEST PO 2026-11-16: "Continua a lavorare su quello su cui stavi lavorando della grafica" (follow-ups listed after PERSONALE-HOME).
+- SCOPE (presentation only): (1) remaining «Per te» labels → «Personale»: + sheet group (Personal Aggiungi, Personal agenda grid, Studio Agenda) and the notes area name (id `personale` unchanged, display name only). (2) Home Personale: own header with a round Impostazioni button; the app header is hidden on the Home (`classeTestata: 'pp-testata-personale'`), top safe area kept. (3) Dock active item: teal pill (same palette). (4) Da fare: summary as teal gradient card, teal active filter, rounded cards with priority border kept, teal main action.
+- LOCKS: no DB/RLS/migration/financial change.
+- VALIDATION npm test 1777/1777; build:personal PASS; build PASS; Chromium Pixel 7 tests/visual/personal-personale.mjs PASS light and dark (now also Da fare and the header Impostazioni button).
+- STATUS PR for preview; task-specific "Mergia" required.
+
 # Current task — PERSONALE-HOME (2026-11-16)
 - OWNER Claude Code; branch `claude/personale-home-conti` from master adea2d7.
 - REQUEST PO 2026-11-16: mockup «Poliedron · Personale» (Home Personale + Conti, gradients, raised icons, Scan in evidence, one dock) → «Così mi piace vai» → «Fammi vedere cosa faresti… e fai» (canvas) → «Porta al codice mergia» (task-specific merge authorization).

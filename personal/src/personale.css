@@ -15,7 +15,13 @@
 
 /* ---------- Home Personale ---------- */
 .pps { display: flex; flex-direction: column; gap: 14px; padding-bottom: 24px; }
-.pps-testa { display: flex; flex-direction: column; gap: 2px; }
+.pps-testa { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.pps-testa-testi { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pps-profilo { width: 44px; height: 44px; flex-shrink: 0; border: 1px solid var(--pp-linea); border-radius: 50%; display: grid; place-items: center; background: var(--pp-superficie); color: var(--pps-acqua-testo); box-shadow: var(--pps-ombra); cursor: pointer; }
+.pps-profilo svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+/* PERSONALE-GRAFICA: la testata dell'app sparisce sulla Home (ne ha una sua); l'area sicura resta. */
+.pp-testata.pp-testata-personale { display: none; }
+.pp-vista-altro .pps { padding-top: calc(12px + env(safe-area-inset-top)); }
 .pps-marchio { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--pps-acqua-testo); }
 .pps-marchio img { border-radius: 4px; }
 .pps-testa h1 { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
@@ -109,3 +115,23 @@
   .pp-prossima { background: #3a2a0c; color: #fde7c2; }
   .pp-prossima.scaduta { background: #3a1714; color: #fecdca; }
 }
+
+/* ---------- PERSONALE-GRAFICA: dock e Da fare con lo stesso stile ---------- */
+.pp-schede .pp-scheda.attiva, .pp-schede .pp-scheda.sotto { background: var(--pps-tenue); color: var(--pps-acqua-testo); }
+.pp-schede .pp-scheda-poliedron.attiva { background: var(--pps-tenue); color: var(--pps-acqua-testo); }
+
+.pp-vista-dafare .pp-dafare-riepilogo { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; padding: 16px 8px; border-radius: 20px; color: #fff;
+  background: linear-gradient(135deg, var(--pps-acqua-chiaro) 0%, var(--pps-acqua) 100%); box-shadow: 0 14px 28px -14px rgba(8, 79, 72, .7); }
+.pp-vista-dafare .pp-dafare-riepilogo > div { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0 6px; background: none; border: 0; box-shadow: none; color: #fff; text-align: center; min-width: 0; }
+.pp-vista-dafare .pp-dafare-riepilogo > div + div { border-left: 1px solid rgba(255, 255, 255, .25); }
+.pp-vista-dafare .pp-dafare-riepilogo strong { font-size: 22px; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pp-vista-dafare .pp-dafare-riepilogo span { font-size: 12px; font-weight: 600; color: #fff; opacity: .92; }
+.pp-vista-dafare .pp-dafare-riepilogo .pp-dafare-rosso strong { color: #fff; }
+.pp-vista-dafare .pp-dafare-riepilogo .pp-dafare-rosso strong::before { content: ''; display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 50%; background: #ffb4a8; vertical-align: middle; }
+.pp-vista-dafare .pp-chip { border: 1px solid var(--pp-linea); box-shadow: var(--pps-ombra); }
+.pp-vista-dafare .pp-chip.attiva { background: linear-gradient(145deg, #2bc4a8, var(--pps-acqua)); border-color: transparent; color: #fff; box-shadow: inset 0 2px 0 rgba(255, 255, 255, .35); }
+.pp-vista-dafare .pp-promemoria { border-radius: 18px; border: 1px solid var(--pp-linea); border-left: 5px solid #94a3b8; box-shadow: var(--pps-ombra); }
+.pp-vista-dafare .pp-promemoria.pp-priorita-alta { border-left-color: #dc2626; }
+.pp-vista-dafare .pp-promemoria.pp-priorita-media { border-left-color: #d97706; }
+.pp-vista-dafare .pp-promemoria.pp-priorita-bassa { border-left-color: #64748b; }
+.pp-vista-dafare .pp-promemoria-azioni .pp-bottone:not(.pp-bottone-chiaro) { background: linear-gradient(145deg, #2bc4a8, var(--pps-acqua)); color: #fff; box-shadow: var(--pps-rilievo); border-radius: 12px; }
