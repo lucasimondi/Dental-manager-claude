@@ -4755,3 +4755,26 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Tests: npm test 1720/1720; build PASS; Chromium touch-drag test PASS.
 - Risks: long-press timing on real devices; no free reordering of icons (alphabetical folders, newest files first).
 - Rollback: revert the commit; desktop table and RPCs unused.
+
+## Handoff — RICERCA-TESTO-COMPLETO (POL-VITA-034, 2026-11-16) — Claude Code
+- Task RICERCA-TESTO-COMPLETO; previous agent Claude Code; branch `ccr-b7b42716-8dtp7v` from master e729b61.
+- Objective: search as good as Gemini — chat on the new search engine, then full text of every document searchable.
+- Files: `poliedron/archivio/Code.gs` (cercaArchivio_, testoDocumento_, passaggi_, tool testo_documento, copiaInTesto_/testoFoglio_ split from convertiInTesto_, estraiTesti_, testoDelDocumento_, corpoEmail_, leggiTestiOra, calls in elabora), `poliedron/archivio/index.html`, `personal/src/lib/archivio.js` (cercaDocumenti), `supabase/archivio/migrations/20261116120000_pol_vita_034_testo_completo.sql` (new), `poliedron/archivio/CLAUDE.md`, `poliedron/archivio/LEGGIMI.md`, tests `archivioTestoCompleto.test.mjs` (new), `archivioPersonale.test.mjs`, `poliedronPersonal.test.mjs`, `personalChat.test.mjs`.
+- Database (applied to archivio-documenti tkcwvjzjkfhcuebrjvsp, additive): documenti_testo + triggers documenti_testo_prepara_trg, documenti_clinico_senza_testo_trg, RPC documenti_senza_testo, view v_testo_avanzamento, cerca_archivio_v2 replaced (same results while documenti_testo is empty). Old cerca_documenti untouched.
+- Tests: npm test 1739/1739; build:personal PASS; production checks in a rolled-back transaction (see current-task).
+- Deployment: Apps Script needs `clasp push -f` from master after merge (credentials not available in this session); Personal front-end deploy with the merge; dashboard `index.html` with the merge.
+- Risks: Drive OCR quality on poor scans; Drive quota/runtime (stops and resumes); temporary "tmp-conversione" copies go to the Drive Cestino (one per document, emptied after 30 days); full backlog (~7.200 non-clinical documents) takes several days; ranking of full-text matches may need tuning.
+- Rollback: revert the commit and `clasp push`; documenti_testo stays unused (removal needs a PO-approved migration); restoring the POL-VITA-030 `cerca_archivio_v2` = re-run 20261112120000_pol_vita_030_ricerca_indici.sql.
+- Next: PO review → "Mergia" → `clasp push -f` from master → watch `v_testo_avanzamento`; optional step 3 (semantic search with embeddings) needs PO decision.
+
+## Handoff — RICERCA-SIGNIFICATO (POL-VITA-035, 2026-11-16) — Claude Code
+- Task RICERCA-SIGNIFICATO; previous agent Claude Code; branch `ccr-b7b42716-8dtp7v` (after RICERCA-TESTO-COMPLETO).
+- Objective: semantic search like Gemini, then merge (PO: "Facciamo ricerca per significato anche, e poi mergia").
+- Files: `poliedron/archivio/Code.gs` (vettoriGemini_, normalizza_, calcolaVettori_, cercaPerSignificato_, fondiRisultati_, calcolaVettoriOra, doPost `significato`, chat fusion, elabora calls), `personal/src/lib/archivio.js` (cercaPerSignificato), `personal/src/sezioni/documenti/Chiedi.jsx`, migrations `20261116150000_pol_vita_035_significato.sql` and `20261116151000_pol_vita_035_significato_esclusi.sql` (new), `poliedron/archivio/{CLAUDE.md,LEGGIMI.md}`, tests `archivioSignificato.test.mjs` (new), `archivioChiedi.test.mjs`, `archivioTestoCompleto.test.mjs`, `archivioPersonale.test.mjs`.
+- Database (applied, additive): see current-task.
+- Tests: npm test 1746/1746; build:personal PASS; Chromium personal-chiedi PASS; rolled-back production checks with synthetic vectors.
+- Deployment: Personal front-end with the merge; Apps Script `clasp push -f` from master (credentials not available here) — until then the database objects stay empty and searches behave as before.
+- Risks: Gemini free-tier quotas (pause 3 h, words search keeps working); distance threshold 0.6 to tune on real data; vectors only after the full text is read (several days for the backlog); free-tier Gemini terms allow Google to use inputs (same as the PO's 2026-10-18 choice).
+- Rollback: revert and `clasp push`; tables/RPCs stay unused (removal needs a PO-approved migration).
+- Next: `clasp push -f` from master; watch `v_testo_avanzamento` and `v_significato_avanzamento`; tune `p_distanza` after real use.
+

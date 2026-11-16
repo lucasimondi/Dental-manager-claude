@@ -72,7 +72,7 @@ function clientFinto(risposte) {
 
 test('rispondi: "Quanto devo a Edison?" somma le scadenze aperte dei documenti trovati', async () => {
   const db = clientFinto({
-    cerca_documenti: () => [{ id: 'd1' }, { id: 'd2' }],
+    cerca_archivio_v2: () => [{ id: 'd1' }, { id: 'd2' }],
     scadenze: () => [
       { id: 's1', data: '2026-11-15', importo: 120.5, completata: false },
       { id: 's2', data: '2026-12-01', importo: 80, completata: false },
@@ -81,18 +81,29 @@ test('rispondi: "Quanto devo a Edison?" somma le scadenze aperte dei documenti t
   const r = await rispondi(db, 'Quanto devo a Edison?');
   assert.equal(r.tipo, 'debito');
   assert.equal(r.totale, 200.5);
-  assert.deepEqual(db.chiamate[0], { rpc: 'cerca_documenti', args: { q: 'edison', fasc: null, lim: 200 } });
+  assert.deepEqual(db.chiamate[0], { rpc: 'cerca_archivio_v2', args: { p_testo: 'edison', p_filtri: { poco_utili: true }, p_lim: 200 } });
   assert.deepEqual(db.chiamate[1].filtri.find((f) => f[0] === 'in'), ['in', 'documento_id', ['d1', 'd2']]);
 });
 
 test('rispondi: fascicolo e ricerca libera passano dalla ricerca del database', async () => {
-  const db = clientFinto({ cerca_documenti: () => [] });
+  const db = clientFinto({ cerca_archivio_v2: () => [] });
   await rispondi(db, 'bollette');
   await rispondi(db, 'diffida condominio');
   assert.deepEqual(db.chiamate.map((c) => c.args), [
-    { q: '', fasc: 'utenze', lim: 50 },
-    { q: 'diffida condominio', fasc: null, lim: 50 },
+    { p_testo: '', p_filtri: { poco_utili: true, fascicoli: ['utenze'] }, p_lim: 50 },
+    { p_testo: 'diffida condominio', p_filtri: { poco_utili: true }, p_lim: 50 },
   ]);
+});
+
+test('ricerca: se la ricerca nuova non risponde torna a quella di prima', async () => {
+  const chiamate = [];
+  const db = { rpc: async (nome, args) => {
+    chiamate.push(nome);
+    return nome === 'cerca_archivio_v2' ? { data: null, error: { message: 'function not found' } } : { data: [{ id: 'd9' }], error: null };
+  } };
+  const r = await rispondi(db, 'diffida condominio');
+  assert.deepEqual(r.documenti, [{ id: 'd9' }]);
+  assert.deepEqual(chiamate, ['cerca_archivio_v2', 'cerca_documenti']);
 });
 
 test('azioni: pagata e cancellazione definitiva', async () => {

@@ -57,7 +57,7 @@ test('script: i documenti clinici dei pazienti non arrivano mai al modello', () 
 
 test('script: strumenti di sola lettura, nessun invio, chiave solo nelle Proprietà script', () => {
   assert.doesNotMatch(chat, /method: '(patch|delete)'|GmailApp|MailApp|sendEmail|setTrashed/);
-  assert.doesNotMatch(chat, /method: 'post'(?!, body: \{ q:)/); // solo l'RPC di ricerca
+  assert.doesNotMatch(chat, /method: 'post'(?!, body: \{ (q|p_testo):)/); // solo gli RPC di ricerca (cerca_archivio_v2, cerca_documenti)
   assert.match(chat, /prepara solo il testo come bozza/);
   assert.match(codeGs, /'x-api-key': p\.ANTHROPIC_API_KEY/);
   assert.doesNotMatch(codeGs, /sk-ant-/);

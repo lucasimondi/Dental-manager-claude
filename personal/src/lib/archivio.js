@@ -17,7 +17,12 @@ const esito = ({ data, error }) => {
 const oggiIso = () => new Date().toISOString().slice(0, 10);
 const traGiorni = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
 
+// POL-VITA-034: stessa ricerca di «Chiedi» (cerca_archivio_v2: sinonimi, errori di battitura,
+// pertinenza, testo completo dei file); se non risponde, la ricerca di prima.
 export async function cercaDocumenti(db, testo, fascicolo = null, limite = 50) {
+  const p_filtri = { poco_utili: true, ...(fascicolo ? { fascicoli: [fascicolo] } : {}) };
+  const r = await db.rpc('cerca_archivio_v2', { p_testo: testo || '', p_filtri, p_lim: limite });
+  if (!r.error) return r.data || [];
   return esito(await db.rpc('cerca_documenti', { q: testo || '', fasc: fascicolo, lim: limite }));
 }
 
@@ -308,6 +313,25 @@ export async function chiediPoliedronCompleto({ token, domanda, documentoId, sto
   try { r = await res.json(); } catch { throw new Error('Assistente non raggiungibile.'); }
   if (!r.ok) throw new Error(r.errore || 'Assistente non disponibile.');
   return { risposta: r.risposta, proposte: Array.isArray(r.proposte) ? r.proposte : [] };
+}
+
+// POL-VITA-035: documenti vicini per significato alla domanda (lo script calcola il vettore della
+// domanda con Gemini e cerca tra i vettori dei documenti; mai i clinici). Senza risposta: nessuno.
+// `esclusi`: id già mostrati dalla ricerca per parole.
+export async function cercaPerSignificato({ token, testo, filtri = {}, esclusi = [] }, fetchImpl = fetch) {
+  const domanda = String(testo || '').trim();
+  if (!token || domanda.length < 3) return [];
+  const { fascicoli, da, a } = filtri || {};
+  const res = await fetchImpl(URL_CARICAMENTO, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ token, azione: 'significato', testo: domanda.slice(0, 500), filtri: { ...(fascicoli ? { fascicoli } : {}), ...(da ? { da } : {}), ...(a ? { a } : {}) } }),
+  });
+  let r;
+  try { r = await res.json(); } catch { return []; }
+  if (!r.ok || !Array.isArray(r.documenti)) return [];
+  const gia = new Set(esclusi);
+  return r.documenti.filter((d) => d && d.fascicolo !== 'clinico_pazienti' && !gia.has(d.id));
 }
 
 // Testo della risposta → parti: testo semplice e link ai documenti [[doc:ID|titolo]].
