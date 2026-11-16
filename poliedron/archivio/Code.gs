@@ -2021,15 +2021,41 @@ function analizzaCartella_(req) {
   return { ok: true, analisi: pulito };
 }
 
+// Ultimo messaggio di una conversazione non scritto da Luca (a cui rispondere); altrimenti l'ultimo.
+function messaggioDaRispondere_(threadId, messageId) {
+  let msgs = [];
+  try { msgs = GmailApp.getThreadById(threadId).getMessages(); } catch (e) {}
+  if (!msgs.length && messageId) try { return GmailApp.getMessageById(messageId); } catch (e) { return null; }
+  const altrui = msgs.filter(function (m) { return indirizzi_(m.getFrom()).indexOf(PROPRIETARIO) < 0; });
+  return (altrui.length ? altrui : msgs).slice(-1)[0] || null;
+}
+
 function bozzaRisposta_(req) {
-  const ente = enteValido_(req.ente);
-  if (!ente) return { ok: false, errore: 'Cartella mancante' };
-  const docs = documentiCartella_(ente, 'gmail_message_id,email_oggetto,email_mittente,email_data', 30)
-    .filter(function (d) { return d.gmail_message_id && !/^(caricato|drivefile|drivefoto):/.test(String(d.gmail_message_id)); });
-  if (!docs.length) return { ok: false, errore: 'In questa cartella non c\'è un\'email a cui rispondere.' };
+  let ente = enteValido_(req.ente);
   let msg;
-  try { msg = GmailApp.getMessageById(docs[0].gmail_message_id); } catch (e) { return { ok: false, errore: 'Email non trovata in Gmail.' }; }
+  // DA-FARE (2026-11-16): risposta all'email di un documento preciso, anche con un testo già pronto.
+  const idDoc = String(req.documento || '');
+  if (/^[0-9a-f-]{36}$/i.test(idDoc)) {
+    const d = sb_('documenti?select=gmail_message_id,gmail_thread_id,ente,fascicolo&id=eq.' + idDoc)[0];
+    if (!d || !d.gmail_message_id || /^(caricato|drivefile|drivefoto):/.test(String(d.gmail_message_id))) return { ok: false, errore: 'Questo promemoria non viene da un\'email.' };
+    msg = messaggioDaRispondere_(d.gmail_thread_id, d.gmail_message_id);
+    ente = ente || enteValido_(d.ente);
+    if (!msg) return { ok: false, errore: 'Email non trovata in Gmail.' };
+  } else {
+    if (!ente) return { ok: false, errore: 'Cartella mancante' };
+    const docs = documentiCartella_(ente, 'gmail_message_id,email_oggetto,email_mittente,email_data', 30)
+      .filter(function (d) { return d.gmail_message_id && !/^(caricato|drivefile|drivefoto):/.test(String(d.gmail_message_id)); });
+    if (!docs.length) return { ok: false, errore: 'In questa cartella non c\'è un\'email a cui rispondere.' };
+    try { msg = GmailApp.getMessageById(docs[0].gmail_message_id); } catch (e) { return { ok: false, errore: 'Email non trovata in Gmail.' }; }
+  }
   const meta = { oggetto: msg.getSubject() || '', mittente: msg.getFrom() || '', destinatari: [msg.getTo(), msg.getCc()].filter(Boolean).join(', ') };
+  // Testo scritto o corretto da Luca: diventa la bozza così com'è, senza passare da nessun modello.
+  const pronto = String(req.testo || '').trim().slice(0, 8000);
+  if (pronto) {
+    msg.createDraftReply(pronto); // solo bozza: Luca la rilegge e la invia lui da Gmail
+    return { ok: true, testo: pronto, a: meta.mittente, oggetto: 'Re: ' + meta.oggetto, link: 'https://mail.google.com/mail/u/0/#drafts' };
+  }
+  if (!ente) return { ok: false, errore: 'Cartella mancante' };
   if (eClinico_(meta, '')) return { ok: false, errore: 'Email clinica: la bozza va scritta dall\'app dello studio.' };
   let sintesi = '';
   try { const c = sb_('cartelle_ente?select=sintesi&ente=eq.' + enc_(ente)); sintesi = c[0] && c[0].sintesi ? String(c[0].sintesi).slice(0, 2500) : ''; } catch (e) {}
