@@ -903,3 +903,12 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 /* Scan: a selected batch can be delivered separately or as one PDF. */
 .scan-controls{border:0;padding:0;margin:0;min-width:0}.scan-controls:disabled{opacity:.65}.scan-select{display:flex;align-items:center;gap:5px;min-height:44px}.scan-select input{width:20px;height:20px;accent-color:#146c55}.scan-selection-bar,.scan-output-file{display:flex;gap:10px;align-items:center;justify-content:space-between;margin:12px 0}.scan-output-file{flex-wrap:wrap;padding:12px;border:1px solid var(--pp-bordo,#dbe3df);border-radius:12px}.scan-output-file span{flex:1;min-width:120px;overflow-wrap:anywhere}.scan-output-actions{display:grid;gap:10px}.pp-scan-strumenti{flex-wrap:wrap}
 .scan-controls .pp-scansione-pagina figcaption{flex-wrap:wrap;gap:4px;padding:8px}.scan-controls .pp-scansione-pagina figcaption button{flex-shrink:0;min-width:36px;min-height:40px}.scan-controls .pp-scansione-pagina figcaption .scan-edit{width:100%;height:auto;min-height:40px;font-size:13px;order:2;background:var(--pp-sfondo,#eef4f1)}.scan-controls .pp-scansione-pagina figcaption .scan-select{margin-right:auto}.scan-controls .pp-scansione-pdf{aspect-ratio:4/3}
+/* CARTELLE-ELENCO-GESTIONE: vista Icone/Elenco, Nuova cartella, selezione delle cartelle */
+.pp-cartelle-barra { margin-top: 10px; flex-wrap: wrap; }
+.pp-cartelle-azioni { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.pp-chip-azione.attivo { color: #fff; background: var(--pp-verde); }
+.pp-commuta-testo button { width: auto; padding: 0 10px; font-size: 13px; font-weight: 650; }
+.pp-cartella-icona-riga { flex-shrink: 0; }
+.pp-cartella .pp-casella { position: absolute; z-index: 2; top: 8px; right: 8px; }
+.pp-cartella.scelta { outline: 3px solid var(--pp-blu); outline-offset: -3px; }
+.pp-cartelle-azioni-barra { align-items: center; flex-wrap: nowrap; gap: 10px; }

@@ -8,15 +8,17 @@ import { ScorriElimina } from '../../ScorriElimina.jsx';
 // un'altra, si toglie (i documenti restano) o si elimina con i suoi documenti.
 import { useEffect, useMemo, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { cercaArchivio, eliminaDocumenti, cestinaSuDrive, segnaScadenza } from '../../lib/archivio.js';
+import { cercaArchivio, eliminaDocumenti, cestinaSuDrive, segnaScadenza, CAMPI_DOC } from '../../lib/archivio.js';
+import { eliminaConDrive } from '../../lib/eliminazioneSwipe.js';
 import {
   caricaCartelle, cartella as caricaCartella, cartelleVisibili, periodoCartella, contattiCartella, promemoriaCartella, nuovoPromemoria,
   salvaCartella, rinominaCartella, sciogliCartella, analizzaCartella, bozzaRisposta, icsPromemoria, ETICHETTE_SUGGERITE, etichettePulite,
   STATI, COLORI_STATO, GIORNI_ATTESA, inAttesaDaTroppo, giorniDa, suggerimentiCartelle, nomeProposto, ignoraSuggerimento, unisciCartelle, suggerisciConAI,
+  creaCartella, eliminaCartelle, documentiSenzaCartella,
 } from '../../lib/cartelle.js';
 import { condividi } from '../../lib/condividi.js';
 import { euro } from '../../lib/coreArchivio.js';
-import { colore, dataBreve, quando, oggiIso, Vuoto, Sezione, Gruppo, ConfermaElimina, tokenSessione } from '../../ui.jsx';
+import { colore, dataBreve, quando, oggiIso, titoloDoc, Vuoto, Sezione, Gruppo, ConfermaElimina, tokenSessione } from '../../ui.jsx';
 import { ElencoSelezionabile, FoglioScelta } from './Selezione.jsx';
 import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaCalendario, IconaChat, IconaEmail, IconaCestino, IconaStella } from '../../Icone.jsx';
 
@@ -26,6 +28,35 @@ const leggiModo = () => { try { return localStorage.getItem(MODO_KEY) || 'grigli
 export function leggiSintesi(testo) {
   if (!testo) return null;
   try { const o = JSON.parse(testo); return o && typeof o === 'object' ? o : { sintesi: String(testo) }; } catch { return { sintesi: String(testo) }; }
+}
+
+// CARTELLE-ELENCO-GESTIONE — come le finestre di Windows: Icone o Elenco, a ogni livello.
+function CommutaVista({ modo, setModo }) {
+  return (
+    <span className="pp-commuta pp-commuta-testo" role="group" aria-label="Vista">
+      <button className={modo === 'griglia' ? 'attivo' : ''} aria-pressed={modo === 'griglia'} onClick={() => setModo('griglia')}>▦ Icone</button>
+      <button className={modo === 'righe' ? 'attivo' : ''} aria-pressed={modo === 'righe'} onClick={() => setModo('righe')}>☰ Elenco</button>
+    </span>
+  );
+}
+
+// Conferma per più cartelle: togliere solo le cartelle o eliminare anche i documenti (Drive: Cestino).
+function ConfermaCartelle({ cartelle, onSi, onNo }) {
+  const [ancheDocumenti, setAncheDocumenti] = useState(false);
+  const nDoc = cartelle.reduce((t, c) => t + Number(c.n || 0), 0);
+  const cosa = cartelle.length === 1 ? `la cartella “${cartelle[0].ente}”` : `${cartelle.length} cartelle`;
+  return (
+    <div className="pp-conferma" role="alertdialog">
+      <span>Eliminare {cosa}?</span>
+      <label className="pp-conferma-drive">
+        <input type="checkbox" checked={ancheDocumenti} onChange={(e) => setAncheDocumenti(e.target.checked)} />
+        <span><strong>Elimina anche i {nDoc} documenti</strong><br />
+          <small>{ancheDocumenti ? 'Escono dall’archivio e i file vanno nel Cestino di Google Drive (recuperabili per 30 giorni).' : 'I documenti restano in archivio, in “Senza cartella”.'}</small></span>
+      </label>
+      <button className="pp-bottone pp-bottone-rosso" onClick={() => onSi(ancheDocumenti)}>{ancheDocumenti ? 'Elimina cartelle e documenti' : 'Elimina solo le cartelle'}</button>
+      <button className="pp-bottone pp-bottone-chiaro" onClick={onNo}>Annulla</button>
+    </div>
+  );
 }
 
 /* ---------- elenco delle cartelle ---------- */
@@ -39,6 +70,9 @@ export function VistaCartelle({ ctx, anchePocoUtili = false }) {
   const [stato, setStato] = useState('attive');
   const [suggeriti, setSuggeriti] = useState(0);
   const [modo, setModoStato] = useState(leggiModo);
+  const [scelte, setScelte] = useState(null); // Set di enti in selezione, null fuori dalla selezione
+  const [conferma, setConferma] = useState(false);
+  const [avanzamento, setAvanzamento] = useState(null);
   const setModo = (m) => { setModoStato(m); try { localStorage.setItem(MODO_KEY, m); } catch { /* facoltativo */ } };
   useEffect(() => { esegui(async () => {
     const [cs, ss] = await Promise.all([caricaCartelle(archivioDb), scadenzeRevisione(archivioDb, false)]);
@@ -52,21 +86,61 @@ export function VistaCartelle({ ctx, anchePocoUtili = false }) {
   if (!cartelle) return <Vuoto>Carico le cartelle…</Vuoto>;
   const nomeFasc = (c) => fascicoli.find((f) => f.codice === c.fascicolo)?.nome || '';
   const apriCartella = (c) => apri({ tipo: 'cartella', ente: c.ente, titolo: c.ente });
+  const nuovaCartella = () => apri({ tipo: 'nuova-cartella', titolo: 'Nuova cartella' });
+  const cambiaScelta = (ente) => setScelte((s) => { const n = new Set(s); if (n.has(ente)) n.delete(ente); else n.add(ente); return n; });
+  const tocca = (c) => (scelte ? cambiaScelta(c.ente) : apriCartella(c));
+  const casella = (c) => scelte && <span className={`pp-casella${scelte.has(c.ente) ? ' scelta' : ''}`} aria-hidden="true">{scelte.has(c.ente) ? '✓' : ''}</span>;
+  const esciSelezione = () => { setScelte(null); setConferma(false); };
+  const eliminaScelte = (ancheDocumenti) => ctx.esegui(async () => {
+    const lista = cartelle.filter((c) => scelte.has(c.ente));
+    const token = ancheDocumenti ? await tokenSessione() : null;
+    let r;
+    try {
+      r = await eliminaCartelle(lista, ancheDocumenti, {
+        sciogli: (ente) => sciogliCartella(archivioDb, ente),
+        documentiDi: (ente) => cercaArchivio(archivioDb, { ente, anchePocoUtili: true, limite: 10000 }),
+        eliminaConDrive: (docs) => eliminaConDrive(docs, { cestina: (ids) => cestinaSuDrive({ token, ids }), elimina: (ids) => eliminaDocumenti(archivioDb, ids) }),
+      }, (fatte, totale, ente) => setAvanzamento({ fatte, totale, ente }));
+    } finally { setAvanzamento(null); setConferma(false); }
+    esciSelezione();
+    ctx.aggiorna();
+    const quante = `${r.fatte.length} ${r.fatte.length === 1 ? 'cartella eliminata' : 'cartelle eliminate'}`;
+    ctx.mostra(r.errori.length
+      ? `${quante}; non eliminate: ${r.errori.map((x) => x.ente).join(', ')} (${r.errori[0].errore})`
+      : ancheDocumenti ? `${quante} con i documenti. File nel Cestino di Drive.` : `${quante}: i documenti sono in “Senza cartella”.`);
+  });
   const badge = (c) => avvisi[c.ente]?.n > 0 ? <span className="pp-pallino" style={{ background: avvisi[c.ente].colore }} role="status" aria-label={`${avvisi[c.ente].n} scadenze da controllare`} /> : c.n_da_fare > 0 ? <span className="pp-pallino" style={{ background: '#d97706' }} aria-label={`${c.n_da_fare} documenti da valutare`} /> : null;
   const aree = [...new Set(cartelle.map((c) => areaArchivio(c.fascicolo)))];
-  if (!area && !testo && !etichetta) return <>
-    <p className="pp-frase">Sei aree per ritrovare tutto. Enti e pratiche restano raggruppati al loro interno.</p>
-    <div className="pp-griglia">{aree.map((nome) => {
+  if (!area && !testo && !etichetta) {
+    const datiArea = (nome) => {
       const cs = cartelle.filter((c) => areaArchivio(c.fascicolo) === nome);
-      const n = cs.reduce((t, c) => t + (avvisi[c.ente]?.n || 0), 0);
-      return <button key={nome} className="pp-cartella" onClick={() => setArea(nome)}><span className="pp-cartella-icona"><IconaDocumenti size={20} /></span><strong>{nome}</strong><span>{cs.length} cartelle · {cs.reduce((t, c) => t + c.n, 0)} documenti</span>{n > 0 && <span className="pp-rosso">● {n} scadenze da controllare</span>}</button>;
-    })}</div>
+      return { cs, n: cs.reduce((t, c) => t + (avvisi[c.ente]?.n || 0), 0), doc: cs.reduce((t, c) => t + c.n, 0) };
+    };
+    return <>
+    <p className="pp-frase">Sei aree per ritrovare tutto. Enti e pratiche restano raggruppati al loro interno.</p>
+    <div className="pp-elenco-testa pp-cartelle-barra">
+      <button className="pp-chip-azione" onClick={nuovaCartella}>＋ Nuova cartella</button>
+      <CommutaVista modo={modo} setModo={setModo} />
+    </div>
+    {modo === 'griglia' ? <div className="pp-griglia">{aree.map((nome) => {
+      const { cs, n, doc } = datiArea(nome);
+      return <button key={nome} className="pp-cartella" onClick={() => setArea(nome)}><span className="pp-cartella-icona"><IconaDocumenti size={20} /></span><strong>{nome}</strong><span>{cs.length} cartelle · {doc} documenti</span>{n > 0 && <span className="pp-rosso">● {n} scadenze da controllare</span>}</button>;
+    })}</div> : <Gruppo>{aree.map((nome) => {
+      const { cs, n, doc } = datiArea(nome);
+      return <button key={nome} className="pp-riga" onClick={() => setArea(nome)}>
+        <span className="pp-cartella-icona pp-cartella-icona-riga"><IconaDocumenti size={18} /></span>
+        <span className="pp-riga-testo"><span className="pp-riga-titolo">{nome}</span><span className="pp-riga-meta">{cs.length} cartelle · {doc} documenti{n > 0 ? ` · ${n} scadenze da controllare` : ''}</span></span>
+        {n > 0 && <span className="pp-pallino pp-media" aria-hidden="true" />}
+        <IconaFreccia size={16} />
+      </button>;
+    })}</Gruppo>}
     <button className="pp-chip-azione" onClick={() => setArea('tutte')}>Tutte le cartelle</button>
     <button className="pp-chip-azione" onClick={() => apri({ tipo: 'suggerimenti-cartelle' })}>Unisci cartelle dello stesso ente</button>
   </>;
+  }
   return (
     <>
-      <button className="pp-chip-azione" onClick={() => setArea(null)}>‹ Aree dell’archivio</button>
+      <button className="pp-chip-azione" onClick={() => { esciSelezione(); setArea(null); }}>‹ Aree dell’archivio</button>
       <div className="pp-cerca pp-cerca-piccola"><IconaCerca size={16} /><input value={testo} onChange={(e) => setTesto(e.target.value)} placeholder="Trova una cartella" aria-label="Trova una cartella" /></div>
       {ferme.length > 0 && (
         <button className="pp-avviso-attesa" onClick={() => setStato('in_attesa')}>
@@ -96,18 +170,20 @@ export function VistaCartelle({ ctx, anchePocoUtili = false }) {
           ))}
         </div>
       )}
-      <div className="pp-elenco-testa">
-        <span className="pp-frase">{visibili.length} cartelle</span>
-        <span className="pp-commuta" role="group" aria-label="Vista">
-          <button className={modo === 'griglia' ? 'attivo' : ''} onClick={() => setModo('griglia')} aria-label="Cartelle a icone">▦</button>
-          <button className={modo === 'righe' ? 'attivo' : ''} onClick={() => setModo('righe')} aria-label="Cartelle in elenco">☰</button>
+      <div className="pp-elenco-testa pp-cartelle-barra">
+        <span className="pp-cartelle-azioni">
+          <button className="pp-chip-azione" onClick={nuovaCartella}>＋ Nuova</button>
+          {visibili.length > 0 && <button className={`pp-chip-azione${scelte ? ' attivo' : ''}`} onClick={() => (scelte ? esciSelezione() : setScelte(new Set()))}>{scelte ? 'Fine' : 'Seleziona'}</button>}
         </span>
+        <CommutaVista modo={modo} setModo={setModo} />
       </div>
+      <p className="pp-frase">{visibili.length} cartelle{scelte ? ' · tocca quelle da eliminare' : ''}</p>
       {!visibili.length && <Vuoto>Nessuna cartella{testo ? ' con questo nome' : ''}. Le cartelle nascono dall'ente dei documenti (chi li manda o li riguarda).</Vuoto>}
       {modo === 'griglia' ? (
         <div className="pp-griglia">
           {visibili.map((c) => (
-            <ScorriElimina key={c.ente} cartella={c} ctx={ctx}><button className="pp-cartella pp-cartella-ente" style={{ '--c': colore(c.fascicolo) }} onClick={() => apriCartella(c)}>
+            <ScorriElimina key={c.ente} cartella={c} ctx={ctx} disabilitato={!!scelte}><button className={`pp-cartella pp-cartella-ente${scelte?.has(c.ente) ? ' scelta' : ''}`} style={{ '--c': colore(c.fascicolo) }} onClick={() => tocca(c)} aria-pressed={scelte ? scelte.has(c.ente) : undefined}>
+              {casella(c)}
               <span className="pp-cartella-icona"><IconaDocumenti size={20} /></span>
               <span className="pp-cartella-nome">{c.ente} {badge(c)}</span>
               {c.stato && <span className="pp-badge-stato" style={{ '--c': COLORI_STATO[c.stato] }}>{STATI[c.stato]}</span>}
@@ -119,7 +195,8 @@ export function VistaCartelle({ ctx, anchePocoUtili = false }) {
       ) : (
         <Gruppo>
           {visibili.map((c) => (
-            <ScorriElimina key={c.ente} cartella={c} ctx={ctx}><button className="pp-riga" onClick={() => apriCartella(c)}>
+            <ScorriElimina key={c.ente} cartella={c} ctx={ctx} disabilitato={!!scelte}><button className={`pp-riga${scelte?.has(c.ente) ? ' pp-riga-doc scelta' : ''}`} onClick={() => tocca(c)} aria-pressed={scelte ? scelte.has(c.ente) : undefined}>
+              {casella(c)}
               <span className="pp-ente-iniziale" style={{ '--c': colore(c.fascicolo) }}>{c.ente.slice(0, 1).toUpperCase()}</span>
               <span className="pp-riga-testo">
                 <span className="pp-riga-titolo">{c.ente} {badge(c)}</span>
@@ -127,10 +204,28 @@ export function VistaCartelle({ ctx, anchePocoUtili = false }) {
               </span>
               {c.n_promemoria > 0 && <span className="pp-pallino pp-media" aria-label="Promemoria aperti" />}
               <span className="pp-conteggio">{c.n}</span>
-              <IconaFreccia size={16} />
+              {!scelte && <IconaFreccia size={16} />}
             </button></ScorriElimina>
           ))}
         </Gruppo>
+      )}
+      {scelte && (
+        <div className="pp-barra-selezione" role="toolbar" aria-label="Azioni sulle cartelle scelte">
+          <div className="pp-barra-selezione-testa">
+            <strong>{scelte.size ? `${scelte.size} ${scelte.size === 1 ? 'cartella scelta' : 'cartelle scelte'}` : 'Tocca le cartelle'}</strong>
+            <span className="pp-cartelle-azioni pp-cartelle-azioni-barra">
+              <button className="pp-testo-link" onClick={() => setScelte(scelte.size === visibili.length ? new Set() : new Set(visibili.map((c) => c.ente)))}>{scelte.size === visibili.length ? 'Nessuna' : 'Tutte'}</button>
+              <button className="pp-icona-bottone pp-piccolo" onClick={esciSelezione} aria-label="Esci dalla selezione"><IconaChiudi size={16} /></button>
+            </span>
+          </div>
+          {avanzamento ? <p className="pp-riga-meta"><span className="pp-rotella" /> Elimino {Math.min(avanzamento.fatte + 1, avanzamento.totale)}/{avanzamento.totale}{avanzamento.ente ? `: ${avanzamento.ente}` : ''}…</p>
+            : conferma ? <ConfermaCartelle cartelle={cartelle.filter((c) => scelte.has(c.ente))} onNo={() => setConferma(false)} onSi={eliminaScelte} />
+              : (
+                <div className="pp-barra-selezione-azioni">
+                  <button disabled={!scelte.size} className="pp-rosso" onClick={() => setConferma(true)}><IconaCestino size={18} /><span>Elimina</span></button>
+                </div>
+              )}
+        </div>
       )}
       <Gruppo>
         <button className="pp-riga pp-riga-sola" onClick={() => apri({ tipo: 'senza-cartella', titolo: 'Senza cartella' })}>
@@ -138,6 +233,61 @@ export function VistaCartelle({ ctx, anchePocoUtili = false }) {
           <IconaFreccia size={16} />
         </button>
       </Gruppo>
+    </>
+  );
+}
+
+/* ---------- nuova cartella (CARTELLE-ELENCO-GESTIONE) ---------- */
+// La cartella nasce con i documenti scelti (all'inizio quelli "Senza cartella", oppure cercati per nome).
+export function PaginaNuovaCartella({ ctx, sostituisci }) {
+  const { esegui, mostra, aggiorna } = ctx;
+  const [nome, setNome] = useState('');
+  const [testo, setTesto] = useState('');
+  const [elenco, setElenco] = useState(null);
+  const [scelti, setScelti] = useState(() => new Set());
+  const [esistenti, setEsistenti] = useState([]);
+  useEffect(() => { caricaCartelle(archivioDb).then(setEsistenti).catch(() => setEsistenti([])); }, []);
+  const cerca = testo.trim().length > 1;
+  useEffect(() => {
+    let vivo = true;
+    const t = setTimeout(() => esegui(async () => {
+      const r = cerca ? await cercaArchivio(archivioDb, { testo, anchePocoUtili: true, limite: 150 }) : await documentiSenzaCartella(archivioDb, CAMPI_DOC);
+      if (vivo) setElenco(r.filter((d) => d.fascicolo !== 'clinico_pazienti'));
+    }), cerca ? 280 : 0);
+    return () => { vivo = false; clearTimeout(t); };
+  }, [testo, cerca, esegui]);
+  const giaEsiste = esistenti.find((c) => c.ente.toLowerCase() === nome.trim().toLowerCase());
+  const cambia = (id) => setScelti((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const crea = () => esegui(async () => {
+    const r = await creaCartella(archivioDb, giaEsiste ? giaEsiste.ente : nome, [...scelti]);
+    aggiorna();
+    mostra(`Cartella “${r.ente}”: ${r.n} ${r.n === 1 ? 'documento' : 'documenti'}`);
+    sostituisci?.({ tipo: 'cartella', ente: r.ente, titolo: r.ente });
+  });
+  return (
+    <>
+      <div className="pp-pannello pp-form-cartella">
+        <label className="pp-campo">Nome della cartella<input autoFocus value={nome} onChange={(e) => setNome(e.target.value)} placeholder="es. Condominio via Roma" maxLength={120} /></label>
+        <p className="pp-riga-meta">{giaEsiste
+          ? `Esiste già: i documenti scelti si aggiungono a “${giaEsiste.ente}”.`
+          : 'Scegli qui sotto i documenti da metterci dentro: una cartella esiste finché contiene almeno un documento.'}</p>
+        <button className="pp-bottone" disabled={!nome.trim() || !scelti.size} onClick={crea}>
+          {scelti.size ? `${giaEsiste ? 'Aggiungi' : 'Crea la cartella con'} ${scelti.size} ${scelti.size === 1 ? 'documento' : 'documenti'}` : 'Scegli almeno un documento'}
+        </button>
+      </div>
+      <div className="pp-cerca pp-cerca-piccola"><IconaCerca size={16} /><input type="search" value={testo} onChange={(e) => setTesto(e.target.value)} placeholder="Cerca documenti da mettere nella cartella" aria-label="Cerca documenti" /></div>
+      <p className="pp-frase">{cerca ? 'Risultati della ricerca' : 'Documenti senza cartella'}{scelti.size ? ` · ${scelti.size} scelti` : ''}</p>
+      {!elenco ? <Vuoto>Carico…</Vuoto> : !elenco.length ? <Vuoto>{cerca ? 'Nessun documento con queste parole.' : 'Nessun documento senza cartella: cerca per nome quelli da spostare.'}</Vuoto> : (
+        <Gruppo>
+          {elenco.map((d) => (
+            <button key={d.id} className={`pp-riga${scelti.has(d.id) ? ' pp-riga-doc scelta' : ''}`} aria-pressed={scelti.has(d.id)} onClick={() => cambia(d.id)}>
+              <span className={`pp-casella${scelti.has(d.id) ? ' scelta' : ''}`} aria-hidden="true">{scelti.has(d.id) ? '✓' : ''}</span>
+              <span className="pp-riga-testo"><span className="pp-riga-titolo">{titoloDoc(d)}</span>
+                <span className="pp-riga-meta">{[d.ente ? `in ${d.ente}` : 'senza cartella', dataBreve(d.data_documento || d.email_data)].filter(Boolean).join(' · ')}</span></span>
+            </button>
+          ))}
+        </Gruppo>
+      )}
     </>
   );
 }

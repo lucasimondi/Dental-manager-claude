@@ -191,3 +191,40 @@ export function icsPromemoria({ data, descrizione, cartella: nome }, ora = new D
   ].filter(Boolean).join('\r\n');
 }
 function hash(s) { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) | 0; return h; }
+
+/* ---------- nuova cartella ed eliminazione di più cartelle (CARTELLE-ELENCO-GESTIONE) ---------- */
+// Una cartella è l'ente dei suoi documenti: nasce mettendoci dentro almeno un documento.
+// Se il nome è quello di una cartella esistente, i documenti si aggiungono a quella. Mai i clinici.
+export function nomeNuovaCartella(nome) {
+  const n = String(nome || '').trim().replace(/\s+/g, ' ').slice(0, 120);
+  if (!n) throw new Error('Scrivi un nome per la cartella');
+  return n;
+}
+export async function creaCartella(db, nome, ids) {
+  const ente = nomeNuovaCartella(nome);
+  const validi = [...new Set((ids || []).filter(Boolean))];
+  if (!validi.length) throw new Error('Scegli almeno un documento da mettere nella cartella');
+  const r = esito(await db.from('documenti').update({ ente }).in('id', validi).neq('fascicolo', 'clinico_pazienti').select('id'));
+  return { ente, n: (r || []).length };
+}
+
+// Elimina più cartelle insieme. ancheDocumenti=false: toglie solo la cartella (i documenti restano in
+// "Senza cartella"). ancheDocumenti=true: elimina i documenti dall'archivio dopo che Drive ha messo i
+// file nel Cestino (stessa regola dello scorrimento); una cartella incompleta o cambiata si ferma.
+export async function eliminaCartelle(cartelle, ancheDocumenti, { sciogli, documentiDi, eliminaConDrive }, avanzamento = () => {}) {
+  const esiti = { fatte: [], errori: [] };
+  for (const [i, c] of (cartelle || []).entries()) {
+    avanzamento(i, cartelle.length, c.ente);
+    try {
+      if (!ancheDocumenti) await sciogli(c.ente);
+      else {
+        const docs = await documentiDi(c.ente);
+        if (docs.length !== Number(c.n)) throw new Error('La cartella è cambiata o non è completa. Aggiorna e riprova.');
+        await eliminaConDrive(docs);
+      }
+      esiti.fatte.push(c.ente);
+    } catch (e) { esiti.errori.push({ ente: c.ente, errore: e.message }); }
+  }
+  avanzamento(cartelle.length, cartelle.length, null);
+  return esiti;
+}

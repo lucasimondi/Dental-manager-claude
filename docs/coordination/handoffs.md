@@ -4713,3 +4713,13 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Branch `claude/patient-quote-workflow-gvzblu` from master 0dfa1e9. Files: src/components/PatientDentalOverview.{jsx,css}, tests/preventivoDaPrestazioni.test.mjs, tests/visual/{preventivo-prestazioni,preventivo-piani}.mjs, coordination docs.
 - Database: none. Tests 1692/1692; build PASS; Pixel 7 visual PASS. Rollback: revert the commit.
 - Note: the old remote head (already squash-merged) is merged in with `-s ours` instead of a force-push; the tree equals the task commit.
+
+
+## Handoff — CARTELLE-ELENCO-GESTIONE (2026-11-16) — Claude Code
+- Task CARTELLE-ELENCO-GESTIONE; previous agent Claude Code; branch `ccr-10c1ba61-ggtxnm` from master 00dbd28.
+- Objective: Icons/List view like Windows, delete whole folders, create new folders (Personal › Documenti › Cartelle).
+- Files: `personal/src/lib/cartelle.js` (nomeNuovaCartella, creaCartella, eliminaCartelle), `personal/src/sezioni/documenti/Cartelle.jsx` (CommutaVista, ConfermaCartelle, selection bar, PaginaNuovaCartella), `personal/src/sezioni/documenti/index.jsx` (page `nuova-cartella`), `personal/src/personal.css`, `tests/personalCartelle.test.mjs`, `tests/visual/personal-cartelle.{html,fixture.jsx,mjs}`, `.gitignore`.
+- DB: none (updates `documenti.ente` as the existing "Metti in una cartella"/"Togli la cartella" actions already do). Deployment: Personal front-end only.
+- Tests: `npm test` 1694/1694; `npm run build:personal` PASS; `CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium node tests/visual/personal-cartelle.mjs` PASS.
+- Risks: deleting with documents trashes Drive files (30 days) and removes archive rows — only after explicit confirmation, per the PO exception of 2026-10-16. Empty folders not supported (needs schema change).
+- Rollback: revert the commit. Next action: PO review; PR on request.
