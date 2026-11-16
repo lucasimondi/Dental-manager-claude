@@ -35,7 +35,7 @@ export function RigaMovimento({ m, onApri }) {
   );
 }
 
-function Periodo({ tipo, rif, onTipo, onRif }) {
+function Periodo({ tipo, rif, onTipo, onRif, apri }) {
   return (
     <>
       <button className="pp-invito" onClick={() => apri({ tipo: 'revisione' })}><span><strong>Da valutare con Poliedron</strong><br />Pagamenti da verificare, inviti e documenti importanti</span></button>
@@ -105,6 +105,16 @@ export function VistaConti({ ctx }) {
   const [scadenze, setScadenze] = useState(null);
   const [filtro, setFiltro] = useState('aperti');
   const [lavoro, setLavoro] = useState(undefined); // dati dello studio; null = agenda non collegata
+  const [prossima, setProssima] = useState(null); // PERSONALE-HOME: il primo pagamento aperto con importo
+
+  useEffect(() => {
+    if (scheda !== 'movimenti') return undefined;
+    let vivo = true;
+    caricaPagamenti(archivioDb)
+      .then((xs) => { if (vivo) setProssima(xs.filter((s) => !s.completata && s.importo != null).sort((x, y) => String(x.data).localeCompare(String(y.data)))[0] || null); })
+      .catch(() => { if (vivo) setProssima(null); });
+    return () => { vivo = false; };
+  }, [scheda, versione]);
 
   useEffect(() => {
     // I promemoria delle cartelle senza importo non sono pagamenti (POL-VITA-016): restano in Agenda e Oggi.
@@ -135,11 +145,12 @@ export function VistaConti({ ctx }) {
   return (
     <>
       <Segmenti voci={[['movimenti', 'Movimenti'], ['dapagare', 'Da pagare'], ['bilancio', 'Bilancio']]} attiva={scheda} onScegli={setScheda} />
-      {scheda !== 'dapagare' && <Periodo tipo={tipo} rif={rif} onTipo={setTipo} onRif={setRif} />}
+      {scheda !== 'dapagare' && <Periodo tipo={tipo} rif={rif} onTipo={setTipo} onRif={setRif} apri={apri} />}
 
       {scheda === 'movimenti' && movimenti && (
         <>
           <RiquadroSaldo b={b} titolo={`Saldo · ${nomePeriodo(tipo, rif)}`} onApri={() => setScheda('bilancio')} />
+          {prossima && <ProssimaScadenza s={prossima} onApri={() => apri({ tipo: 'pagamento', s: prossima })} />}
           <LavoroStudio l={lav} caricato={lavoro !== undefined} />
           <div className="pp-azioni pp-azioni-due">
             <button className="pp-bottone pp-bottone-verde" onClick={() => apri({ tipo: 'movimento', m: { tipo: 'entrata' } })}><IconaPiu size={18} /> Incasso</button>
@@ -172,6 +183,22 @@ export function VistaConti({ ctx }) {
 
       {scheda === 'dapagare' && scadenze && <DaPagare tutti={scadenze} filtro={filtro} setFiltro={setFiltro} apri={apri} pagato={pagato} />}
     </>
+  );
+}
+
+// PERSONALE-HOME: in Movimenti, il prossimo pagamento da fare (scaduto in rosso). Tocca per aprirlo.
+function ProssimaScadenza({ s, onApri }) {
+  const scaduta = s.data < oggiIso();
+  return (
+    <button type="button" className={`pp-prossima${scaduta ? ' scaduta' : ''}`} onClick={onApri}>
+      <span className="pp-prossima-icona" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 2M5 4L2.5 6.5M19 4l2.5 2.5" /></svg></span>
+      <span className="pp-prossima-testo">
+        <span>{scaduta ? 'Scaduto' : 'Prossima scadenza'}</span>
+        <strong>{s.descrizione}</strong>
+        <span>{dataBreve(s.data)}</span>
+      </span>
+      <strong className="pp-prossima-importo">{euro(s.importo)}</strong>
+    </button>
   );
 }
 

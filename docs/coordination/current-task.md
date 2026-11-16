@@ -1,3 +1,11 @@
+# Current task — PERSONALE-HOME (2026-11-16)
+- OWNER Claude Code; branch `claude/personale-home-conti` from master adea2d7.
+- REQUEST PO 2026-11-16: mockup «Poliedron · Personale» (Home Personale + Conti, gradients, raised icons, Scan in evidence, one dock) → «Così mi piace vai» → «Fammi vedere cosa faresti… e fai» (canvas) → «Porta al codice mergia» (task-specific merge authorization).
+- SCOPE (presentation only): (1) dock «Per te» → «Personale» in Personal and Studio (id `perte`/`altro` unchanged; Studio page title and group «Personale»). (2) Personal `altro` view = new Home `sezioni/altro/Personale.jsx`: greeting, section search (PER_TE), + (same add sheet, `ctx.apriAggiungi`), «Da fare» card with real count (caricaDaFare/riepilogo), Conti and Documenti cards, Scan link (indirizzoScan), «Il tuo spazio» (Identità, Foto, Note, Pratiche, Diario, Biblioteca, Password, Oggi), 3 Recenti (clinico_pazienti excluded), Impostazioni. (3) Conti: «Prossima scadenza» card in Movimenti (first open pagamento with importo, opens it); fix of a latent ReferenceError (`Periodo` used `apri` without receiving it: «Da valutare con Poliedron» crashed). (4) `personal/src/personale.css`: Home styles and Conti restyle scoped to `.pp-vista-conti`, dark mode included.
+- LOCKS: no DB/RLS/migration/financial formula change; only reads through existing functions.
+- VALIDATION npm test 1776/1776 (new tests/personaleHome.test.mjs 6/6; dock label assertions updated); build:personal PASS; build PASS; Chromium Pixel 7 tests/visual/personal-personale.mjs PASS light and dark (synthetic: 3 cose da gestire, no clinical recent, 8 tiles, search → Biblioteca, Identità → Documenti personali, Conti → prossima scadenza opens pagamento s1, Da valutare opens revisione, Da pagare list, no horizontal scroll, no writes, no page errors). Not verified: real phone with real login.
+- STATUS PR + merge authorized ("mergia").
+
 # Current task — RICERCA-SIGNIFICATO-SOGLIA e pubblicazione script (2026-11-16)
 - OWNER Claude Code; branch `ccr-b7b42716-8dtp7v` restarted from master bc633f4 (PR315 merged, "mergia").
 - REQUEST PO 2026-11-16: "Mandami il clasp" → "Fallo tu mi mandi il link e io ti autorizzo" (clasp login authorized by the PO; credentials only in this ephemeral container).

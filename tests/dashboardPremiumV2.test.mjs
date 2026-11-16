@@ -166,7 +166,7 @@ test('mobile dock no longer has a Setup/Impostazioni slot; Chat opens the same P
   // HOME-AGENDA-CENTRIC (PO 2026-11-07): dock Agenda · Note · Poliedron · Documenti · Personal;
   // Chat resta raggiungibile da campanella e pannello Poliedron, Pazienti e Home dalla ricerca.
   // DOCK-PER-TE (PO 2026-11-08): Note è in «Per te»; il dock ha Studio e Per te.
-  assert.match(dockSrc, /\{ id: 'perte', label: 'Per te', icon: 'user' \}/);
+  assert.match(dockSrc, /\{ id: 'perte', label: 'Personale', icon: 'user' \}/);
   // POL-CHAT-001 merge: the placeholder branch that reopened the quick panel
   // (`if (item.id === 'chat') ... onClick={onToggle}`) is gone. Chat now uses
   // the same generic navigation path as every other slot — still ONE

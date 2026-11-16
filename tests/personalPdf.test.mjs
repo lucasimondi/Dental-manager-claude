@@ -65,6 +65,6 @@ test('DOCK-PER-TE passo 2: le azioni PDF stanno nel documento, nessuna sezione P
 test('DOCK-PER-TE passo 2: documenti personali come filtro di Documenti; si parte dall\'agenda', () => {
  const d=readFileSync('personal/src/sezioni/documenti/Documenti.jsx','utf8');
  assert.match(d,/\['personali', 'Personali'\]/); assert.match(d,/scheda === 'personali' && <personali\.Vista ctx=\{ctx\} \/>/);
- assert.match(readFileSync('personal/src/sezioni/altro/index.jsx','utf8'),/id === 'personali' \? ctx\.vai\('documenti', 'personali'\)/);
+assert.match(readFileSync('personal/src/sezioni/altro/Personale.jsx','utf8'),/id === 'personali' \? vai\('documenti', 'personali'\)/); // PERSONALE-HOME: la Home personale
  assert.match(readFileSync('personal/src/App.jsx','utf8'),/v !== 'oggi' \? v : 'agenda'/);
 });

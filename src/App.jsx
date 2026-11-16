@@ -749,7 +749,7 @@ export default function App() {
       .sort((x, y) => RANGO[x.taglia] - RANGO[y.taglia]) },
   ];
   const gruppiPerTe = () => [
-    { nome: 'Per te', voci: [
+    { nome: 'Personale', voci: [
       { id: 'vita-conti', nome: 'Spese e pagamenti', icona: 'conti', taglia: 'grande', sotto: 'Conti, ricevute e cose da pagare', href: sectionDestination('personal', 'conti') },
       // DOCUMENTI-DRIVE (PO 2026-11-09): tutti i documenti di Drive nella sezione Documenti di Personal, con la ricerca.
       { id: 'vita-documenti', nome: 'Documenti', icona: 'documenti', taglia: 'alta', sotto: 'Tutto Drive: cerca per nome, ente, anno', href: sectionDestination('personal', 'documenti') },
@@ -985,7 +985,7 @@ export default function App() {
             {acquisisciAperto && <Suspense fallback={null}><AcquisisciDocumento conDestinazione db={supabase} studioId={session?.user?.app_metadata?.studio_id} patients={patients} onClose={() => setAcquisisciAperto(false)} /></Suspense>}
             {!acquisisciAperto && page !== 'chat' && <TastoAcquisisci className="studio-acquisisci" onClick={() => setAcquisisciAperto(true)} />}
             {page === 'studio' && <AltroPage titolo="Studio" gruppi={gruppiStudio()} piede={[{ id: 'set', nome: 'Impostazioni e account', icona: 'impostazioni', fai: () => setPage('set') }]} />}
-            {(page === 'perte' || page === 'altro') && <AltroPage titolo="Per te" gruppi={gruppiPerTe()} piede={[{ id: 'set', nome: 'Impostazioni e account', icona: 'impostazioni', fai: () => setPage('set') }]} />}
+            {(page === 'perte' || page === 'altro') && <AltroPage titolo="Personale" gruppi={gruppiPerTe()} piede={[{ id: 'set', nome: 'Impostazioni e account', icona: 'impostazioni', fai: () => setPage('set') }]} />}
             {page === 'password' && <PasswordPage key={passwordNuova} nuovaSubito={passwordNuova > 0} db={supabase} studioId={session?.user?.app_metadata?.studio_id} cercaIniziale={passwordQuery} />}
             {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
             {page === 'agenteai' && <AgenteAISetup features={features} />}
