@@ -51,7 +51,7 @@ test('Gemini: con Claude in pausa e la chiave impostata l\'analisi passa a Gemin
   assert.equal(a.importo, 84.3);
   assert.equal(chiamate.length, 1);
   const c = chiamate[0];
-  assert.match(c.url, /^https:\/\/generativelanguage\.googleapis\.com\/v1beta\/models\/gemini-flash-latest:generateContent$/);
+  assert.match(c.url, /^https:\/\/generativelanguage\.googleapis\.com\/v1beta\/models\/gemini-flash-lite-latest:generateContent$/);
   assert.equal(c.headers['x-goog-api-key'], 'k-gemini', 'chiave nell\'intestazione, mai nell\'indirizzo');
   assert.doesNotMatch(c.url, /key=/);
   assert.equal(c.body.generationConfig.responseMimeType, 'application/json');
@@ -70,12 +70,51 @@ test('Gemini: modello scelto nelle Proprietà; senza chiave si cataloga a regole
   assert.equal(b.chiamate.length, 0);
 });
 
-test('Gemini: quota del giorno finita → pausa di 3 ore, si torna al catalogo a regole', () => {
-  const { ctx, proprieta, log } = scriptFinto({ risposte: [{ code: 429, json: { error: { status: 'RESOURCE_EXHAUSTED', message: 'Quota exceeded for metric: generate_content_free_tier_requests, limit: GenerateRequestsPerDayPerProjectPerModel-FreeTier' } } }] });
+test('Gemini: quota del giorno finita su un modello → quel modello in pausa fino all\'azzeramento, si passa al successivo', () => {
+  const quota = { code: 429, json: { error: { status: 'RESOURCE_EXHAUSTED', message: 'Quota exceeded for metric: generate_content_free_tier_requests, limit: GenerateRequestsPerDayPerProjectPerModel-FreeTier' } } };
+  const { ctx, proprieta, chiamate, log } = scriptFinto({ risposte: [quota] });
+  const a = ctx.analizza_(meta, 'f.txt', null, []);
+  assert.equal(a.fascicolo, 'utenze');
+  assert.equal(chiamate.length, 2);
+  assert.match(chiamate[0].url, /models\/gemini-flash-lite-latest:/);
+  assert.match(chiamate[1].url, /models\/gemini-flash-latest:/);
+  const pause = JSON.parse(proprieta.GEMINI_PAUSE);
+  assert.ok(pause['gemini-flash-lite-latest'] > Date.now(), 'il primo modello resta in pausa');
+  assert.equal(proprieta.GEMINI_PAUSA_FINO, undefined, 'Gemini nel complesso resta disponibile');
+  assert.equal(ctx.apiInPausa_(), false);
+  assert.match(log.join('\n'), /Gemini gemini-flash-lite-latest in pausa/);
+});
+
+test('Gemini: quota finita su tutti i modelli → RIPROVA e catalogo a regole', () => {
+  const quota = { code: 429, json: { error: { message: 'Quota exceeded: GenerateRequestsPerDayPerProjectPerModel-FreeTier' } } };
+  const { ctx, chiamate } = scriptFinto({ risposte: [quota, quota, quota, quota] });
   assert.throws(() => ctx.analizza_(meta, 'f.txt', null, []), /RIPROVA/);
-  assert.ok(Number(proprieta.GEMINI_PAUSA_FINO) > Date.now() + 2.9 * 3600e3);
+  assert.equal(chiamate.length, 4, 'un tentativo per modello');
   assert.equal(ctx.apiInPausa_(), true);
-  assert.match(log.join('\n'), /Gemini in pausa/);
+});
+
+test('Gemini: modello inesistente o con limite 0 nel piano gratuito → saltato per una settimana', () => {
+  const { ctx, proprieta, chiamate } = scriptFinto({ risposte: [{ code: 404, json: { error: { message: 'models/x is not found' } } }] });
+  ctx.analizza_(meta, 'f.txt', null, []);
+  assert.equal(chiamate.length, 2);
+  assert.ok(JSON.parse(proprieta.GEMINI_PAUSE)['gemini-flash-lite-latest'] > Date.now() + 6 * 24 * 3600e3);
+});
+
+test('Gemini: troppe richieste al minuto → si aspetta e si riprova lo stesso modello, senza pause', () => {
+  const minuto = { code: 429, json: { error: { message: 'Quota exceeded: GenerateRequestsPerMinutePerProjectPerModel-FreeTier' } } };
+  const { ctx, proprieta, chiamate } = scriptFinto({ risposte: [minuto] });
+  ctx.analizza_(meta, 'f.txt', null, []);
+  assert.equal(chiamate.length, 2);
+  assert.equal(chiamate[0].url, chiamate[1].url);
+  assert.equal(proprieta.GEMINI_PAUSE, undefined);
+});
+
+test('Gemini: GEMINI_MODELLO accetta più modelli separati da virgola', () => {
+  const quota = { code: 429, json: { error: { message: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier' } } };
+  const { ctx, proprieta, chiamate } = scriptFinto({ risposte: [quota] });
+  proprieta.GEMINI_MODELLO = 'modello-a, modello-b';
+  ctx.analizza_(meta, 'f.txt', null, []);
+  assert.deepEqual(chiamate.map((c) => c.url.match(/models\/([^:]+):/)[1]), ['modello-a', 'modello-b']);
 });
 
 test('Gemini: troppe richieste al minuto → attende e riprova; risposta bloccata → errore chiaro', () => {

@@ -14,15 +14,17 @@
  *   ANTHROPIC_API_KEY  chiave API di Claude
  * Facoltative:
  *   GEMINI_API_KEY     chiave di Google AI Studio: analisi con Gemini quando Claude è in pausa
- *   GEMINI_MODELLO     modello Gemini (predefinito: CONFIG.MODELLO_GEMINI)
+ *   GEMINI_MODELLO     modelli Gemini separati da virgola, in ordine (predefinito: CONFIG.MODELLI_GEMINI)
  *   EMAIL_DIGEST       destinatario del riepilogo (predefinito: il tuo indirizzo)
  *   DASHBOARD_URL      indirizzo della dashboard, per il link nel riepilogo
  */
 
 const CONFIG = {
   MODELLO: 'claude-haiku-5-5',
-  // Riserva quando Claude è in pausa (PO 2026-10-18). Alias di Google che segue l'ultimo Flash.
-  MODELLO_GEMINI: 'gemini-flash-latest',
+  // Riserva quando Claude è in pausa (PO 2026-10-18), piano gratuito. Nel piano gratuito la quota del
+  // giorno vale per ogni modello: finita su uno si passa al successivo (2026-11-15, Luca: "sistema Gemini").
+  // Prima Flash-Lite, che ha la quota giornaliera più alta. Un modello che non esiste più viene saltato.
+  MODELLI_GEMINI: ['gemini-flash-lite-latest', 'gemini-flash-latest', 'gemini-2.5-flash-lite', 'gemini-2.5-flash'],
   ETICHETTA_PADRE: 'Archivio',
   ETICHETTA_FATTO: 'Archivio/Elaborato',
   ETICHETTA_ERRORE: 'Archivio/Errore',
@@ -128,6 +130,11 @@ function elabora() {
     // Cartelle di Drive per categoria e persona (POL-VITA-013): un po' a ogni giro.
     try { ordinaDrive_(inizio + ORDINA_DRIVE_MS); } catch (e) { logErrore_('ordine Drive', e); }
 
+    // Nome dei file su Drive allineato al titolo dell'archivio (drive_rinomina): un po' a ogni giro.
+    try { rinominaDrive_(Date.now() + RINOMINA_DRIVE_MS); } catch (e) { logErrore_('rinomina Drive', e); }
+
+    // Email importanti senza allegati (2026-11-16): un lotto a ogni giro, catalogo a regole.
+    try { importaEmail_(Date.now() + EMAIL_MS); } catch (e) { logErrore_('email senza allegati', e); }
     // Testo completo dei file per la ricerca (POL-VITA-034): un po' a ogni giro.
     try { estraiTesti_(Date.now() + TESTO_MS); } catch (e) { logErrore_('testo completo', e); }
     // Vettori per la ricerca per significato (POL-VITA-035): un lotto a ogni giro.
@@ -869,18 +876,68 @@ function apiInPausa_() {
  * di analizza_() li escludono prima (eClinico_ e fascicolo clinico_pazienti).
  * ===================================================================*/
 const GEMINI_INTERVALLO_MS = 5000;               // piano gratuito: al massimo ~12 richieste al minuto
-const GEMINI_PAUSA_MS = 3 * 60 * 60 * 1000;      // quota del giorno finita o chiave rifiutata
+const GEMINI_PAUSA_MS = 3 * 60 * 60 * 1000;      // chiave rifiutata: tutto Gemini in pausa
+const GEMINI_ASSENTE_MS = 7 * 24 * 60 * 60 * 1000; // modello inesistente o non disponibile per la chiave
 let GEMINI_ULTIMA = 0;
+
+// Modelli in ordine di preferenza: proprietà GEMINI_MODELLO (anche più nomi separati da virgola) o CONFIG.
+function modelliGemini_() {
+  const p = PropertiesService.getScriptProperties().getProperty('GEMINI_MODELLO');
+  const elenco = p ? p.split(',').map(function (m) { return m.trim(); }).filter(Boolean) : CONFIG.MODELLI_GEMINI;
+  return elenco.length ? elenco : CONFIG.MODELLI_GEMINI;
+}
+
+// Pause per modello: { "<modello>": <ms fino a quando> } nella proprietà GEMINI_PAUSE.
+function pauseGemini_() {
+  try { return JSON.parse(PropertiesService.getScriptProperties().getProperty('GEMINI_PAUSE') || '{}') || {}; } catch (e) { return {}; }
+}
+
+// Primo modello non in pausa, oppure null.
+function modelloGeminiLibero_() {
+  const pause = pauseGemini_();
+  const adesso = Date.now();
+  const liberi = modelliGemini_().filter(function (m) { return Number(pause[m] || 0) <= adesso; });
+  return liberi.length ? liberi[0] : null;
+}
 
 function geminiDisponibile_() {
   const sp = PropertiesService.getScriptProperties();
-  return Boolean(sp.getProperty('GEMINI_API_KEY')) && Number(sp.getProperty('GEMINI_PAUSA_FINO') || 0) <= Date.now();
+  return Boolean(sp.getProperty('GEMINI_API_KEY')) && Number(sp.getProperty('GEMINI_PAUSA_FINO') || 0) <= Date.now()
+    && Boolean(modelloGeminiLibero_());
 }
 
+// La quota giornaliera del piano gratuito si azzera a mezzanotte, ora del Pacifico: si riprova da lì.
+function prossimoAzzeramentoGemini_() {
+  const adesso = new Date();
+  const oraPacifico = Utilities.formatDate(adesso, 'America/Los_Angeles', 'HH:mm:ss').split(':').map(Number);
+  const trascorsi = ((oraPacifico[0] * 60 + oraPacifico[1]) * 60 + oraPacifico[2]) * 1000;
+  if (!(trascorsi >= 0)) return adesso.getTime() + GEMINI_PAUSA_MS;   // ora non leggibile: si riprova tra 3 ore
+  return adesso.getTime() - trascorsi + 24 * 60 * 60 * 1000 + 5 * 60 * 1000;
+}
+
+// Un modello in pausa (quota del giorno finita o modello assente); gli altri restano utilizzabili.
+function pausaModelloGemini_(modello, finoA, motivo, testo) {
+  const pause = pauseGemini_();
+  pause[modello] = finoA;
+  PropertiesService.getScriptProperties().setProperty('GEMINI_PAUSE', JSON.stringify(pause));
+  const quota = (String(testo).match(/quotaId"?\s*:\s*"([^"]+)"/) || [])[1] || '';
+  logErrore_('Gemini ' + modello + ' in pausa fino alle ' + Utilities.formatDate(new Date(finoA), CONFIG.FUSO, 'dd/MM HH:mm') + ' (' + motivo + ')',
+    new Error((quota ? 'quota: ' + quota + ' — ' : '') + String(testo).slice(0, 600)));
+}
+
+// Chiave rifiutata: tutto Gemini in pausa.
 function pausaGemini_(testo) {
   const sp = PropertiesService.getScriptProperties();
   sp.setProperty('GEMINI_PAUSA_FINO', String(Date.now() + GEMINI_PAUSA_MS));
-  logErrore_('Gemini in pausa per 3 ore', new Error(String(testo).slice(0, 300)));
+  logErrore_('Gemini in pausa per 3 ore (chiave)', new Error(String(testo).slice(0, 300)));
+}
+
+// Da eseguire a mano dall'editor: toglie tutte le pause di Gemini.
+function riprovaGemini() {
+  const sp = PropertiesService.getScriptProperties();
+  sp.deleteProperty('GEMINI_PAUSE');
+  sp.deleteProperty('GEMINI_PAUSA_FINO');
+  console.log('Pause di Gemini tolte. Modelli: ' + modelliGemini_().join(', '));
 }
 
 // Claude se disponibile, altrimenti Gemini; anche quando Claude va in pausa proprio ora.
@@ -913,11 +970,14 @@ function gemini_(system, content) {
 }
 
 // Una richiesta a Gemini → il primo candidato (con content). Gestisce quote, chiave e ritentativi.
+// Quota del giorno finita su un modello: quel modello va in pausa fino all'azzeramento e si passa al successivo.
 function geminiChiamata_(body) {
   const sp = PropertiesService.getScriptProperties();
-  const modello = sp.getProperty('GEMINI_MODELLO') || CONFIG.MODELLO_GEMINI;
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(modello) + ':generateContent';
-  for (let tentativo = 1; tentativo <= 3; tentativo++) {
+  let tentativi = 0;
+  while (tentativi < 3) {
+    const modello = modelloGeminiLibero_();
+    if (!modello || Number(sp.getProperty('GEMINI_PAUSA_FINO') || 0) > Date.now()) throw new Error('RIPROVA');
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(modello) + ':generateContent';
     const attesa = GEMINI_ULTIMA + GEMINI_INTERVALLO_MS - Date.now();
     if (attesa > 0) Utilities.sleep(attesa);
     GEMINI_ULTIMA = Date.now();
@@ -934,13 +994,21 @@ function geminiChiamata_(body) {
       if (c.finishReason === 'MAX_TOKENS') throw new Error('Risposta di Gemini troncata (max tokens)');
       return c;
     }
-    // Quota del giorno finita (piano gratuito) o chiave non valida: Gemini in pausa, si cataloga a regole.
-    if ((code === 429 && /PerDay|per day|daily/i.test(testo)) || code === 401 || code === 403 || /API_KEY_INVALID|API key not valid/i.test(testo)) {
-      pausaGemini_(testo);
-      throw new Error('RIPROVA');
+    // Chiave non valida o rifiutata: tutto Gemini in pausa, si cataloga a regole.
+    if (code === 401 || code === 403 || /API_KEY_INVALID|API key not valid/i.test(testo)) { pausaGemini_(testo); throw new Error('RIPROVA'); }
+    // Modello inesistente o non disponibile nel piano gratuito ("limit: 0"): si salta per una settimana.
+    if (code === 404 || (code === 429 && /limit:\s*0\b/.test(testo))) {
+      pausaModelloGemini_(modello, Date.now() + GEMINI_ASSENTE_MS, 'modello non disponibile', testo);
+      continue;
     }
-    if (code === 429) { Utilities.sleep(tentativo * 20000); continue; }   // troppe richieste al minuto
-    if (code >= 500) { Utilities.sleep(tentativo * 8000); continue; }
+    // Quota del giorno finita: pausa fino all'azzeramento, poi il modello successivo (senza contare il tentativo).
+    if (code === 429 && /PerDay|per day|daily/i.test(testo)) {
+      pausaModelloGemini_(modello, prossimoAzzeramentoGemini_(), 'quota del giorno', testo);
+      continue;
+    }
+    tentativi++;
+    if (code === 429) { Utilities.sleep(tentativi * 20000); continue; }   // troppe richieste al minuto: si aspetta
+    if (code >= 500) { Utilities.sleep(tentativi * 8000); continue; }
     throw new Error('API Gemini ' + code + ': ' + testo.slice(0, 500));
   }
   throw new Error('RIPROVA');
@@ -1479,7 +1547,7 @@ function analisiDiRiserva_(meta, nome, mime) {
 
 // Analisi completa dei documenti importati senza Claude; false quando non ne restano.
 function analizzaRimasti_(scadenza) {
-  const docs = sb_('documenti?select=id,fascicolo,gmail_message_id,email_oggetto,email_mittente,email_data,nome_file_originale,mime_type,drive_file_id,tag' +
+  const docs = sb_('documenti?select=id,fascicolo,gmail_message_id,gmail_thread_id,email_oggetto,email_mittente,email_data,nome_file_originale,mime_type,drive_file_id,tag' +
     '&da_analizzare=is.true&order=email_data.desc.nullslast&limit=' + ANALISI_RIMASTI_LOTTO);
   if (!docs.length) return false;
   let pratiche = null;
@@ -1497,17 +1565,32 @@ function analizzaRimasti_(scadenza) {
     }
     const caricato = String(d.gmail_message_id || '').indexOf('caricato:') === 0;
     const daDrive = String(d.gmail_message_id || '').indexOf('drivefile:') === 0;
+    const email = d.mime_type === MIME_EMAIL;
     try {
-      if (!caricato && !daDrive) {
-        try { meta.corpo = (GmailApp.getMessageById(d.gmail_message_id).getPlainBody() || '').replace(/\s+\n/g, '\n').slice(0, CONFIG.TESTO_MAX_CARATTERI); } catch (e) {}
+      let file = null;
+      let contenuto;
+      if (email) {
+        // Email senza allegati: si legge il testo della conversazione, mai un file.
+        const conv = testoConversazione_(d.gmail_thread_id);
+        meta.destinatari = conv.partecipanti;
+        if (eClinico_(meta, '') || EMAIL_CLINICO.test(meta.oggetto + ' ' + conv.testo.slice(0, 3000))) {
+          sb_('documenti?id=eq.' + d.id, { method: 'patch', body: { fascicolo: 'clinico_pazienti', rilevanza: 'alta', da_analizzare: false,
+            riassunto: 'Email clinica: archiviata senza analisi del contenuto.' } });
+          continue;
+        }
+        contenuto = { type: 'text', text: 'CONVERSAZIONE EMAIL (nessun allegato)\n\n' + conv.testo };
+      } else {
+        if (!caricato && !daDrive) {
+          try { meta.corpo = (GmailApp.getMessageById(d.gmail_message_id).getPlainBody() || '').replace(/\s+\n/g, '\n').slice(0, CONFIG.TESTO_MAX_CARATTERI); } catch (e) {}
+        }
+        file = DriveApp.getFileById(d.drive_file_id);
+        const bytes = file.getBlob().getBytes();
+        // Documenti, Fogli e Presentazioni Google: getBlob() li esporta in PDF.
+        const google = String(d.mime_type || '').indexOf('application/vnd.google-apps.') === 0;
+        contenuto = contenutoPerAnalisi_(bytes, google ? 'application/pdf' : String(d.mime_type || '').toLowerCase(), nome, file);
       }
-      const file = DriveApp.getFileById(d.drive_file_id);
-      const bytes = file.getBlob().getBytes();
-      // Documenti, Fogli e Presentazioni Google: getBlob() li esporta in PDF.
-      const google = String(d.mime_type || '').indexOf('application/vnd.google-apps.') === 0;
-      const contenuto = contenutoPerAnalisi_(bytes, google ? 'application/pdf' : String(d.mime_type || '').toLowerCase(), nome, file);
       pratiche = pratiche || praticheAperte_();
-      const analisi = analizza_(meta, nome, contenuto, pratiche);
+      const analisi = analizza_(meta, email ? 'conversazione email (senza allegati)' : nome, contenuto, pratiche);
       // Le decisioni espresse da Luca sopravvivono alla rilettura.
       analisi.tag = (analisi.tag || []).concat((d.tag || []).filter(function (t) { return t.indexOf('pagamento-verificato:') === 0; }));
       const esito = sb_('rpc/completa_analisi', { method: 'post', body: { p_id: d.id, p: {
@@ -1525,7 +1608,7 @@ function analizzaRimasti_(scadenza) {
       const estensione = (nome.match(/\.[a-z0-9]+$/i) || [''])[0].toLowerCase();
       const dataRif = dataValida_(analisi.data_documento) || Utilities.formatDate(meta.data, CONFIG.FUSO, 'yyyy-MM-dd');
       // I file messi su Drive da Luca tengono il loro nome: il titolo giusto vive nell'archivio.
-      if (!daDrive) try { file.setName(dataRif + '_' + pulisciNome_(analisi.titolo || nome.replace(/\.[^.]+$/, '')) + estensione); } catch (e) {}
+      if (file && !daDrive) try { file.setName(dataRif + '_' + pulisciNome_(analisi.titolo || nome.replace(/\.[^.]+$/, '')) + estensione); } catch (e) {}
     } catch (e) {
       if (e.message === 'RIPROVA') throw e;
       logErrore_('analisi ' + d.id, e);
@@ -1593,6 +1676,221 @@ function ordinaDrive_(scadenza) {
     sb_('documenti?id=eq.' + d.id, { method: 'patch', body: { drive_cartella: segnato } });
   }
   return false;
+}
+
+/* Rinomina su Drive (2026-11-15, Luca: "Rinomina anche i file su drive"). I documenti con
+ * drive_rinomina = true prendono il nome "<data>_<titolo>.<estensione>", come all'importazione.
+ * Mai i documenti dei pazienti, mai i file caricati dall'app o messi su Drive da Luca (tengono il
+ * loro nome). Si rinomina soltanto: niente spostamenti, copie o cancellazioni; id e link restano uguali. */
+const RINOMINA_DRIVE_MS = 45 * 1000;
+function nomeDrive_(d) {
+  const data = dataValida_(d.data_documento) || String(d.email_data || '').slice(0, 10) || 'senza-data';
+  const estensione = (String(d.nome_file_originale || '').match(/\.[a-z0-9]+$/i) || [''])[0].toLowerCase();
+  return data + '_' + pulisciNome_(d.titolo || String(d.nome_file_originale || '').replace(/\.[^.]+$/, '')) + estensione;
+}
+function rinominaDrive_(scadenza) {
+  for (;;) {
+    const docs = sb_('documenti?select=id,drive_file_id,titolo,data_documento,email_data,nome_file_originale,fascicolo,gmail_message_id' +
+      '&drive_rinomina=is.true&order=id&limit=100');
+    if (!docs.length) return false;
+    for (let i = 0; i < docs.length; i++) {
+      if (Date.now() > scadenza) return true;
+      const d = docs[i];
+      const proprio = /^(caricato|drivefile|drivefoto):/.test(String(d.gmail_message_id || ''));
+      if (d.drive_file_id && !proprio && d.fascicolo !== 'clinico_pazienti') {
+        try { DriveApp.getFileById(d.drive_file_id).setName(nomeDrive_(d)); }
+        catch (e) { logErrore_('rinomina Drive ' + d.id, e); } // file sparito: non si riprova
+      }
+      sb_('documenti?id=eq.' + d.id, { method: 'patch', body: { drive_rinomina: false } });
+    }
+  }
+}
+
+// Da eseguire a mano dall'editor per rinominare in una volta (gira per ~5 minuti; se restano file,
+// eseguila di nuovo o lascia fare al giro automatico).
+function rinominaDriveTutto() {
+  const restano = rinominaDrive_(Date.now() + 5 * 60 * 1000);
+  console.log(restano ? 'Restano file da rinominare: eseguila di nuovo.' : 'Nomi su Drive allineati.');
+}
+
+/* =====================================================================
+ * EMAIL IMPORTANTI SENZA ALLEGATI (2026-11-16, Luca: "Iniziamo così 1 2 basta link 3 si")
+ * Entra una conversazione senza allegati (mai Promozioni, Social, chat) se almeno uno di:
+ *   - un partecipante è un mittente già in archivio nelle categorie importanti, o è una PEC;
+ *   - l'oggetto ha parole come diffida, sollecito, preavviso, pignoramento, decreto, udienza…;
+ *   - Luca ha risposto e l'altro indirizzo non è una casella personale (gmail, libero…).
+ * Esclusi i messaggi automatici inutili (Klarna, AliExpress, Amazon, ricevute pagoPA/IO, codici e
+ * password) salvo parole forti come diffida o fermo, e qualsiasi cosa sembri clinica (pazienti).
+ * Una scheda per conversazione, senza file su Drive: drive_url è il link a Gmail. Catalogo a regole,
+ * poi analizzaRimasti_ legge il testo (mai i clinici). Si parte dagli ultimi 12 mesi (EMAIL_DAL).
+ * Solo lettura di Gmail ed etichette: niente invii, niente spostamenti, niente cancellazioni.
+ * ===================================================================*/
+const MIME_EMAIL = 'message/rfc822';
+const EMAIL_MS = 30 * 1000;
+const EMAIL_PER_GIRO = 100;
+const EMAIL_MESI_INDIETRO = 12;
+const ETICHETTA_EMAIL = 'Archivio/Email';
+const ETICHETTA_EMAIL_VISTA = 'Archivio/Email vista';
+const FASCICOLI_IMPORTANTI = ['legale', 'fiscale', 'conti', 'immobili', 'assicurazioni', 'utenze', 'successione', 'previdenza',
+  'identita', 'studio_fornitori', 'veicoli', 'riscaldamento', 'famiglia_scuola', 'sanitario_famiglia'];
+const EMAIL_PAROLE = /(diffid|mora\b|sollecit|preavviso|fermo amministrativo|pignorament|decreto|udienza|avviso di pagamento|intimazion|risoluzione|cessazione|recesso|condizioni (contrattuali|economiche)|modifica (unilaterale|delle condizioni)|scadenz|rinnovo|cartella (esattoriale|di pagamento)|accertamento|notifica|contestazione|rimborso|piano di rientro|rateizzazion)/i;
+const EMAIL_FORTI = /(diffid|mora\b|ultimo sollecito|preavviso di (sospensione|fermo|distacco|interruzione)|fermo amministrativo|pignorament|decreto|udienza|intimazion|risoluzione)/i;
+const EMAIL_RUMORE_MITTENTI = /(klarna|aliexpress|amazon\.|github|google\.com|apple\.com|paypal|ebay|decathlon|zalando|io\.italia\.it|pagopa|facebook|instagram|linkedin|netflix|spotify|booking\.com|airbnb|vercel|satispay|revolut\.com|n26)/i;
+const EMAIL_RUMORE_OGGETTI = /(password|codice (di verifica|otp|di accesso)|\botp\b|verifica (il tuo|la tua)|nuovo accesso|newsletter|webinar|il tuo ordine|ordine n?\.? ?\d+.*(spedito|consegnato|in attesa))/i;
+const EMAIL_PEC = /@([\w-]+\.)*(pec|legalmail|postacert|cert)\.|@[\w.-]*\.pec\.it\b/i;
+const DOMINI_PERSONALI = /@(gmail|googlemail|libero|hotmail|outlook|live|yahoo|icloud|me|tiscali|alice|virgilio|tin|fastwebnet|email|inwind|aruba)\./i;
+// Più severo di eClinico_ (che resta com'è): una email che parla di cure non entra mai.
+const EMAIL_CLINICO = /\b(paziente|pazienti|appuntament\w*|visita|seduta|dente|denti|impiant\w* dentale|otturazion\w*|devitalizzazion\w*|igiene orale|apparecchio|allineator\w*|carie|estrazion\w*|referto|referti|radiograf\w*|ortopanoramica|cbct|anamnesi|cartella clinica|consenso informato|piano di cura|preventivo paziente)\b/i;
+
+function indirizzi_(s) {
+  return (String(s || '').toLowerCase().match(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g) || []);
+}
+
+// Indirizzi dei mittenti già in archivio nelle categorie importanti (cache di 6 ore).
+function mittentiImportanti_() {
+  const cache = typeof CacheService !== 'undefined' ? CacheService.getScriptCache() : null;
+  const salvati = cache && cache.get('MITTENTI_IMPORTANTI');
+  if (salvati) return JSON.parse(salvati);
+  const insieme = {};
+  for (let da = 0; ; da += 1000) {
+    const pagina = sb_('documenti?select=email_mittente&email_mittente=not.is.null&fascicolo=in.(' + FASCICOLI_IMPORTANTI.join(',') +
+      ')&order=id&limit=1000&offset=' + da);
+    pagina.forEach(function (d) { indirizzi_(d.email_mittente).forEach(function (a) { if (a !== PROPRIETARIO) insieme[a] = 1; }); });
+    if (pagina.length < 1000) break;
+  }
+  const elenco = Object.keys(insieme);
+  if (cache) try { cache.put('MITTENTI_IMPORTANTI', JSON.stringify(elenco), 6 * 60 * 60); } catch (e) {}
+  return elenco;
+}
+
+// Decide se una conversazione entra: { motivo, forte } oppure null. messaggi = [{ da, a }].
+function emailImportante_(oggetto, messaggi, importanti) {
+  oggetto = String(oggetto || '');
+  const tutti = messaggi.map(function (m) { return m.da + ',' + m.a; }).join(',');
+  if (eClinico_({ oggetto: oggetto, mittente: tutti, destinatari: '' }, '') || EMAIL_CLINICO.test(oggetto)) return null;
+  const altri = [];
+  messaggi.forEach(function (m) { indirizzi_(m.da).forEach(function (a) { if (a !== PROPRIETARIO && altri.indexOf(a) < 0) altri.push(a); }); });
+  const forte = EMAIL_FORTI.test(oggetto);
+  const rumoreMittenti = altri.length && altri.every(function (a) { return EMAIL_RUMORE_MITTENTI.test(a); });
+  if ((rumoreMittenti && !EMAIL_PAROLE.test(oggetto)) || (EMAIL_RUMORE_OGGETTI.test(oggetto) && !forte)) return null;
+  const partecipanti = indirizzi_(tutti).filter(function (a) { return a !== PROPRIETARIO; });
+  const elenco = {};
+  (importanti || []).forEach(function (a) { elenco[a] = 1; });
+  if (partecipanti.some(function (a) { return elenco[a]; })) return { motivo: 'mittente', forte: forte };
+  if (partecipanti.some(function (a) { return EMAIL_PEC.test(a); })) return { motivo: 'pec', forte: forte };
+  if (EMAIL_PAROLE.test(oggetto)) return { motivo: 'oggetto', forte: forte };
+  const haRisposto = messaggi.some(function (m) { return indirizzi_(m.da).indexOf(PROPRIETARIO) >= 0; });
+  if (haRisposto && altri.some(function (a) { return !DOMINI_PERSONALI.test(a); })) return { motivo: 'risposta', forte: forte };
+  return null;
+}
+
+function messaggiInfo_(msgs) {
+  return msgs.map(function (m) { return { da: m.getFrom() || '', a: [m.getTo(), m.getCc()].filter(Boolean).join(', ') }; });
+}
+
+function importaEmail_(scadenza) {
+  const sp = PropertiesService.getScriptProperties();
+  let dal = sp.getProperty('EMAIL_DAL');
+  if (!dal) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - EMAIL_MESI_INDIETRO);
+    dal = Utilities.formatDate(d, CONFIG.FUSO, 'yyyy/MM/dd');
+    sp.setProperty('EMAIL_DAL', dal);
+  }
+  aggiornaEmail_(scadenza);
+  if (Date.now() > scadenza) return true;
+  const vista = etichetta_(ETICHETTA_EMAIL_VISTA);
+  const importata = etichetta_(ETICHETTA_EMAIL);
+  const threads = GmailApp.search('-has:attachment -in:chats -in:spam -in:trash -category:promotions -category:social after:' + dal +
+    ' -label:' + etichettaQuery_(ETICHETTA_EMAIL) + ' -label:' + etichettaQuery_(ETICHETTA_EMAIL_VISTA), 0, EMAIL_PER_GIRO);
+  if (!threads.length) return false;
+  const importanti = mittentiImportanti_();
+  for (let i = 0; i < threads.length; i++) {
+    if (Date.now() > scadenza) return true;
+    const t = threads[i];
+    try {
+      const msgs = t.getMessages();
+      const scelta = emailImportante_(t.getFirstMessageSubject(), messaggiInfo_(msgs), importanti);
+      if (scelta) {
+        registraEmail_(t, msgs, scelta);
+        importata.addToThread(t);
+      } else {
+        vista.addToThread(t);
+      }
+    } catch (e) {
+      if (QUOTA_GOOGLE.test(String(e && e.message))) return true;
+      logErrore_('email ' + t.getId(), e);
+      try { vista.addToThread(t); } catch (x) {} // non si riprova all'infinito
+    }
+  }
+  return true;
+}
+
+function registraEmail_(t, msgs, scelta) {
+  const ultimo = msgs[msgs.length - 1];
+  const esterno = msgs.filter(function (m) { return indirizzi_(m.getFrom()).indexOf(PROPRIETARIO) < 0; })[0] || msgs[0];
+  const oggetto = t.getFirstMessageSubject() || '(senza oggetto)';
+  const meta = { oggetto: oggetto, mittente: esterno.getFrom() || '', destinatari: '', data: ultimo.getDate() };
+  const riserva = analisiDiRiserva_(meta, 'Email', MIME_EMAIL);
+  const esito = sb_('rpc/registra_documento', { method: 'post', body: { p: {
+    hash_sha256: 'email:' + t.getId(), gmail_message_id: ultimo.getId(), gmail_thread_id: t.getId(),
+    email_oggetto: oggetto, email_mittente: meta.mittente, email_data: ultimo.getDate().toISOString(),
+    nome_file_originale: 'Email', mime_type: MIME_EMAIL, dimensione_byte: null,
+    drive_file_id: null, drive_url: 'https://mail.google.com/mail/u/0/#all/' + t.getId(),
+    fascicolo: riserva.fascicolo, tipo_documento: riserva.tipo_documento || 'comunicazione', titolo: riserva.titolo,
+    riassunto: 'Email (' + msgs.length + (msgs.length === 1 ? ' messaggio' : ' messaggi') + '): verrà letta appena possibile.',
+    data_documento: null, azione_richiesta: false, analisi_contenuto: false, tag: ['email', 'da analizzare'],
+    dati_estratti: { motivo: scelta.motivo }, soggetti: [], scadenze: [], pratica: {},
+  } } });
+  if (!esito || !esito.documento_id) throw new Error('Email: registrazione non confermata');
+  if (esito.esistente) return;
+  sb_('documenti?id=eq.' + esito.documento_id, { method: 'patch', body: {
+    ente: riserva.ente || null, rilevanza: scelta.forte ? 'alta' : (riserva.rilevanza === 'bassa' ? 'normale' : riserva.rilevanza),
+    da_analizzare: true, riordinato_il: new Date().toISOString(),
+  } });
+}
+
+// Conversazioni già in archivio con messaggi nuovi: la scheda si aggiorna e torna da leggere.
+function aggiornaEmail_(scadenza) {
+  const sp = PropertiesService.getScriptProperties();
+  const ora = Math.floor(Date.now() / 1000);
+  const dal = Number(sp.getProperty('EMAIL_AGG_DAL') || ora);
+  const threads = GmailApp.search('label:' + etichettaQuery_(ETICHETTA_EMAIL) + ' after:' + (dal - 3600), 0, 30);
+  for (let i = 0; i < threads.length; i++) {
+    if (Date.now() > scadenza) return;
+    const t = threads[i];
+    const ultimo = t.getMessages().slice(-1)[0];
+    const doc = sb_('documenti?select=id,email_data,gmail_message_id&hash_sha256=eq.' + enc_('email:' + t.getId()))[0];
+    if (!doc || doc.gmail_message_id === ultimo.getId()) continue;
+    sb_('documenti?id=eq.' + doc.id, { method: 'patch', body: {
+      gmail_message_id: ultimo.getId(), email_data: ultimo.getDate().toISOString(), da_analizzare: true,
+    } });
+  }
+  sp.setProperty('EMAIL_AGG_DAL', String(ora));
+}
+
+// Testo di una conversazione per l'analisi: ultimi messaggi, senza le parti citate.
+function testoConversazione_(threadId) {
+  const msgs = GmailApp.getThreadById(threadId).getMessages().slice(-8);
+  const parti = [];
+  const partecipanti = [];
+  msgs.forEach(function (m) {
+    partecipanti.push(m.getFrom(), m.getTo(), m.getCc());
+    const corpo = String(m.getPlainBody() || '').split(/\n(?=(Il|On) [^\n]{5,120}(ha scritto|wrote):)/)[0]
+      .split('\n').filter(function (r) { return !/^\s*>/.test(r); }).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    parti.push('— Da: ' + m.getFrom() + ' · ' + Utilities.formatDate(m.getDate(), CONFIG.FUSO, 'yyyy-MM-dd HH:mm') + '\n' + corpo.slice(0, 6000));
+  });
+  return { testo: parti.join('\n\n').slice(-CONFIG.TESTO_MAX_CARATTERI), partecipanti: partecipanti.filter(Boolean).join(', ') };
+}
+
+// Da eseguire a mano: allarga lo storico delle email indietro di altri 12 mesi.
+function emailAncheStorico() {
+  const sp = PropertiesService.getScriptProperties();
+  const attuale = sp.getProperty('EMAIL_DAL');
+  const d = attuale ? new Date(attuale.replace(/\//g, '-') + 'T00:00:00') : new Date();
+  d.setMonth(d.getMonth() - 12);
+  sp.setProperty('EMAIL_DAL', Utilities.formatDate(d, CONFIG.FUSO, 'yyyy/MM/dd'));
+  console.log('Email importate dal ' + sp.getProperty('EMAIL_DAL'));
 }
 
 // Da eseguire a mano dall'editor per sistemare tutto l'archivio in una volta (gira per ~5 minuti;
@@ -2009,15 +2307,41 @@ function analizzaCartella_(req) {
   return { ok: true, analisi: pulito };
 }
 
+// Ultimo messaggio di una conversazione non scritto da Luca (a cui rispondere); altrimenti l'ultimo.
+function messaggioDaRispondere_(threadId, messageId) {
+  let msgs = [];
+  try { msgs = GmailApp.getThreadById(threadId).getMessages(); } catch (e) {}
+  if (!msgs.length && messageId) try { return GmailApp.getMessageById(messageId); } catch (e) { return null; }
+  const altrui = msgs.filter(function (m) { return indirizzi_(m.getFrom()).indexOf(PROPRIETARIO) < 0; });
+  return (altrui.length ? altrui : msgs).slice(-1)[0] || null;
+}
+
 function bozzaRisposta_(req) {
-  const ente = enteValido_(req.ente);
-  if (!ente) return { ok: false, errore: 'Cartella mancante' };
-  const docs = documentiCartella_(ente, 'gmail_message_id,email_oggetto,email_mittente,email_data', 30)
-    .filter(function (d) { return d.gmail_message_id && !/^(caricato|drivefile|drivefoto):/.test(String(d.gmail_message_id)); });
-  if (!docs.length) return { ok: false, errore: 'In questa cartella non c\'è un\'email a cui rispondere.' };
+  let ente = enteValido_(req.ente);
   let msg;
-  try { msg = GmailApp.getMessageById(docs[0].gmail_message_id); } catch (e) { return { ok: false, errore: 'Email non trovata in Gmail.' }; }
+  // DA-FARE (2026-11-16): risposta all'email di un documento preciso, anche con un testo già pronto.
+  const idDoc = String(req.documento || '');
+  if (/^[0-9a-f-]{36}$/i.test(idDoc)) {
+    const d = sb_('documenti?select=gmail_message_id,gmail_thread_id,ente,fascicolo&id=eq.' + idDoc)[0];
+    if (!d || !d.gmail_message_id || /^(caricato|drivefile|drivefoto):/.test(String(d.gmail_message_id))) return { ok: false, errore: 'Questo promemoria non viene da un\'email.' };
+    msg = messaggioDaRispondere_(d.gmail_thread_id, d.gmail_message_id);
+    ente = ente || enteValido_(d.ente);
+    if (!msg) return { ok: false, errore: 'Email non trovata in Gmail.' };
+  } else {
+    if (!ente) return { ok: false, errore: 'Cartella mancante' };
+    const docs = documentiCartella_(ente, 'gmail_message_id,email_oggetto,email_mittente,email_data', 30)
+      .filter(function (d) { return d.gmail_message_id && !/^(caricato|drivefile|drivefoto):/.test(String(d.gmail_message_id)); });
+    if (!docs.length) return { ok: false, errore: 'In questa cartella non c\'è un\'email a cui rispondere.' };
+    try { msg = GmailApp.getMessageById(docs[0].gmail_message_id); } catch (e) { return { ok: false, errore: 'Email non trovata in Gmail.' }; }
+  }
   const meta = { oggetto: msg.getSubject() || '', mittente: msg.getFrom() || '', destinatari: [msg.getTo(), msg.getCc()].filter(Boolean).join(', ') };
+  // Testo scritto o corretto da Luca: diventa la bozza così com'è, senza passare da nessun modello.
+  const pronto = String(req.testo || '').trim().slice(0, 8000);
+  if (pronto) {
+    msg.createDraftReply(pronto); // solo bozza: Luca la rilegge e la invia lui da Gmail
+    return { ok: true, testo: pronto, a: meta.mittente, oggetto: 'Re: ' + meta.oggetto, link: 'https://mail.google.com/mail/u/0/#drafts' };
+  }
+  if (!ente) return { ok: false, errore: 'Cartella mancante' };
   if (eClinico_(meta, '')) return { ok: false, errore: 'Email clinica: la bozza va scritta dall\'app dello studio.' };
   let sintesi = '';
   try { const c = sb_('cartelle_ente?select=sintesi&ente=eq.' + enc_(ente)); sintesi = c[0] && c[0].sintesi ? String(c[0].sintesi).slice(0, 2500) : ''; } catch (e) {}

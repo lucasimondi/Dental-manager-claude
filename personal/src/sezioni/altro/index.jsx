@@ -4,6 +4,8 @@ import AltroPage from '../../../../shared/altro/AltroPage.jsx';
 // DOCK-PER-TE (PO 2026-11-08): «Per te», la stessa pagina che in Studio. Il lavoro dello studio
 // ha la sua voce «Studio» nel dock. L'id resta «altro» per i link già esistenti (?sezione=altro).
 const PER_TE = [
+  // DA-FARE (2026-11-16): promemoria d'azione letti da email e documenti.
+  ['dafare', 'Da fare', 'attivita', 'grande', 'Cosa gestire: solleciti, scadenze, risposte'],
   ['conti', 'Spese e pagamenti', 'conti', 'grande', 'Conti, ricevute e cose da pagare'],
   // DOCUMENTI-DRIVE (PO 2026-11-09): tutti i documenti di Drive, con la barra di ricerca.
   ['documenti', 'Documenti', 'documenti', 'alta', 'Tutto Drive: cerca per nome, ente, anno'],

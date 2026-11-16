@@ -36,10 +36,14 @@ test('lo schema di Cowork è la base, seguito dalla migrazione di sicurezza', ()
     '20261113090000_pol_vita_031_cartelle_mie.sql',
     '20261113120000_pol_vita_032_tempo.sql',
     '20261113150000_pol_vita_033_scrivania.sql',
+    '20261115230000_rinomina_drive.sql',
+    '20261116100000_da_fare.sql',
     '20261116120000_pol_vita_034_testo_completo.sql',
     '20261116150000_pol_vita_035_significato.sql',
     '20261116151000_pol_vita_035_significato_esclusi.sql',
     '20261116170000_pol_vita_035_significato_soglia.sql',
+    '20261116180000_da_fare_categorie.sql',
+    '20261116200000_da_fare_note.sql',
   ]);
 });
 

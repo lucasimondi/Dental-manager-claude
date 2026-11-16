@@ -47,7 +47,7 @@ export function PaginaDocumento({ id, ctx, chiudi }) {
         <p className="pp-riga-meta">{[dataBreve(doc.data_documento || doc.email_data), !personale && doc.importo != null ? euro(doc.importo) : null, doc.persona].filter(Boolean).join(' · ')}</p>
       </div>
       <div className="pp-azioni">
-        {doc.drive_url && <a className="pp-bottone" href={doc.drive_url} target="_blank" rel="noreferrer"><IconaApri size={18} /> Apri il file</a>}
+        {doc.drive_url && !String(doc.drive_url).includes('mail.google.com') && <a className="pp-bottone" href={doc.drive_url} target="_blank" rel="noreferrer"><IconaApri size={18} /> Apri il file</a>}
         {(doc.drive_file_id || doc.drive_url) && <BottoneCondividi doc={doc} mostra={mostra} />}
         {conEmail(doc) && <a className="pp-bottone pp-bottone-chiaro" href={`https://mail.google.com/mail/u/0/#all/${doc.gmail_message_id}`} target="_blank" rel="noreferrer"><IconaEmail size={18} /> Email</a>}
         <button className={`pp-bottone pp-bottone-chiaro${portafoglio ? ' pp-attivo' : ''}`} onClick={() => cambia(() => impostaPortafoglio(archivioDb, doc, !portafoglio), portafoglio ? 'Tolto dai Personali' : 'Aggiunto ai Personali')}>
