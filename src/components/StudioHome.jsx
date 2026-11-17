@@ -22,7 +22,6 @@ const ICONE = {
   ricetta: 'M6 3h9l4 4v14H6zM15 3v4h4M9 10h3a2 2 0 0 1 0 4H9v-4zM9 14v4M12 14l3 4',
   scan: 'M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16',
   cerca: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-3.5-3.5',
-  piu: 'M12 5v14M5 12h14',
 };
 
 // Sezioni di «Il tuo studio»: id della pagina → [icona, tono]. Pazienti e Incassi hanno la loro coppia.
@@ -50,7 +49,6 @@ export default function StudioHome({
   // Le sezioni visibili (NAV già filtrato per piano e ruolo in App.jsx): Pazienti e Incassi in coppia, le altre a icone.
   const sezioni = useMemo(() => nav.filter((n) => SEZIONI_STUDIO[n.id] || ['paz', 'paga'].includes(n.id))
     .map((n) => ({ id: n.id, nome: n.l, icona: (SEZIONI_STUDIO[n.id] || [n.id === 'paz' ? 'pazienti' : 'incassi'])[0], tono: (SEZIONI_STUDIO[n.id] || [, n.id === 'paz' ? 'petrolio' : 'verde'])[1] })), [nav]);
-  const [creaAperto, setCreaAperto] = useState(false);
   const [incassatoOggi, setIncassatoOggi] = useState(null);
   const oggi = today();
 
@@ -78,10 +76,8 @@ export default function StudioHome({
     azioni.ricetta && { id: 'ricetta', nome: 'Ricetta', d: ICONE.ricetta, tono: 'indaco', fai: azioni.ricetta },
     azioni.preventivo && { id: 'preventivo', nome: 'Preventivo', d: ICONE.preventivi, tono: 'viola', fai: azioni.preventivo },
     azioni.incasso && { id: 'incasso', nome: 'Incasso', d: ICONE.incassi, tono: 'verde', fai: azioni.incasso },
-  ].filter(Boolean);
-  const crea = [...rapide,
+    // HOME-STUDIO round 2 (PO 2026-11-17): niente più + (ripeteva le azioni); Spesa sta qui.
     conSpese && azioni.spesa && { id: 'spesa', nome: 'Spesa', d: ICONE.spese, tono: 'cremisi', fai: azioni.spesa },
-    azioni.acquisisci && { id: 'documento', nome: 'Documento', d: ICONE.scan, tono: 'acqua', fai: azioni.acquisisci },
   ].filter(Boolean);
 
   const seguire = [
@@ -113,9 +109,6 @@ export default function StudioHome({
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d={ICONE.cerca} /></svg>
           <input type="search" aria-label="Cerca pazienti e sezioni" placeholder="Cerca pazienti e sezioni" value={cerca} onChange={(e) => setCerca(e.target.value)} />
         </label>
-        <button type="button" className="sh-piu" onClick={() => setCreaAperto(true)} aria-label="Crea">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d={ICONE.piu} /></svg>
-        </button>
       </div>
 
       {cerca.trim() ? (
@@ -211,20 +204,6 @@ export default function StudioHome({
         </>
       )}
 
-      {creaAperto && (
-        <div className="sh-foglio-sfondo" onClick={() => setCreaAperto(false)}>
-          <div className="sh-foglio" role="dialog" aria-modal="true" aria-label="Crea" onClick={(e) => e.stopPropagation()}>
-            <div className="sh-foglio-testa"><strong>Crea</strong><button type="button" onClick={() => setCreaAperto(false)} aria-label="Chiudi">✕</button></div>
-            <div className="sh-foglio-griglia">
-              {crea.map((a) => (
-                <button key={a.id} type="button" className="sh-tessera" onClick={() => { setCreaAperto(false); a.fai(); }}>
-                  <Icona d={a.d} tono={a.tono} />{a.nome}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

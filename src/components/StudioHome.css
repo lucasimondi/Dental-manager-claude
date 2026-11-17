@@ -26,8 +26,6 @@
 .sh-cerca { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 14px; border-radius: 14px; background: var(--sh-sup); border: 1px solid var(--sh-linea); box-shadow: var(--sh-ombra); box-sizing: border-box; }
 .sh-cerca svg { width: 18px; height: 18px; flex-shrink: 0; fill: none; stroke: var(--sh-grigio); stroke-width: 2; stroke-linecap: round; }
 .sh-cerca input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 16px; color: var(--sh-testo); }
-.sh-piu { width: 46px; height: 46px; flex-shrink: 0; border: 0; border-radius: 14px; display: grid; place-items: center; color: #fff !important; background: linear-gradient(145deg, #3b82f6, var(--sh-blu)); box-shadow: var(--sh-rilievo); }
-.sh-piu svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
 
 .sh-icona { width: 44px; height: 44px; flex-shrink: 0; border-radius: 14px; display: grid; place-items: center; box-shadow: var(--sh-rilievo); }
 .sh-icona svg { width: 22px; height: 22px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -44,10 +42,9 @@
 .sh-wa { background: linear-gradient(145deg, #6ee7a0, #22714a); }
 .sh-vetro { background: rgba(255, 255, 255, .18); box-shadow: inset 0 2px 0 rgba(255, 255, 255, .35); }
 
-/* Azioni rapide: cinque in fila; se lo schermo è stretto la fila scorre di lato. */
-.sh-azioni { display: grid; grid-template-columns: repeat(5, minmax(72px, 1fr)); gap: 5px; overflow-x: auto; scrollbar-width: none; margin-inline: -16px; padding: 2px 16px 6px; scroll-padding-inline: 16px; }
-.sh-azioni::-webkit-scrollbar { display: none; }
-.sh-azione { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 0; border: 1px solid var(--sh-linea); border-radius: 16px; background: var(--sh-sup); font-size: 10.5px !important; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; min-width: 0; }
+/* Azioni rapide (round 2): tre per riga, due righe con Spesa; niente scorrimento laterale. */
+.sh-azioni { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.sh-azione { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 4px; border: 1px solid var(--sh-linea); border-radius: 16px; background: var(--sh-sup); font-size: 12.5px !important; font-weight: 600; white-space: nowrap; min-width: 0; }
 .sh-azione .sh-icona { width: 38px; height: 38px; border-radius: 12px; }
 .sh-azione .sh-icona svg { width: 20px; height: 20px; }
 .sh-azione:active, .sh-tessera:active, .sh-carta:active { transform: scale(.96); }
@@ -72,7 +69,7 @@
 .sh-cifra { font-size: 13px; font-weight: 700; color: var(--sh-blu-testo); font-variant-numeric: tabular-nums; }
 
 .sh-titoletto { margin: 6px 0 10px; font-size: 19px; font-weight: 800; }
-.sh-griglia, .sh-foglio-griglia { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 6px; }
+.sh-griglia { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 6px; }
 .sh-tessera { display: flex; flex-direction: column; align-items: center; gap: 7px; border: 0; background: transparent; padding: 0; font-size: 12.5px !important; font-weight: 600; text-align: center; min-width: 0; overflow-wrap: anywhere; }
 .sh-tessera .sh-icona { width: 56px; height: 56px; border-radius: 18px; }
 .sh-tessera .sh-icona svg { width: 26px; height: 26px; }
@@ -88,7 +85,3 @@
 .sh-bollo-info { background: var(--sh-tenue); color: var(--sh-blu-testo); }
 .sh-vuoto { margin: 0; padding: 12px 14px; border-radius: 16px; background: var(--sh-sup); color: var(--sh-grigio); font-size: 14px; }
 
-.sh-foglio-sfondo { position: fixed; inset: 0; z-index: 1200; background: var(--surface-overlay, rgba(15, 23, 42, .45)); display: flex; align-items: flex-end; justify-content: center; }
-.sh-foglio { width: min(100%, 520px); box-sizing: border-box; background: var(--sh-sup); color: var(--sh-testo); border-radius: 24px 24px 0 0; padding: 16px 16px calc(24px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 16px; }
-.sh-foglio-testa { display: flex; justify-content: space-between; align-items: center; font-size: 18px; }
-.sh-foglio-testa button { width: 36px; height: 36px; border: 0; border-radius: 50%; background: var(--sh-tenue); color: var(--sh-blu-testo) !important; }

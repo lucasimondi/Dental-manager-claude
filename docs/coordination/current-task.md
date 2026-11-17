@@ -1,3 +1,11 @@
+# Current task — HOME-STUDIO round 2 + GRAFICA-COORDINATA proposte (2026-11-17)
+- OWNER Claude Code; branch `ccr-6cd34b11-f8v9k4` from master 8a81360 (PR320 merged, prod deploy READY).
+- REQUEST PO 2026-11-17 (phone screenshots): "il tasto più in home di studio fa la stessa cosa delle azioni veloci a parte spesa, possiamo toglierlo e mettere spesa da qualche parte; il pop up va sotto e viene coperto da icona poliedra; la grafica non è coordinata, quella di agenda mi piace, cerchiamo di coordinare con delle proposte tutto il software".
+- SCOPE (1, code): Studio Home: + and «Crea» sheet removed (the sheet was under the Poliedron gem); Spesa is the sixth quick action (only with features.spese); actions on a 3-column grid (no side scroll).
+- SCOPE (2, proposal only): design directions based on the Agenda look for the whole software (artifact); no code until the PO picks one.
+- VALIDATION npm test 1781/1781; visual studio-home PASS Pixel 7 / iPhone SE light/dark.
+- STATUS pushed; PR on request; task-specific "Mergia" required.
+
 # Current task — HOME-STUDIO (2026-11-17)
 - OWNER Claude Code; branch `ccr-6cd34b11-f8v9k4` (after PERSONALE-SUBITO, same branch).
 - REQUEST PO 2026-11-17: "proponimi una cosa simile anche per studio" → mockup (artifact) → "Deve esserci anche ricetta nelle azioni" → "Preventivo ok" → "Sì immagina bene e vai" (mockup choices accepted: blue, today's incassato, Da seguire).

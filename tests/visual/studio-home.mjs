@@ -18,7 +18,7 @@ try {
     await page.screenshot({ path: `${out}/${nome}-${tema}.png`, fullPage: true });
     assert.match(await page.locator('.sh-eroe').innerText(), /2 appuntamenti[\s\S]*1 da confermare[\s\S]*23:58/);
     const azioni = await page.locator('.sh-azione').allInnerTexts();
-    assert.deepEqual(azioni.map((s) => s.trim()), ['Appuntamento', 'Paziente', 'Ricetta', 'Preventivo', 'Incasso']);
+    assert.deepEqual(azioni.map((s) => s.trim()), ['Appuntamento', 'Paziente', 'Ricetta', 'Preventivo', 'Incasso', 'Spesa']);
     assert.match(await page.locator('.sh-seguire').innerText(), /2 richiami scaduti[\s\S]*1 richiamo in scadenza oggi[\s\S]*1 appuntamento da confermare/);
     assert.equal(await page.locator('.sh-cifra').count(), 0, 'senza permesso nessuna cifra');
     const tessere = await page.locator('.sh-griglia .sh-tessera').allInnerTexts();
@@ -28,15 +28,15 @@ try {
     const largo = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     assert.ok(largo <= 0, `scroll orizzontale ${largo}px`);
     await page.getByRole('button', { name: 'Ricetta', exact: true }).click();
-    await page.getByRole('button', { name: 'Crea' }).click();
-    await page.screenshot({ path: `${out}/${nome}-${tema}-crea.png` });
-    await page.getByRole('dialog', { name: 'Crea' }).getByRole('button', { name: 'Documento' }).click();
+    assert.equal(await page.getByRole('button', { name: 'Crea' }).count(), 0);
+    await page.locator('.sh-azione', { hasText: 'Spesa' }).click();
+    await page.locator('.sh-acquisisci').click();
     await page.getByLabel('Cerca pazienti e sezioni').fill('uno');
     await page.getByRole('button', { name: /Prova Uno/ }).click();
     await page.getByLabel('Cerca pazienti e sezioni').fill('listino');
     await page.locator('.sh-trovati').getByRole('button', { name: /Listino/ }).click();
     const stato = await page.evaluate(() => window.studioTest);
-    assert.deepEqual(stato.azioni, ['ricetta', 'acquisisci']);
+    assert.deepEqual(stato.azioni, ['ricetta', 'spesa', 'acquisisci']);
     assert.deepEqual(stato.vai, ['paziente-1', 'listino']);
     assert.deepEqual(scritture, []); assert.deepEqual(errors, []);
     await context.close();

@@ -32,7 +32,10 @@ test('riepilogoStudio: oggi, prossimo, da confermare, richiami; scadenze solo co
 
 test('Home Studio: azioni rapide con Ricetta e Preventivo, nessuna formula economica nuova', () => {
   const home = read('src/components/StudioHome.jsx');
-  for (const nome of ['Appuntamento', 'Paziente', 'Ricetta', 'Preventivo', 'Incasso']) assert.match(home, new RegExp(`nome: '${nome}'`));
+  for (const nome of ['Appuntamento', 'Paziente', 'Ricetta', 'Preventivo', 'Incasso', 'Spesa']) assert.match(home, new RegExp(`nome: '${nome}'`));
+  // Round 2 (PO 2026-11-17): il + ripeteva le azioni ed era coperto dalla gemma: tolto.
+  assert.doesNotMatch(home, /aria-label="Crea"|sh-foglio/);
+  assert.match(home, /conSpese && azioni\.spesa/);
   assert.match(home, /Oggi in studio/);
   assert.match(home, /Il tuo studio/);
   assert.match(home, /Da seguire/);
