@@ -8,7 +8,7 @@
 // allegato, in risposta all'email dell'originale o nuova. Mai inviata: la invia Luca da Gmail.
 import { useEffect, useMemo, useState } from 'react';
 import { archivioDb } from '../lib/supabasePersonal.js';
-import { caricaDocumento, suggerisciTitolo, bozzaConAllegato, daEmail } from '../lib/archivio.js';
+import { caricaDocumento, suggerisciTitolo, bozzaConAllegato, daEmail, destinatariRisposta } from '../lib/archivio.js';
 import { caricaCartelleMie, creaCartella, elencoConPercorso } from '../lib/cartelleMie.js';
 import { preparaFile } from '../lib/file.js';
 import { tokenSessione } from '../ui.jsx';
@@ -87,10 +87,23 @@ export function SalvaArchivio({ file, origine = null, firmato = false, testoPdf,
     } catch (e) { setStato({ errore: e.message || 'Salvataggio non riuscito.' }); }
   };
 
+  // Risposta: tutte le persone dell'email (mittente, A, Cc), già spuntate; Luca toglie chi non serve.
+  const apriRisposta = async () => {
+    setEmail({ risposta: true, testo: testoBase, persone: null });
+    const persone = await destinatariRisposta({ token: await tokenSessione(), origine: origine.id });
+    setEmail((m) => (m ? { ...m, persone: persone.map((p) => ({ ...p, scelto: true })) } : m));
+  };
+  const aggiungiPersona = () => setEmail((m) => {
+    const e = String(m.nuovo || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) || m.persone.some((p) => p.email === e)) return m;
+    return { ...m, nuovo: '', persone: [...m.persone, { email: e, nome: '', ruolo: 'cc', scelto: true }] };
+  });
   const preparaBozza = async () => {
     setEmail((m) => ({ ...m, invio: true, errore: '' }));
     try {
-      const r = await bozzaConAllegato({ token: await tokenSessione(), documento: salvato.id, origine: email.risposta ? origine.id : null, testo: email.testo, a: email.a, oggetto: email.oggetto });
+      const destinatari = email.risposta && email.persone ? email.persone.filter((p) => p.scelto).map((p) => ({ email: p.email, ruolo: p.ruolo === 'cc' ? 'cc' : 'a' })) : undefined;
+      if (destinatari && !destinatari.length) throw new Error('Scegli almeno un destinatario.');
+      const r = await bozzaConAllegato({ token: await tokenSessione(), documento: salvato.id, origine: email.risposta ? origine.id : null, testo: email.testo, a: email.a, oggetto: email.oggetto, destinatari });
       setEmail((m) => ({ ...m, invio: false, fatta: r }));
     } catch (e) { setEmail((m) => ({ ...m, invio: false, errore: e.message })); }
   };
@@ -101,23 +114,33 @@ export function SalvaArchivio({ file, origine = null, firmato = false, testoPdf,
       <h2>{salvato.duplicato ? 'Era già in archivio' : 'Salvato'}</h2>
       <p><strong>{salvato.titolo}</strong><br />{salvato.duplicato ? `Aggiunto anche a «${salvato.dove}».` : `In «${salvato.dove}», in Poliedron e su Drive.`}</p>
       {!email && <>
-        {daEmail(origine) && <button className="pdf-primary" onClick={() => setEmail({ risposta: true, testo: testoBase })}>Rispondi all’email con il file allegato</button>}
+        {daEmail(origine) && <button className="pdf-primary" onClick={() => { void apriRisposta(); }}>Rispondi all’email con il file allegato</button>}
         <button className={daEmail(origine) ? '' : 'pdf-primary'} onClick={() => setEmail({ risposta: false, testo: testoBase, a: '', oggetto: salvato.titolo })}>Nuova email con il file allegato</button>
         {onApri && salvato.id && <button onClick={() => onApri(salvato.id)}>Apri il documento</button>}
         <button onClick={onChiudi}>Fine</button>
       </>}
       {email && !email.fatta && <>
-        <p>{email.risposta ? `Risposta a: ${origine?.email_mittente || 'mittente dell’email originale'}` : 'Email nuova'} · il file è allegato. Si crea solo una bozza in Gmail: la invii tu.</p>
+        <p>{email.risposta ? 'Risposta nella stessa conversazione' : 'Email nuova'} · il file è allegato. Si crea solo una bozza in Gmail: la invii tu.</p>
+        {email.risposta && <fieldset className="pdf-persone"><legend>A chi rispondere</legend>
+          {!email.persone && <p role="status">Leggo mittente, destinatari e Cc…</p>}
+          {email.persone?.length === 0 && <p>Nessun indirizzo trovato nell’email originale: aggiungine uno.</p>}
+          {email.persone?.map((p) => <label key={p.email} className="pdf-check pdf-persona">
+            <input type="checkbox" checked={p.scelto} onChange={(e) => setEmail({ ...email, persone: email.persone.map((x) => (x.email === p.email ? { ...x, scelto: e.target.checked } : x)) })} />
+            <span><strong>{p.nome || p.email}</strong>{p.nome && <small>{p.email}</small>}</span>
+            <em className="pdf-ruolo">{p.ruolo === 'mittente' ? 'Mittente' : p.ruolo === 'cc' ? 'Cc' : 'A'}</em>
+          </label>)}
+          {email.persone && <div className="pdf-row"><input type="email" aria-label="Aggiungi un indirizzo in Cc" placeholder="Aggiungi un indirizzo (Cc)" value={email.nuovo || ''} onChange={(e) => setEmail({ ...email, nuovo: e.target.value })} /><button type="button" onClick={aggiungiPersona}>Aggiungi</button></div>}
+        </fieldset>}
         {!email.risposta && <label className="pdf-filename">A (facoltativo)<input type="email" value={email.a} onChange={(e) => setEmail({ ...email, a: e.target.value })} placeholder="nome@esempio.it" /></label>}
         {!email.risposta && <label className="pdf-filename">Oggetto<input value={email.oggetto} onChange={(e) => setEmail({ ...email, oggetto: e.target.value })} /></label>}
         <label className="pdf-filename">Testo<textarea rows={6} value={email.testo} onChange={(e) => setEmail({ ...email, testo: e.target.value })} /></label>
-        <button className="pdf-primary" disabled={email.invio} onClick={preparaBozza}>{email.invio ? 'Preparo la bozza…' : 'Prepara la bozza in Gmail'}</button>
+        <button className="pdf-primary" disabled={email.invio || (email.risposta && !email.persone)} onClick={preparaBozza}>{email.invio ? 'Preparo la bozza…' : 'Prepara la bozza in Gmail'}</button>
         <button disabled={email.invio} onClick={() => setEmail(null)}>Indietro</button>
         {email.errore && <p role="alert">{email.errore}</p>}
       </>}
       {email?.fatta && <>
-        <p>Bozza pronta in Gmail{email.fatta.a ? ` per ${email.fatta.a}` : ''}, con il file allegato. Non è stata inviata.</p>
-        <a className="pdf-link-bottone pdf-primary" href={email.fatta.link} target="_blank" rel="noreferrer">Apri la bozza in Gmail</a>
+        <p>{email.fatta.risposta ? 'Risposta pronta nella conversazione' : 'Bozza pronta'} in Gmail{email.fatta.a ? ` per ${email.fatta.a}` : ''}, con il file allegato. Non è stata inviata: aprila, controlla e premi Invia.</p>
+        <a className="pdf-link-bottone pdf-primary" href={email.fatta.link} target="_blank" rel="noreferrer">{email.fatta.risposta ? 'Apri la risposta in Gmail' : 'Apri la bozza in Gmail'}</a>
         <button onClick={onChiudi}>Fine</button>
       </>}
     </section>;

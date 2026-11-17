@@ -1340,35 +1340,103 @@ function titoloSuggerito_(req) {
   }
 }
 
-// Bozza Gmail con il documento allegato: risposta all'email da cui veniva l'originale, oppure email
-// nuova. Mai inviata: Luca la rilegge e la invia da Gmail.
+// Email dell'originale a cui rispondere (null se il documento non viene da un'email).
+function messaggioOrigine_(origine) {
+  if (!UUID_.test(String(origine || ''))) return null;
+  const o = (sb_('documenti?select=gmail_message_id,gmail_thread_id&id=eq.' + origine) || [])[0];
+  if (!o || !o.gmail_message_id || /^(caricato|drivefile|drivefoto|email):/.test(String(o.gmail_message_id))) return null;
+  return messaggioDaRispondere_(o.gmail_thread_id, o.gmail_message_id);
+}
+
+// Tutte le persone della risposta: mittente, destinatari e Cc dell'email (tranne Luca), senza doppioni.
+// (2026-11-17, Luca: "devi prendere tutti i mittenti anche i cc, poi io sceglierò se tenerli o no")
+function personeRisposta_(msg) {
+  const viste = {}, fuori = [];
+  const aggiungi = function (campo, ruolo) {
+    String(campo || '').split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).forEach(function (pezzo) {
+      const email = (indirizzi_(pezzo)[0] || '').toLowerCase();
+      if (!email || email === PROPRIETARIO || viste[email]) return;
+      viste[email] = true;
+      const nome = pezzo.replace(/<[^>]*>/, '').replace(/"/g, '').trim();
+      fuori.push({ email: email, nome: nome && nome.toLowerCase() !== email ? nome : '', ruolo: ruolo });
+    });
+  };
+  aggiungi(msg.getReplyTo() || msg.getFrom(), 'mittente');
+  aggiungi(msg.getTo(), 'a');
+  aggiungi(msg.getCc(), 'cc');
+  return fuori;
+}
+
+function destinatariRisposta_(req) {
+  const msg = messaggioOrigine_(req.origine);
+  if (!msg) return { ok: false, errore: 'Il documento non viene da un\'email.' };
+  return { ok: true, oggetto: msg.getSubject() || '', persone: personeRisposta_(msg) };
+}
+
+// Bozza Gmail con il documento allegato: risposta all'email da cui veniva l'originale (a chi sceglie
+// Luca fra mittente, destinatari e Cc), oppure email nuova. Mai inviata: Luca la rilegge e la invia da Gmail.
 const ALLEGATO_MAX = 24 * 1024 * 1024;
+const EMAIL_VALIDA_ = /^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]+$/;
 function bozzaConAllegato_(req) {
   const d = UUID_.test(String(req.documento || '')) ? (sb_('documenti?select=id,titolo,drive_file_id&id=eq.' + req.documento) || [])[0] : null;
   if (!d || !d.drive_file_id) return { ok: false, errore: 'Documento non trovato.' };
   const file = DriveApp.getFileById(d.drive_file_id);
   if (file.getSize() > ALLEGATO_MAX) return { ok: false, errore: 'Il file supera 24 MB: Gmail non lo accetta come allegato.' };
-  const allegati = { attachments: [file.getBlob()] };
+  const blob = file.getBlob();
   const testo = String(req.testo || '').trim().slice(0, 8000) || 'Buongiorno,\n\nin allegato il documento firmato.\n\nCordiali saluti\nLuca Simondi';
-  let msg = null;
-  if (UUID_.test(String(req.origine || ''))) {
-    const o = (sb_('documenti?select=gmail_message_id,gmail_thread_id&id=eq.' + req.origine) || [])[0];
-    if (o && o.gmail_message_id && !/^(caricato|drivefile|drivefoto|email):/.test(String(o.gmail_message_id))) {
-      msg = messaggioDaRispondere_(o.gmail_thread_id, o.gmail_message_id);
-    }
-  }
-  let bozza, a, oggetto;
+  const msg = messaggioOrigine_(req.origine);
   if (msg) {
-    bozza = msg.createDraftReply(testo, allegati);
-    a = msg.getFrom(); oggetto = 'Re: ' + (msg.getSubject() || '');
-  } else {
-    a = String(req.a || '').trim().slice(0, 300);
-    oggetto = String(req.oggetto || '').trim().slice(0, 200) || d.titolo || 'Documento firmato';
-    bozza = GmailApp.createDraft(a, oggetto, testo, allegati);
+    const tutte = personeRisposta_(msg);
+    // Scelta di Luca: [{email, ruolo}]; senza scelta, tutti (rispondi a tutti).
+    const scelte = Array.isArray(req.destinatari)
+      ? req.destinatari.map(function (p) { return { email: String(p && p.email || '').trim().toLowerCase(), ruolo: p && p.ruolo === 'cc' ? 'cc' : 'a' }; })
+        .filter(function (p) { return EMAIL_VALIDA_.test(p.email) && p.email !== PROPRIETARIO; })
+      : tutte.map(function (p) { return { email: p.email, ruolo: p.ruolo === 'cc' ? 'cc' : 'a' }; });
+    const a = scelte.filter(function (p) { return p.ruolo !== 'cc'; }).map(function (p) { return p.email; });
+    const cc = scelte.filter(function (p) { return p.ruolo === 'cc'; }).map(function (p) { return p.email; });
+    if (!a.length && !cc.length) return { ok: false, errore: 'Scegli almeno un destinatario.' };
+    const oggetto = /^re:/i.test(msg.getSubject() || '') ? msg.getSubject() : 'Re: ' + (msg.getSubject() || '');
+    const thread = msg.getThread().getId();
+    let nelThread = true;
+    try {
+      bozzaRispostaGmail_(msg, a.length ? a : cc, a.length ? cc : [], oggetto, testo, blob, thread);
+    } catch (e) {
+      // Gmail API non disponibile: email nuova con le stesse persone (mai qualcuno tolto da Luca).
+      logErrore_('bozza risposta (Gmail API)', e);
+      GmailApp.createDraft((a.length ? a : cc).join(','), oggetto, testo, { attachments: [blob], cc: (a.length ? cc : []).join(',') });
+      nelThread = false;
+    }
+    return { ok: true, risposta: nelThread, a: a.concat(cc).join(', '), oggetto: oggetto,
+      link: nelThread ? 'https://mail.google.com/mail/u/0/#all/' + thread : 'https://mail.google.com/mail/u/0/#drafts' };
   }
+  const a = String(req.a || '').trim().slice(0, 300);
+  const oggetto = String(req.oggetto || '').trim().slice(0, 200) || d.titolo || 'Documento firmato';
+  const bozza = GmailApp.createDraft(a, oggetto, testo, { attachments: [blob] });
   let link = 'https://mail.google.com/mail/u/0/#drafts';
   try { link += '/' + bozza.getMessage().getId(); } catch (e) {}
-  return { ok: true, risposta: !!msg, a: a, oggetto: oggetto, link: link };
+  return { ok: true, risposta: false, a: a, oggetto: oggetto, link: link };
+}
+
+// Risposta nella stessa conversazione con destinatari scelti: messaggio MIME con In-Reply-To/References
+// e il file allegato, salvato come bozza con la Gmail API (servizio avanzato Gmail). Mai inviato.
+function bozzaRispostaGmail_(msg, a, cc, oggetto, testo, blob, thread) {
+  const b64 = function (x) { return Utilities.base64Encode(x, Utilities.Charset.UTF_8); };
+  const righe76 = function (x) { return x.replace(/(.{76})/g, '$1\r\n'); };
+  const parola = function (x) { return '=?UTF-8?B?' + b64(x) + '?='; };
+  const confine = 'poliedron-' + Utilities.getUuid();
+  const id = msg.getHeader('Message-ID') || msg.getHeader('Message-Id') || '';
+  const riferimenti = ((msg.getHeader('References') || '') + ' ' + id).trim();
+  const nome = blob.getName() || 'documento.pdf';
+  const parti = [
+    'To: ' + a.join(', '), cc.length ? 'Cc: ' + cc.join(', ') : null, 'Subject: ' + parola(oggetto),
+    id ? 'In-Reply-To: ' + id : null, riferimenti ? 'References: ' + riferimenti : null,
+    'MIME-Version: 1.0', 'Content-Type: multipart/mixed; boundary="' + confine + '"', '',
+    '--' + confine, 'Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: base64', '', righe76(b64(testo)),
+    '--' + confine, 'Content-Type: ' + (blob.getContentType() || 'application/octet-stream') + '; name="' + parola(nome) + '"',
+    'Content-Disposition: attachment; filename="' + parola(nome) + '"', 'Content-Transfer-Encoding: base64', '',
+    righe76(Utilities.base64Encode(blob.getBytes())), '--' + confine + '--', '',
+  ].filter(function (r) { return r !== null; }).join('\r\n');
+  return Gmail.Users.Drafts.create({ message: { raw: Utilities.base64EncodeWebSafe(parti), threadId: thread } }, 'me');
 }
 
 /* =====================================================================
@@ -1408,6 +1476,7 @@ function doPost(e) {
     if (req.azione === 'suggerisci') return rispostaJson_(suggerisciCartelle_());
     if (req.azione === 'titolo_suggerito') return rispostaJson_(titoloSuggerito_(req));
     if (req.azione === 'bozza_allegato') return rispostaJson_(bozzaConAllegato_(req));
+    if (req.azione === 'destinatari_risposta') return rispostaJson_(destinatariRisposta_(req));
     if (req.azione === 'contenuto') {
       const filtri = req.filtri && typeof req.filtri === 'object' ? req.filtri : {};
       return rispostaJson_({ ok: true, documenti: cercaNelContenuto_(req.testo, filtri, 20, CAMPI_APP) });

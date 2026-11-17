@@ -45,3 +45,11 @@
 .pdf-link-bottone.pdf-primary{background:#146c55;color:#fff}
 @media(max-width:360px){.pdf-due{grid-template-columns:1fr}}
 .pdf-salva>*{flex-shrink:0}
+.pdf-gruppo{margin:6px 0 0;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#536778}
+.pdf-campo-modulo>span{display:flex;align-items:center;gap:8px}
+.pdf-auto{font-style:normal;font-weight:600;font-size:11px;color:#146c55;background:#e3f3ec;border-radius:999px;padding:2px 8px}
+.pdf-persone{border:1px solid #d5dfe8;border-radius:12px;padding:10px 12px;display:grid;gap:6px;margin:0}
+.pdf-persone legend{font-weight:600;padding:0 4px}
+.pdf-persona{align-items:flex-start}.pdf-persona>span{flex:1;min-width:0;display:grid}.pdf-persona small{color:#536778;overflow-wrap:anywhere}
+.pdf-ruolo{font-style:normal;font-size:11px;font-weight:600;color:#185b82;background:#e6f0f7;border-radius:999px;padding:2px 8px;align-self:center}
+.pdf-persone .pdf-row input{flex:1;min-width:0}

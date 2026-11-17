@@ -7,6 +7,7 @@ import 'pdfjs-personal/web/pdf_viewer.css';
 import './pdf.css';
 import { Firma } from './Firma.jsx';
 import { SalvaArchivio } from './SalvaArchivio.jsx';
+import { CompilaCampi } from './CompilaCampi.jsx';
 import { validaFile, limitaFirma, posizioneFirma, incorporaFirme, organizzaPdf, unisciPdf, riordina, nomeCopia, nomeDocumento, pagineDaIntervallo, condividiCopia, posizioniInserimento, formatoPeso } from './operazioni.js';
 import { distanza } from '../lib/pinchZoom.js';
 import { tipoFile } from '../lib/pdfUnico.js';
@@ -55,6 +56,7 @@ export function GestorePdf({ file: initialFile, files: initialFiles, onClose, on
   const [compress, setCompress] = useState(false);
   // DOCUMENTI-FIRMATI: firmato in questa sessione (firma o sigla) → titolo «… firmato», cartella Documenti firmati.
   const firmatoRef = useRef(false), [salvaArchivio, setSalvaArchivio] = useState(null);
+  const [compila, setCompila] = useState(false);
   const markDirty = () => { dirtyRef.current = true; setExportFile(null); };
   const closeRef = useRef(onClose); closeRef.current = onClose;
   const requestClose = () => { if (dirtyRef.current) setConfirmClose(true); else closeRef.current(); };
@@ -162,10 +164,23 @@ export function GestorePdf({ file: initialFile, files: initialFiles, onClose, on
     strumentoUsato.current = true;
     if (strumento === 'firma') setSignatureOpen(true);
     else if (strumento === 'modifica') selectMode(pdfjs.AnnotationEditorType.FREETEXT);
+    else if (strumento === 'compila') setCompila(true);
     else if (strumento === 'comprimi') setCompress(true); // SCAN-HUB: «Comprimi PDF» dalla Home di Scan
     else if (strumento === 'pagine') setOrganize(Array.from({ length: count }, (_, index) => ({ index, rotation: 0 })));
   }, [ready, strumento, count]); // eslint-disable-line react-hooks/exhaustive-deps
   // Con il contesto dell'app: il foglio semplice (titolo, cartella, altro facoltativo); senza, la pagina di prima.
+  // COMPILA-CAMPI: i valori vanno nei campi del modulo (memoria di PDF.js e casella sullo schermo).
+  const inserisciCampi = righe => {
+    const rt = runtime.current; if (!rt?.doc) return;
+    let n = 0;
+    for (const r of righe) for (const id of r.ids) {
+      rt.doc.annotationStorage.setValue(id, { value: r.valore });
+      root.current?.querySelectorAll(`[data-element-id="${id}"]`).forEach(el => { if ('value' in el) el.value = r.valore; });
+      n++;
+    }
+    setCompila(false); markDirty();
+    setMessage(`${righe.length} ${righe.length === 1 ? 'campo compilato' : 'campi compilati'}${n > righe.length ? ` (${n} caselle)` : ''}. Controlla il modulo, poi Salva / Invia.`);
+  };
   const archive = () => { if (ctx) { setMessage(''); setError(''); setSalvaArchivio({ file: exportFile }); return; } onArchive(exportFile); if (!exportPartial) dirtyRef.current = false; };
   // Prime righe del PDF per il titolo suggerito (le pagine scansionate senza testo non ne danno).
   const testoPdf = async () => {
@@ -201,13 +216,14 @@ export function GestorePdf({ file: initialFile, files: initialFiles, onClose, on
     <main className="pdf-stage"><div className="pdf-scroll" ref={container} onInput={markDirty}><div className="pdfViewer" ref={pagesElement} /></div>
       {!source && <div className="pdf-empty"><h1>I tuoi PDF, qui.</h1><p>Apri, compila, firma e organizza. Il documento resta sul dispositivo finché scegli di condividerlo o archiviarlo.</p><button className="pdf-primary" disabled={!!busy} onClick={() => chooser.current.click()}>Apri PDF o foto</button><p>Puoi scegliere più foto per creare un PDF.</p></div>}
     </main>
-    <div className="pdf-tools" aria-label="Strumenti PDF"><button disabled={!editing} onClick={() => setRename(name.replace(/\.pdf$/i, ''))}>Rinomina</button>{MODES.slice(0, 1).map(([label, value]) => <button key={value} disabled={!editing} aria-pressed={mode === value} onClick={() => selectMode(value)}>{label}</button>)}<button disabled={!editing} onClick={() => { selectMode(0); setSignatureOpen(true); }}>Firma</button>{MODES.slice(1).map(([label, value]) => <button key={value} disabled={!editing} aria-pressed={mode === value} onClick={() => selectMode(value)}>{label}</button>)}<button disabled={!editing} onClick={() => { runtime.current.bus.dispatch('editingaction', { source: runtime.current.viewer, name: 'undo' }); markDirty(); }}>Annulla</button><button disabled={!editing} onClick={() => setOrganize(Array.from({ length: count }, (_, index) => ({ index, rotation: 0 })))}>Pagine</button><button disabled={!editing} onClick={ocr}>Testo (OCR)</button><button disabled={!editing} onClick={() => setCompress(true)}>Comprimi</button>{history.length > 0 && <button disabled={!editing} onClick={() => { setSource(history.at(-1)); setHistory(h => h.slice(0, -1)); setSignatures([]); markDirty(); setMessage('Ultima modifica annullata.'); }}>Ripristina prima</button>}</div>
+    <div className="pdf-tools" aria-label="Strumenti PDF"><button disabled={!editing} onClick={() => setRename(name.replace(/\.pdf$/i, ''))}>Rinomina</button>{MODES.slice(0, 1).map(([label, value]) => <button key={value} disabled={!editing} aria-pressed={mode === value} onClick={() => selectMode(value)}>{label}</button>)}<button disabled={!editing} onClick={() => { selectMode(0); setSignatureOpen(true); }}>Firma</button><button disabled={!editing} onClick={() => { selectMode(0); setCompila(true); }}>Compila</button>{MODES.slice(1).map(([label, value]) => <button key={value} disabled={!editing} aria-pressed={mode === value} onClick={() => selectMode(value)}>{label}</button>)}<button disabled={!editing} onClick={() => { runtime.current.bus.dispatch('editingaction', { source: runtime.current.viewer, name: 'undo' }); markDirty(); }}>Annulla</button><button disabled={!editing} onClick={() => setOrganize(Array.from({ length: count }, (_, index) => ({ index, rotation: 0 })))}>Pagine</button><button disabled={!editing} onClick={ocr}>Testo (OCR)</button><button disabled={!editing} onClick={() => setCompress(true)}>Comprimi</button>{history.length > 0 && <button disabled={!editing} onClick={() => { setSource(history.at(-1)); setHistory(h => h.slice(0, -1)); setSignatures([]); markDirty(); setMessage('Ultima modifica annullata.'); }}>Ripristina prima</button>}</div>
     {ready && signatures.map(s => { const pv = runtime.current?.viewer.getPageView(s.page - 1); return pv && <FirmaPagina key={s.id} signature={s} pageView={pv} editable={mode === 0 && !busy && !exportFile} onChange={next => { setSignatures(all => all.map(x => x.id === s.id ? next : x)); markDirty(); }} onRemove={() => { setSignatures(all => all.filter(x => x.id !== s.id)); markDirty(); }} />; })}
     <input ref={chooser} type="file" accept="application/pdf,image/*" multiple hidden onChange={e => { const files = [...e.target.files]; e.target.value = ''; void run('Preparo il documento…', () => importFiles(files)); }} />
     <input ref={merger} type="file" accept="application/pdf" multiple hidden onChange={e => { const files = [...e.target.files]; e.target.value = ''; if (!files.length) return; void run('Unisco i PDF…', async () => { files.forEach(validaFile); if (files.reduce((n,f) => n + f.size, source.length) > 40*1024*1024) throw new Error('Il totale supera 40 MB.'); const bytes = await bytesWithEdits(); await replaceWith(await unisciPdf([bytes, ...await Promise.all(files.map(f => f.arrayBuffer()))])); }); }} />
     {(busy || error || message) && <div className="pdf-status" role={error ? 'alert' : 'status'}>{busy || error || message}{!busy && <button aria-label="Chiudi avviso" onClick={() => { setMessage(''); setError(''); }}>×</button>}</div>}
     {signatureOpen && <div className="pdf-scrim"><Firma pagine={count} onChiudi={() => setSignatureOpen(false)} onUsa={inserisci} /></div>}
     {exportFile && !salvaArchivio && <div className="pdf-scrim"><section className="pdf-sheet" role="dialog" aria-label="Salva copia PDF"><h2>Condividi o salva</h2><p>{exportFile.name} <span className="pdf-peso">· {formatoPeso(exportFile.size)}</span></p><p>L’originale resta intatto. Scegli dove salvare questa versione.</p><button disabled={!!busy} className="pdf-primary" onClick={() => run('Condivisione…', async () => { const result = await condividiCopia(exportFile); if (result === 'non_disponibile') throw new Error('Condivisione file non disponibile: usa Scarica.'); if (result === 'condiviso') { onEsporta?.(exportFile); if (!exportPartial) dirtyRef.current = false; setMessage('Copia condivisa.'); } })}>Condividi PDF</button><button onClick={() => { scaricaDocumento(exportFile); onEsporta?.(exportFile); setMessage('Download avviato. Verifica il file nei download del telefono.'); }}>Scarica PDF</button>{onSave && <button disabled={!!busy} className="pdf-primary" onClick={() => { onSave(exportFile); dirtyRef.current = false; }}>Usa questa copia in Scan</button>}{(onArchive || ctx) && <button disabled={!!busy} className={firmatoRef.current ? 'pdf-primary' : ''} onClick={archive}>{firmatoRef.current ? 'Salva firmato nell’archivio' : 'Salva nell’archivio come nuovo file'}</button>}<button onClick={() => setExportFile(null)}>Torna al documento</button></section></div>}
+    {compila && ready && runtime.current?.doc && <div className="pdf-scrim"><CompilaCampi doc={runtime.current.doc} persona={ctx?.impostazioni?.persone?.[0]} onApplica={inserisciCampi} onChiudi={() => setCompila(false)} /></div>}
     {salvaArchivio && <div className="pdf-scrim"><SalvaArchivio file={salvaArchivio.file} origine={origine} firmato={firmatoRef.current} testoPdf={testoPdf} ctx={ctx}
       onSalvato={() => { if (!exportPartial) dirtyRef.current = false; }}
       onApri={onApriDocumento} onStudio={onArchive ? () => { const f = salvaArchivio.file; setSalvaArchivio(null); onArchive(f); if (!exportPartial) dirtyRef.current = false; } : undefined} onChiudi={() => { setSalvaArchivio(null); setExportFile(null); }} /></div>}

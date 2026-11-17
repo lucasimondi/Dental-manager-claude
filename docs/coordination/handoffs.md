@@ -4846,3 +4846,10 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Unresolved: «Preventivi da inviare» needs a sent state on preventivi (PRODUCT_OWNER_DECISION_REQUIRED).
 - Risks: low; one extra canonical snapshot read (today) on opening Studio for users with management control.
 - Rollback: revert the commit. Next: PO review on the preview → "Mergia".
+
+## Handoff — APRI-CON + RISPOSTA-A-TUTTI + COMPILA-CAMPI (2026-11-17) — Claude Code
+- Branch `ccr-9a526543-2sagy0` (PR #321). Files: `personal/src/sezioni/documenti/{ApriCon.jsx (new),Documento.jsx}`, `personal/src/pdf/{compila.js,CompilaCampi.jsx (new),GestorePdf.jsx,SalvaArchivio.jsx,pdf.css}`, `personal/src/personal.css`, `personal/src/lib/archivio.js`, `poliedron/archivio/{Code.gs,appsscript.json}`, tests `compilaCampi.test.mjs` (new), `documentiFirmati.test.mjs`, `personalPdf.test.mjs`, visual `personal-apri-con.*` (new), `personal-firmati.*`.
+- Database: none. Script: published with clasp (manifest adds the Gmail advanced service).
+- Risks: the Gmail advanced service may need a one-time authorization by Luca in the Apps Script editor (new scope already covered by mail.google.com); until then replies fall back to a new email with the chosen people. Opening a document now shows its page first (one more tap to reach the PDF manager) — PO request.
+- Rollback: revert; `clasp push` previous Code.gs/appsscript.json.
+- Next: PO tries reply with recipients and «Compila» on a real module; "Mergia".

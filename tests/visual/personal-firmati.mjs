@@ -26,12 +26,18 @@ try {
         { id: 'c-firmati', nome: 'Documenti firmati', padre_id: null, posizione: 0, archiviata_il: null, speciale: 'firmati' },
         { id: 'c-casa', nome: 'Casa', padre_id: null, posizione: 0, archiviata_il: null, speciale: null },
       ] });
+      if (u.pathname.endsWith('/documenti') && u.searchParams.get('fascicolo') === 'eq.identita') return route.fulfill({ json: [{ persona: null, categoria: 'carta_identita', dati_estratti: { nome: 'Mario', cognome: 'Prova', codice_fiscale: 'PRVMRA80A01L219X', data_nascita: '1980-01-01', luogo_nascita: 'Torino' } }] });
       if (u.pathname.endsWith('/cartelle_mie') && req.method() === 'POST') return route.fulfill({ status: 201, json: { id: 'c-nuova', nome: 'Contratti casa', padre_id: 'c-casa' } });
       return route.fulfill({ json: [] });
     }
     if (u.hostname === 'script.google.com') {
       const body = JSON.parse(req.postData() || '{}'); script.push(body);
       if (body.azione === 'titolo_suggerito') return route.fulfill({ json: { ok: true, titolo: 'Modulo adesione – Fornitore Prova – 2026' } });
+      if (body.azione === 'destinatari_risposta') return route.fulfill({ json: { ok: true, oggetto: 'Modulo', persone: [
+        { email: 'ufficio@example.invalid', nome: 'Fornitore Prova', ruolo: 'mittente' },
+        { email: 'collega@example.invalid', nome: 'Collega Prova', ruolo: 'a' },
+        { email: 'avvocato@example.invalid', nome: '', ruolo: 'cc' },
+      ] } });
       if (body.azione === 'bozza_allegato') return route.fulfill({ json: { ok: true, risposta: true, a: 'Fornitore Prova <ufficio@example.invalid>', link: 'https://mail.google.com/mail/u/0/#drafts/prova' } });
       return route.fulfill({ json: { ok: true, id: '00000000-0000-4000-8000-000000000009', titolo: body.titolo } });
     }
@@ -98,14 +104,51 @@ try {
   // Reply draft with the file attached (never sent).
   await page.getByRole('button', { name: 'Rispondi all’email con il file allegato' }).click();
   await page.getByText('Si crea solo una bozza in Gmail: la invii tu.').waitFor();
+  // Everyone from the original email, all ticked; Luca removes the colleague and adds a Cc.
+  await page.getByText('Collega Prova').waitFor();
+  assert.equal(await page.locator('.pdf-persona input:checked').count(), 3);
+  assert.deepEqual(await page.locator('.pdf-ruolo').allTextContents(), ['Mittente', 'A', 'Cc']);
+  await page.locator('.pdf-persona', { hasText: 'Collega Prova' }).locator('input').uncheck();
+  await page.getByLabel('Aggiungi un indirizzo in Cc').fill('segreteria@example.invalid');
+  await page.getByRole('button', { name: 'Aggiungi', exact: true }).click();
   await page.screenshot({ path: `${out}/bozza.png` });
   await page.getByRole('button', { name: 'Prepara la bozza in Gmail' }).click();
-  await page.getByRole('link', { name: 'Apri la bozza in Gmail' }).waitFor();
+  await page.getByRole('link', { name: 'Apri la risposta in Gmail' }).waitFor();
   const bozza = script.find((b) => b.azione === 'bozza_allegato');
+  assert.deepEqual(bozza.destinatari, [{ email: 'ufficio@example.invalid', ruolo: 'a' }, { email: 'avvocato@example.invalid', ruolo: 'cc' }, { email: 'segreteria@example.invalid', ruolo: 'cc' }]);
   assert.equal(bozza.documento, '00000000-0000-4000-8000-000000000009');
   assert.equal(bozza.origine, '00000000-0000-4000-8000-000000000002');
   assert.match(bozza.testo, /in allegato il documento firmato «Adesione Fornitore Prova firmata»/);
   await page.screenshot({ path: `${out}/bozza-pronta.png` });
+  // COMPILA-CAMPI: a real AcroForm; identity from the archive + today's date fill in, IBAN typed by hand.
+  const m = await PDFDocument.create(); const pagina = m.addPage([595, 842]); const form = m.getForm();
+  [['Nome e cognome', 700], ['Codice fiscale', 650], ['Data', 600], ['IBAN', 550], ['Firma', 500]].forEach(([n, y]) => { pagina.drawText(n, { x: 40, y: y + 6, font, size: 11 }); form.createTextField(n).addToPage(pagina, { x: 180, y, width: 300, height: 22 }); });
+  await page.goto('http://127.0.0.1:5181/tests/visual/personal-firmati.html?strumento=compila');
+  await page.locator('input[type=file]').first().setInputFiles({ name: 'modulo-campi-fittizio.pdf', mimeType: 'application/pdf', buffer: Buffer.from(await m.save()) });
+  await page.getByRole('heading', { name: 'Compila i campi' }).waitFor();
+  await page.getByText('Da completare · 1').waitFor();
+  assert.equal(await page.getByLabel('Nome e cognome', { exact: true }).last().inputValue(), 'Mario Prova');
+  assert.equal(await page.getByLabel('Codice fiscale', { exact: true }).last().inputValue(), 'PRVMRA80A01L219X');
+  assert.match(await page.getByLabel('Data', { exact: true }).last().inputValue(), /^\d{2}\/\d{2}\/\d{4}$/);
+  assert.equal(await page.locator('.pdf-campo-modulo').count(), 4, 'signature field left out');
+  await page.getByLabel('IBAN', { exact: true }).last().fill('IT60X0542811101000000123456');
+  await page.screenshot({ path: `${out}/compila-foglio.png` });
+  await page.getByRole('button', { name: 'Inserisci nei campi' }).click();
+  await page.getByText(/4 campi compilati/).waitFor();
+  const valori = await page.evaluate(() => [...document.querySelectorAll('.annotationLayer input')].map((i) => i.value));
+  assert.deepEqual(valori.slice(0, 4).sort(), ['IT60X0542811101000000123456', 'Mario Prova', 'PRVMRA80A01L219X', valori.find((v) => /\d{2}\/\d{2}\/\d{4}/.test(v))].sort());
+  await page.screenshot({ path: `${out}/compila-fatto.png` });
+  await page.getByRole('button', { name: 'Salva / Invia', exact: true }).click();
+  await page.getByRole('button', { name: 'Salva nell’archivio come nuovo file' }).waitFor();
+  await page.getByRole('button', { name: 'Condividi PDF', exact: true }).click();
+  await page.waitForFunction(() => window.firmatiTest.shares.length === 1);
+  const esportato = await PDFDocument.load(Uint8Array.from(await page.evaluate(() => window.firmatiTest.shares[0])));
+  const campo = (n) => esportato.getForm().getTextField(n).getText();
+  assert.equal(campo('Nome e cognome'), 'Mario Prova');
+  assert.equal(campo('Codice fiscale'), 'PRVMRA80A01L219X');
+  assert.equal(campo('IBAN'), 'IT60X0542811101000000123456');
+  assert.match(campo('Data'), /^\d{2}\/\d{2}\/\d{4}$/);
+  assert.equal(campo('Firma') || '', '', 'signature field untouched');
   assert.deepEqual(errors, []);
-  console.log('personal-firmati PASS Pixel 7: ballpoint blue/black with shades, simple save sheet (firmato title, suggestion, new folder, optional fields), reply draft with attachment.');
+  console.log('personal-firmati PASS Pixel 7: ballpoint blue/black with shades, simple save sheet (firmato title, suggestion, new folder, optional fields), reply draft to chosen recipients (sender/A/Cc), form auto-fill.');
 } finally { await browser?.close(); server.kill(); }

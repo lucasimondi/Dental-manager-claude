@@ -523,12 +523,12 @@ export async function suggerisciTitolo({ token, testo, nome, titolo, clinico = f
 }
 
 // Bozza Gmail con il documento allegato (risposta all'email dell'originale o email nuova). Mai inviata.
-export async function bozzaConAllegato({ token, documento, origine, testo, a, oggetto }, fetchImpl = fetch) {
+export async function bozzaConAllegato({ token, documento, origine, testo, a, oggetto, destinatari }, fetchImpl = fetch) {
   if (!token) throw new Error('Sessione scaduta: esci e rientra.');
   const res = await fetchImpl(URL_CARICAMENTO, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ token, azione: 'bozza_allegato', documento, origine: origine || null, testo: testo || '', a: a || '', oggetto: oggetto || '' }),
+    body: JSON.stringify({ token, azione: 'bozza_allegato', documento, origine: origine || null, testo: testo || '', a: a || '', oggetto: oggetto || '', ...(Array.isArray(destinatari) ? { destinatari } : {}) }),
   });
   let r;
   try { r = await res.json(); } catch { throw new Error('Gmail non raggiungibile.'); }
@@ -538,3 +538,17 @@ export async function bozzaConAllegato({ token, documento, origine, testo, a, og
 
 // L'originale viene da un'email a cui si può rispondere?
 export const daEmail = (d) => Boolean(d?.gmail_message_id) && !/^(caricato|drivefile|drivefoto|email):/.test(String(d.gmail_message_id));
+
+// Persone dell'email originale (mittente, A, Cc; Luca escluso) per scegliere a chi rispondere.
+export async function destinatariRisposta({ token, origine }, fetchImpl = fetch) {
+  if (!token || !origine) return [];
+  try {
+    const res = await fetchImpl(URL_CARICAMENTO, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ token, azione: 'destinatari_risposta', origine }),
+    });
+    const r = await res.json();
+    return r.ok && Array.isArray(r.persone) ? r.persone : [];
+  } catch { return []; }
+}

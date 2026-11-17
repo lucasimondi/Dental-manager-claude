@@ -8,11 +8,13 @@ localStorage.setItem(ARCHIVIO_STORAGE_KEY, JSON.stringify({ access_token: token,
 const React = (await import('react')).default;
 const { createRoot } = await import('react-dom/client');
 const { GestorePdf } = await import('../../personal/src/pdf/GestorePdf.jsx');
-window.firmatiTest = { toast: [], aperto: null };
+window.firmatiTest = { toast: [], aperto: null, shares: [] };
+Object.defineProperty(navigator, 'canShare', { configurable: true, value: ({ files }) => files?.[0]?.type === 'application/pdf' });
+Object.defineProperty(navigator, 'share', { configurable: true, value: async ({ files }) => { window.firmatiTest.shares.push(Array.from(new Uint8Array(await files[0].arrayBuffer()))); } });
 const ctx = {
   impostazioni: { persone: ['Persona Prova'], categorie: [{ id: 'contratto', nome: 'Contratto' }] },
   fascicoli: [{ codice: 'utenze', nome: 'Utenze' }, { codice: 'legale', nome: 'Legale' }],
   aggiorna() {}, mostra: (t) => window.firmatiTest.toast.push(t),
 };
 const origine = { id: '00000000-0000-4000-8000-000000000002', titolo: 'Modulo adesione Fornitore Prova', fascicolo: 'utenze', gmail_message_id: '18cprova', email_mittente: 'Fornitore Prova <ufficio@example.invalid>' };
-createRoot(document.getElementById('root')).render(<GestorePdf strumento="firma" ctx={ctx} origine={origine} title={origine.titolo} onClose={() => {}} onArchive={() => {}} onApriDocumento={(id) => { window.firmatiTest.aperto = id; }} />);
+createRoot(document.getElementById('root')).render(<GestorePdf strumento={new URLSearchParams(location.search).get("strumento") || "firma"} ctx={ctx} origine={origine} title={origine.titolo} onClose={() => {}} onArchive={() => {}} onApriDocumento={(id) => { window.firmatiTest.aperto = id; }} />);

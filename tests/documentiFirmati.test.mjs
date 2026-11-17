@@ -202,28 +202,67 @@ test('script: titolo suggerito mai da un modello per i pazienti o con poco testo
   assert.equal(s.ai(), 1, 'nessuna altra chiamata al modello');
 });
 
-test('script: bozza con allegato — risposta all\'email dell\'originale o nuova; mai inviata; oltre 24 MB no', () => {
-  const messaggio = { getFrom: () => 'Ufficio <uff@ente.it>', getSubject: () => 'Modulo da firmare', createDraftReply: (testo, opz) => { messaggio.bozza = { testo, opz }; return { getMessage: () => ({ getId: () => 'm-risp' }) }; } };
+test('script: risposta con allegato — tutte le persone (mittente, A, Cc; mai Luca), scelta di Luca, stessa conversazione, mai inviata', () => {
   const uuid = (n) => `00000000-0000-4000-8000-00000000000${n}`;
+  const intestazioni = { 'Message-ID': '<abc@ente.it>', References: '<prima@ente.it>' };
+  const messaggio = {
+    getFrom: () => 'Ufficio Ente <uff@ente.it>', getReplyTo: () => '', getSubject: () => 'Modulo da firmare',
+    getTo: () => 'luca.simondi@gmail.com, "Rossi, Mario" <mario@studio.it>', getCc: () => 'avv@legale.it, uff@ente.it',
+    getHeader: (h) => intestazioni[h] || '', getThread: () => ({ getId: () => 'thr1' }),
+  };
   const documenti = {
     [uuid(1)]: { id: uuid(1), titolo: 'Modulo firmato', drive_file_id: 'f1' },
-    [uuid(2)]: { gmail_message_id: '18c', gmail_thread_id: 't1' },
+    [uuid(2)]: { gmail_message_id: '18c', gmail_thread_id: 'thr1' },
     [uuid(3)]: { gmail_message_id: 'caricato:x', gmail_thread_id: null },
     [uuid(4)]: { id: uuid(4), titolo: 'Grande', drive_file_id: 'grande' },
   };
   const s = scriptFinto({ documenti, messaggio });
-  const r = s.ctx.bozzaConAllegato_({ documento: uuid(1), origine: uuid(2), testo: '' });
+  const bozzeApi = [];
+  s.ctx.Utilities.base64Encode = (x) => Buffer.from(typeof x === 'string' ? x : Uint8Array.from(x)).toString('base64');
+  s.ctx.Utilities.base64EncodeWebSafe = (x) => Buffer.from(x).toString('base64url');
+  s.ctx.Utilities.getUuid = () => 'u1';
+  s.ctx.Utilities.Charset = { UTF_8: 'UTF-8' };
+  s.ctx.DriveApp.getFileById = (id) => ({ getSize: () => (id === 'grande' ? 30e6 : 1000), getBlob: () => ({ getName: () => 'Modulo firmato.pdf', getContentType: () => 'application/pdf', getBytes: () => [37, 80, 68, 70] }) });
+  s.ctx.Gmail = { Users: { Drafts: { create: (r, utente) => { bozzeApi.push({ r, utente }); return { id: 'd1' }; } } } };
+
+  const persone = s.ctx.destinatariRisposta_({ origine: uuid(2) }).persone;
+  assert.deepEqual(JSON.parse(JSON.stringify(persone)), [
+    { email: 'uff@ente.it', nome: 'Ufficio Ente', ruolo: 'mittente' },
+    { email: 'mario@studio.it', nome: 'Rossi, Mario', ruolo: 'a' },
+    { email: 'avv@legale.it', nome: '', ruolo: 'cc' },
+  ]);
+  assert.equal(s.ctx.destinatariRisposta_({ origine: uuid(3) }).ok, false);
+
+  // Luca toglie il mittente: resta Mario in A e l'avvocato in Cc, nella stessa conversazione.
+  const r = s.ctx.bozzaConAllegato_({ documento: uuid(1), origine: uuid(2), testo: '', destinatari: [{ email: 'mario@studio.it', ruolo: 'a' }, { email: 'avv@legale.it', ruolo: 'cc' }, { email: 'luca.simondi@gmail.com', ruolo: 'a' }] });
   assert.equal(r.ok, true); assert.equal(r.risposta, true);
-  assert.equal(r.link, 'https://mail.google.com/mail/u/0/#drafts/m-risp');
-  assert.match(messaggio.bozza.testo, /in allegato il documento firmato/);
-  assert.deepEqual(JSON.parse(JSON.stringify(messaggio.bozza.opz)), { attachments: [{ blob: 'f1' }] });
+  assert.equal(r.link, 'https://mail.google.com/mail/u/0/#all/thr1');
+  assert.equal(bozzeApi[0].utente, 'me');
+  assert.equal(bozzeApi[0].r.message.threadId, 'thr1');
+  const raw = Buffer.from(bozzeApi[0].r.message.raw, 'base64url').toString();
+  assert.match(raw, /^To: mario@studio\.it\r\nCc: avv@legale\.it\r\n/);
+  assert.doesNotMatch(raw, /uff@ente\.it|luca\.simondi/);
+  assert.match(raw, /In-Reply-To: <abc@ente\.it>\r\nReferences: <prima@ente\.it> <abc@ente\.it>/);
+  assert.match(raw, /Content-Disposition: attachment; filename="=\?UTF-8\?B\?/);
+  assert.match(Buffer.from(raw.match(/base64\r\n\r\n([^\r]+)/)[1], 'base64').toString(), /in allegato il documento firmato/);
+
+  // Senza scelta: tutti. Gmail API non disponibile → email nuova solo con le persone scelte.
+  s.ctx.Gmail.Users.Drafts.create = () => { throw new Error('Gmail API has not been used'); };
+  const riserva = s.ctx.bozzaConAllegato_({ documento: uuid(1), origine: uuid(2), testo: 'Ciao' });
+  assert.equal(riserva.risposta, false);
+  assert.deepEqual(JSON.parse(JSON.stringify(s.bozze.map((b) => [b.a, b.oggetto, b.opz.cc]))), [['uff@ente.it,mario@studio.it', 'Re: Modulo da firmare', 'avv@legale.it']]);
+  assert.equal(s.ctx.bozzaConAllegato_({ documento: uuid(1), origine: uuid(2), destinatari: [] }).errore, 'Scegli almeno un destinatario.');
+
+  // Email nuova (originale non da email), file troppo grande, documento assente.
   const nuova = s.ctx.bozzaConAllegato_({ documento: uuid(1), origine: uuid(3), a: 'x@y.it', testo: 'Ciao' });
   assert.equal(nuova.risposta, false);
-  assert.deepEqual(JSON.parse(JSON.stringify(s.bozze.map((b) => [b.a, b.oggetto, b.testo]))), [['x@y.it', 'Modulo firmato', 'Ciao']]);
+  assert.equal(s.bozze.at(-1).a, 'x@y.it');
   assert.match(s.ctx.bozzaConAllegato_({ documento: uuid(4) }).errore, /24 MB/);
   assert.equal(s.ctx.bozzaConAllegato_({ documento: 'non-uuid' }).ok, false);
   assert.equal(s.inviate.length, 0, 'mai inviata');
-  assert.doesNotMatch(codice.slice(codice.indexOf('function bozzaConAllegato_'), codice.indexOf('CARICAMENTO DALL\'APP (Poliedron Personal)')), /sendEmail|\.send\(/);
+  const blocco = codice.slice(codice.indexOf('function bozzaConAllegato_'), codice.indexOf('CARICAMENTO DALL\'APP (Poliedron Personal)'));
+  assert.doesNotMatch(blocco, /sendEmail|\.send\(|Drafts\.send|Messages\.send/);
+  assert.match(readFileSync('poliedron/archivio/appsscript.json', 'utf8'), /"serviceId": "gmail"/);
 });
 
 test('script: caricamento nella cartella scelta (nome = titolo, file fisso), ordinaDrive_ non lo sposta, azioni nuove', () => {
