@@ -1,3 +1,11 @@
+# Current task — PERSONALE-SUBITO (2026-11-17)
+- OWNER Claude Code; branch `ccr-6cd34b11-f8v9k4` from master ab790ec (PR319 merged).
+- REQUEST PO 2026-11-17 (screenshot of the Personal Home): "Deve comparire subito questa pagina quando clicco su personale, non più il menu che compare adesso. Inoltre proponimi una cosa simile anche per studio".
+- SCOPE (navigation only): Studio `page === 'perte' | 'altro'` no longer renders the AltroPage «Personale» menu (gruppiPerTe removed); `VaiAPersonale` opens `sectionDestination('personal', 'altro')` = the Personal Home (on the phone app /poliedron/personal/?sezione=altro, same app). From the dock `location.assign` (Back returns to Studio); from a `?sezione=perte|altro` link `location.replace` (no Back loop). Studio Home: mockup proposal only (no code).
+- LOCKS: no DB/RLS/financial change.
+- VALIDATION npm test 1779/1779 (appUnica/documentiDrive assertions on the removed menu updated); build PASS; build:personal PASS. Not verified: real phone.
+- STATUS pushed; PR on request; task-specific "Mergia" required.
+
 # Current task — PERSONALE-GRAFICA (2026-11-16)
 - OWNER Claude Code; branch `claude/personale-grafica-2` from master 5ee25a5 (PR318 merged).
 - REQUEST PO 2026-11-16: "Continua a lavorare su quello su cui stavi lavorando della grafica" (follow-ups listed after PERSONALE-HOME).
