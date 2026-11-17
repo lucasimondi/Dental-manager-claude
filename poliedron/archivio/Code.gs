@@ -130,6 +130,8 @@ function elabora() {
     // Cartelle di Drive per categoria e persona (POL-VITA-013): un po' a ogni giro.
     try { ordinaDrive_(inizio + ORDINA_DRIVE_MS); } catch (e) { logErrore_('ordine Drive', e); }
 
+    // Cartelle di Poliedron con la gemella su Drive: stesso nome e stesso padre (DOCUMENTI-FIRMATI).
+    try { allineaCartelleDrive_(); } catch (e) { logErrore_('cartelle Drive', e); }
     // Nome dei file su Drive allineato al titolo dell'archivio (drive_rinomina): un po' a ogni giro.
     try { rinominaDrive_(Date.now() + RINOMINA_DRIVE_MS); } catch (e) { logErrore_('rinomina Drive', e); }
 
@@ -1260,6 +1262,116 @@ function dataValida_(s) { return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.
 function pulisciNome_(s) { return String(s).replace(/[\\\/:*?"<>|\r\n]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 120); }
 
 /* =====================================================================
+ * DOCUMENTI FIRMATI E CARTELLE GEMELLE SU DRIVE (2026-11-17)
+ * Luca: "I documenti firmati devono poter essere salvati in cartella drive Documenti Firmati […]
+ * possibilità di salvarlo in cartelle di drive eventualmente creandone di nuove che vanno sia in
+ * poliedron sia in drive". Ogni cartella di Poliedron (cartelle_mie) ha, quando serve, la gemella su
+ * Drive dentro "Archivio personale" (stesso nome, stesso padre). I file salvati lì restano lì
+ * (documenti.drive_fissa: ordinaDrive_ non li sposta). Email: solo bozze, mai invii.
+ * ===================================================================*/
+const UUID_ = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const NOME_FIRMATI = 'Documenti firmati';
+
+function cartellaFirmati_() {
+  let c = (sb_('cartelle_mie?select=id&speciale=eq.firmati') || [])[0];
+  if (!c) c = (sb_('cartelle_mie?select=id', { method: 'post', prefer: 'return=representation', body: { nome: NOME_FIRMATI, speciale: 'firmati' } }) || [])[0];
+  return c.id;
+}
+
+// Cartella di Drive gemella di una cartella di Poliedron: creata se manca, dentro quella del padre.
+function cartellaDriveDi_(id, profondita) {
+  profondita = profondita || 0;
+  if (profondita > 12) throw new Error('Cartelle annidate troppo in profondità');
+  const c = (sb_('cartelle_mie?select=id,nome,padre_id,drive_cartella_id,archiviata_il&id=eq.' + enc_(id)) || [])[0];
+  if (!c) throw new Error('Cartella non trovata');
+  if (c.drive_cartella_id) {
+    try { const f = DriveApp.getFolderById(c.drive_cartella_id); if (!f.isTrashed()) return f; } catch (e) { /* sparita: si ricrea */ }
+  }
+  const padre = c.padre_id ? cartellaDriveDi_(c.padre_id, profondita + 1) : cartellaRadice_();
+  const f = padre.createFolder(pulisciNome_(c.nome) || 'Cartella');
+  sb_('cartelle_mie?id=eq.' + enc_(c.id), { method: 'patch', body: { drive_cartella_id: f.getId() } });
+  return f;
+}
+
+function mettiInCartella_(idCartella, idDoc) {
+  sb_('cartelle_mie_documenti?on_conflict=cartella_id,documento_id', { method: 'post', prefer: 'resolution=ignore-duplicates,return=minimal',
+    body: { cartella_id: idCartella, documento_id: idDoc } });
+}
+
+// A ogni giro: le gemelle su Drive seguono nome e padre delle cartelle di Poliedron (poche cartelle).
+function allineaCartelleDrive_() {
+  const cartelle = sb_('cartelle_mie?select=id,nome,padre_id,drive_cartella_id&drive_cartella_id=not.is.null') || [];
+  const perId = {};
+  cartelle.forEach(function (c) { perId[c.id] = c; });
+  cartelle.forEach(function (c) {
+    let f;
+    try { f = DriveApp.getFolderById(c.drive_cartella_id); } catch (e) { return; }
+    const nome = pulisciNome_(c.nome) || 'Cartella';
+    if (f.getName() !== nome) f.setName(nome);
+    const padre = c.padre_id ? perId[c.padre_id] : null;
+    if (c.padre_id && !padre) return;   // il padre non ha ancora la gemella: ci pensa il primo salvataggio
+    const idPadre = padre ? padre.drive_cartella_id : cartellaRadice_().getId();
+    const padri = f.getParents();
+    if (padri.hasNext() && padri.next().getId() !== idPadre) {
+      try { f.moveTo(DriveApp.getFolderById(idPadre)); } catch (e) { logErrore_('cartella Drive ' + c.id, e); }
+    }
+  });
+}
+
+// Titolo suggerito dal contenuto (prime righe del PDF lette sul telefono). Mai a un modello se il
+// documento sembra di un paziente: allora nessun suggerimento.
+const TITOLO_CLINICO = /\b(paziente|pazienti|referto|referti|anamnesi|cartella clinica|consenso informato|piano di cura|radiograf\w*|ortopanoramica|cbct|diagnosi)\b/i;
+function titoloSuggerito_(req) {
+  const testo = String(req.testo || '').replace(/\s+/g, ' ').trim().slice(0, 3000);
+  const nome = String(req.nome || '').slice(0, 200);
+  const attuale = String(req.titolo || '').slice(0, 200);
+  if (req.clinico || eClinico_({ oggetto: attuale, mittente: '', destinatari: '' }, nome) || TITOLO_CLINICO.test(testo + ' ' + attuale)) {
+    return { ok: true, titolo: null, motivo: 'clinico' };
+  }
+  if (testo.length < 20) return { ok: true, titolo: null, motivo: 'poco testo' };
+  try {
+    const t = testoAI_('Dai un titolo breve (massimo 8 parole) al documento, in italiano, nel formato "Tipo – Ente o controparte – riferimento" ' +
+      '(es. "Contratto di locazione – Rossi – via Roma 1", "Modulo adesione – Banca X – 2026"). Rispondi solo con il titolo, senza virgolette.',
+      'Nome del file: ' + nome + (attuale ? '\nTitolo attuale: ' + attuale : '') + '\n\nInizio del testo:\n' + testo, 60);
+    const titolo = String(t || '').split('\n')[0].replace(/^["«“']+|["»”']+$/g, '').replace(/\.$/, '').trim().slice(0, 100);
+    return { ok: true, titolo: titolo || null };
+  } catch (e) {
+    return { ok: true, titolo: null, motivo: 'AI non disponibile' };
+  }
+}
+
+// Bozza Gmail con il documento allegato: risposta all'email da cui veniva l'originale, oppure email
+// nuova. Mai inviata: Luca la rilegge e la invia da Gmail.
+const ALLEGATO_MAX = 24 * 1024 * 1024;
+function bozzaConAllegato_(req) {
+  const d = UUID_.test(String(req.documento || '')) ? (sb_('documenti?select=id,titolo,drive_file_id&id=eq.' + req.documento) || [])[0] : null;
+  if (!d || !d.drive_file_id) return { ok: false, errore: 'Documento non trovato.' };
+  const file = DriveApp.getFileById(d.drive_file_id);
+  if (file.getSize() > ALLEGATO_MAX) return { ok: false, errore: 'Il file supera 24 MB: Gmail non lo accetta come allegato.' };
+  const allegati = { attachments: [file.getBlob()] };
+  const testo = String(req.testo || '').trim().slice(0, 8000) || 'Buongiorno,\n\nin allegato il documento firmato.\n\nCordiali saluti\nLuca Simondi';
+  let msg = null;
+  if (UUID_.test(String(req.origine || ''))) {
+    const o = (sb_('documenti?select=gmail_message_id,gmail_thread_id&id=eq.' + req.origine) || [])[0];
+    if (o && o.gmail_message_id && !/^(caricato|drivefile|drivefoto|email):/.test(String(o.gmail_message_id))) {
+      msg = messaggioDaRispondere_(o.gmail_thread_id, o.gmail_message_id);
+    }
+  }
+  let bozza, a, oggetto;
+  if (msg) {
+    bozza = msg.createDraftReply(testo, allegati);
+    a = msg.getFrom(); oggetto = 'Re: ' + (msg.getSubject() || '');
+  } else {
+    a = String(req.a || '').trim().slice(0, 300);
+    oggetto = String(req.oggetto || '').trim().slice(0, 200) || d.titolo || 'Documento firmato';
+    bozza = GmailApp.createDraft(a, oggetto, testo, allegati);
+  }
+  let link = 'https://mail.google.com/mail/u/0/#drafts';
+  try { link += '/' + bozza.getMessage().getId(); } catch (e) {}
+  return { ok: true, risposta: !!msg, a: a, oggetto: oggetto, link: link };
+}
+
+/* =====================================================================
  * CARICAMENTO DALL'APP (Poliedron Personal)
  * Web app: esegui come proprietario, accesso "Chiunque". L'identità non viene dal
  * link ma dal token di sessione Supabase dell'app, verificato a ogni richiesta:
@@ -1294,6 +1406,8 @@ function doPost(e) {
     if (req.azione === 'cartella') return rispostaJson_(analizzaCartella_(req));
     if (req.azione === 'bozza') return rispostaJson_(bozzaRisposta_(req));
     if (req.azione === 'suggerisci') return rispostaJson_(suggerisciCartelle_());
+    if (req.azione === 'titolo_suggerito') return rispostaJson_(titoloSuggerito_(req));
+    if (req.azione === 'bozza_allegato') return rispostaJson_(bozzaConAllegato_(req));
     if (req.azione === 'contenuto') {
       const filtri = req.filtri && typeof req.filtri === 'object' ? req.filtri : {};
       return rispostaJson_({ ok: true, documenti: cercaNelContenuto_(req.testo, filtri, 20, CAMPI_APP) });
@@ -1309,11 +1423,19 @@ function doPost(e) {
     const bytes = Utilities.base64Decode(req.dati);
     const hash = sha256_(bytes);
     const esistente = sb_('documenti?select=id,titolo&hash_sha256=eq.' + hash);
-    if (esistente.length) return rispostaJson_({ ok: true, duplicato: true, id: esistente[0].id, titolo: esistente[0].titolo });
+    if (esistente.length) {
+      // Già in archivio: lo si mette comunque nella cartella scelta (in Poliedron; il file su Drive resta dov'è).
+      const dove = req.firmati ? cartellaFirmati_() : (UUID_.test(String(req.cartella || '')) ? String(req.cartella) : null);
+      if (dove) mettiInCartella_(dove, esistente[0].id);
+      return rispostaJson_({ ok: true, duplicato: true, id: esistente[0].id, titolo: esistente[0].titolo });
+    }
 
     const ora = new Date();
-    const cartella = sottocartella_(sottocartella_(cartellaRadice_(), CARTELLA_CARICATI),
-      Utilities.formatDate(ora, CONFIG.FUSO, 'yyyy'));
+    // DOCUMENTI-FIRMATI: cartella scelta da Luca (una delle sue cartelle, gemella su Drive) o «Documenti firmati».
+    const idCartella = req.firmati ? cartellaFirmati_() : (UUID_.test(String(req.cartella || '')) ? String(req.cartella) : null);
+    const titoloScelto = String(req.titolo || '').trim().slice(0, 120);
+    const cartella = idCartella ? cartellaDriveDi_(idCartella)
+      : sottocartella_(sottocartella_(cartellaRadice_(), CARTELLA_CARICATI), Utilities.formatDate(ora, CONFIG.FUSO, 'yyyy'));
     file = cartella.createFile(Utilities.newBlob(bytes, mime, nome));
 
     const meta = { oggetto: String(req.descrizione || ''), mittente: PROPRIETARIO, destinatari: '', data: ora,
@@ -1339,13 +1461,16 @@ function doPost(e) {
       }
     }
     if (analisi.riserva && req.descrizione) analisi.titolo = String(req.descrizione).slice(0, 120);
+    if (titoloScelto) analisi.titolo = titoloScelto;   // il titolo scritto da Luca vale sempre
     // La scelta di Luca nell'app vale più della classificazione automatica (mai per i clinici)
     if (req.fascicolo && FASCICOLI[req.fascicolo] && analisi.fascicolo !== 'clinico_pazienti') analisi.fascicolo = req.fascicolo;
     const fasc = FASCICOLI[analisi.fascicolo] ? analisi.fascicolo : 'altro';
     const tag = (Array.isArray(analisi.tag) ? analisi.tag.slice(0, 7) : []).concat(req.portafoglio ? ['portafoglio'] : []);
     const estensione = (nome.match(/\.[a-z0-9]+$/i) || [''])[0].toLowerCase();
-    file.setName((dataValida_(analisi.data_documento) || Utilities.formatDate(ora, CONFIG.FUSO, 'yyyy-MM-dd')) + '_' +
-      pulisciNome_(analisi.titolo || nome.replace(/\.[^.]+$/, '')) + estensione);
+    // In una cartella scelta il file prende esattamente il titolo; altrimenti data_titolo come sempre.
+    file.setName(idCartella ? pulisciNome_(analisi.titolo || nome.replace(/\.[^.]+$/, '')) + estensione
+      : (dataValida_(analisi.data_documento) || Utilities.formatDate(ora, CONFIG.FUSO, 'yyyy-MM-dd')) + '_' +
+        pulisciNome_(analisi.titolo || nome.replace(/\.[^.]+$/, '')) + estensione);
 
     const esito = sb_('rpc/registra_documento', { method: 'post', body: { p: {
       hash_sha256: hash, gmail_message_id: 'caricato:' + Utilities.getUuid(), gmail_thread_id: null,
@@ -1363,6 +1488,10 @@ function doPost(e) {
     } } });
     const idDoc = esito && esito.documento_id;
     completaCatalogo_(idDoc, analisi, fasc);
+    if (idDoc && idCartella) {
+      sb_('documenti?id=eq.' + idDoc, { method: 'patch', body: { drive_fissa: true, drive_cartella: 'cartella:' + idCartella } });
+      mettiInCartella_(idCartella, idDoc);
+    }
     // Persona e categoria scelte da Luca (documenti personali: carta d'identità, codice fiscale, ...)
     if (idDoc && (req.persona || req.categoria)) {
       sb_('documenti?id=eq.' + idDoc, { method: 'patch', body: {
@@ -1758,7 +1887,7 @@ function ordinaDrive_(scadenza) {
   let daSpostare = [];
   for (let da = 0; ; da += 1000) {
     const pagina = sb_('documenti?select=id,drive_file_id,fascicolo,persona,data_documento,email_data,drive_cartella' +
-      '&drive_file_id=not.is.null&gmail_message_id=not.like.drivefoto:*&gmail_message_id=not.like.drivefile:*&order=id&limit=1000&offset=' + da);
+      '&drive_file_id=not.is.null&drive_fissa=is.false&gmail_message_id=not.like.drivefoto:*&gmail_message_id=not.like.drivefile:*&order=id&limit=1000&offset=' + da);
     daSpostare = daSpostare.concat(pagina.filter(function (d) {
       const voluto = percorsoDrive_(d, persone);
       return d.drive_cartella !== voluto && d.drive_cartella !== '!' + voluto;

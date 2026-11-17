@@ -25,3 +25,23 @@
 .pdf-manager .pdf-status{position:relative;z-index:30}
 /* SCAN-PDF-MANAGER — schede Firma · Sigla · Data, peso del file. */
 .pdf-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.pdf-manager .pdf-tabs button[aria-selected=true]{background:#185b82;color:#fff;border-color:#185b82}.pdf-peso{font-size:13px;color:#536778}
+
+/* FIRMA-BIRO: scelta dell'inchiostro (Bic nero o blu). */
+.pdf-inchiostri{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.pdf-manager .pdf-inchiostro{display:flex;align-items:center;justify-content:center;gap:8px}
+.pdf-manager .pdf-inchiostro.attivo{border-color:#146c55;box-shadow:inset 0 0 0 1px #146c55;font-weight:600}
+.pdf-inchiostro-punto{width:14px;height:14px;border-radius:50%;flex-shrink:0;box-shadow:0 0 0 2px #fff,0 0 0 3px #c7d3dd}
+.pdf-pad{background:linear-gradient(transparent calc(100% - 52px),#c9d4de calc(100% - 52px),#c9d4de calc(100% - 51px),transparent calc(100% - 51px)),#fffefb}
+
+/* DOCUMENTI-FIRMATI: foglio «Salva nell'archivio». */
+.pdf-salva select,.pdf-salva textarea{font:inherit;padding:8px;border:1px solid #b4c4d1;border-radius:8px;min-height:40px;background:#fff;color:#17263c;width:100%;min-width:0}
+.pdf-salva textarea{resize:vertical;line-height:1.45}
+.pdf-manager .pdf-suggerito{text-align:left;background:#eef7f3;border-color:#bfe0d3;color:#17263c;line-height:1.4}
+.pdf-manager .pdf-altro{text-align:left;background:transparent;border-style:dashed}
+.pdf-altro-campi,.pdf-nuova-cartella{display:grid;gap:10px}
+.pdf-due{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pdf-sheet .pdf-nota{font-size:13px}
+.pdf-link-bottone{display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:10px;text-decoration:none;font-weight:600}
+.pdf-link-bottone.pdf-primary{background:#146c55;color:#fff}
+@media(max-width:360px){.pdf-due{grid-template-columns:1fr}}
+.pdf-salva>*{flex-shrink:0}

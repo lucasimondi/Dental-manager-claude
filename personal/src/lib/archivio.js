@@ -162,12 +162,14 @@ export async function spostaFascicolo(db, id, fascicolo) {
 
 // Invia il file allo script, che lo salva su Drive e lo cataloga. Content-Type text/plain:
 // richiesta "semplice", senza preflight CORS (Apps Script non risponde alle OPTIONS).
-export async function caricaDocumento({ token, dati, nome, mime, descrizione, fascicolo, portafoglio: tieni, nonAnalizzare, persona, categoria }, fetchImpl = fetch) {
+export async function caricaDocumento({ token, dati, nome, mime, descrizione, fascicolo, portafoglio: tieni, nonAnalizzare, persona, categoria, titolo, cartella, firmati }, fetchImpl = fetch) {
   if (!token) throw new Error('Sessione scaduta: esci e rientra.');
   const res = await fetchImpl(URL_CARICAMENTO, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ token, dati, nome, mime, descrizione: descrizione || '', fascicolo: fascicolo || null, portafoglio: !!tieni, nonAnalizzare: !!nonAnalizzare, persona: persona || null, categoria: categoria || null }),
+    body: JSON.stringify({ token, dati, nome, mime, descrizione: descrizione || '', fascicolo: fascicolo || null, portafoglio: !!tieni, nonAnalizzare: !!nonAnalizzare, persona: persona || null, categoria: categoria || null,
+      // DOCUMENTI-FIRMATI: titolo esatto e cartella scelta (una delle mie cartelle o «Documenti firmati»).
+      ...(titolo ? { titolo } : {}), ...(cartella ? { cartella } : {}), ...(firmati ? { firmati: true } : {}) }),
   });
   let r;
   try { r = await res.json(); } catch { throw new Error('Risposta non valida dallo script di archiviazione.'); }
@@ -504,3 +506,35 @@ export async function documentiPersonaliStorici(db,persona=null) {
   if(persona)q=q.eq('persona',persona);
   return esito(await q.order('creato_il',{ascending:false}).limit(300));
 }
+
+// DOCUMENTI-FIRMATI (2026-11-17): titolo suggerito dal contenuto (prime righe del PDF). Lo script non
+// lo chiede a nessun modello se il documento sembra di un paziente. Senza risposta: null.
+export async function suggerisciTitolo({ token, testo, nome, titolo, clinico = false }, fetchImpl = fetch) {
+  if (!token || String(testo || '').trim().length < 20 || clinico) return null;
+  try {
+    const res = await fetchImpl(URL_CARICAMENTO, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ token, azione: 'titolo_suggerito', testo: String(testo).slice(0, 3000), nome: nome || '', titolo: titolo || '' }),
+    });
+    const r = await res.json();
+    return r.ok && r.titolo ? String(r.titolo) : null;
+  } catch { return null; }
+}
+
+// Bozza Gmail con il documento allegato (risposta all'email dell'originale o email nuova). Mai inviata.
+export async function bozzaConAllegato({ token, documento, origine, testo, a, oggetto }, fetchImpl = fetch) {
+  if (!token) throw new Error('Sessione scaduta: esci e rientra.');
+  const res = await fetchImpl(URL_CARICAMENTO, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ token, azione: 'bozza_allegato', documento, origine: origine || null, testo: testo || '', a: a || '', oggetto: oggetto || '' }),
+  });
+  let r;
+  try { r = await res.json(); } catch { throw new Error('Gmail non raggiungibile.'); }
+  if (!r.ok) throw new Error(r.errore || 'Bozza non creata.');
+  return r;
+}
+
+// L'originale viene da un'email a cui si può rispondere?
+export const daEmail = (d) => Boolean(d?.gmail_message_id) && !/^(caricato|drivefile|drivefoto|email):/.test(String(d.gmail_message_id));

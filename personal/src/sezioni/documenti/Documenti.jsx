@@ -42,6 +42,10 @@ export function VistaDocumenti({ ctx }) {
           <button key={k} type="button" role="tab" aria-selected={modo === k} className={modo === k ? 'attivo' : ''} onClick={() => setModo(k)}>{nome}</button>
         ))}
       </div>
+      {/* DOCUMENTI-FIRMATI: sottosezione sempre a un tocco, con lo stesso nome della cartella su Drive. */}
+      <button type="button" className="pp-riga pp-riga-sola pp-firmati-porta" onClick={() => ctx.apri({ tipo: 'firmati' })}>
+        <span>Documenti firmati</span><IconaFreccia size={16} />
+      </button>
       {modo === 'chiedi' && <VistaChiedi ctx={ctx} onClassica={() => setModo('classica')} />}
       {modo === 'cose' && <VistaCose ctx={ctx} />}
       {modo === 'tempo' && <VistaTempo ctx={ctx} />}

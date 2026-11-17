@@ -4822,3 +4822,12 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Rollback: revert the commit and `clasp push` the previous Code.gs; no data to undo.
 - Round 2: `leggiSubito_` + `salvaTesto_` (chat reads unread files on demand). Published with clasp, web app @21 → @22.
 - Next: after merge, keep online = master; check `log_elaborazione` (no more 22P05) and `v_testo_avanzamento` rising faster.
+
+## Handoff — DOCUMENTI-FIRMATI + FIRMA-BIRO (2026-11-17) — Claude Code
+- Branch `ccr-9a526543-2sagy0`. Objective: sign → save in «Documenti firmati» (Poliedron + Drive) with editable/suggested title → Gmail draft with attachment; ballpoint signature; simple save sheet with folders shared by Poliedron and Drive.
+- Files: `supabase/archivio/migrations/20261117120000_documenti_firmati.sql` (new, applied), `poliedron/archivio/Code.gs`, `poliedron/archivio/CLAUDE.md`, `personal/src/pdf/{biro.js,titoloFirmato.js,SalvaArchivio.jsx (new),Firma.jsx,GestorePdf.jsx,PaginaPdf.jsx,pdf.css}`, `personal/src/lib/{archivio.js,cartelleMie.js}`, `personal/src/sezioni/documenti/{Firmati.jsx (new),Documenti.jsx,index.jsx}`, tests `documentiFirmati.test.mjs` (new), `archivioPersonale.test.mjs`, visual `personal-firmati.{html,fixture.jsx,mjs}` (new), `personal-pdf.mjs`.
+- Database: additive columns/index/row/view (see current-task); RLS unchanged.
+- Tests: npm test 1802/1802; builds PASS; visual as listed (scan-strumenti pre-existing failure).
+- Risks: Drive twin folders are created inside «Archivio personale» next to the category folders (a Poliedron folder named like a category gets its own separate Drive folder); moving a document between Poliedron folders does not move its Drive file; the title suggestion uses Gemini free tier for non-clinical text only.
+- Rollback: revert commits and `clasp push` the previous Code.gs; DB columns stay unused (removal needs a PO-approved migration); files already saved stay in their Drive folders.
+- Next: PO tries on the phone (sign a PDF from an email document → Salva firmato → reply draft); then PR/"Mergia".
