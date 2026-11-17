@@ -4811,3 +4811,18 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Rollback: revert the squash commit. Next: PO review on the preview → "Mergia".
 - Round 2 (same branch): Conti buttons layout, DOCK-UGUALE. Files added: `personal/src/IconeDock.jsx`, `tests/visual/personal-dock.{html,fixture.jsx,mjs}`; changed `personal/src/App.jsx` (dock markup), `personal/src/personale.css`, tests `appUnica`, `personaleHome`. Tests 1779/1779, builds PASS, visual PASS. Risk: the dock labels are now hidden (aria-label kept), as in Studio.
 
+
+## Handoff — PERSONALE-SUBITO (2026-11-17) — Claude Code
+- Branch `ccr-6cd34b11-f8v9k4` from master ab790ec. Objective: «Personale» in the Studio dock opens the Personal Home at once (no menu); propose a similar Studio Home.
+- Files: `src/App.jsx` (VaiAPersonale, gruppiPerTe removed), tests `appUnica.test.mjs`, `documentiDrive.test.mjs`, coordination docs.
+- Database: none. Tests: npm test 1779/1779; build PASS; build:personal PASS.
+- Risks: low; on desktop production browser «Personale» opens personal.poliedrasoft.it (as the old tiles already did).
+- Rollback: revert the commit. Next: PO review of the Studio Home mockup → implementation on approval.
+
+## Handoff — HOME-STUDIO (2026-11-17) — Claude Code
+- Branch `ccr-6cd34b11-f8v9k4` (after PERSONALE-SUBITO). Objective: Studio Home twin of the Personal Home (approved mockup, with Ricetta and Preventivo actions).
+- Files: `src/components/StudioHome.{jsx,css}` (new), `src/lib/studioHome.js` (new), `src/App.jsx`, tests `studioHome.test.mjs` (new), `appUnica`, `dashboardPremiumV2`, `poliedronChat`, visual `tests/visual/studio-home.{html,fixture.jsx,mjs}` (new), coordination docs.
+- Database: none. Tests: npm test 1781/1781; builds PASS; visual studio-home PASS (Pixel 7, iPhone SE, light/dark).
+- Unresolved: «Preventivi da inviare» needs a sent state on preventivi (PRODUCT_OWNER_DECISION_REQUIRED).
+- Risks: low; one extra canonical snapshot read (today) on opening Studio for users with management control.
+- Rollback: revert the commit. Next: PO review on the preview → "Mergia".

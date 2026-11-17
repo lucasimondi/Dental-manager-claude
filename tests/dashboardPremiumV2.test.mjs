@@ -187,7 +187,8 @@ test('the central Poliedron panel opens with quick actions only — no section d
   const idle = suggestedIdle({ actions: [], navigationIndex: NAVIGATION_INDEX, context: {} });
   assert.equal(idle.find((g) => g.group === 'APRI UNA SEZIONE'), undefined);
   const app = await readFile(new URL('../src/App.jsx', import.meta.url), 'utf8');
-  assert.match(app, /page === 'studio' && <AltroPage titolo="Studio"[^\n]*\{ id: 'set', nome: 'Impostazioni e account'/);
+  // HOME-STUDIO (PO 2026-11-17): Impostazioni è il tasto tondo in testa alla Home dello Studio.
+  assert.match(app, /onImpostazioni=\{\(\) => setPage\('set'\)\}/);
   const typed = federatedSearch('impostazioni', { navigationIndex: NAVIGATION_INDEX });
   assert.ok(typed.groups.some((g) => g.items.some((item) => item.id === 'set')));
 });

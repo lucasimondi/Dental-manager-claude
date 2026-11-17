@@ -64,7 +64,17 @@ const Dashboard = lazyWithRetry(() => import('./components/Dashboard.jsx'), 'Das
 const NotePage = lazyWithRetry(() => import('../shared/note/NotePage.jsx'), 'NotePage');
 const PasswordPage = lazyWithRetry(() => import('../shared/password/PasswordPage.jsx'), 'PasswordPage');
 const AcquisisciDocumento = lazyWithRetry(() => import('./components/AcquisisciDocumento.jsx'), 'AcquisisciDocumento');
-const AltroPage = lazyWithRetry(() => import('../shared/altro/AltroPage.jsx'), 'AltroPage');
+const StudioHome = lazyWithRetry(() => import('./components/StudioHome.jsx'), 'StudioHome'); // HOME-STUDIO (PO 2026-11-17)
+// PERSONALE-SUBITO (PO 2026-11-17): «Personale» del dock porta subito alla Home personale di
+// Personal (stessa app sul telefono: /poliedron/personal/). Dal dock resta la storia (Indietro torna
+// allo Studio); da un link ?sezione=perte la pagina si sostituisce, così Indietro non rimbalza.
+function VaiAPersonale() {
+  useEffect(() => {
+    const dest = sectionDestination('personal', 'altro');
+    if (['perte', 'altro'].includes(readSectionLocation())) globalThis.location.replace(dest); else globalThis.location.assign(dest);
+  }, []);
+  return <p role="status" style={{ padding: 24, textAlign: 'center' }}>Apro Personale…</p>;
+}
 const ControlloGestione = lazyWithRetry(() => import('./components/ControlloGestione.jsx'), 'ControlloGestione');
 const PoliedronHub = lazyWithRetry(() => import('./components/PoliedronHub.jsx'), 'PoliedronHub');
 const FinancialWorkspace = lazyWithRetry(() => import('./components/FinancialWorkspace.jsx'), 'FinancialWorkspace');
@@ -735,35 +745,6 @@ export default function App() {
     );
   }
 
-  // APP-UNICA (PO 2026-11-08): «Altro» con Lavoro (le sezioni dello studio) e Vita (Personal).
-  const ALTRO_LAVORO = { paz: ['pazienti', '#1F5F7A'], paga: ['incassi', '#22714A'], piani: ['piani', '#2D6BC4'], preventivi: ['preventivi', '#4E52C4'], richiami: ['richiami', '#D1453B'], attivita: ['attivita', '#13808F'], spese: ['spese', '#A8323E'], controllo: ['controllo', '#1F5F7A'], listino: ['listino', '#5D6979'], wa: ['whatsapp', '#22714A'], chat: ['chat', '#2D6BC4'], agenteai: ['agente', '#8460CC'], home: ['home', '#5D6979'] };
-  // DOCK-PER-TE (PO 2026-11-08): «Studio» = il lavoro dello studio; «Per te» = la vita personale.
-  // STUDIO-BENTO (PO 2026-11-08, mockup B): riquadri di grandezze diverse; le voci senza taglia
-  // dedicata diventano pulsanti bassi in fondo.
-  const BENTO_STUDIO = { paz: ['grande', 'Schede, piani di cura e documenti'], paga: ['media', 'Pagamenti dei pazienti'], preventivi: ['media', 'Da inviare e accettati'],
-    piani: ['piccola'], richiami: ['piccola'], spese: ['piccola'], controllo: ['piccola'], listino: ['piccola'], attivita: ['piccola'] };
-  const RANGO = { grande: 0, alta: 1, media: 2, piccola: 3, pulsante: 4 };
-  const gruppiStudio = () => [
-    { nome: 'Studio', voci: navVisibile.filter((n) => ALTRO_LAVORO[n.id])
-      .map((n) => { const [taglia = 'pulsante', sotto] = BENTO_STUDIO[n.id] || []; return { id: n.id, nome: n.l, icona: ALTRO_LAVORO[n.id][0], colore: ALTRO_LAVORO[n.id][1], taglia, sotto, fai: () => setPage(n.id) }; })
-      .sort((x, y) => RANGO[x.taglia] - RANGO[y.taglia]) },
-  ];
-  const gruppiPerTe = () => [
-    { nome: 'Personale', voci: [
-      { id: 'vita-conti', nome: 'Spese e pagamenti', icona: 'conti', taglia: 'grande', sotto: 'Conti, ricevute e cose da pagare', href: sectionDestination('personal', 'conti') },
-      // DOCUMENTI-DRIVE (PO 2026-11-09): tutti i documenti di Drive nella sezione Documenti di Personal, con la ricerca.
-      { id: 'vita-documenti', nome: 'Documenti', icona: 'documenti', taglia: 'alta', sotto: 'Tutto Drive: cerca per nome, ente, anno', href: sectionDestination('personal', 'documenti') },
-      { id: 'vita-personali', nome: 'Documenti personali', icona: 'personali', taglia: 'media', sotto: "Carta d'identità, patente, codice fiscale", href: sectionDestination('personal', 'personali') },
-      { id: 'vita-foto', nome: 'Foto', icona: 'foto', taglia: 'media', href: sectionDestination('personal', 'foto') },
-      { id: 'note', nome: 'Note', icona: 'nota', taglia: 'piccola', fai: () => setPage('note') },
-      ...[['diario', 'Diario', 'diario'], ['legal', 'Pratiche', 'pratiche']]
-        .map(([id, nome, icona]) => ({ id: `vita-${id}`, nome, icona, taglia: 'piccola', href: sectionDestination('personal', id) })),
-      { id: 'vita-didattica', nome: 'Biblioteca', icona: 'biblioteca', taglia: 'pulsante', href: sectionDestination('personal', 'didattica') },
-      { id: 'password', nome: 'Password', icona: 'password', taglia: 'pulsante', fai: () => { setPasswordQuery(''); setPage('password'); } },
-      { id: 'vita-oggi', nome: 'Oggi', icona: 'oggi', taglia: 'pulsante', href: sectionDestination('personal', 'oggi') },
-    ] },
-  ];
-
   const navVisibile = NAV.filter((n) =>
     (n.id !== 'wa' || features.whatsapp) &&
     (n.id !== 'spese' || features.spese) &&
@@ -983,9 +964,25 @@ export default function App() {
             {page === 'archivio' && <ArchivioDocs studioId={session?.user?.app_metadata?.studio_id} patients={patients} onApriDocFiscale={(p) => goSchedaPaz(p, 'doc')} onApriDocMedico={(p) => goSchedaPaz(p, 'doc')} onApriDocConsenso={(p) => goSchedaPaz(p, 'doc')} initialFiltroTipo={archivioFiltroTipoHint} />}
             {page === 'note' && <NotePage key={noteScrivi} scriviSubito={noteScrivi > 0} db={supabase} studioId={session?.user?.app_metadata?.studio_id} />}
             {acquisisciAperto && <Suspense fallback={null}><AcquisisciDocumento conDestinazione db={supabase} studioId={session?.user?.app_metadata?.studio_id} patients={patients} onClose={() => setAcquisisciAperto(false)} /></Suspense>}
-            {!acquisisciAperto && page !== 'chat' && <TastoAcquisisci className="studio-acquisisci" onClick={() => setAcquisisciAperto(true)} />}
-            {page === 'studio' && <AltroPage titolo="Studio" gruppi={gruppiStudio()} piede={[{ id: 'set', nome: 'Impostazioni e account', icona: 'impostazioni', fai: () => setPage('set') }]} />}
-            {(page === 'perte' || page === 'altro') && <AltroPage titolo="Personale" gruppi={gruppiPerTe()} piede={[{ id: 'set', nome: 'Impostazioni e account', icona: 'impostazioni', fai: () => setPage('set') }]} />}
+            {!acquisisciAperto && page !== 'chat' && page !== 'studio' && <TastoAcquisisci className="studio-acquisisci" onClick={() => setAcquisisciAperto(true)} />}
+            {/* HOME-STUDIO (PO 2026-11-17, mockup approvato): «Studio» apre la Home dello Studio, gemella di Personale. */}
+            {page === 'studio' && <StudioHome
+              nav={navVisibile} patients={patients} appointments={appointments} richiami={richiami} plans={plans} payments={payments}
+              managementControl={homePermissions.managementControl} conSpese={Boolean(features.spese)}
+              vai={setPage} apriPaziente={(p) => goSchedaPaz(p, 'info')} onImpostazioni={() => setPage('set')}
+              azioni={{
+                appuntamento: () => setPoliedronBookingOpen(true),
+                paziente: () => goNuovoElemento('paz'),
+                ricetta: () => openPrescription({}),
+                preventivo: () => goNuovoElemento('preventivi'),
+                incasso: () => goNuovoElemento('paga'),
+                spesa: () => goNuovoElemento('spese'),
+                acquisisci: () => setAcquisisciAperto(true),
+              }}
+            />}
+            {/* PERSONALE-SUBITO (PO 2026-11-17): «Personale» apre subito la Home personale (Da fare, Conti,
+                Documenti, Scan, Il tuo spazio, Recenti), non più il menu a riquadri. */}
+            {(page === 'perte' || page === 'altro') && <VaiAPersonale />}
             {page === 'password' && <PasswordPage key={passwordNuova} nuovaSubito={passwordNuova > 0} db={supabase} studioId={session?.user?.app_metadata?.studio_id} cercaIniziale={passwordQuery} />}
             {page === 'wa' && <WhatsApp patients={patients} appointments={appointments} templates={templates} setTemplates={setTemplatesSync} />}
             {page === 'agenteai' && <AgenteAISetup features={features} />}
