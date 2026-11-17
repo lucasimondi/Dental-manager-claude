@@ -4831,3 +4831,18 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Risks: Drive twin folders are created inside «Archivio personale» next to the category folders (a Poliedron folder named like a category gets its own separate Drive folder); moving a document between Poliedron folders does not move its Drive file; the title suggestion uses Gemini free tier for non-clinical text only.
 - Rollback: revert commits and `clasp push` the previous Code.gs; DB columns stay unused (removal needs a PO-approved migration); files already saved stay in their Drive folders.
 - Next: PO tries on the phone (sign a PDF from an email document → Salva firmato → reply draft); then PR/"Mergia".
+
+## Handoff — PERSONALE-SUBITO (2026-11-17) — Claude Code
+- Branch `ccr-6cd34b11-f8v9k4` from master ab790ec. Objective: «Personale» in the Studio dock opens the Personal Home at once (no menu); propose a similar Studio Home.
+- Files: `src/App.jsx` (VaiAPersonale, gruppiPerTe removed), tests `appUnica.test.mjs`, `documentiDrive.test.mjs`, coordination docs.
+- Database: none. Tests: npm test 1779/1779; build PASS; build:personal PASS.
+- Risks: low; on desktop production browser «Personale» opens personal.poliedrasoft.it (as the old tiles already did).
+- Rollback: revert the commit. Next: PO review of the Studio Home mockup → implementation on approval.
+
+## Handoff — HOME-STUDIO (2026-11-17) — Claude Code
+- Branch `ccr-6cd34b11-f8v9k4` (after PERSONALE-SUBITO). Objective: Studio Home twin of the Personal Home (approved mockup, with Ricetta and Preventivo actions).
+- Files: `src/components/StudioHome.{jsx,css}` (new), `src/lib/studioHome.js` (new), `src/App.jsx`, tests `studioHome.test.mjs` (new), `appUnica`, `dashboardPremiumV2`, `poliedronChat`, visual `tests/visual/studio-home.{html,fixture.jsx,mjs}` (new), coordination docs.
+- Database: none. Tests: npm test 1781/1781; builds PASS; visual studio-home PASS (Pixel 7, iPhone SE, light/dark).
+- Unresolved: «Preventivi da inviare» needs a sent state on preventivi (PRODUCT_OWNER_DECISION_REQUIRED).
+- Risks: low; one extra canonical snapshot read (today) on opening Studio for users with management control.
+- Rollback: revert the commit. Next: PO review on the preview → "Mergia".

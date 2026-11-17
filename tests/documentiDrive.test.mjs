@@ -94,6 +94,5 @@ test('app: Documenti in Per te, scheda «Da Drive», ricerca anche su oggetto e 
   await documentiDaDrive(db);
   assert.deepEqual(passi.find((p) => p[0] === 'like'), ['like', 'gmail_message_id', 'drivefile:%']);
   assert.match(read('personal/src/sezioni/altro/index.jsx'), /\['documenti', 'Documenti', 'documenti', 'alta'/);
-  assert.match(read('src/App.jsx'), /id: 'vita-documenti', nome: 'Documenti', icona: 'documenti', taglia: 'alta'.*sectionDestination\('personal', 'documenti'\)/);
   assert.match(read('personal/src/sezioni/documenti/Documenti.jsx'), /\['drive', 'Da Drive'\]/);
 });
