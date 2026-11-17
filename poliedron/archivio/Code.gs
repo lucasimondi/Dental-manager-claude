@@ -211,7 +211,8 @@ function elabora() {
       if (!riordinaLotto_()) break;
     }
     // Tempo ancora avanzato: altri testi completi (POL-VITA-034).
-    try { if (Date.now() - inizio < CONFIG.TEMPO_MAX_MS - 60000) estraiTesti_(inizio + CONFIG.TEMPO_MAX_MS - 30000); } catch (e) { logErrore_('testo completo', e); }
+    // Al massimo un altro minuto: il tempo giornaliero degli attivatori di un account Gmail è limitato.
+    try { if (Date.now() - inizio < CONFIG.TEMPO_MAX_MS - 60000) estraiTesti_(Math.min(Date.now() + 60000, inizio + CONFIG.TEMPO_MAX_MS - 30000)); } catch (e) { logErrore_('testo completo', e); }
     try { if (Date.now() - inizio < CONFIG.TEMPO_MAX_MS - 30000) calcolaVettori_(inizio + CONFIG.TEMPO_MAX_MS - 20000); } catch (e) { logErrore_('vettori', e); }
   } finally {
     lock.releaseLock();
@@ -508,11 +509,21 @@ const TESTO_MAX_BYTE = 15 * 1024 * 1024;   // oltre, Drive non converte in modo 
 const TESTO_CORPO_EMAIL = 5000;
 const ESTENSIONI_IMMAGINE = /^(jpe?g|png|gif|webp|bmp|tiff?|heic)$/;
 
+// Blocchi da TESTO_LOTTO finché c'è tempo. true = ne restano (tempo o quota finiti), false = coda vuota.
 function estraiTesti_(scadenza) {
   if (typeof Drive === 'undefined') return false;
+  while (Date.now() < scadenza) {
+    const ancora = bloccoTesti_(scadenza);
+    if (ancora !== 'pieno') return ancora === 'stop';
+  }
+  return true;
+}
+
+// Un blocco: 'stop' = tempo o quota finiti, 'pieno' = blocco intero (probabilmente altri in coda), 'fine' = coda vuota.
+function bloccoTesti_(scadenza) {
   const docs = sb_('rpc/documenti_senza_testo', { method: 'post', body: { p_lim: TESTO_LOTTO } }) || [];
   for (let i = 0; i < docs.length; i++) {
-    if (Date.now() > scadenza) return true;
+    if (Date.now() > scadenza) return 'stop';
     const d = docs[i];
     const nome = d.nome_file_originale || 'documento';
     const meta = { oggetto: d.email_oggetto || '', mittente: d.email_mittente || '', destinatari: '' };
@@ -523,7 +534,7 @@ function estraiTesti_(scadenza) {
       try {
         riga = testoDelDocumento_(d, nome);
       } catch (e) {
-        if (QUOTA_GOOGLE.test(e.message)) return true;      // quote di Google: si riprende al giro dopo
+        if (QUOTA_GOOGLE.test(e.message)) return 'stop';    // quote di Google: si riprende al giro dopo
         riga = { stato: 'errore', fonte: null, testo: null, errore: String(e.message || e).slice(0, 300) };
       }
     }
@@ -538,7 +549,7 @@ function estraiTesti_(scadenza) {
       salva({ stato: 'errore', fonte: riga.fonte, testo: null, errore: ('Salvataggio: ' + String(e.message || e)).slice(0, 300) });
     }
   }
-  return docs.length === TESTO_LOTTO;
+  return docs.length === TESTO_LOTTO ? 'pieno' : 'fine';
 }
 
 // Testo del file (e, per gli allegati Gmail, del corpo dell'email che lo accompagnava).
