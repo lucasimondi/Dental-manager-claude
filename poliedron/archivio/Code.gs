@@ -211,7 +211,8 @@ function elabora() {
       if (!riordinaLotto_()) break;
     }
     // Tempo ancora avanzato: altri testi completi (POL-VITA-034).
-    try { if (Date.now() - inizio < CONFIG.TEMPO_MAX_MS - 60000) estraiTesti_(inizio + CONFIG.TEMPO_MAX_MS - 30000); } catch (e) { logErrore_('testo completo', e); }
+    // Più lotti finché c'è tempo (2026-11-17: un lotto solo lasciava la coda a ~130 documenti l'ora).
+    try { while (Date.now() - inizio < CONFIG.TEMPO_MAX_MS - 60000 && estraiTesti_(inizio + CONFIG.TEMPO_MAX_MS - 30000)) {} } catch (e) { logErrore_('testo completo', e); }
     try { if (Date.now() - inizio < CONFIG.TEMPO_MAX_MS - 30000) calcolaVettori_(inizio + CONFIG.TEMPO_MAX_MS - 20000); } catch (e) { logErrore_('vettori', e); }
   } finally {
     lock.releaseLock();
@@ -503,7 +504,7 @@ function testoFoglio_(foglio) {
  * Pochi documenti a ogni giro di elabora; leggiTestiOra() per ~5 minuti a mano.
  * ===================================================================*/
 const TESTO_LOTTO = 25;
-const TESTO_MS = 45 * 1000;
+const TESTO_MS = 90 * 1000;
 const TESTO_MAX_BYTE = 15 * 1024 * 1024;   // oltre, Drive non converte in modo affidabile
 const TESTO_CORPO_EMAIL = 5000;
 const ESTENSIONI_IMMAGINE = /^(jpe?g|png|gif|webp|bmp|tiff?|heic)$/;
@@ -527,10 +528,17 @@ function estraiTesti_(scadenza) {
         riga = { stato: 'errore', fonte: null, testo: null, errore: String(e.message || e).slice(0, 300) };
       }
     }
-    sb_('documenti_testo?on_conflict=documento_id', { method: 'post', prefer: 'resolution=merge-duplicates,return=minimal', body: {
-      documento_id: d.id, stato: riga.stato, fonte: riga.fonte, testo: riga.testo, errore: riga.errore || null,
-      tentativi: (Number(d.tentativi) || 0) + 1, aggiornato_il: new Date().toISOString(),
-    } });
+    const salva = function (r) {
+      sb_('documenti_testo?on_conflict=documento_id', { method: 'post', prefer: 'resolution=merge-duplicates,return=minimal', body: {
+        documento_id: d.id, stato: r.stato, fonte: r.fonte, testo: r.testo, errore: r.errore || null,
+        tentativi: (Number(d.tentativi) || 0) + 1, aggiornato_il: new Date().toISOString(),
+      } });
+    };
+    // Un testo che il database rifiuta non deve fermare la coda (2026-11-17: un file con il carattere
+    // nullo ha bloccato la lettura per 16 ore): il documento passa in errore e si va avanti.
+    try { salva(riga); } catch (e) {
+      salva({ stato: 'errore', fonte: riga.fonte, testo: null, errore: ('Salvataggio: ' + String(e.message || e)).slice(0, 300) });
+    }
   }
   return docs.length === TESTO_LOTTO;
 }
@@ -563,9 +571,17 @@ function testoDelDocumento_(d, nome) {
   }
   const corpo = corpoEmail_(d.gmail_message_id);
   if (corpo) testo = (testo ? testo + '\n\n' : '') + 'Email: ' + corpo;
-  testo = String(testo || '').replace(/[ \t\u00a0]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
+  testo = testoPulito_(testo);
   if (testo) return { stato: 'letto', fonte: fonte || 'email', testo: testo.slice(0, 100000) };
   return { stato: fonte && fonte !== 'troppo_grande' ? 'vuoto' : 'non_leggibile', fonte: fonte, testo: null };
+}
+
+// Senza caratteri che Postgres rifiuta (nullo, controllo, surrogati spaiati) e con gli spazi in ordine.
+function testoPulito_(t) {
+  return String(t || '')
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, ' ')
+    .replace(/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g, '')
+    .replace(/[ \t\u00a0]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
 }
 
 function senzaTag_(s) { return s ? String(s).replace(/<[^>]+>/g, ' ') : null; }
@@ -676,17 +692,80 @@ function cercaPerSignificato_(testo, filtri, lim, campi) {
   }
 }
 
-// Unisce parole e significato (reciprocal rank fusion): in cima chi compare in entrambe.
-function fondiRisultati_(parole, significato, lim) {
+// Unisce parole, significato e ricerca di Drive (reciprocal rank fusion): in cima chi compare in più elenchi.
+function fondiRisultati_(parole, significato, lim, drive) {
   const punti = {}, doc = {}, ordine = [];
-  const aggiungi = function (d, i, perSignificato) {
-    if (!doc[d.id]) { doc[d.id] = perSignificato ? Object.assign({}, d, { per_significato: true }) : d; ordine.push(d.id); }
+  const aggiungi = function (d, i, segno) {
+    if (!doc[d.id]) { doc[d.id] = segno ? Object.assign({}, d, segno) : d; ordine.push(d.id); }
     punti[d.id] = (punti[d.id] || 0) + 1 / (60 + i);
   };
-  parole.forEach(function (d, i) { aggiungi(d, i, false); });
-  significato.forEach(function (d, i) { aggiungi(d, i, true); });
+  parole.forEach(function (d, i) { aggiungi(d, i, null); });
+  significato.forEach(function (d, i) { aggiungi(d, i, { per_significato: true }); });
+  (drive || []).forEach(function (d, i) { aggiungi(d, i, { nel_testo: true }); });
   return ordine.slice().sort(function (a, b) { return punti[b] - punti[a] || ordine.indexOf(a) - ordine.indexOf(b); })
     .slice(0, lim).map(function (id) { return doc[id]; });
+}
+
+/* =====================================================================
+ * RICERCA NEL CONTENUTO CON DRIVE (2026-11-17)
+ * Luca: "Gemini funziona bene poliedron no come facciamo ?". Gemini usa la ricerca di Drive, che
+ * conosce il testo di tutti i file; Poliedron solo quello già letto (documenti_testo, ~15% il
+ * 17/11). Qui la stessa ricerca di Drive (fullText, nessun modello: la domanda resta nell'account
+ * di Luca); si tengono solo i file registrati in archivio e mai i clinici.
+ * ===================================================================*/
+const DRIVE_CERCA_MAX = 40;
+const PAROLE_VUOTE = /^(il|lo|la|le|gli|un|una|uno|di|del|della|dei|delle|degli|dello|da|dal|dalla|dai|in|nel|nella|nei|con|per|su|sul|sulla|tra|fra|che|chi|cosa|come|dove|quando|quanto|quanti|quale|quali|mio|mia|miei|mie|tuo|suo|sua|non|sono|era|ho|hai|ha|abbiamo|anche|tutti|tutte|ogni|trova|trovami|cerca|cercami|mostra|mostrami|dammi|voglio|vorrei|documento|documenti|file)$/i;
+
+// Parole utili della domanda per la query di Drive (al massimo 5, senza virgolette).
+function paroleDrive_(testo) {
+  const visti = {};
+  return String(testo || '').split(/[^0-9A-Za-zÀ-ÖØ-öø-ÿ]+/)
+    .filter(function (w) {
+      const k = w.toLowerCase();
+      if ((w.length < 3 && !/\d/.test(w)) || PAROLE_VUOTE.test(w) || visti[k]) return false;
+      visti[k] = true;
+      return true;
+    }).slice(0, 5);
+}
+
+// Id dei file di Drive che contengono le parole, nell'ordine di pertinenza di Drive: prima tutte le
+// parole, poi (se trova poco) almeno una.
+function idDrive_(parole, max) {
+  if (!parole.length || typeof Drive === 'undefined') return [];
+  const condizione = function (w) { return "fullText contains '" + w.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'"; };
+  const query = function (unione) { return '(' + parole.map(condizione).join(unione) + ') and trashed = false'; };
+  const cerca = function (q) { return ((Drive.Files.list({ q: q, pageSize: max, fields: 'files(id)' }) || {}).files || []).map(function (f) { return f.id; }); };
+  const ids = cerca(query(' and '));
+  if (ids.length < 5 && parole.length > 1) {
+    cerca(query(' or ')).forEach(function (id) { if (ids.indexOf(id) < 0 && ids.length < max) ids.push(id); });
+  }
+  return ids;
+}
+
+// Documenti dell'archivio i cui file contengono le parole (filtri come nella ricerca: fascicoli, da, a).
+function cercaNelContenuto_(testo, filtri, lim, campi) {
+  const parole = paroleDrive_(String(testo || '').slice(0, 200));
+  if (!parole.length) return [];
+  try {
+    const ids = idDrive_(parole, DRIVE_CERCA_MAX);
+    if (!ids.length) return [];
+    filtri = filtri || {};
+    const servono = ['drive_file_id', 'data_documento', 'email_data'].filter(function (c) { return campi.split(',').indexOf(c) < 0; });
+    let percorso = 'documenti?select=' + [campi].concat(servono).join(',') + '&fascicolo=neq.clinico_pazienti&drive_file_id=in.(' + ids.map(enc_).join(',') + ')';
+    if (Array.isArray(filtri.fascicoli) && filtri.fascicoli.length) percorso += '&fascicolo=in.(' + filtri.fascicoli.map(function (f) { return enc_(String(f)); }).join(',') + ')';
+    const posto = {};
+    ids.forEach(function (id, i) { posto[id] = i; });
+    return senzaClinici_(sb_(percorso) || [])
+      .filter(function (d) {
+        const data = String(d.data_documento || d.email_data || '').slice(0, 10);
+        return (!filtri.da || !data || data >= filtri.da) && (!filtri.a || !data || data <= filtri.a);
+      })
+      .sort(function (x, y) { return posto[x.drive_file_id] - posto[y.drive_file_id]; })
+      .slice(0, lim);
+  } catch (e) {
+    logErrore_('ricerca su Drive', e);
+    return [];
+  }
 }
 
 // Da eseguire a mano nell'editor: calcola vettori per ~5 minuti (un lotto al minuto).
@@ -1199,6 +1278,10 @@ function doPost(e) {
     if (req.azione === 'cartella') return rispostaJson_(analizzaCartella_(req));
     if (req.azione === 'bozza') return rispostaJson_(bozzaRisposta_(req));
     if (req.azione === 'suggerisci') return rispostaJson_(suggerisciCartelle_());
+    if (req.azione === 'contenuto') {
+      const filtri = req.filtri && typeof req.filtri === 'object' ? req.filtri : {};
+      return rispostaJson_({ ok: true, documenti: cercaNelContenuto_(req.testo, filtri, 20, CAMPI_APP) });
+    }
     if (req.azione === 'significato') {
       const filtri = req.filtri && typeof req.filtri === 'object' ? req.filtri : {};
       return rispostaJson_({ ok: true, disponibile: vettoriDisponibili_(), documenti: cercaPerSignificato_(req.testo, filtri, 20, CAMPI_APP) });
@@ -1912,7 +1995,7 @@ const senzaClinici_ = (docs) => docs.filter(function (d) { return d.fascicolo !=
 const breve_ = (d) => ({
   id: d.id, titolo: d.titolo, fascicolo: d.fascicolo, tipo: d.tipo_documento, data: d.data_documento || String(d.email_data || '').slice(0, 10),
   da: d.email_mittente, importo: d.importo, riassunto: d.riassunto, da_fare: d.azione_richiesta ? (d.azione_descrizione || true) : undefined,
-  persona: d.persona || undefined, categoria: d.categoria || undefined, per_significato: d.per_significato || undefined,
+  persona: d.persona || undefined, categoria: d.categoria || undefined, per_significato: d.per_significato || undefined, nel_testo: d.nel_testo || undefined,
 });
 const enc_ = encodeURIComponent;
 
@@ -1927,7 +2010,7 @@ const CRITERI_DOC_ = { type: 'object', properties: {
 } };
 const PROPOSTA_MAX = 300;
 const STRUMENTI_CHAT = [
-  { name: 'cerca_documenti', description: 'Cerca documenti nell\'archivio per parole chiave (ente, fornitore, tipo di documento, numero, codice) e/o per fascicolo e periodo. Cerca in titolo, ente, riassunto, email e anche nel testo completo letto dai file; capisce sinonimi, accenti ed errori di battitura, e aggiunge i documenti vicini per significato (per_significato: true, da verificare). Usa 1-3 parole chiave, non frasi; se non trovi nulla riprova con meno parole o con un sinonimo. Restituisce titolo, data, importo e riassunto, i più pertinenti per primi.',
+  { name: 'cerca_documenti', description: 'Cerca documenti nell\'archivio per parole chiave (ente, fornitore, tipo di documento, numero, codice) e/o per fascicolo e periodo. Cerca in titolo, ente, riassunto, email e anche nel testo completo letto dai file; capisce sinonimi, accenti ed errori di battitura, e aggiunge i documenti vicini per significato (per_significato: true, da verificare) e quelli in cui la ricerca di Drive trova le parole dentro il file (nel_testo: true). Usa 1-3 parole chiave, non frasi; se non trovi nulla riprova con meno parole o con un sinonimo. Restituisce titolo, data, importo e riassunto, i più pertinenti per primi.',
     input_schema: { type: 'object', properties: { testo: { type: 'string', description: 'parole chiave, es. "enel luce" o "polizza casa"' },
       fascicolo: { type: 'string', description: 'codice del fascicolo, facoltativo' },
       da: { type: 'string', description: 'solo documenti da questa data (YYYY-MM-DD), facoltativo' },
@@ -2085,7 +2168,9 @@ function cercaArchivio_(input, lim) {
   }
   // Anche per significato (POL-VITA-035): trova "caldaia" nelle fatture del tecnico della stufa.
   const significato = cercaPerSignificato_(testo, filtri, Math.min(lim, 20), CAMPI_CHAT);
-  return significato.length ? fondiRisultati_(parole, significato, lim) : parole;
+  // E nel contenuto dei file con la ricerca di Drive (2026-11-17), anche quelli non ancora letti.
+  const drive = cercaNelContenuto_(testo, filtri, Math.min(lim, 20), CAMPI_CHAT);
+  return significato.length || drive.length ? fondiRisultati_(parole, significato, lim, drive) : parole;
 }
 
 // Testo completo di un documento per la chat: mai dei pazienti; se è lungo, solo i passaggi utili.

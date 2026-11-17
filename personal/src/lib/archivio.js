@@ -318,14 +318,24 @@ export async function chiediPoliedronCompleto({ token, domanda, documentoId, sto
 // POL-VITA-035: documenti vicini per significato alla domanda (lo script calcola il vettore della
 // domanda con Gemini e cerca tra i vettori dei documenti; mai i clinici). Senza risposta: nessuno.
 // `esclusi`: id già mostrati dalla ricerca per parole.
-export async function cercaPerSignificato({ token, testo, filtri = {}, esclusi = [] }, fetchImpl = fetch) {
+export async function cercaPerSignificato(richiesta, fetchImpl = fetch) {
+  return cercaDalloScript('significato', richiesta, fetchImpl);
+}
+
+// 2026-11-17: documenti i cui file contengono le parole della domanda, con la ricerca di Drive (la
+// stessa che usa Gemini; trova anche i file il cui testo Poliedron non ha ancora letto). Mai i clinici.
+export async function cercaNelContenuto(richiesta, fetchImpl = fetch) {
+  return cercaDalloScript('contenuto', richiesta, fetchImpl);
+}
+
+async function cercaDalloScript(azione, { token, testo, filtri = {}, esclusi = [] }, fetchImpl) {
   const domanda = String(testo || '').trim();
   if (!token || domanda.length < 3) return [];
   const { fascicoli, da, a } = filtri || {};
   const res = await fetchImpl(URL_CARICAMENTO, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ token, azione: 'significato', testo: domanda.slice(0, 500), filtri: { ...(fascicoli ? { fascicoli } : {}), ...(da ? { da } : {}), ...(a ? { a } : {}) } }),
+    body: JSON.stringify({ token, azione, testo: domanda.slice(0, 500), filtri: { ...(fascicoli ? { fascicoli } : {}), ...(da ? { da } : {}), ...(a ? { a } : {}) } }),
   });
   let r;
   try { r = await res.json(); } catch { return []; }

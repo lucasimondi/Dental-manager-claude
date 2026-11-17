@@ -111,7 +111,7 @@ test('app: «Simili per significato» esclude ciò che è già mostrato e i clin
   assert.equal(inviati.length, 1);
   const rotto = async () => ({ json: async () => ({ ok: false, errore: 'Gemini in pausa' }) });
   assert.deepEqual(await cercaPerSignificato({ token: 't', testo: 'caldaia' }, rotto), []);
-  assert.match(chiedi, /intestazione=\{`Simili per significato · \$\{simili\.length\}`\}/);
+  assert.match(chiedi, /intestazione=\{`Simili per significato · \$\{similiNuovi\.length\}`\}/);
   assert.match(chiedi, /capito\.somma/);
 });
 

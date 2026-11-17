@@ -4811,3 +4811,13 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Rollback: revert the squash commit. Next: PO review on the preview → "Mergia".
 - Round 2 (same branch): Conti buttons layout, DOCK-UGUALE. Files added: `personal/src/IconeDock.jsx`, `tests/visual/personal-dock.{html,fixture.jsx,mjs}`; changed `personal/src/App.jsx` (dock markup), `personal/src/personale.css`, tests `appUnica`, `personaleHome`. Tests 1779/1779, builds PASS, visual PASS. Risk: the dock labels are now hidden (aria-label kept), as in Studio.
 
+
+## Handoff — RICERCA-DRIVE (2026-11-17) — Claude Code
+- Branch `ccr-9a526543-2sagy0` from master ab790ec. Objective: Poliedron search at least as good as Gemini/Drive; unblock the full-text queue.
+- Files: `poliedron/archivio/Code.gs` (cercaNelContenuto_, paroleDrive_, idDrive_, fondiRisultati_ with Drive list, azione `contenuto`, testoPulito_, per-document write fallback, TESTO_MS 90 s, leftover loop), `poliedron/archivio/CLAUDE.md`, `personal/src/lib/archivio.js` (cercaNelContenuto, shared cercaDalloScript), `personal/src/sezioni/documenti/Chiedi.jsx`, tests `archivioRicercaDrive.test.mjs` (new), `archivioSignificato.test.mjs`, coordination docs.
+- Database: none.
+- Tests: npm test 1786/1786; build:personal PASS; visual personal-chiedi PASS.
+- Unresolved: not run against real Drive; script must be pushed with clasp and the web app redeployed (same URL) for the app action `contenuto`.
+- Risks: Drive search adds ~1–2 s per chat search; Drive `fullText` matches whole words (no typo tolerance, which the DB search keeps); longer text reading per run uses more of the 6-min Apps Script budget (TEMPO_MAX_MS unchanged).
+- Rollback: revert the commit and `clasp push` the previous Code.gs; no data to undo.
+- Next: `clasp push -f` from this branch/master, new deployment version; check `log_elaborazione` (no more 22P05) and `v_testo_avanzamento` rising faster.
