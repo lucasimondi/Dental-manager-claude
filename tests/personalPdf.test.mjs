@@ -55,7 +55,7 @@ test('signature crop hugs the ink with a margin and stays inside the pad', async
 });
 test('DOCK-PER-TE passo 2: le azioni PDF stanno nel documento, nessuna sezione PDF a parte', () => {
  const doc=readFileSync('personal/src/sezioni/documenti/Documento.jsx','utf8');
- for (const s of ['firma','modifica','pagine']) assert.match(doc,new RegExp(`setIntero\\('${s}'\\)`));
+ for (const s of ['firma','compila','modifica','pagine']) assert.match(doc,new RegExp(`setIntero\\('${s}'\\)`));
  assert.match(readFileSync('personal/src/pdf/GestorePdf.jsx','utf8'),/strumento === 'firma'\) setSignatureOpen\(true\)/);
  assert.doesNotMatch(readFileSync('personal/src/sezioni/agenda/AgendaGriglia.jsx','utf8'),/PDF e firma/);
  assert.doesNotMatch(readFileSync('personal/src/sezioni/altro/index.jsx','utf8'),/'pdf'/);

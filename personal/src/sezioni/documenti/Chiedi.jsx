@@ -7,7 +7,7 @@
 // domanda va a Gemini (vettore), i documenti dei pazienti non hanno vettori e non escono mai.
 import { useEffect, useMemo, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { cercaChiedi, cercaPerSignificato, scadenzeAperte } from '../../lib/archivio.js';
+import { cercaChiedi, cercaNelContenuto, cercaPerSignificato, scadenzeAperte } from '../../lib/archivio.js';
 import { interpretaDomanda, riepilogoImporti } from '../../lib/interpreta.js';
 import { Vuoto, dataBreve, giorniA, titoloDoc, colore, tokenSessione } from '../../ui.jsx';
 import { IconaCerca, IconaChiudi } from '../../Icone.jsx';
@@ -32,6 +32,7 @@ export function VistaChiedi({ ctx, onClassica }) {
   const [anchePocoUtili, setAnchePocoUtili] = useState(false);
   const [risultati, setRisultati] = useState(null);
   const [simili, setSimili] = useState(null);
+  const [nelTesto, setNelTesto] = useState(null);
   const [scadenze, setScadenze] = useState(null);
   const [rinfresca, setRinfresca] = useState(0);
   const capito = useMemo(() => interpretaDomanda(testo, { persone }), [testo, persone]);
@@ -69,6 +70,24 @@ export function VistaChiedi({ ctx, onClassica }) {
     }, 500);
     return () => { vivo = false; clearTimeout(t); };
   }, [attiva, risultati, capito]);
+
+  // Nel contenuto dei file con la ricerca di Drive (2026-11-17): quello che trova Gemini, anche nei
+  // file che Poliedron non ha ancora letto. Solo i documenti non già mostrati.
+  useEffect(() => {
+    setNelTesto(null);
+    if (!attiva || !risultati || capito.somma || capito.testo.trim().length < 3) return undefined;
+    let vivo = true;
+    const t = setTimeout(async () => {
+      try {
+        const r = await cercaNelContenuto({ token: await tokenSessione(), testo: capito.testo, filtri: capito.filtri, esclusi: risultati.map((d) => d.id) });
+        if (vivo) setNelTesto(r.slice(0, 12));
+      } catch { if (vivo) setNelTesto([]); }
+    }, 500);
+    return () => { vivo = false; clearTimeout(t); };
+  }, [attiva, risultati, capito]);
+
+  const giaNelTesto = new Set((nelTesto || []).map((d) => d.id));
+  const similiNuovi = simili ? simili.filter((d) => !giaNelTesto.has(d.id)) : null;
 
   const primo = risultati?.[0];
   const somma = capito.somma && risultati ? riepilogoImporti(risultati) : null;
@@ -161,8 +180,11 @@ export function VistaChiedi({ ctx, onClassica }) {
               )}
             </>
           )}
-          {simili && simili.length > 0 && (
-            <ElencoSelezionabile elenco={simili} ctx={ctx} onCambiato={() => setRinfresca((n) => n + 1)} intestazione={`Simili per significato · ${simili.length}`} />
+          {nelTesto && nelTesto.length > 0 && (
+            <ElencoSelezionabile elenco={nelTesto} ctx={ctx} onCambiato={() => setRinfresca((n) => n + 1)} intestazione={`Trovati dentro i file · ${nelTesto.length}`} />
+          )}
+          {similiNuovi && similiNuovi.length > 0 && (
+            <ElencoSelezionabile elenco={similiNuovi} ctx={ctx} onCambiato={() => setRinfresca((n) => n + 1)} intestazione={`Simili per significato · ${similiNuovi.length}`} />
           )}
           <div className="pp-filtri">
             <button type="button" className={`pp-filtro${anchePocoUtili ? ' attivo' : ''}`} onClick={() => setAnchePocoUtili(!anchePocoUtili)}>{anchePocoUtili ? 'Anche poco utili ✓' : 'Anche poco utili'}</button>

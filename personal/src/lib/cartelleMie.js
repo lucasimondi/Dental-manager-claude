@@ -4,7 +4,7 @@
 import { CAMPI_DOC } from './archivio.js';
 
 const esito = ({ data, error }) => { if (error) throw new Error(error.message); return data; };
-const CAMPI_CARTELLA = 'id, nome, padre_id, colore, posizione, creato_il, modificato_il, archiviata_il, n_documenti, n_sottocartelle';
+const CAMPI_CARTELLA = 'id, nome, padre_id, colore, posizione, creato_il, modificato_il, archiviata_il, n_documenti, n_sottocartelle, drive_cartella_id, speciale';
 
 /* ---------- albero (puro) ---------- */
 
@@ -202,4 +202,9 @@ export function azioneTrascina(sorgenti, bersaglio, attuale, cartelle = []) {
   // Una cartella non può finire dentro sé stessa o una sua sottocartella.
   if (verso && cartelleS.some((c) => discendenti(cartelle, c).has(verso))) return null;
   return { azione: 'sposta', documenti, cartelle: cartelleS, verso };
+}
+
+// DOCUMENTI-FIRMATI: la cartella «Documenti firmati» (una sola, gemella di quella su Drive).
+export async function cartellaFirmati(db) {
+  return esito(await db.from('v_cartelle_mie').select(CAMPI_CARTELLA).eq('speciale', 'firmati').maybeSingle());
 }

@@ -162,12 +162,14 @@ export async function spostaFascicolo(db, id, fascicolo) {
 
 // Invia il file allo script, che lo salva su Drive e lo cataloga. Content-Type text/plain:
 // richiesta "semplice", senza preflight CORS (Apps Script non risponde alle OPTIONS).
-export async function caricaDocumento({ token, dati, nome, mime, descrizione, fascicolo, portafoglio: tieni, nonAnalizzare, persona, categoria }, fetchImpl = fetch) {
+export async function caricaDocumento({ token, dati, nome, mime, descrizione, fascicolo, portafoglio: tieni, nonAnalizzare, persona, categoria, titolo, cartella, firmati }, fetchImpl = fetch) {
   if (!token) throw new Error('Sessione scaduta: esci e rientra.');
   const res = await fetchImpl(URL_CARICAMENTO, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ token, dati, nome, mime, descrizione: descrizione || '', fascicolo: fascicolo || null, portafoglio: !!tieni, nonAnalizzare: !!nonAnalizzare, persona: persona || null, categoria: categoria || null }),
+    body: JSON.stringify({ token, dati, nome, mime, descrizione: descrizione || '', fascicolo: fascicolo || null, portafoglio: !!tieni, nonAnalizzare: !!nonAnalizzare, persona: persona || null, categoria: categoria || null,
+      // DOCUMENTI-FIRMATI: titolo esatto e cartella scelta (una delle mie cartelle o «Documenti firmati»).
+      ...(titolo ? { titolo } : {}), ...(cartella ? { cartella } : {}), ...(firmati ? { firmati: true } : {}) }),
   });
   let r;
   try { r = await res.json(); } catch { throw new Error('Risposta non valida dallo script di archiviazione.'); }
@@ -318,14 +320,24 @@ export async function chiediPoliedronCompleto({ token, domanda, documentoId, sto
 // POL-VITA-035: documenti vicini per significato alla domanda (lo script calcola il vettore della
 // domanda con Gemini e cerca tra i vettori dei documenti; mai i clinici). Senza risposta: nessuno.
 // `esclusi`: id già mostrati dalla ricerca per parole.
-export async function cercaPerSignificato({ token, testo, filtri = {}, esclusi = [] }, fetchImpl = fetch) {
+export async function cercaPerSignificato(richiesta, fetchImpl = fetch) {
+  return cercaDalloScript('significato', richiesta, fetchImpl);
+}
+
+// 2026-11-17: documenti i cui file contengono le parole della domanda, con la ricerca di Drive (la
+// stessa che usa Gemini; trova anche i file il cui testo Poliedron non ha ancora letto). Mai i clinici.
+export async function cercaNelContenuto(richiesta, fetchImpl = fetch) {
+  return cercaDalloScript('contenuto', richiesta, fetchImpl);
+}
+
+async function cercaDalloScript(azione, { token, testo, filtri = {}, esclusi = [] }, fetchImpl) {
   const domanda = String(testo || '').trim();
   if (!token || domanda.length < 3) return [];
   const { fascicoli, da, a } = filtri || {};
   const res = await fetchImpl(URL_CARICAMENTO, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ token, azione: 'significato', testo: domanda.slice(0, 500), filtri: { ...(fascicoli ? { fascicoli } : {}), ...(da ? { da } : {}), ...(a ? { a } : {}) } }),
+    body: JSON.stringify({ token, azione, testo: domanda.slice(0, 500), filtri: { ...(fascicoli ? { fascicoli } : {}), ...(da ? { da } : {}), ...(a ? { a } : {}) } }),
   });
   let r;
   try { r = await res.json(); } catch { return []; }
@@ -493,4 +505,50 @@ export async function documentiPersonaliStorici(db,persona=null) {
   let q=db.from('documenti').select(CAMPI_DOC).contains('tag',[TAG_STORICO]).neq('fascicolo','clinico_pazienti');
   if(persona)q=q.eq('persona',persona);
   return esito(await q.order('creato_il',{ascending:false}).limit(300));
+}
+
+// DOCUMENTI-FIRMATI (2026-11-17): titolo suggerito dal contenuto (prime righe del PDF). Lo script non
+// lo chiede a nessun modello se il documento sembra di un paziente. Senza risposta: null.
+export async function suggerisciTitolo({ token, testo, nome, titolo, clinico = false }, fetchImpl = fetch) {
+  if (!token || String(testo || '').trim().length < 20 || clinico) return null;
+  try {
+    const res = await fetchImpl(URL_CARICAMENTO, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ token, azione: 'titolo_suggerito', testo: String(testo).slice(0, 3000), nome: nome || '', titolo: titolo || '' }),
+    });
+    const r = await res.json();
+    return r.ok && r.titolo ? String(r.titolo) : null;
+  } catch { return null; }
+}
+
+// Bozza Gmail con il documento allegato (risposta all'email dell'originale o email nuova). Mai inviata.
+export async function bozzaConAllegato({ token, documento, origine, testo, a, oggetto, destinatari }, fetchImpl = fetch) {
+  if (!token) throw new Error('Sessione scaduta: esci e rientra.');
+  const res = await fetchImpl(URL_CARICAMENTO, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ token, azione: 'bozza_allegato', documento, origine: origine || null, testo: testo || '', a: a || '', oggetto: oggetto || '', ...(Array.isArray(destinatari) ? { destinatari } : {}) }),
+  });
+  let r;
+  try { r = await res.json(); } catch { throw new Error('Gmail non raggiungibile.'); }
+  if (!r.ok) throw new Error(r.errore || 'Bozza non creata.');
+  return r;
+}
+
+// L'originale viene da un'email a cui si può rispondere?
+export const daEmail = (d) => Boolean(d?.gmail_message_id) && !/^(caricato|drivefile|drivefoto|email):/.test(String(d.gmail_message_id));
+
+// Persone dell'email originale (mittente, A, Cc; Luca escluso) per scegliere a chi rispondere.
+export async function destinatariRisposta({ token, origine }, fetchImpl = fetch) {
+  if (!token || !origine) return [];
+  try {
+    const res = await fetchImpl(URL_CARICAMENTO, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ token, azione: 'destinatari_risposta', origine }),
+    });
+    const r = await res.json();
+    return r.ok && Array.isArray(r.persone) ? r.persone : [];
+  } catch { return []; }
 }

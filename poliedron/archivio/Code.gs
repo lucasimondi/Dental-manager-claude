@@ -130,6 +130,8 @@ function elabora() {
     // Cartelle di Drive per categoria e persona (POL-VITA-013): un po' a ogni giro.
     try { ordinaDrive_(inizio + ORDINA_DRIVE_MS); } catch (e) { logErrore_('ordine Drive', e); }
 
+    // Cartelle di Poliedron con la gemella su Drive: stesso nome e stesso padre (DOCUMENTI-FIRMATI).
+    try { allineaCartelleDrive_(); } catch (e) { logErrore_('cartelle Drive', e); }
     // Nome dei file su Drive allineato al titolo dell'archivio (drive_rinomina): un po' a ogni giro.
     try { rinominaDrive_(Date.now() + RINOMINA_DRIVE_MS); } catch (e) { logErrore_('rinomina Drive', e); }
 
@@ -211,7 +213,8 @@ function elabora() {
       if (!riordinaLotto_()) break;
     }
     // Tempo ancora avanzato: altri testi completi (POL-VITA-034).
-    try { if (Date.now() - inizio < CONFIG.TEMPO_MAX_MS - 60000) estraiTesti_(inizio + CONFIG.TEMPO_MAX_MS - 30000); } catch (e) { logErrore_('testo completo', e); }
+    // Al massimo un altro minuto: il tempo giornaliero degli attivatori di un account Gmail è limitato.
+    try { if (Date.now() - inizio < CONFIG.TEMPO_MAX_MS - 60000) estraiTesti_(Math.min(Date.now() + 60000, inizio + CONFIG.TEMPO_MAX_MS - 30000)); } catch (e) { logErrore_('testo completo', e); }
     try { if (Date.now() - inizio < CONFIG.TEMPO_MAX_MS - 30000) calcolaVettori_(inizio + CONFIG.TEMPO_MAX_MS - 20000); } catch (e) { logErrore_('vettori', e); }
   } finally {
     lock.releaseLock();
@@ -508,11 +511,21 @@ const TESTO_MAX_BYTE = 15 * 1024 * 1024;   // oltre, Drive non converte in modo 
 const TESTO_CORPO_EMAIL = 5000;
 const ESTENSIONI_IMMAGINE = /^(jpe?g|png|gif|webp|bmp|tiff?|heic)$/;
 
+// Blocchi da TESTO_LOTTO finché c'è tempo. true = ne restano (tempo o quota finiti), false = coda vuota.
 function estraiTesti_(scadenza) {
   if (typeof Drive === 'undefined') return false;
+  while (Date.now() < scadenza) {
+    const ancora = bloccoTesti_(scadenza);
+    if (ancora !== 'pieno') return ancora === 'stop';
+  }
+  return true;
+}
+
+// Un blocco: 'stop' = tempo o quota finiti, 'pieno' = blocco intero (probabilmente altri in coda), 'fine' = coda vuota.
+function bloccoTesti_(scadenza) {
   const docs = sb_('rpc/documenti_senza_testo', { method: 'post', body: { p_lim: TESTO_LOTTO } }) || [];
   for (let i = 0; i < docs.length; i++) {
-    if (Date.now() > scadenza) return true;
+    if (Date.now() > scadenza) return 'stop';
     const d = docs[i];
     const nome = d.nome_file_originale || 'documento';
     const meta = { oggetto: d.email_oggetto || '', mittente: d.email_mittente || '', destinatari: '' };
@@ -523,16 +536,29 @@ function estraiTesti_(scadenza) {
       try {
         riga = testoDelDocumento_(d, nome);
       } catch (e) {
-        if (QUOTA_GOOGLE.test(e.message)) return true;      // quote di Google: si riprende al giro dopo
+        if (QUOTA_GOOGLE.test(e.message)) return 'stop';    // quote di Google: si riprende al giro dopo
         riga = { stato: 'errore', fonte: null, testo: null, errore: String(e.message || e).slice(0, 300) };
       }
     }
-    sb_('documenti_testo?on_conflict=documento_id', { method: 'post', prefer: 'resolution=merge-duplicates,return=minimal', body: {
-      documento_id: d.id, stato: riga.stato, fonte: riga.fonte, testo: riga.testo, errore: riga.errore || null,
-      tentativi: (Number(d.tentativi) || 0) + 1, aggiornato_il: new Date().toISOString(),
-    } });
+    salvaTesto_(d, riga);
   }
-  return docs.length === TESTO_LOTTO;
+  return docs.length === TESTO_LOTTO ? 'pieno' : 'fine';
+}
+
+// Salva il testo letto; se Supabase non lo accetta il documento passa in errore (la coda non si ferma).
+function salvaTesto_(d, riga) {
+  const salva = (r) => sb_('documenti_testo?on_conflict=documento_id', { method: 'post', prefer: 'resolution=merge-duplicates,return=minimal', body: {
+    documento_id: d.id, stato: r.stato, fonte: r.fonte, testo: r.testo, errore: r.errore || null,
+    tentativi: (Number(d.tentativi) || 0) + 1, aggiornato_il: new Date().toISOString(),
+  } });
+  try {
+    salva(riga);
+    return riga;
+  } catch (e) {
+    const errore = { stato: 'errore', fonte: riga.fonte, testo: null, errore: ('Salvataggio: ' + String(e.message || e)).slice(0, 300) };
+    salva(errore);
+    return errore;
+  }
 }
 
 // Testo del file (e, per gli allegati Gmail, del corpo dell'email che lo accompagnava).
@@ -563,9 +589,17 @@ function testoDelDocumento_(d, nome) {
   }
   const corpo = corpoEmail_(d.gmail_message_id);
   if (corpo) testo = (testo ? testo + '\n\n' : '') + 'Email: ' + corpo;
-  testo = String(testo || '').replace(/[ \t\u00a0]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
+  testo = testoPulito_(testo);
   if (testo) return { stato: 'letto', fonte: fonte || 'email', testo: testo.slice(0, 100000) };
   return { stato: fonte && fonte !== 'troppo_grande' ? 'vuoto' : 'non_leggibile', fonte: fonte, testo: null };
+}
+
+// Senza caratteri che Postgres rifiuta (nullo, controllo, surrogati spaiati) e con gli spazi in ordine.
+function testoPulito_(t) {
+  return String(t || '')
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\ufffe\uffff]/g, ' ')
+    .replace(/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g, '')
+    .replace(/[ \t\u00a0]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
 }
 
 function senzaTag_(s) { return s ? String(s).replace(/<[^>]+>/g, ' ') : null; }
@@ -676,17 +710,80 @@ function cercaPerSignificato_(testo, filtri, lim, campi) {
   }
 }
 
-// Unisce parole e significato (reciprocal rank fusion): in cima chi compare in entrambe.
-function fondiRisultati_(parole, significato, lim) {
+// Unisce parole, significato e ricerca di Drive (reciprocal rank fusion): in cima chi compare in più elenchi.
+function fondiRisultati_(parole, significato, lim, drive) {
   const punti = {}, doc = {}, ordine = [];
-  const aggiungi = function (d, i, perSignificato) {
-    if (!doc[d.id]) { doc[d.id] = perSignificato ? Object.assign({}, d, { per_significato: true }) : d; ordine.push(d.id); }
+  const aggiungi = function (d, i, segno) {
+    if (!doc[d.id]) { doc[d.id] = segno ? Object.assign({}, d, segno) : d; ordine.push(d.id); }
     punti[d.id] = (punti[d.id] || 0) + 1 / (60 + i);
   };
-  parole.forEach(function (d, i) { aggiungi(d, i, false); });
-  significato.forEach(function (d, i) { aggiungi(d, i, true); });
+  parole.forEach(function (d, i) { aggiungi(d, i, null); });
+  significato.forEach(function (d, i) { aggiungi(d, i, { per_significato: true }); });
+  (drive || []).forEach(function (d, i) { aggiungi(d, i, { nel_testo: true }); });
   return ordine.slice().sort(function (a, b) { return punti[b] - punti[a] || ordine.indexOf(a) - ordine.indexOf(b); })
     .slice(0, lim).map(function (id) { return doc[id]; });
+}
+
+/* =====================================================================
+ * RICERCA NEL CONTENUTO CON DRIVE (2026-11-17)
+ * Luca: "Gemini funziona bene poliedron no come facciamo ?". Gemini usa la ricerca di Drive, che
+ * conosce il testo di tutti i file; Poliedron solo quello già letto (documenti_testo, ~15% il
+ * 17/11). Qui la stessa ricerca di Drive (fullText, nessun modello: la domanda resta nell'account
+ * di Luca); si tengono solo i file registrati in archivio e mai i clinici.
+ * ===================================================================*/
+const DRIVE_CERCA_MAX = 40;
+const PAROLE_VUOTE = /^(il|lo|la|le|gli|un|una|uno|di|del|della|dei|delle|degli|dello|da|dal|dalla|dai|in|nel|nella|nei|con|per|su|sul|sulla|tra|fra|che|chi|cosa|come|dove|quando|quanto|quanti|quale|quali|mio|mia|miei|mie|tuo|suo|sua|non|sono|era|ho|hai|ha|abbiamo|anche|tutti|tutte|ogni|trova|trovami|cerca|cercami|mostra|mostrami|dammi|voglio|vorrei|documento|documenti|file)$/i;
+
+// Parole utili della domanda per la query di Drive (al massimo 5, senza virgolette).
+function paroleDrive_(testo) {
+  const visti = {};
+  return String(testo || '').split(/[^0-9A-Za-zÀ-ÖØ-öø-ÿ]+/)
+    .filter(function (w) {
+      const k = w.toLowerCase();
+      if ((w.length < 3 && !/\d/.test(w)) || PAROLE_VUOTE.test(w) || visti[k]) return false;
+      visti[k] = true;
+      return true;
+    }).slice(0, 5);
+}
+
+// Id dei file di Drive che contengono le parole, nell'ordine di pertinenza di Drive: prima tutte le
+// parole, poi (se trova poco) almeno una.
+function idDrive_(parole, max) {
+  if (!parole.length || typeof Drive === 'undefined') return [];
+  const condizione = function (w) { return "fullText contains '" + w.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'"; };
+  const query = function (unione) { return '(' + parole.map(condizione).join(unione) + ') and trashed = false'; };
+  const cerca = function (q) { return ((Drive.Files.list({ q: q, pageSize: max, fields: 'files(id)' }) || {}).files || []).map(function (f) { return f.id; }); };
+  const ids = cerca(query(' and '));
+  if (ids.length < 5 && parole.length > 1) {
+    cerca(query(' or ')).forEach(function (id) { if (ids.indexOf(id) < 0 && ids.length < max) ids.push(id); });
+  }
+  return ids;
+}
+
+// Documenti dell'archivio i cui file contengono le parole (filtri come nella ricerca: fascicoli, da, a).
+function cercaNelContenuto_(testo, filtri, lim, campi) {
+  const parole = paroleDrive_(String(testo || '').slice(0, 200));
+  if (!parole.length) return [];
+  try {
+    const ids = idDrive_(parole, DRIVE_CERCA_MAX);
+    if (!ids.length) return [];
+    filtri = filtri || {};
+    const servono = ['drive_file_id', 'data_documento', 'email_data'].filter(function (c) { return campi.split(',').indexOf(c) < 0; });
+    let percorso = 'documenti?select=' + [campi].concat(servono).join(',') + '&fascicolo=neq.clinico_pazienti&drive_file_id=in.(' + ids.map(enc_).join(',') + ')';
+    if (Array.isArray(filtri.fascicoli) && filtri.fascicoli.length) percorso += '&fascicolo=in.(' + filtri.fascicoli.map(function (f) { return enc_(String(f)); }).join(',') + ')';
+    const posto = {};
+    ids.forEach(function (id, i) { posto[id] = i; });
+    return senzaClinici_(sb_(percorso) || [])
+      .filter(function (d) {
+        const data = String(d.data_documento || d.email_data || '').slice(0, 10);
+        return (!filtri.da || !data || data >= filtri.da) && (!filtri.a || !data || data <= filtri.a);
+      })
+      .sort(function (x, y) { return posto[x.drive_file_id] - posto[y.drive_file_id]; })
+      .slice(0, lim);
+  } catch (e) {
+    logErrore_('ricerca su Drive', e);
+    return [];
+  }
 }
 
 // Da eseguire a mano nell'editor: calcola vettori per ~5 minuti (un lotto al minuto).
@@ -1165,6 +1262,184 @@ function dataValida_(s) { return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.
 function pulisciNome_(s) { return String(s).replace(/[\\\/:*?"<>|\r\n]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 120); }
 
 /* =====================================================================
+ * DOCUMENTI FIRMATI E CARTELLE GEMELLE SU DRIVE (2026-11-17)
+ * Luca: "I documenti firmati devono poter essere salvati in cartella drive Documenti Firmati […]
+ * possibilità di salvarlo in cartelle di drive eventualmente creandone di nuove che vanno sia in
+ * poliedron sia in drive". Ogni cartella di Poliedron (cartelle_mie) ha, quando serve, la gemella su
+ * Drive dentro "Archivio personale" (stesso nome, stesso padre). I file salvati lì restano lì
+ * (documenti.drive_fissa: ordinaDrive_ non li sposta). Email: solo bozze, mai invii.
+ * ===================================================================*/
+const UUID_ = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const NOME_FIRMATI = 'Documenti firmati';
+
+function cartellaFirmati_() {
+  let c = (sb_('cartelle_mie?select=id&speciale=eq.firmati') || [])[0];
+  if (!c) c = (sb_('cartelle_mie?select=id', { method: 'post', prefer: 'return=representation', body: { nome: NOME_FIRMATI, speciale: 'firmati' } }) || [])[0];
+  return c.id;
+}
+
+// Cartella di Drive gemella di una cartella di Poliedron: creata se manca, dentro quella del padre.
+function cartellaDriveDi_(id, profondita) {
+  profondita = profondita || 0;
+  if (profondita > 12) throw new Error('Cartelle annidate troppo in profondità');
+  const c = (sb_('cartelle_mie?select=id,nome,padre_id,drive_cartella_id,archiviata_il&id=eq.' + enc_(id)) || [])[0];
+  if (!c) throw new Error('Cartella non trovata');
+  if (c.drive_cartella_id) {
+    try { const f = DriveApp.getFolderById(c.drive_cartella_id); if (!f.isTrashed()) return f; } catch (e) { /* sparita: si ricrea */ }
+  }
+  const padre = c.padre_id ? cartellaDriveDi_(c.padre_id, profondita + 1) : cartellaRadice_();
+  const f = padre.createFolder(pulisciNome_(c.nome) || 'Cartella');
+  sb_('cartelle_mie?id=eq.' + enc_(c.id), { method: 'patch', body: { drive_cartella_id: f.getId() } });
+  return f;
+}
+
+function mettiInCartella_(idCartella, idDoc) {
+  sb_('cartelle_mie_documenti?on_conflict=cartella_id,documento_id', { method: 'post', prefer: 'resolution=ignore-duplicates,return=minimal',
+    body: { cartella_id: idCartella, documento_id: idDoc } });
+}
+
+// A ogni giro: le gemelle su Drive seguono nome e padre delle cartelle di Poliedron (poche cartelle).
+function allineaCartelleDrive_() {
+  const cartelle = sb_('cartelle_mie?select=id,nome,padre_id,drive_cartella_id&drive_cartella_id=not.is.null') || [];
+  const perId = {};
+  cartelle.forEach(function (c) { perId[c.id] = c; });
+  cartelle.forEach(function (c) {
+    let f;
+    try { f = DriveApp.getFolderById(c.drive_cartella_id); } catch (e) { return; }
+    const nome = pulisciNome_(c.nome) || 'Cartella';
+    if (f.getName() !== nome) f.setName(nome);
+    const padre = c.padre_id ? perId[c.padre_id] : null;
+    if (c.padre_id && !padre) return;   // il padre non ha ancora la gemella: ci pensa il primo salvataggio
+    const idPadre = padre ? padre.drive_cartella_id : cartellaRadice_().getId();
+    const padri = f.getParents();
+    if (padri.hasNext() && padri.next().getId() !== idPadre) {
+      try { f.moveTo(DriveApp.getFolderById(idPadre)); } catch (e) { logErrore_('cartella Drive ' + c.id, e); }
+    }
+  });
+}
+
+// Titolo suggerito dal contenuto (prime righe del PDF lette sul telefono). Mai a un modello se il
+// documento sembra di un paziente: allora nessun suggerimento.
+const TITOLO_CLINICO = /\b(paziente|pazienti|referto|referti|anamnesi|cartella clinica|consenso informato|piano di cura|radiograf\w*|ortopanoramica|cbct|diagnosi)\b/i;
+function titoloSuggerito_(req) {
+  const testo = String(req.testo || '').replace(/\s+/g, ' ').trim().slice(0, 3000);
+  const nome = String(req.nome || '').slice(0, 200);
+  const attuale = String(req.titolo || '').slice(0, 200);
+  if (req.clinico || eClinico_({ oggetto: attuale, mittente: '', destinatari: '' }, nome) || TITOLO_CLINICO.test(testo + ' ' + attuale)) {
+    return { ok: true, titolo: null, motivo: 'clinico' };
+  }
+  if (testo.length < 20) return { ok: true, titolo: null, motivo: 'poco testo' };
+  try {
+    const t = testoAI_('Dai un titolo breve (massimo 8 parole) al documento, in italiano, nel formato "Tipo – Ente o controparte – riferimento" ' +
+      '(es. "Contratto di locazione – Rossi – via Roma 1", "Modulo adesione – Banca X – 2026"). Rispondi solo con il titolo, senza virgolette.',
+      'Nome del file: ' + nome + (attuale ? '\nTitolo attuale: ' + attuale : '') + '\n\nInizio del testo:\n' + testo, 60);
+    const titolo = String(t || '').split('\n')[0].replace(/^["«“']+|["»”']+$/g, '').replace(/\.$/, '').trim().slice(0, 100);
+    return { ok: true, titolo: titolo || null };
+  } catch (e) {
+    return { ok: true, titolo: null, motivo: 'AI non disponibile' };
+  }
+}
+
+// Email dell'originale a cui rispondere (null se il documento non viene da un'email).
+function messaggioOrigine_(origine) {
+  if (!UUID_.test(String(origine || ''))) return null;
+  const o = (sb_('documenti?select=gmail_message_id,gmail_thread_id&id=eq.' + origine) || [])[0];
+  if (!o || !o.gmail_message_id || /^(caricato|drivefile|drivefoto|email):/.test(String(o.gmail_message_id))) return null;
+  return messaggioDaRispondere_(o.gmail_thread_id, o.gmail_message_id);
+}
+
+// Tutte le persone della risposta: mittente, destinatari e Cc dell'email (tranne Luca), senza doppioni.
+// (2026-11-17, Luca: "devi prendere tutti i mittenti anche i cc, poi io sceglierò se tenerli o no")
+function personeRisposta_(msg) {
+  const viste = {}, fuori = [];
+  const aggiungi = function (campo, ruolo) {
+    String(campo || '').split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).forEach(function (pezzo) {
+      const email = (indirizzi_(pezzo)[0] || '').toLowerCase();
+      if (!email || email === PROPRIETARIO || viste[email]) return;
+      viste[email] = true;
+      const nome = pezzo.replace(/<[^>]*>/, '').replace(/"/g, '').trim();
+      fuori.push({ email: email, nome: nome && nome.toLowerCase() !== email ? nome : '', ruolo: ruolo });
+    });
+  };
+  aggiungi(msg.getReplyTo() || msg.getFrom(), 'mittente');
+  aggiungi(msg.getTo(), 'a');
+  aggiungi(msg.getCc(), 'cc');
+  return fuori;
+}
+
+function destinatariRisposta_(req) {
+  const msg = messaggioOrigine_(req.origine);
+  if (!msg) return { ok: false, errore: 'Il documento non viene da un\'email.' };
+  return { ok: true, oggetto: msg.getSubject() || '', persone: personeRisposta_(msg) };
+}
+
+// Bozza Gmail con il documento allegato: risposta all'email da cui veniva l'originale (a chi sceglie
+// Luca fra mittente, destinatari e Cc), oppure email nuova. Mai inviata: Luca la rilegge e la invia da Gmail.
+const ALLEGATO_MAX = 24 * 1024 * 1024;
+const EMAIL_VALIDA_ = /^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]+$/;
+function bozzaConAllegato_(req) {
+  const d = UUID_.test(String(req.documento || '')) ? (sb_('documenti?select=id,titolo,drive_file_id&id=eq.' + req.documento) || [])[0] : null;
+  if (!d || !d.drive_file_id) return { ok: false, errore: 'Documento non trovato.' };
+  const file = DriveApp.getFileById(d.drive_file_id);
+  if (file.getSize() > ALLEGATO_MAX) return { ok: false, errore: 'Il file supera 24 MB: Gmail non lo accetta come allegato.' };
+  const blob = file.getBlob();
+  const testo = String(req.testo || '').trim().slice(0, 8000) || 'Buongiorno,\n\nin allegato il documento firmato.\n\nCordiali saluti\nLuca Simondi';
+  const msg = messaggioOrigine_(req.origine);
+  if (msg) {
+    const tutte = personeRisposta_(msg);
+    // Scelta di Luca: [{email, ruolo}]; senza scelta, tutti (rispondi a tutti).
+    const scelte = Array.isArray(req.destinatari)
+      ? req.destinatari.map(function (p) { return { email: String(p && p.email || '').trim().toLowerCase(), ruolo: p && p.ruolo === 'cc' ? 'cc' : 'a' }; })
+        .filter(function (p) { return EMAIL_VALIDA_.test(p.email) && p.email !== PROPRIETARIO; })
+      : tutte.map(function (p) { return { email: p.email, ruolo: p.ruolo === 'cc' ? 'cc' : 'a' }; });
+    const a = scelte.filter(function (p) { return p.ruolo !== 'cc'; }).map(function (p) { return p.email; });
+    const cc = scelte.filter(function (p) { return p.ruolo === 'cc'; }).map(function (p) { return p.email; });
+    if (!a.length && !cc.length) return { ok: false, errore: 'Scegli almeno un destinatario.' };
+    const oggetto = /^re:/i.test(msg.getSubject() || '') ? msg.getSubject() : 'Re: ' + (msg.getSubject() || '');
+    const thread = msg.getThread().getId();
+    let nelThread = true;
+    try {
+      bozzaRispostaGmail_(msg, a.length ? a : cc, a.length ? cc : [], oggetto, testo, blob, thread);
+    } catch (e) {
+      // Gmail API non disponibile: email nuova con le stesse persone (mai qualcuno tolto da Luca).
+      logErrore_('bozza risposta (Gmail API)', e);
+      GmailApp.createDraft((a.length ? a : cc).join(','), oggetto, testo, { attachments: [blob], cc: (a.length ? cc : []).join(',') });
+      nelThread = false;
+    }
+    return { ok: true, risposta: nelThread, a: a.concat(cc).join(', '), oggetto: oggetto,
+      link: nelThread ? 'https://mail.google.com/mail/u/0/#all/' + thread : 'https://mail.google.com/mail/u/0/#drafts' };
+  }
+  const a = String(req.a || '').trim().slice(0, 300);
+  const oggetto = String(req.oggetto || '').trim().slice(0, 200) || d.titolo || 'Documento firmato';
+  const bozza = GmailApp.createDraft(a, oggetto, testo, { attachments: [blob] });
+  let link = 'https://mail.google.com/mail/u/0/#drafts';
+  try { link += '/' + bozza.getMessage().getId(); } catch (e) {}
+  return { ok: true, risposta: false, a: a, oggetto: oggetto, link: link };
+}
+
+// Risposta nella stessa conversazione con destinatari scelti: messaggio MIME con In-Reply-To/References
+// e il file allegato, salvato come bozza con la Gmail API (servizio avanzato Gmail). Mai inviato.
+function bozzaRispostaGmail_(msg, a, cc, oggetto, testo, blob, thread) {
+  const b64 = function (x) { return Utilities.base64Encode(x, Utilities.Charset.UTF_8); };
+  const righe76 = function (x) { return x.replace(/(.{76})/g, '$1\r\n'); };
+  const parola = function (x) { return '=?UTF-8?B?' + b64(x) + '?='; };
+  const confine = 'poliedron-' + Utilities.getUuid();
+  const id = msg.getHeader('Message-ID') || msg.getHeader('Message-Id') || '';
+  const riferimenti = ((msg.getHeader('References') || '') + ' ' + id).trim();
+  const nome = blob.getName() || 'documento.pdf';
+  const parti = [
+    'To: ' + a.join(', '), cc.length ? 'Cc: ' + cc.join(', ') : null, 'Subject: ' + parola(oggetto),
+    id ? 'In-Reply-To: ' + id : null, riferimenti ? 'References: ' + riferimenti : null,
+    'MIME-Version: 1.0', 'Content-Type: multipart/mixed; boundary="' + confine + '"', '',
+    '--' + confine, 'Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: base64', '', righe76(b64(testo)),
+    '--' + confine, 'Content-Type: ' + (blob.getContentType() || 'application/octet-stream') + '; name="' + parola(nome) + '"',
+    'Content-Disposition: attachment; filename="' + parola(nome) + '"', 'Content-Transfer-Encoding: base64', '',
+    righe76(Utilities.base64Encode(blob.getBytes())), '--' + confine + '--', '',
+  ].filter(function (r) { return r !== null; }).join('\r\n');
+  return Gmail.Users.Drafts.create({ message: { raw: Utilities.base64EncodeWebSafe(parti), threadId: thread } }, 'me');
+}
+
+/* =====================================================================
  * CARICAMENTO DALL'APP (Poliedron Personal)
  * Web app: esegui come proprietario, accesso "Chiunque". L'identità non viene dal
  * link ma dal token di sessione Supabase dell'app, verificato a ogni richiesta:
@@ -1199,6 +1474,13 @@ function doPost(e) {
     if (req.azione === 'cartella') return rispostaJson_(analizzaCartella_(req));
     if (req.azione === 'bozza') return rispostaJson_(bozzaRisposta_(req));
     if (req.azione === 'suggerisci') return rispostaJson_(suggerisciCartelle_());
+    if (req.azione === 'titolo_suggerito') return rispostaJson_(titoloSuggerito_(req));
+    if (req.azione === 'bozza_allegato') return rispostaJson_(bozzaConAllegato_(req));
+    if (req.azione === 'destinatari_risposta') return rispostaJson_(destinatariRisposta_(req));
+    if (req.azione === 'contenuto') {
+      const filtri = req.filtri && typeof req.filtri === 'object' ? req.filtri : {};
+      return rispostaJson_({ ok: true, documenti: cercaNelContenuto_(req.testo, filtri, 20, CAMPI_APP) });
+    }
     if (req.azione === 'significato') {
       const filtri = req.filtri && typeof req.filtri === 'object' ? req.filtri : {};
       return rispostaJson_({ ok: true, disponibile: vettoriDisponibili_(), documenti: cercaPerSignificato_(req.testo, filtri, 20, CAMPI_APP) });
@@ -1210,11 +1492,19 @@ function doPost(e) {
     const bytes = Utilities.base64Decode(req.dati);
     const hash = sha256_(bytes);
     const esistente = sb_('documenti?select=id,titolo&hash_sha256=eq.' + hash);
-    if (esistente.length) return rispostaJson_({ ok: true, duplicato: true, id: esistente[0].id, titolo: esistente[0].titolo });
+    if (esistente.length) {
+      // Già in archivio: lo si mette comunque nella cartella scelta (in Poliedron; il file su Drive resta dov'è).
+      const dove = req.firmati ? cartellaFirmati_() : (UUID_.test(String(req.cartella || '')) ? String(req.cartella) : null);
+      if (dove) mettiInCartella_(dove, esistente[0].id);
+      return rispostaJson_({ ok: true, duplicato: true, id: esistente[0].id, titolo: esistente[0].titolo });
+    }
 
     const ora = new Date();
-    const cartella = sottocartella_(sottocartella_(cartellaRadice_(), CARTELLA_CARICATI),
-      Utilities.formatDate(ora, CONFIG.FUSO, 'yyyy'));
+    // DOCUMENTI-FIRMATI: cartella scelta da Luca (una delle sue cartelle, gemella su Drive) o «Documenti firmati».
+    const idCartella = req.firmati ? cartellaFirmati_() : (UUID_.test(String(req.cartella || '')) ? String(req.cartella) : null);
+    const titoloScelto = String(req.titolo || '').trim().slice(0, 120);
+    const cartella = idCartella ? cartellaDriveDi_(idCartella)
+      : sottocartella_(sottocartella_(cartellaRadice_(), CARTELLA_CARICATI), Utilities.formatDate(ora, CONFIG.FUSO, 'yyyy'));
     file = cartella.createFile(Utilities.newBlob(bytes, mime, nome));
 
     const meta = { oggetto: String(req.descrizione || ''), mittente: PROPRIETARIO, destinatari: '', data: ora,
@@ -1240,13 +1530,16 @@ function doPost(e) {
       }
     }
     if (analisi.riserva && req.descrizione) analisi.titolo = String(req.descrizione).slice(0, 120);
+    if (titoloScelto) analisi.titolo = titoloScelto;   // il titolo scritto da Luca vale sempre
     // La scelta di Luca nell'app vale più della classificazione automatica (mai per i clinici)
     if (req.fascicolo && FASCICOLI[req.fascicolo] && analisi.fascicolo !== 'clinico_pazienti') analisi.fascicolo = req.fascicolo;
     const fasc = FASCICOLI[analisi.fascicolo] ? analisi.fascicolo : 'altro';
     const tag = (Array.isArray(analisi.tag) ? analisi.tag.slice(0, 7) : []).concat(req.portafoglio ? ['portafoglio'] : []);
     const estensione = (nome.match(/\.[a-z0-9]+$/i) || [''])[0].toLowerCase();
-    file.setName((dataValida_(analisi.data_documento) || Utilities.formatDate(ora, CONFIG.FUSO, 'yyyy-MM-dd')) + '_' +
-      pulisciNome_(analisi.titolo || nome.replace(/\.[^.]+$/, '')) + estensione);
+    // In una cartella scelta il file prende esattamente il titolo; altrimenti data_titolo come sempre.
+    file.setName(idCartella ? pulisciNome_(analisi.titolo || nome.replace(/\.[^.]+$/, '')) + estensione
+      : (dataValida_(analisi.data_documento) || Utilities.formatDate(ora, CONFIG.FUSO, 'yyyy-MM-dd')) + '_' +
+        pulisciNome_(analisi.titolo || nome.replace(/\.[^.]+$/, '')) + estensione);
 
     const esito = sb_('rpc/registra_documento', { method: 'post', body: { p: {
       hash_sha256: hash, gmail_message_id: 'caricato:' + Utilities.getUuid(), gmail_thread_id: null,
@@ -1264,6 +1557,10 @@ function doPost(e) {
     } } });
     const idDoc = esito && esito.documento_id;
     completaCatalogo_(idDoc, analisi, fasc);
+    if (idDoc && idCartella) {
+      sb_('documenti?id=eq.' + idDoc, { method: 'patch', body: { drive_fissa: true, drive_cartella: 'cartella:' + idCartella } });
+      mettiInCartella_(idCartella, idDoc);
+    }
     // Persona e categoria scelte da Luca (documenti personali: carta d'identità, codice fiscale, ...)
     if (idDoc && (req.persona || req.categoria)) {
       sb_('documenti?id=eq.' + idDoc, { method: 'patch', body: {
@@ -1659,7 +1956,7 @@ function ordinaDrive_(scadenza) {
   let daSpostare = [];
   for (let da = 0; ; da += 1000) {
     const pagina = sb_('documenti?select=id,drive_file_id,fascicolo,persona,data_documento,email_data,drive_cartella' +
-      '&drive_file_id=not.is.null&gmail_message_id=not.like.drivefoto:*&gmail_message_id=not.like.drivefile:*&order=id&limit=1000&offset=' + da);
+      '&drive_file_id=not.is.null&drive_fissa=is.false&gmail_message_id=not.like.drivefoto:*&gmail_message_id=not.like.drivefile:*&order=id&limit=1000&offset=' + da);
     daSpostare = daSpostare.concat(pagina.filter(function (d) {
       const voluto = percorsoDrive_(d, persone);
       return d.drive_cartella !== voluto && d.drive_cartella !== '!' + voluto;
@@ -1912,7 +2209,7 @@ const senzaClinici_ = (docs) => docs.filter(function (d) { return d.fascicolo !=
 const breve_ = (d) => ({
   id: d.id, titolo: d.titolo, fascicolo: d.fascicolo, tipo: d.tipo_documento, data: d.data_documento || String(d.email_data || '').slice(0, 10),
   da: d.email_mittente, importo: d.importo, riassunto: d.riassunto, da_fare: d.azione_richiesta ? (d.azione_descrizione || true) : undefined,
-  persona: d.persona || undefined, categoria: d.categoria || undefined, per_significato: d.per_significato || undefined,
+  persona: d.persona || undefined, categoria: d.categoria || undefined, per_significato: d.per_significato || undefined, nel_testo: d.nel_testo || undefined,
 });
 const enc_ = encodeURIComponent;
 
@@ -1927,13 +2224,13 @@ const CRITERI_DOC_ = { type: 'object', properties: {
 } };
 const PROPOSTA_MAX = 300;
 const STRUMENTI_CHAT = [
-  { name: 'cerca_documenti', description: 'Cerca documenti nell\'archivio per parole chiave (ente, fornitore, tipo di documento, numero, codice) e/o per fascicolo e periodo. Cerca in titolo, ente, riassunto, email e anche nel testo completo letto dai file; capisce sinonimi, accenti ed errori di battitura, e aggiunge i documenti vicini per significato (per_significato: true, da verificare). Usa 1-3 parole chiave, non frasi; se non trovi nulla riprova con meno parole o con un sinonimo. Restituisce titolo, data, importo e riassunto, i più pertinenti per primi.',
+  { name: 'cerca_documenti', description: 'Cerca documenti nell\'archivio per parole chiave (ente, fornitore, tipo di documento, numero, codice) e/o per fascicolo e periodo. Cerca in titolo, ente, riassunto, email e anche nel testo completo letto dai file; capisce sinonimi, accenti ed errori di battitura, e aggiunge i documenti vicini per significato (per_significato: true, da verificare) e quelli in cui la ricerca di Drive trova le parole dentro il file (nel_testo: true). Usa 1-3 parole chiave, non frasi; se non trovi nulla riprova con meno parole o con un sinonimo. Restituisce titolo, data, importo e riassunto, i più pertinenti per primi.',
     input_schema: { type: 'object', properties: { testo: { type: 'string', description: 'parole chiave, es. "enel luce" o "polizza casa"' },
       fascicolo: { type: 'string', description: 'codice del fascicolo, facoltativo' },
       da: { type: 'string', description: 'solo documenti da questa data (YYYY-MM-DD), facoltativo' },
       a: { type: 'string', description: 'solo documenti fino a questa data (YYYY-MM-DD), facoltativo' },
       limite: { type: 'integer' } } } },
-  { name: 'testo_documento', description: 'Testo completo letto dal file di un documento (anche le scansioni). Usalo per un dato preciso che non è nel riassunto: numeri, codici, nomi, importi di dettaglio, clausole. Con "cerca" restituisce solo i passaggi che contengono quelle parole.',
+  { name: 'testo_documento', description: 'Testo completo letto dal file di un documento (anche le scansioni). Usalo per un dato preciso che non è nel riassunto: numeri, codici, nomi, importi di dettaglio, clausole. Se il file non è ancora stato letto lo legge al momento (qualche secondo). Con "cerca" restituisce solo i passaggi che contengono quelle parole.',
     input_schema: { type: 'object', properties: { id: { type: 'string' }, cerca: { type: 'string', description: 'parole da trovare nel testo, facoltativo' } }, required: ['id'] } },
   { name: 'documento', description: 'Dettaglio di un documento per id: dati estratti, scadenze, pratica.',
     input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
@@ -2085,7 +2382,9 @@ function cercaArchivio_(input, lim) {
   }
   // Anche per significato (POL-VITA-035): trova "caldaia" nelle fatture del tecnico della stufa.
   const significato = cercaPerSignificato_(testo, filtri, Math.min(lim, 20), CAMPI_CHAT);
-  return significato.length ? fondiRisultati_(parole, significato, lim) : parole;
+  // E nel contenuto dei file con la ricerca di Drive (2026-11-17), anche quelli non ancora letti.
+  const drive = cercaNelContenuto_(testo, filtri, Math.min(lim, 20), CAMPI_CHAT);
+  return significato.length || drive.length ? fondiRisultati_(parole, significato, lim, drive) : parole;
 }
 
 // Testo completo di un documento per la chat: mai dei pazienti; se è lungo, solo i passaggi utili.
@@ -2095,10 +2394,32 @@ function testoDocumento_(input) {
   const d = (sb_('documenti?select=id,titolo,fascicolo&id=eq.' + enc_(id)) || [])[0];
   if (!d) return { errore: 'Documento non trovato' };
   if (d.fascicolo === 'clinico_pazienti') return { errore: 'Documento clinico di un paziente: il contenuto non è consultabile dall\'assistente.' };
-  const t = (sb_('documenti_testo?select=stato,testo&documento_id=eq.' + enc_(id)) || [])[0];
+  let t = (sb_('documenti_testo?select=stato,testo,tentativi&documento_id=eq.' + enc_(id)) || [])[0];
+  // Non ancora letto (o lettura fallita): lo legge subito da Drive e lo salva (2026-11-17, Luca: "Fallo").
+  if (!t || (t.stato === 'errore' && Number(t.tentativi || 0) < 3)) t = leggiSubito_(id, t) || t;
+  if (t && t.stato === 'escluso') return { errore: 'Documento clinico di un paziente: il contenuto non è consultabile dall\'assistente.' };
   if (!t) return { errore: 'Il testo di questo documento non è ancora stato letto: è in coda.' };
   if (!t.testo) return { errore: t.stato === 'non_leggibile' ? 'Il file non contiene testo leggibile.' : 'Testo non disponibile per questo documento.' };
   return { id: d.id, titolo: d.titolo, caratteri: t.testo.length, testo: passaggi_(t.testo, input.cerca, TESTO_CHAT_MAX) };
+}
+
+// Lettura immediata di un documento per la chat, come farebbe la coda: i clinici non vengono mai aperti
+// (fascicolo o regole di eClinico_ → 'escluso'); quote di Google o file assente → null (resta in coda).
+function leggiSubito_(id, riga) {
+  const d = (sb_('documenti?select=id,drive_file_id,mime_type,nome_file_originale,dimensione_byte,fascicolo,gmail_message_id,email_oggetto,email_mittente&id=eq.' + enc_(id)) || [])[0];
+  if (!d || !d.drive_file_id || typeof Drive === 'undefined') return null;
+  d.tentativi = riga ? riga.tentativi : 0;
+  const nome = d.nome_file_originale || 'documento';
+  const meta = { oggetto: d.email_oggetto || '', mittente: d.email_mittente || '', destinatari: '' };
+  if (d.fascicolo === 'clinico_pazienti' || eClinico_(meta, nome)) return salvaTesto_(d, { stato: 'escluso', fonte: null, testo: null });
+  let letta;
+  try {
+    letta = testoDelDocumento_(d, nome);
+  } catch (e) {
+    if (QUOTA_GOOGLE.test(e.message)) return null;
+    letta = { stato: 'errore', fonte: null, testo: null, errore: String(e.message || e).slice(0, 300) };
+  }
+  try { return salvaTesto_(d, letta); } catch (e) { logErrore_('lettura per la chat', e); return letta.testo ? letta : null; }
 }
 
 // Senza accenti e in minuscolo, stessa lunghezza del testo (gli indici restano validi).

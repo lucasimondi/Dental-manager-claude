@@ -1126,3 +1126,12 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-fantasma { position: fixed; z-index: 1000; pointer-events: none; transform: translate(-50%, -110%); display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .pp-fantasma > span { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 16px; background: var(--pp-superficie); color: var(--pp-blu); box-shadow: var(--pp-ombra-alta); font-size: 20px; }
 .pp-fantasma em { font-style: normal; font-size: 12px; font-weight: 800; padding: 3px 8px; border-radius: 8px; background: var(--pp-inchiostro); color: var(--pp-superficie); white-space: nowrap; }
+
+/* APRI-CON (2026-11-17): scelta di come aprire il documento, in cima alla scheda. */
+.pp-apri-con { display: grid; gap: 8px; margin: 6px 0 10px; }
+.pp-apri-con .pp-bottone { justify-content: center; min-height: 48px; }
+.pp-apri-principale { width: 100%; font-size: 16px; }
+.pp-apri-altri { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pp-apri-altri .pp-bottone { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 340px) { .pp-apri-altri { grid-template-columns: 1fr; } }
+.pp-azioni-pdf .pp-bottone { flex: 1 1 auto; justify-content: center; }

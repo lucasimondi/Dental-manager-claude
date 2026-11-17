@@ -4812,6 +4812,26 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Round 2 (same branch): Conti buttons layout, DOCK-UGUALE. Files added: `personal/src/IconeDock.jsx`, `tests/visual/personal-dock.{html,fixture.jsx,mjs}`; changed `personal/src/App.jsx` (dock markup), `personal/src/personale.css`, tests `appUnica`, `personaleHome`. Tests 1779/1779, builds PASS, visual PASS. Risk: the dock labels are now hidden (aria-label kept), as in Studio.
 
 
+## Handoff — RICERCA-DRIVE (2026-11-17) — Claude Code
+- Branch `ccr-9a526543-2sagy0` from master ab790ec. Objective: Poliedron search at least as good as Gemini/Drive; unblock the full-text queue.
+- Files: `poliedron/archivio/Code.gs` (cercaNelContenuto_, paroleDrive_, idDrive_, fondiRisultati_ with Drive list, azione `contenuto`, testoPulito_) + merge of `ccr-3c54f7ef-xi3rlw` (bloccoTesti_, write fallback, +1 min leftover cap), `poliedron/archivio/CLAUDE.md`, `personal/src/lib/archivio.js` (cercaNelContenuto, shared cercaDalloScript), `personal/src/sezioni/documenti/Chiedi.jsx`, tests `archivioRicercaDrive.test.mjs` (new), `archivioSignificato.test.mjs`, coordination docs.
+- Database: none.
+- Tests: npm test 1786/1786; build:personal PASS; visual personal-chiedi PASS.
+- Unresolved: not run against real Drive; script must be pushed with clasp and the web app redeployed (same URL) for the app action `contenuto`.
+- Risks: Drive search adds ~1–2 s per chat search; Drive `fullText` matches whole words (no typo tolerance, which the DB search keeps); daily trigger runtime of a Gmail account is limited (that is why reading stays at 45 s + max 1 min per run). Merging this PR also merges `ccr-3c54f7ef-xi3rlw`.
+- Rollback: revert the commit and `clasp push` the previous Code.gs; no data to undo.
+- Round 2: `leggiSubito_` + `salvaTesto_` (chat reads unread files on demand). Published with clasp, web app @21 → @22.
+- Next: after merge, keep online = master; check `log_elaborazione` (no more 22P05) and `v_testo_avanzamento` rising faster.
+
+## Handoff — DOCUMENTI-FIRMATI + FIRMA-BIRO (2026-11-17) — Claude Code
+- Branch `ccr-9a526543-2sagy0`. Objective: sign → save in «Documenti firmati» (Poliedron + Drive) with editable/suggested title → Gmail draft with attachment; ballpoint signature; simple save sheet with folders shared by Poliedron and Drive.
+- Files: `supabase/archivio/migrations/20261117120000_documenti_firmati.sql` (new, applied), `poliedron/archivio/Code.gs`, `poliedron/archivio/CLAUDE.md`, `personal/src/pdf/{biro.js,titoloFirmato.js,SalvaArchivio.jsx (new),Firma.jsx,GestorePdf.jsx,PaginaPdf.jsx,pdf.css}`, `personal/src/lib/{archivio.js,cartelleMie.js}`, `personal/src/sezioni/documenti/{Firmati.jsx (new),Documenti.jsx,index.jsx}`, tests `documentiFirmati.test.mjs` (new), `archivioPersonale.test.mjs`, visual `personal-firmati.{html,fixture.jsx,mjs}` (new), `personal-pdf.mjs`.
+- Database: additive columns/index/row/view (see current-task); RLS unchanged.
+- Tests: npm test 1802/1802; builds PASS; visual as listed (scan-strumenti pre-existing failure).
+- Risks: Drive twin folders are created inside «Archivio personale» next to the category folders (a Poliedron folder named like a category gets its own separate Drive folder); moving a document between Poliedron folders does not move its Drive file; the title suggestion uses Gemini free tier for non-clinical text only.
+- Rollback: revert commits and `clasp push` the previous Code.gs; DB columns stay unused (removal needs a PO-approved migration); files already saved stay in their Drive folders.
+- Next: PO tries on the phone (sign a PDF from an email document → Salva firmato → reply draft); then PR/"Mergia".
+
 ## Handoff — PERSONALE-SUBITO (2026-11-17) — Claude Code
 - Branch `ccr-6cd34b11-f8v9k4` from master ab790ec. Objective: «Personale» in the Studio dock opens the Personal Home at once (no menu); propose a similar Studio Home.
 - Files: `src/App.jsx` (VaiAPersonale, gruppiPerTe removed), tests `appUnica.test.mjs`, `documentiDrive.test.mjs`, coordination docs.
@@ -4826,3 +4846,10 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Unresolved: «Preventivi da inviare» needs a sent state on preventivi (PRODUCT_OWNER_DECISION_REQUIRED).
 - Risks: low; one extra canonical snapshot read (today) on opening Studio for users with management control.
 - Rollback: revert the commit. Next: PO review on the preview → "Mergia".
+
+## Handoff — APRI-CON + RISPOSTA-A-TUTTI + COMPILA-CAMPI (2026-11-17) — Claude Code
+- Branch `ccr-9a526543-2sagy0` (PR #321). Files: `personal/src/sezioni/documenti/{ApriCon.jsx (new),Documento.jsx}`, `personal/src/pdf/{compila.js,CompilaCampi.jsx (new),GestorePdf.jsx,SalvaArchivio.jsx,pdf.css}`, `personal/src/personal.css`, `personal/src/lib/archivio.js`, `poliedron/archivio/{Code.gs,appsscript.json}`, tests `compilaCampi.test.mjs` (new), `documentiFirmati.test.mjs`, `personalPdf.test.mjs`, visual `personal-apri-con.*` (new), `personal-firmati.*`.
+- Database: none. Script: published with clasp (manifest adds the Gmail advanced service).
+- Risks: the Gmail advanced service may need a one-time authorization by Luca in the Apps Script editor (new scope already covered by mail.google.com); until then replies fall back to a new email with the chosen people. Opening a document now shows its page first (one more tap to reach the PDF manager) — PO request.
+- Rollback: revert; `clasp push` previous Code.gs/appsscript.json.
+- Next: PO tries reply with recipients and «Compila» on a real module; "Mergia".

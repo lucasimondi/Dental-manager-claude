@@ -5,6 +5,7 @@ import { eliminaDocumento, documentoCompleto, impostaPortafoglio, eCaricato, con
 import { euro } from '../../lib/coreArchivio.js';
 import { colore, dataBreve, titoloDoc, tokenSessione, Vuoto, Sezione, Gruppo, ConfermaElimina, BottoneCondividi, BottoniInvio } from '../../ui.jsx';
 import { DocumentoIntero } from './DocumentoIntero.jsx';
+import { ApriCon } from './ApriCon.jsx';
 import { CodiciDocumento } from './CodiciDocumento.jsx';
 import { NelleMieCartelle } from './CartelleMie.jsx';
 import { avvisoDocumento, dataScadenza, salvaValidita, storicoPersonale, archiviaPersonale } from '../../lib/portafoglio.js';
@@ -17,7 +18,8 @@ export function PaginaDocumento({ id, ctx, chiudi }) {
   const { esegui, aggiorna, mostra, apri, impostazioni, fascicoli } = ctx;
   const [doc, setDoc] = useState(null);
   const [conferma, setConferma] = useState(false);
-  const [intero, setIntero] = useState(true);
+  // APRI-CON (PO 2026-11-17): il documento si apre sulla scheda con la scelta (Gestore PDF, Drive, altre app).
+  const [intero, setIntero] = useState(false);
   const [scadenza, setScadenza] = useState('');
   const carica = useCallback(() => esegui(async () => setDoc(await documentoCompleto(archivioDb, id))), [esegui, id]);
   useEffect(() => { carica(); }, [carica]);
@@ -35,10 +37,10 @@ export function PaginaDocumento({ id, ctx, chiudi }) {
     <>
       {intero && <DocumentoIntero ctx={ctx} doc={doc} strumento={typeof intero === 'string' ? intero : undefined} onInfo={() => setIntero(false)} onChiudi={chiudi} mostra={mostra} />}
       {/* DOCK-PER-TE passo 2: le azioni sul PDF stanno nel documento, non in una sezione a parte. */}
+      {doc.drive_file_id && <ApriCon doc={doc} pdf={ePdf(doc)} onApri={() => setIntero(true)} mostra={mostra} />}
       {ePdf(doc)
-        ? <div className="pp-azioni pp-azioni-pdf"><button className="pp-bottone" onClick={() => setIntero('firma')}>Firma</button><button className="pp-bottone pp-bottone-chiaro" onClick={() => setIntero('modifica')}>Modifica</button><button className="pp-bottone pp-bottone-chiaro" onClick={() => setIntero('pagine')}>Pagine</button><button className="pp-bottone pp-bottone-chiaro" onClick={() => setIntero(true)}>Apri</button></div>
-        : <div className="pp-azioni pp-azioni-pdf"><button className="pp-bottone" onClick={() => setIntero(true)}>Apri a tutto schermo</button>
-          {eImmagine(doc) && doc.drive_file_id && doc.fascicolo !== 'clinico_pazienti' && <button className="pp-bottone pp-bottone-chiaro" onClick={() => apri({ tipo: 'modifica-immagine', id: doc.id, pdf: true })}>Ritaglia · PDF</button>}</div>}
+        ? <div className="pp-azioni pp-azioni-pdf"><button className="pp-bottone pp-bottone-chiaro" onClick={() => setIntero('firma')}>Firma</button><button className="pp-bottone pp-bottone-chiaro" onClick={() => setIntero('compila')}>Compila</button><button className="pp-bottone pp-bottone-chiaro" onClick={() => setIntero('modifica')}>Modifica</button><button className="pp-bottone pp-bottone-chiaro" onClick={() => setIntero('pagine')}>Pagine</button></div>
+        : eImmagine(doc) && doc.drive_file_id && doc.fascicolo !== 'clinico_pazienti' && <div className="pp-azioni pp-azioni-pdf"><button className="pp-bottone pp-bottone-chiaro" onClick={() => apri({ tipo: 'modifica-immagine', id: doc.id, pdf: true })}>Ritaglia · PDF</button></div>}
       {(doc.drive_file_id || doc.drive_url) && <BottoniInvio doc={doc} mostra={mostra} />}
       {avviso && <p className={'pp-validita '+avviso.stato}>{avviso.testo} · {dataBreve(avviso.data)}</p>}
       <div className="pp-dettaglio-testa" style={{ '--c': colore(doc.fascicolo) }}>
@@ -47,7 +49,7 @@ export function PaginaDocumento({ id, ctx, chiudi }) {
         <p className="pp-riga-meta">{[dataBreve(doc.data_documento || doc.email_data), !personale && doc.importo != null ? euro(doc.importo) : null, doc.persona].filter(Boolean).join(' · ')}</p>
       </div>
       <div className="pp-azioni">
-        {doc.drive_url && !String(doc.drive_url).includes('mail.google.com') && <a className="pp-bottone" href={doc.drive_url} target="_blank" rel="noreferrer"><IconaApri size={18} /> Apri il file</a>}
+        {!doc.drive_file_id && doc.drive_url && !String(doc.drive_url).includes('mail.google.com') && <a className="pp-bottone" href={doc.drive_url} target="_blank" rel="noreferrer"><IconaApri size={18} /> Apri il file</a>}
         {(doc.drive_file_id || doc.drive_url) && <BottoneCondividi doc={doc} mostra={mostra} />}
         {conEmail(doc) && <a className="pp-bottone pp-bottone-chiaro" href={`https://mail.google.com/mail/u/0/#all/${doc.gmail_message_id}`} target="_blank" rel="noreferrer"><IconaEmail size={18} /> Email</a>}
         <button className={`pp-bottone pp-bottone-chiaro${portafoglio ? ' pp-attivo' : ''}`} onClick={() => cambia(() => impostaPortafoglio(archivioDb, doc, !portafoglio), portafoglio ? 'Tolto dai Personali' : 'Aggiunto ai Personali')}>

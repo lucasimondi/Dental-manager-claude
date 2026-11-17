@@ -32,7 +32,7 @@ try{
  await page.waitForFunction(()=>window.pdfTest.shares.length===1);
  const shared=await page.evaluate(()=>window.pdfTest.shares[0]);const result=await PDFDocument.load(Uint8Array.from(shared.bytes));assert.equal(result.getPageCount(),12);assert.equal(result.getForm().getTextField('Nome test').getText(),'LUCA TEST FITTIZIO');assert.ok(result.getPage(0).node.Resources().toString().includes('XObject'));
  const downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Scarica PDF',exact:true}).click();const download=await downloadPromise;assert.equal(download.suggestedFilename(),'test-fittizio - modificato.pdf');
- await page.getByRole('button',{name:'Salva nell’archivio come nuovo file'}).click();await page.waitForFunction(()=>window.pdfTest.archived);assert.deepEqual(await page.evaluate(()=>window.pdfTest.archived),shared.bytes);
+ await page.getByRole('button',{name:'Salva firmato nell’archivio'}).click();await page.waitForFunction(()=>window.pdfTest.archived);assert.deepEqual(await page.evaluate(()=>window.pdfTest.archived),shared.bytes);
  await page.getByRole('button',{name:'Torna al documento'}).click();await page.getByRole('button',{name:'Pagine',exact:true}).click();await page.getByLabel('Ruota pagina 1', {exact:true}).click();await page.getByLabel('Elimina pagina 12 dalla copia',{exact:true}).click();await page.getByRole('button',{name:'Applica alla copia'}).click();
  await page.waitForFunction(()=>document.querySelector('input[aria-label="Numero pagina"]')?.max==='11');
  await page.getByRole('button',{name:'Salva / Invia',exact:true}).click();await page.getByRole('button',{name:'Condividi PDF',exact:true}).click();await page.waitForFunction(()=>window.pdfTest.shares.length===2);
