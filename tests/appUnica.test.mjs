@@ -51,7 +51,8 @@ test('DOCK-PER-TE: Agenda · Documenti · Poliedron · Studio · Per te, in Stud
 
 test('«Studio» raccoglie il lavoro, «Per te» la vita personale (uguale nelle due parti)', () => {
   const app = read('src/App.jsx');
-  assert.match(app, /page === 'studio' && <AltroPage titolo="Studio" gruppi=\{gruppiStudio\(\)\}/);
+  // HOME-STUDIO (PO 2026-11-17): «Studio» apre la Home dello Studio.
+  assert.match(app, /page === 'studio' && <StudioHome/);
   // PERSONALE-SUBITO (PO 2026-11-17): «Personale» apre la Home personale di Personal, non un menu.
   assert.match(app, /\(page === 'perte' \|\| page === 'altro'\) && <VaiAPersonale \/>/);
   assert.match(app, /sectionDestination\('personal', 'altro'\)/);
@@ -137,8 +138,5 @@ test('STUDIO-BENTO: Studio e Per te a riquadri (grande, alta, media, piccola, pu
   const { blocchiBento } = await import('../shared/altro/bento.js');
   const b = blocchiBento([{ taglia: 'grande' }, { taglia: 'media' }, { taglia: 'piccola' }, { taglia: 'piccola' }, { taglia: 'pulsante' }, {}]);
   assert.deepEqual(b.map((x) => [x.tipo, x.voci.length]), [['due', 2], ['tre', 2], ['fila', 1], ['tre', 1]]);
-  const app = read('src/App.jsx');
-  assert.match(app, /paz: \['grande', 'Schede, piani di cura e documenti'\]/);
-  assert.match(app, /\.sort\(\(x, y\) => RANGO\[x\.taglia\] - RANGO\[y\.taglia\]\)/);
   assert.match(read('personal/src/sezioni/altro/index.jsx'), /\['personali', 'Documenti personali', 'personali', 'media'/);
 });

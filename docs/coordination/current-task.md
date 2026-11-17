@@ -1,3 +1,12 @@
+# Current task — HOME-STUDIO (2026-11-17)
+- OWNER Claude Code; branch `ccr-6cd34b11-f8v9k4` (after PERSONALE-SUBITO, same branch).
+- REQUEST PO 2026-11-17: "proponimi una cosa simile anche per studio" → mockup (artifact) → "Deve esserci anche ricetta nelle azioni" → "Preventivo ok" → "Sì immagina bene e vai" (mockup choices accepted: blue, today's incassato, Da seguire).
+- SCOPE (presentation only): Studio `page === 'studio'` renders the new `src/components/StudioHome.jsx` (+ `StudioHome.css`) instead of the AltroPage bento (gruppiStudio/BENTO_STUDIO removed): header with Impostazioni, search of patients (cercaPazienti) and sections, + «Crea» sheet, quick actions Appuntamento (QuickBookingModal) · Paziente · Ricetta (openPrescription, RicettaConRicerca) · Preventivo · Incasso, «Oggi in studio» (today's appointments, da confermare, next), Pazienti and Incassi (incassato today from the canonical `get_financial_snapshot_v1` via loadHomeFinancialSnapshot, only with managementControl), Acquisisci (floating TastoAcquisisci hidden on this page), «Il tuo studio» grid (NAV already filtered by plan/role), «Da seguire» (richiami scaduti/oggi with the homeAttention rule, appuntamenti da confermare in 7 days, pagamenti scaduti from computeScadenzePagamento only with managementControl). Pure counts in `src/lib/studioHome.js`.
+- DEVIATION from mockup: «Preventivi da inviare» not built — preventivi have no "sent" state (would need a new field: PRODUCT_OWNER_DECISION_REQUIRED); replaced by «appuntamenti da confermare» and «richiami in scadenza oggi».
+- LOCKS: no DB/RLS/migration/financial formula change.
+- VALIDATION npm test 1781/1781 (new tests/studioHome.test.mjs 2/2; appUnica, dashboardPremiumV2, poliedronChat assertions on the removed bento updated); build PASS; build:personal PASS; Chromium tests/visual/studio-home.mjs PASS Pixel 7 and iPhone SE, light and dark (counts, 5 actions not overflowing, 8 tiles, no amount without permission, Crea sheet, search patient/section, no writes, no page errors). Not verified: real phone with real data.
+- STATUS pushed; PR on request; task-specific "Mergia" required.
+
 # Current task — PERSONALE-SUBITO (2026-11-17)
 - OWNER Claude Code; branch `ccr-6cd34b11-f8v9k4` from master ab790ec (PR319 merged).
 - REQUEST PO 2026-11-17 (screenshot of the Personal Home): "Deve comparire subito questa pagina quando clicco su personale, non più il menu che compare adesso. Inoltre proponimi una cosa simile anche per studio".

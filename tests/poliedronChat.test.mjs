@@ -182,7 +182,8 @@ test('Chat route is wired; Setup stays in the Poliedron menu and out of the mobi
   // POLIEDRON-RIORDINO (PO 2026-11-11): Impostazioni moved to the Studio / Per te footer; the
   // Poliedron panel no longer duplicates sections.
   assert.doesNotMatch(searchEngine, /preferredSections/);
-  assert.match(app, /piede=\{\[\{ id: 'set', nome: 'Impostazioni e account'/);
+  // HOME-STUDIO (PO 2026-11-17): Impostazioni is the round button at the top of the Studio Home.
+  assert.match(app, /onImpostazioni=\{\(\) => setPage\('set'\)\}/);
 });
 
 test('Chat UI has one scroller, safe-area/dock clearance, pagination, retry, and conditional near-bottom scroll', () => {
