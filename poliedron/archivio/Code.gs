@@ -538,18 +538,25 @@ function bloccoTesti_(scadenza) {
         riga = { stato: 'errore', fonte: null, testo: null, errore: String(e.message || e).slice(0, 300) };
       }
     }
-    const salva = (r) => sb_('documenti_testo?on_conflict=documento_id', { method: 'post', prefer: 'resolution=merge-duplicates,return=minimal', body: {
-      documento_id: d.id, stato: r.stato, fonte: r.fonte, testo: r.testo, errore: r.errore || null,
-      tentativi: (Number(d.tentativi) || 0) + 1, aggiornato_il: new Date().toISOString(),
-    } });
-    try {
-      salva(riga);
-    } catch (e) {
-      // Un testo che Supabase non accetta non deve fermare la coda: il documento passa in errore.
-      salva({ stato: 'errore', fonte: riga.fonte, testo: null, errore: ('Salvataggio: ' + String(e.message || e)).slice(0, 300) });
-    }
+    salvaTesto_(d, riga);
   }
   return docs.length === TESTO_LOTTO ? 'pieno' : 'fine';
+}
+
+// Salva il testo letto; se Supabase non lo accetta il documento passa in errore (la coda non si ferma).
+function salvaTesto_(d, riga) {
+  const salva = (r) => sb_('documenti_testo?on_conflict=documento_id', { method: 'post', prefer: 'resolution=merge-duplicates,return=minimal', body: {
+    documento_id: d.id, stato: r.stato, fonte: r.fonte, testo: r.testo, errore: r.errore || null,
+    tentativi: (Number(d.tentativi) || 0) + 1, aggiornato_il: new Date().toISOString(),
+  } });
+  try {
+    salva(riga);
+    return riga;
+  } catch (e) {
+    const errore = { stato: 'errore', fonte: riga.fonte, testo: null, errore: ('Salvataggio: ' + String(e.message || e)).slice(0, 300) };
+    salva(errore);
+    return errore;
+  }
 }
 
 // Testo del file (e, per gli allegati Gmail, del corpo dell'email che lo accompagnava).
@@ -2025,7 +2032,7 @@ const STRUMENTI_CHAT = [
       da: { type: 'string', description: 'solo documenti da questa data (YYYY-MM-DD), facoltativo' },
       a: { type: 'string', description: 'solo documenti fino a questa data (YYYY-MM-DD), facoltativo' },
       limite: { type: 'integer' } } } },
-  { name: 'testo_documento', description: 'Testo completo letto dal file di un documento (anche le scansioni). Usalo per un dato preciso che non è nel riassunto: numeri, codici, nomi, importi di dettaglio, clausole. Con "cerca" restituisce solo i passaggi che contengono quelle parole.',
+  { name: 'testo_documento', description: 'Testo completo letto dal file di un documento (anche le scansioni). Usalo per un dato preciso che non è nel riassunto: numeri, codici, nomi, importi di dettaglio, clausole. Se il file non è ancora stato letto lo legge al momento (qualche secondo). Con "cerca" restituisce solo i passaggi che contengono quelle parole.',
     input_schema: { type: 'object', properties: { id: { type: 'string' }, cerca: { type: 'string', description: 'parole da trovare nel testo, facoltativo' } }, required: ['id'] } },
   { name: 'documento', description: 'Dettaglio di un documento per id: dati estratti, scadenze, pratica.',
     input_schema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
@@ -2189,10 +2196,32 @@ function testoDocumento_(input) {
   const d = (sb_('documenti?select=id,titolo,fascicolo&id=eq.' + enc_(id)) || [])[0];
   if (!d) return { errore: 'Documento non trovato' };
   if (d.fascicolo === 'clinico_pazienti') return { errore: 'Documento clinico di un paziente: il contenuto non è consultabile dall\'assistente.' };
-  const t = (sb_('documenti_testo?select=stato,testo&documento_id=eq.' + enc_(id)) || [])[0];
+  let t = (sb_('documenti_testo?select=stato,testo,tentativi&documento_id=eq.' + enc_(id)) || [])[0];
+  // Non ancora letto (o lettura fallita): lo legge subito da Drive e lo salva (2026-11-17, Luca: "Fallo").
+  if (!t || (t.stato === 'errore' && Number(t.tentativi || 0) < 3)) t = leggiSubito_(id, t) || t;
+  if (t && t.stato === 'escluso') return { errore: 'Documento clinico di un paziente: il contenuto non è consultabile dall\'assistente.' };
   if (!t) return { errore: 'Il testo di questo documento non è ancora stato letto: è in coda.' };
   if (!t.testo) return { errore: t.stato === 'non_leggibile' ? 'Il file non contiene testo leggibile.' : 'Testo non disponibile per questo documento.' };
   return { id: d.id, titolo: d.titolo, caratteri: t.testo.length, testo: passaggi_(t.testo, input.cerca, TESTO_CHAT_MAX) };
+}
+
+// Lettura immediata di un documento per la chat, come farebbe la coda: i clinici non vengono mai aperti
+// (fascicolo o regole di eClinico_ → 'escluso'); quote di Google o file assente → null (resta in coda).
+function leggiSubito_(id, riga) {
+  const d = (sb_('documenti?select=id,drive_file_id,mime_type,nome_file_originale,dimensione_byte,fascicolo,gmail_message_id,email_oggetto,email_mittente&id=eq.' + enc_(id)) || [])[0];
+  if (!d || !d.drive_file_id || typeof Drive === 'undefined') return null;
+  d.tentativi = riga ? riga.tentativi : 0;
+  const nome = d.nome_file_originale || 'documento';
+  const meta = { oggetto: d.email_oggetto || '', mittente: d.email_mittente || '', destinatari: '' };
+  if (d.fascicolo === 'clinico_pazienti' || eClinico_(meta, nome)) return salvaTesto_(d, { stato: 'escluso', fonte: null, testo: null });
+  let letta;
+  try {
+    letta = testoDelDocumento_(d, nome);
+  } catch (e) {
+    if (QUOTA_GOOGLE.test(e.message)) return null;
+    letta = { stato: 'errore', fonte: null, testo: null, errore: String(e.message || e).slice(0, 300) };
+  }
+  try { return salvaTesto_(d, letta); } catch (e) { logErrore_('lettura per la chat', e); return letta.testo ? letta : null; }
 }
 
 // Senza accenti e in minuscolo, stessa lunghezza del testo (gli indici restano validi).

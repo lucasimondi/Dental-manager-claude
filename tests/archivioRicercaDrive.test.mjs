@@ -140,3 +140,68 @@ test('app: azione «contenuto», esclusi i già mostrati e i clinici; sezione «
   assert.match(chiedi, /intestazione=\{`Trovati dentro i file · \$\{nelTesto\.length\}`\}/);
   assert.match(chiedi, /similiNuovi = simili \? simili\.filter\(\(d\) => !giaNelTesto\.has\(d\.id\)\)/);
 });
+
+// PO 2026-11-17 ("Fallo"): la chat legge subito da Drive un file non ancora letto e lo salva.
+function chatFinta({ documento, riga = null, testoFile = '', erroreCopia = null, rifiuta = false } = {}) {
+  const scritture = [];
+  const aperti = [];
+  const ctx = {
+    console: { log() {}, warn() {}, error() {} }, JSON, Date, Math, String, Number, Array, Object, RegExp, Error, encodeURIComponent, isFinite,
+    PropertiesService: { getScriptProperties: () => ({ getProperty: () => null, setProperty() {} }) },
+    Utilities: { sleep() {}, formatDate: (d) => d.toISOString().slice(0, 10) },
+    Drive: { Files: { list: () => ({ files: [] }), copy: () => { throw new Error('non usato'); } } },
+    DocumentApp: { openById: (id) => { aperti.push(id); if (erroreCopia) throw new Error(erroreCopia); return { getBody: () => ({ getText: () => testoFile }) }; } },
+    DriveApp: { getFileById: () => ({ setTrashed() {}, getBlob: () => ({ getDataAsString: () => '' }) }) },
+    GmailApp: { getMessageById: () => ({ getPlainBody: () => '' }) },
+  };
+  vm.createContext(ctx);
+  vm.runInContext(codice, ctx);
+  ctx.logErrore_ = () => {};
+  ctx.sb_ = (percorso, opzioni = {}) => {
+    if (percorso.startsWith('documenti?select=')) return documento ? [documento] : [];
+    if (percorso.startsWith('documenti_testo?select')) return riga ? [riga] : [];
+    if (percorso.startsWith('documenti_testo?on_conflict')) {
+      if (rifiuta && opzioni.body.testo) throw new Error('Supabase 400');
+      scritture.push(opzioni.body);
+      return null;
+    }
+    return [];
+  };
+  return { ctx, scritture, aperti };
+}
+const docGoogle = (extra = {}) => ({ id: 'd', titolo: 'Libretto caldaia', fascicolo: 'riscaldamento', drive_file_id: 'f1', mime_type: 'application/vnd.google-apps.document', nome_file_originale: 'libretto', ...extra });
+
+test('chat: file non ancora letto → letto subito da Drive, salvato e restituito', () => {
+  const { ctx, scritture, aperti } = chatFinta({ documento: docGoogle(), testoFile: 'Matricola caldaia: AB-1234' });
+  const r = ctx.strumentoChat_('testo_documento', { id: 'd', cerca: 'matricola' });
+  assert.match(r.testo, /AB-1234/);
+  assert.deepEqual(aperti, ['f1']);
+  assert.deepEqual(scritture.map((s) => [s.documento_id, s.stato, s.tentativi]), [['d', 'letto', 1]]);
+  assert.match(codice, /Se il file non è ancora stato letto lo legge al momento/);
+});
+
+test('chat: lettura immediata mai per i clinici (anche riconosciuti dalle regole); quota → resta in coda', () => {
+  const clinico = chatFinta({ documento: docGoogle({ fascicolo: 'clinico_pazienti' }), testoFile: 'segreto' });
+  assert.match(clinico.ctx.strumentoChat_('testo_documento', { id: 'd' }).errore, /clinico/);
+  assert.deepEqual(clinico.aperti, []);
+  const regole = chatFinta({ documento: docGoogle({ email_oggetto: 'Referto paziente Rossi', nome_file_originale: 'referto_paziente.pdf' }), testoFile: 'segreto' });
+  const r = regole.ctx.strumentoChat_('testo_documento', { id: 'd' });
+  assert.match(r.errore, /clinico/);
+  assert.deepEqual(regole.aperti, []);
+  assert.deepEqual(regole.scritture.map((s) => s.stato), ['escluso']);
+  const quota = chatFinta({ documento: docGoogle(), erroreCopia: 'Service invoked too many times' });
+  assert.match(quota.ctx.strumentoChat_('testo_documento', { id: 'd' }).errore, /in coda/);
+  assert.equal(quota.scritture.length, 0);
+});
+
+test('chat: errore precedente → riprova; già letto → nessuna nuova lettura; testo rifiutato → errore salvato', () => {
+  const riprova = chatFinta({ documento: docGoogle(), riga: { stato: 'errore', testo: null, tentativi: 1 }, testoFile: 'IBAN IT00X' });
+  assert.match(riprova.ctx.strumentoChat_('testo_documento', { id: 'd' }).testo, /IBAN/);
+  assert.equal(riprova.scritture[0].tentativi, 2);
+  const letto = chatFinta({ documento: docGoogle(), riga: { stato: 'letto', testo: 'già qui', tentativi: 1 } });
+  assert.equal(letto.ctx.strumentoChat_('testo_documento', { id: 'd' }).testo, 'già qui');
+  assert.deepEqual(letto.aperti, []);
+  const rifiutato = chatFinta({ documento: docGoogle(), testoFile: 'qualcosa', rifiuta: true });
+  assert.match(rifiutato.ctx.strumentoChat_('testo_documento', { id: 'd' }).errore, /non disponibile/);
+  assert.deepEqual(rifiutato.scritture.map((s) => s.stato), ['errore']);
+});

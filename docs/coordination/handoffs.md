@@ -4820,4 +4820,5 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Unresolved: not run against real Drive; script must be pushed with clasp and the web app redeployed (same URL) for the app action `contenuto`.
 - Risks: Drive search adds ~1–2 s per chat search; Drive `fullText` matches whole words (no typo tolerance, which the DB search keeps); daily trigger runtime of a Gmail account is limited (that is why reading stays at 45 s + max 1 min per run). Merging this PR also merges `ccr-3c54f7ef-xi3rlw`.
 - Rollback: revert the commit and `clasp push` the previous Code.gs; no data to undo.
-- Next: `clasp push -f` from this branch/master, new deployment version; check `log_elaborazione` (no more 22P05) and `v_testo_avanzamento` rising faster.
+- Round 2: `leggiSubito_` + `salvaTesto_` (chat reads unread files on demand). Published with clasp, web app @21 → @22.
+- Next: after merge, keep online = master; check `log_elaborazione` (no more 22P05) and `v_testo_avanzamento` rising faster.
