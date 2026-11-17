@@ -1,8 +1,8 @@
 // RICERCA-DRIVE — PO 2026-11-17: "Gemini funziona bene poliedron no come facciamo ?" → "Ok vai".
 // (1) La chat e «Chiedi» cercano anche con la ricerca di Drive nel contenuto dei file (come Gemini),
 //     tenendo solo i documenti registrati in archivio e mai i clinici.
-// (2) La lettura dei testi non si blocca più su un testo che il database rifiuta (carattere nullo)
-//     e legge più lotti a ogni giro.
+// (2) La lettura dei testi non si blocca più su un testo che il database rifiuta (carattere nullo):
+//     stessa correzione già pubblicata da un'altra sessione (branch ccr-3c54f7ef-xi3rlw), qui unita.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -119,9 +119,10 @@ test('lettura dei testi: carattere nullo tolto; testo rifiutato → errore e la 
   assert.match(giro.scritture[0].errore, /^Salvataggio: /);
 });
 
-test('lettura dei testi: 90 secondi a ogni giro e più lotti col tempo che avanza', () => {
-  assert.match(codice, /const TESTO_MS = 90 \* 1000;/);
-  assert.match(codice, /while \(Date\.now\(\) - inizio < CONFIG\.TEMPO_MAX_MS - 60000 && estraiTesti_\(inizio \+ CONFIG\.TEMPO_MAX_MS - 30000\)\) \{\}/);
+test('lettura dei testi: blocchi finché c\'è tempo, ma al massimo un altro minuto (tempo giornaliero degli attivatori)', () => {
+  assert.match(codice, /const TESTO_MS = 45 \* 1000;/);
+  assert.match(codice, /function bloccoTesti_\(scadenza\)/);
+  assert.match(codice, /estraiTesti_\(Math\.min\(Date\.now\(\) \+ 60000, inizio \+ CONFIG\.TEMPO_MAX_MS - 30000\)\)/);
 });
 
 test('app: azione «contenuto», esclusi i già mostrati e i clinici; sezione «Trovati dentro i file»', async () => {
