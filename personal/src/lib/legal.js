@@ -130,3 +130,25 @@ export async function analizzaPratica({ token, praticaId }, fetchImpl = fetch) {
   if (!r.ok) { const e = new Error(r.errore || 'Analisi non riuscita.'); e.clinico = !!r.clinico; throw e; }
   return r;
 }
+
+/* ---------- PRATICHE-WORKFLOW (PO 2026-11-18): filo temporale, verifica, avanzamento ---------- */
+export const STATI_ANALISI = { da_fare: 'Da analizzare', letta: 'Documenti letti', analizzata: 'Da verificare', da_aggiornare: 'Documenti nuovi: da aggiornare', verificata: 'Verificata' };
+// Filo temporale in ordine di data; gli eventi senza data vanno in fondo.
+export function filoOrdinato(filo) {
+  return (Array.isArray(filo) ? filo : []).filter((x) => x && x.evento).slice().sort((a, b) => String(a.data || '9999').localeCompare(String(b.data || '9999')));
+}
+// Luca conferma (o toglie la conferma a) una scheda: unica scrittura su pratiche_schede permessa all'app.
+export async function confermaScheda(db, praticaId, conferma = true) {
+  return esito(await db.rpc('conferma_scheda', { p_pratica: praticaId, p_conferma: conferma }));
+}
+// Quante pratiche legali aperte hanno una scheda, e quante sono verificate.
+export function avanzamentoSchede(pratiche, schede) {
+  const aperte = (pratiche || []).filter((p) => ['aperta', 'in_corso'].includes(p.stato));
+  const per = new Map((schede || []).map((s) => [s.pratica_id, s.stato_analisi]));
+  const analizzate = aperte.filter((p) => per.has(p.pratica_id || p.id)).length;
+  const verificate = aperte.filter((p) => per.get(p.pratica_id || p.id) === 'verificata').length;
+  return { totale: aperte.length, analizzate, verificate };
+}
+export async function statiSchede(db) {
+  return esito(await db.from('pratiche_schede').select('pratica_id, stato_analisi'));
+}
