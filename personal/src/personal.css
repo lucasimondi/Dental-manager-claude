@@ -1135,3 +1135,46 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-apri-altri .pp-bottone { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 340px) { .pp-apri-altri { grid-template-columns: 1fr; } }
 .pp-azioni-pdf .pp-bottone { flex: 1 1 auto; justify-content: center; }
+
+/* LEGAL-SCHEDE (2026-11-18): tabella scadenze e scheda pratica. */
+.pp-legal-scadenze { margin: 12px 0 18px; }
+.pp-legal-testa { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pp-legal-testa h3 { margin: 0; }
+.pp-legal-periodo { width: auto; min-width: 0; }
+.pp-legal-lista { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.pp-legal-riga { display: grid; grid-template-columns: 64px minmax(0, 1fr) 40px; align-items: stretch; background: var(--pp-superficie); border-radius: var(--pp-raggio); box-shadow: var(--pp-ombra); border-left: 4px solid var(--pp-linea); overflow: hidden; }
+.pp-legal-riga button { background: none; border: 0; color: inherit; font: inherit; text-align: left; padding: 10px 8px; cursor: pointer; }
+.pp-legal-quando { display: grid; align-content: center; justify-items: center; gap: 2px; border-right: 1px solid var(--pp-linea) !important; }
+.pp-legal-quando strong { font-size: 15px; white-space: nowrap; }
+.pp-legal-quando span { font-size: 12px; color: var(--pp-grigio); white-space: nowrap; }
+.pp-legal-cosa { display: grid; gap: 3px; min-width: 0; }
+.pp-legal-tipo { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--pp-grigio); }
+.pp-legal-desc { font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.pp-legal-rif { font-size: 13px; color: var(--pp-grigio); overflow-wrap: anywhere; }
+.pp-legal-conflitto { font-size: 13px; color: var(--pp-ambra); }
+.pp-legal-fatta { display: grid; place-items: center; font-size: 18px !important; color: var(--pp-verde) !important; border-left: 1px solid var(--pp-linea) !important; text-align: center !important; }
+.pp-tipo-perentoria { border-left-color: var(--pp-rosso); }
+.pp-tipo-perentoria .pp-legal-tipo, .pp-tipo-perentoria .pp-legal-quando strong { color: var(--pp-rosso); }
+.pp-tipo-udienza { border-left-color: var(--pp-blu); }
+.pp-tipo-pagamento { border-left-color: var(--pp-ambra); }
+.pp-vicina .pp-legal-quando span { color: var(--pp-rosso); font-weight: 700; }
+.pp-sp { display: grid; gap: 12px; margin: 14px 0; }
+.pp-sp-blocco, .pp-sp-vuota { background: var(--pp-superficie); border-radius: var(--pp-raggio); box-shadow: var(--pp-ombra); padding: 14px 16px; }
+.pp-sp-blocco h3 { margin: 0 0 8px; font-size: 15px; }
+.pp-sp-blocco ol, .pp-sp-blocco ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; line-height: 1.45; }
+.pp-sp-oggetto { font-weight: 600; margin: 0 0 8px; }
+.pp-sp-dati { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin: 0 0 8px; }
+.pp-sp-dati dt { color: var(--pp-grigio); }
+.pp-sp-dati dd { margin: 0; overflow-wrap: anywhere; }
+.pp-sp-attenzione { border-left: 4px solid var(--pp-ambra); }
+.pp-sp-fonti { display: inline-flex; flex-wrap: wrap; gap: 4px; vertical-align: middle; }
+.pp-sp-fonte { border: 1px solid var(--pp-linea); background: var(--pp-blu-chiaro); color: var(--pp-blu); border-radius: 999px; font-size: 11px; padding: 1px 8px; cursor: pointer; }
+.pp-sp-passi ul { list-style: none; padding-left: 0; }
+.pp-sp-passi label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.pp-sp-passi input[type=checkbox] { width: 20px; height: 20px; margin-top: 1px; flex-shrink: 0; }
+.pp-sp-passi li.fatto span { text-decoration: line-through; color: var(--pp-grigio); }
+.pp-sp-passi em { font-style: normal; color: var(--pp-ambra); font-weight: 600; }
+.pp-sp-nuovo { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-top: 10px; }
+.pp-sp-nuovo input { min-width: 0; padding: 9px 10px; border: 1px solid var(--pp-linea); border-radius: 10px; background: var(--pp-sfondo); color: var(--pp-inchiostro); font: inherit; }
+.pp-sp-nuovo button { grid-column: 1 / -1; }
+.pp-sp-piede { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }

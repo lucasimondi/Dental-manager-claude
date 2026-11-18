@@ -216,6 +216,8 @@ function elabora() {
     // Al massimo un altro minuto: il tempo giornaliero degli attivatori di un account Gmail è limitato.
     try { if (Date.now() - inizio < CONFIG.TEMPO_MAX_MS - 60000) estraiTesti_(Math.min(Date.now() + 60000, inizio + CONFIG.TEMPO_MAX_MS - 30000)); } catch (e) { logErrore_('testo completo', e); }
     try { if (Date.now() - inizio < CONFIG.TEMPO_MAX_MS - 30000) calcolaVettori_(inizio + CONFIG.TEMPO_MAX_MS - 20000); } catch (e) { logErrore_('vettori', e); }
+    // Schede delle pratiche con documenti nuovi (LEGAL-SCHEDE): al massimo una all'ora, solo con tempo avanzato.
+    try { if (Date.now() - inizio < CONFIG.TEMPO_MAX_MS - 90000) aggiornaSchede_(); } catch (e) { logErrore_('schede pratiche', e); }
   } finally {
     lock.releaseLock();
   }
@@ -1440,6 +1442,135 @@ function bozzaRispostaGmail_(msg, a, cc, oggetto, testo, blob, thread) {
 }
 
 /* =====================================================================
+ * SCHEDE DELLE PRATICHE (LEGAL-SCHEDE, 2026-11-18)
+ * Luca: "dobbiamo prendere i documenti legali ed economici, analizzarli […] tabella scadenze e punti salienti e
+ * passi da fare attenzionare". La scheda (in sintesi, punti salienti, da attenzionare) va in pratiche_schede; i
+ * passi diventano promemoria di «Da fare» collegati alla pratica (pratica_id), senza doppioni.
+ * Mai i pazienti: se un documento della pratica è clinico (fascicolo, regole eClinico_ o parole cliniche nel
+ * testo) la pratica non viene mandata a nessun modello. I documenti della stessa controparte fuori dalla
+ * pratica entrano come contesto (es. le fatture di un fornitore in una causa con lui).
+ * ===================================================================*/
+const SCHEDA_DOC_MAX = 30;
+const SCHEDA_TESTO_DOC = 2500;
+const SCHEDA_TESTO_TOT = 45000;
+const CAMPI_SCHEDA = 'id,titolo,fascicolo,tipo_documento,data_documento,email_data,email_oggetto,email_mittente,nome_file_originale,riassunto,azione_descrizione,importo,ente,pratica_id';
+const SCHEMA_SCHEDA = { type: 'object', additionalProperties: false,
+  required: ['oggetto', 'controparte', 'autorita', 'importo', 'sintesi', 'punti', 'attenzione', 'passi'],
+  properties: {
+    oggetto: { type: 'string' }, controparte: { type: 'string' }, autorita: { type: 'string' },
+    importo: { type: ['number', 'null'] }, sintesi: { type: 'string' },
+    punti: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['testo', 'doc'], properties: { testo: { type: 'string' }, doc: { type: 'array', items: { type: 'string' } } } } },
+    attenzione: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['testo', 'doc'], properties: { testo: { type: 'string' }, doc: { type: 'array', items: { type: 'string' } } } } },
+    passi: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['testo', 'entro', 'priorita'], properties: { testo: { type: 'string' }, entro: { type: ['string', 'null'] }, priorita: { type: 'string', enum: ['alta', 'media', 'bassa'] } } } },
+  } };
+
+const dataDoc_ = (d) => String(d.data_documento || d.email_data || '').slice(0, 10);
+function eDocClinico_(d, testo) {
+  if (d.fascicolo === 'clinico_pazienti') return true;
+  if (eClinico_({ oggetto: (d.email_oggetto || '') + ' ' + (d.titolo || ''), mittente: d.email_mittente || '', destinatari: '' }, d.nome_file_originale || '')) return true;
+  return TITOLO_CLINICO.test([d.titolo, d.riassunto, d.azione_descrizione, testo].join(' '));
+}
+
+// Documenti della pratica (più recenti prima) e quelli della stessa controparte fuori pratica.
+function documentiScheda_(p) {
+  const propri = sb_('documenti?select=' + CAMPI_SCHEDA + '&pratica_id=eq.' + p.id + '&order=data_documento.desc.nullslast&limit=' + SCHEDA_DOC_MAX) || [];
+  const enti = propri.map(function (d) { return String(d.ente || '').trim(); }).filter(function (e, i, a) { return e && a.indexOf(e) === i; }).slice(0, 3);
+  const collegati = enti.length ? sb_('documenti?select=' + CAMPI_SCHEDA + '&ente=in.(' + enti.map(function (e) { return enc_('"' + e.replace(/"/g, '') + '"'); }).join(',') + ')' +
+    '&or=(pratica_id.is.null,pratica_id.neq.' + p.id + ')&order=data_documento.desc.nullslast&limit=' + Math.max(0, SCHEDA_DOC_MAX - propri.length)) || [] : [];
+  return propri.concat(collegati);
+}
+
+function schedaPratica_(idPratica) {
+  if (!UUID_.test(idPratica)) return { ok: false, errore: 'Pratica non valida.' };
+  const p = (sb_('pratiche?select=id,titolo,fascicolo,stato,note&id=eq.' + idPratica) || [])[0];
+  if (!p) return { ok: false, errore: 'Pratica non trovata.' };
+  const docs = documentiScheda_(p);
+  if (!docs.length) return { ok: false, errore: 'La pratica non ha ancora documenti da leggere.' };
+  const testi = {};
+  (sb_('documenti_testo?select=documento_id,testo&documento_id=in.(' + docs.map(function (d) { return d.id; }).join(',') + ')') || [])
+    .forEach(function (t) { testi[t.documento_id] = t.testo || ''; });
+  // Pazienti: niente modello, la pratica resta con scadenze e documenti.
+  if (docs.some(function (d) { return eDocClinico_(d, (testi[d.id] || '').slice(0, SCHEDA_TESTO_DOC)); })) {
+    return { ok: false, clinico: true, errore: 'Nella pratica ci sono documenti di pazienti: non la mando a nessun modello. Restano scadenze e documenti; l\'analisi la può fare Claude Code in sessione con te.' };
+  }
+  const scad = sb_('scadenze?select=data,descrizione,importo,completata,documento_id&or=(pratica_id.eq.' + p.id + ',documento_id.in.(' + docs.map(function (d) { return d.id; }).join(',') + '))&order=data') || [];
+  const codice = {}, perCodice = {};
+  docs.forEach(function (d, i) { codice[d.id] = 'D' + (i + 1); perCodice['D' + (i + 1)] = d.id; });
+  let resto = SCHEDA_TESTO_TOT;
+  const blocchi = docs.slice().sort(function (a, b) { return dataDoc_(a).localeCompare(dataDoc_(b)); }).map(function (d) {
+    const t = (testi[d.id] || '').replace(/\s+/g, ' ').slice(0, Math.min(SCHEDA_TESTO_DOC, Math.max(0, resto)));
+    resto -= t.length;
+    return '[' + codice[d.id] + '] ' + dataDoc_(d) + ' · ' + (d.tipo_documento || '') + ' · ' + (d.titolo || '') + (d.pratica_id === p.id ? '' : ' (stessa controparte, fuori pratica)') +
+      (d.importo != null ? ' · importo ' + d.importo + ' €' : '') + '\nRiassunto: ' + (d.riassunto || '') + (d.azione_descrizione ? '\nAzione indicata: ' + d.azione_descrizione : '') + (t ? '\nTesto: ' + t : '');
+  });
+  const oggi = Utilities.formatDate(new Date(), CONFIG.FUSO, 'yyyy-MM-dd');
+  const system = [
+    'Sei l\'assistente di Luca Simondi (odontoiatra, Cuneo) per le sue pratiche legali ed economiche. Oggi è ' + oggi + '.',
+    'Leggi i documenti della pratica e scrivi una scheda in italiano semplice, in JSON: oggetto, controparte, autorita (giudice/ente, "" se nessuno),',
+    'importo in gioco (numero o null), sintesi (2-3 frasi), punti salienti (fatti chiave), da attenzionare (incongruenze, rischi, dati mancanti,',
+    'termini perentori), passi da fare (azioni concrete, con data "entro" YYYY-MM-DD se c\'è un termine, priorità).',
+    'Ogni punto e ogni cosa da attenzionare cita in "doc" i codici [D..] dei documenti da cui viene. Non inventare nulla che non sia nei documenti;',
+    'se un dato manca dillo. Non dare pareri legali definitivi: per le scelte scrivi "da valutare con il legale". Massimo 6 punti, 6 cose da attenzionare, 6 passi.',
+  ].join(' ');
+  const contenuto = 'Pratica: ' + p.titolo + ' (stato ' + p.stato + ')' + (p.note ? '\nNote di Luca: ' + String(p.note).slice(0, 1500) : '') +
+    '\n\nScadenze in archivio:\n' + (scad.map(function (s) { return '- ' + s.data + ' ' + s.descrizione + (s.importo != null ? ' (' + s.importo + ' €)' : '') + (s.completata ? ' [fatta]' : ''); }).join('\n') || '- nessuna') +
+    '\n\nDocumenti:\n' + blocchi.join('\n\n');
+  let r;
+  try {
+    r = JSON.parse(String(testoAI_(system, contenuto, 4000, SCHEMA_SCHEDA)).replace(/^```(json)?|```$/g, '').trim());
+  } catch (e) {
+    return { ok: false, errore: /Poliedron AI/.test(e.message) ? e.message : 'Analisi non riuscita: ' + String(e.message || e).slice(0, 200) };
+  }
+  const traduci = function (lista, max) {
+    return (Array.isArray(lista) ? lista : []).slice(0, max).map(function (x) {
+      return { testo: String(x && x.testo || '').slice(0, 600), doc: (Array.isArray(x && x.doc) ? x.doc : []).map(function (c) { return perCodice[String(c).replace(/[\[\]\s]/g, '')]; }).filter(Boolean) };
+    }).filter(function (x) { return x.testo; });
+  };
+  const scheda = {
+    pratica_id: p.id, oggetto: String(r.oggetto || '').slice(0, 300), controparte: String(r.controparte || '').slice(0, 200),
+    autorita: String(r.autorita || '').slice(0, 200), importo: typeof r.importo === 'number' && isFinite(r.importo) ? r.importo : null,
+    sintesi: String(r.sintesi || '').slice(0, 1500), punti: traduci(r.punti, 8), attenzione: traduci(r.attenzione, 8),
+    fonti: docs.map(function (d) { return d.id; }), modello: claudeInPausa_() ? 'gemini' : CONFIG.MODELLO, generata_il: new Date().toISOString(),
+  };
+  sb_('pratiche_schede?on_conflict=pratica_id', { method: 'post', prefer: 'resolution=merge-duplicates,return=minimal', body: scheda });
+  const nuovi = salvaPassi_(p, docs, r.passi, scheda.controparte);
+  return { ok: true, scheda: scheda, passi_nuovi: nuovi };
+}
+
+// Passi della scheda → promemoria di «Da fare» collegati alla pratica, senza ripetere quelli già presenti.
+const normalePasso_ = (t) => piano_(t).replace(/[^a-z0-9]+/g, ' ').trim();
+function salvaPassi_(p, docs, passi, controparte) {
+  const gia = (sb_('promemoria_azioni?select=titolo&pratica_id=eq.' + p.id) || []).map(function (x) { return normalePasso_(x.titolo); });
+  const ultimo = docs.filter(function (d) { return d.pratica_id === p.id; }).sort(function (a, b) { return dataDoc_(b).localeCompare(dataDoc_(a)); })[0];
+  const categoria = ['legale', 'successione'].indexOf(p.fascicolo) >= 0 ? 'legale' : (p.fascicolo === 'fiscale' ? 'fisco' : 'soldi');
+  const righe = (Array.isArray(passi) ? passi : []).slice(0, 8).map(function (x) {
+    const titolo = String(x && x.testo || '').trim().slice(0, 200);
+    return titolo && gia.indexOf(normalePasso_(titolo)) < 0 ? {
+      pratica_id: p.id, documento_id: ultimo ? ultimo.id : null, ente: controparte || null, titolo: titolo,
+      spiegazione: 'Dalla scheda della pratica «' + p.titolo + '».', scadenza: dataValida_(x.entro), categoria: categoria,
+      priorita: ['alta', 'media', 'bassa'].indexOf(x.priorita) >= 0 ? x.priorita : 'media', stato: 'aperto',
+    } : null;
+  }).filter(Boolean);
+  if (righe.length) sb_('promemoria_azioni', { method: 'post', prefer: 'return=minimal', body: righe });
+  return righe.length;
+}
+
+// Schede con documenti arrivati dopo l'ultima analisi: se ne rifà una, al massimo una volta all'ora.
+function aggiornaSchede_() {
+  const sp = PropertiesService.getScriptProperties();
+  if (Number(sp.getProperty('SCHEDE_ULTIMO') || 0) > Date.now() - 3600 * 1000 || apiInPausa_()) return false;
+  const schede = sb_('pratiche_schede?select=pratica_id,generata_il') || [];
+  if (!schede.length) return false;
+  const nuovi = sb_('documenti?select=pratica_id,creato_il&pratica_id=in.(' + schede.map(function (s) { return s.pratica_id; }).join(',') + ')&order=creato_il.desc&limit=500') || [];
+  const vecchia = schede.find(function (s) { return nuovi.some(function (d) { return d.pratica_id === s.pratica_id && d.creato_il > s.generata_il; }); });
+  if (!vecchia) return false;
+  sp.setProperty('SCHEDE_ULTIMO', String(Date.now()));
+  const r = schedaPratica_(vecchia.pratica_id);
+  if (!r.ok && !r.clinico) logErrore_('scheda pratica ' + vecchia.pratica_id, new Error(r.errore));
+  return r.ok;
+}
+
+/* =====================================================================
  * CARICAMENTO DALL'APP (Poliedron Personal)
  * Web app: esegui come proprietario, accesso "Chiunque". L'identità non viene dal
  * link ma dal token di sessione Supabase dell'app, verificato a ogni richiesta:
@@ -1476,6 +1607,7 @@ function doPost(e) {
     if (req.azione === 'suggerisci') return rispostaJson_(suggerisciCartelle_());
     if (req.azione === 'titolo_suggerito') return rispostaJson_(titoloSuggerito_(req));
     if (req.azione === 'bozza_allegato') return rispostaJson_(bozzaConAllegato_(req));
+    if (req.azione === 'scheda_pratica') return rispostaJson_(schedaPratica_(String(req.pratica_id || '')));
     if (req.azione === 'destinatari_risposta') return rispostaJson_(destinatariRisposta_(req));
     if (req.azione === 'contenuto') {
       const filtri = req.filtri && typeof req.filtri === 'object' ? req.filtri : {};
