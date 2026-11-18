@@ -1,3 +1,10 @@
+# Current task — VETTORI-CODA-VELOCE (2026-11-18)
+- OWNER Claude Code; branch `ccr-9a526543-2sagy0` (master c9b60f3 merged in; PR #321 already merged).
+- REQUEST PO 2026-11-18: "Come stai messi a lettura?" → status (testo 3,920 read / 3,283 queued, ~2,400/day; vectors 2,677 / 4,712, 1,000/day = Gemini free daily cap; 4 timeouts 57014 on `documenti_senza_vettore`) → "Sì fai il punto 1".
+- DB archivio-documenti (APPLIED): `20261118200000_vettori_coda_veloce.sql` — `documenti_senza_vettore` rewritten (same signature/results/order): never-computed ids chosen first via anti-join, card built only for those; then vectors flagged `da_rifare` (new column + partial index) re-checked by md5. Triggers: card fields of `documenti` / `documenti_testo.testo` changed → `da_rifare` (security definer, no execute for app roles); vector saved again (impronta or aggiornato_il changed) → off. 34 stale vectors flagged at apply.
+- VALIDATION before apply, in a self-cancelling transaction on production data: 0 differences vs the old function on 100 rows, same date per position; phase 1 44 ms, phase 2 55 ms (all docs with fake vectors); title change → flagged and queued; vector re-saved → unflagged and out of the queue; unrelated column → not flagged; text change → flagged; never clinical. After apply: 37 ms (was 5,616 ms), execute only for service_role. npm test 1814/1814 (new tests/vettoriCodaVeloce.test.mjs 3/3).
+- No script change. STATUS commit on branch; PR on request.
+
 # Current task — APRI-CON + RISPOSTA-A-TUTTI + COMPILA-CAMPI (2026-11-17)
 - OWNER Claude Code; branch `ccr-9a526543-2sagy0` (PR #321, unmerged).
 - REQUEST PO 2026-11-17: "quando si clicca su un documento da anteprima devono esserci i tasti apri in gestore PDF (quello di poliedron) e poi apri in drive o altri (da scegliere). Per quanto riguarda allegare ad una mail di risposta devi prendere tutti i mittenti anche i cc, poi io sceglierò se tenerli o no. É possibile anche proprio metterla direttamente in una mail di risposta? Il gestore PDF deve anche poter completare i campi, in modo automatico dove si può e se servono dati io li compilo e poi vengono trasferiti nel campo giusto".
