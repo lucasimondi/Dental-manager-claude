@@ -4853,3 +4853,10 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Risks: the Gmail advanced service may need a one-time authorization by Luca in the Apps Script editor (new scope already covered by mail.google.com); until then replies fall back to a new email with the chosen people. Opening a document now shows its page first (one more tap to reach the PDF manager) — PO request.
 - Rollback: revert; `clasp push` previous Code.gs/appsscript.json.
 - Next: PO tries reply with recipients and «Compila» on a real module; "Mergia".
+
+## Handoff — VETTORI-CODA-VELOCE (2026-11-18) — Claude Code
+- Branch `ccr-9a526543-2sagy0` (master c9b60f3 merged in). Files: `supabase/archivio/migrations/20261118200000_vettori_coda_veloce.sql` (new, applied), tests `vettoriCodaVeloce.test.mjs` (new), `archivioPersonale.test.mjs` (migration list), coordination docs.
+- Database: column `documenti_vettori.da_rifare`, partial index, 3 triggers, function rewrite (see current-task). RLS unchanged.
+- Risks: a card edit that leaves the text identical stays flagged (filtered by md5, harmless); bulk updates of `documenti` card fields now also touch `documenti_vettori` (one indexed update per row).
+- Rollback: re-apply `documenti_senza_vettore` from `20261116151000_pol_vita_035_significato_esclusi.sql`; triggers/column can stay (or be removed with a PO-approved migration).
+- Next: watch `log_elaborazione` for 57014 (expected none) and the vector queue (Gemini free cap 1,000/day).
