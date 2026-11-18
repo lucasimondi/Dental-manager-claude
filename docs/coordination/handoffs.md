@@ -4867,3 +4867,12 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Risks: Gemini free tier writes the cards (non-clinical only); a card is overwritten when re-analysed (also the Claude Code one); duplicates merging is heuristic (same pratica + date; payments by number).
 - Rollback: revert; tables stay unused.
 - Next: PO tries Legal on the phone; then notifications for perentorie.
+
+## Handoff — PRATICHE-WORKFLOW batch 1 (2026-11-18) — Claude Code
+- Branch `ccr-30bcc810-y3n89t` (plan merged from `ccr-9a526543-2sagy0`). Context window exhausted: PO asked to stop and hand over to another agent.
+- Files: `supabase/archivio/migrations/20261118230000_pratiche_workflow.sql` (new, applied), `poliedron/archivio/Code.gs` (scheda riscritta → stato 'analizzata' e conferma tolta; schede 'claude-code' non riscritte da aggiornaSchede_, solo segnate 'da_aggiornare'), `personal/src/lib/legal.js`, `personal/src/sezioni/legal/{SchedaPratica,Legal}.jsx`, `personal/src/personal.css`, `tests/praticheWorkflow.test.mjs` (new), `tests/archivioPersonale.test.mjs`, `docs/coordination/pratiche-riordino-2026-11-18.md` (new: every merge and every moved document id, for undo).
+- Database data: 33 merges (duplicates archived, never deleted), 260 legal docs assigned, 11 new pratiche, ATP Ait Rom scheda + 9 passi, 4 obsolete scadenze ATP marked completata, 2 passi on esecuzione 25/2025.
+- Tests: node --test praticheWorkflow, legalSchede, archivioPersonale → 22/22 pass; `npm run build:personal` OK.
+- Unresolved: Code.gs not clasp-pushed (do `clasp push -f` from poliedron/archivio); app change not merged (needs "Mergia" + green checks); 4 Avv. Dottore scans put in Mondino to verify; 4 legal docs left without pratica (LexDo, «Documentazione ricorso» 2022, foto udienza 2013, «Ricorso per D.I. 2020»).
+- URGENT for Luca: ATP Ait Rom — RC policy Revo/Assimedici started 30/11/2025 (after the 4/11/2025 diffida) and expires 30/11/2026; denounce the claim to the right policy and renew; appoint a lawyer; costituzione by 13/12/2026 (Sunday → 14/12); note perentorie 8/1/2027. Esecuzione 25/2025 — no lawyer since May 2026; divisione hearing 14/01/2027, comparsa by 04/01/2027.
+- Next action: see PROGRESS line in current-task.md.
