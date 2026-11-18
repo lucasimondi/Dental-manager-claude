@@ -29,7 +29,8 @@ permissions:
 jobs:
   iphone-agenda:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 25: two bounded install attempts (5 min each) plus the tests (~6 min) fit with margin.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,7 +40,24 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium webkit
+      # The single `playwright install --with-deps` step sometimes hung until the job timed out (runs cancelled on
+      # 11 and 18 Nov 2026 before any test). Browsers are cached by Playwright version; system packages and
+      # browsers are installed in separate steps, each bounded to 5 minutes with one automatic retry.
+      - name: Playwright version
+        id: pw
+        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-webkit
+      - name: Install browser system dependencies
+        run: |
+          for i in 1 2; do timeout 300 npx playwright install-deps chromium webkit && exit 0; echo "install-deps attempt $i failed or timed out"; sleep 10; done; exit 1
+      - name: Install browsers
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: |
+          for i in 1 2; do timeout 300 npx playwright install chromium webkit && exit 0; echo "install attempt $i failed or timed out"; sleep 10; done; exit 1
       - run: node tests/visual/appointment-workspace.mjs
       - run: node tests/visual/agenda-actions.mjs
       - run: node tests/visual/patient-agenda.mjs
