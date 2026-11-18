@@ -2,6 +2,8 @@ import { differito } from '../../Differito.jsx';
 import { IconaPratiche } from '../../Icone.jsx';
 const Legal = differito(() => import('./Legal.jsx'), 'Legal');
 const ModuloLegal = differito(() => import('./Legal.jsx'), 'ModuloLegal');
+// LEGAL-SCHEDE: la scheda della pratica, usata anche dalla pagina Pratica di Documenti.
+export const SchedaPratica = differito(() => import('./SchedaPratica.jsx'), 'SchedaPratica');
 export const legal = {
   id: 'legal', nome: 'Legal', Icona: IconaPratiche, Vista: Legal,
   pagine: {

@@ -4860,3 +4860,10 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Risks: a card edit that leaves the text identical stays flagged (filtered by md5, harmless); bulk updates of `documenti` card fields now also touch `documenti_vettori` (one indexed update per row).
 - Rollback: re-apply `documenti_senza_vettore` from `20261116151000_pol_vita_035_significato_esclusi.sql`; triggers/column can stay (or be removed with a PO-approved migration).
 - Next: watch `log_elaborazione` for 57014 (expected none) and the vector queue (Gemini free cap 1,000/day).
+
+## Handoff — LEGAL-SCHEDE (2026-11-18) — Claude Code
+- Branch `ccr-9a526543-2sagy0`. Files: migration `20261118210000_legal_schede.sql` (new, applied), `poliedron/archivio/Code.gs` (schedaPratica_, salvaPassi_, aggiornaSchede_, azione scheda_pratica), `personal/src/lib/legal.js`, `personal/src/sezioni/legal/{Legal.jsx,index.jsx,Scadenze.jsx (new),SchedaPratica.jsx (new)}`, `personal/src/sezioni/documenti/Pratica.jsx`, `personal/src/personal.css`, tests `legalSchede.test.mjs` (new), `archivioPersonale.test.mjs`, visual `personal-legal.*` (new), coordination docs.
+- Database: new table + column (see current-task); data: UnoEnergy card and steps.
+- Risks: Gemini free tier writes the cards (non-clinical only); a card is overwritten when re-analysed (also the Claude Code one); duplicates merging is heuristic (same pratica + date; payments by number).
+- Rollback: revert; tables stay unused.
+- Next: PO tries Legal on the phone; then notifications for perentorie.

@@ -5,13 +5,13 @@ import { mkdir } from 'node:fs/promises';
 const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js','--host','127.0.0.1','--port','5173','--strictPort'],{stdio:'ignore'});
 for(let i=0;i<60;i++){try{if((await fetch('http://127.0.0.1:5173')).ok)break;}catch{}await new Promise(r=>setTimeout(r,100));}
 await mkdir('tests/visual/results-sharing',{recursive:true});
-try {
- for(const [engine, launcher] of [['chromium',chromium],['webkit',webkit]]){
-  const browser=await launcher.launch();
-  try{
-   for(const mode of ['studio','personal']){
-    for(const excluded of [false,true]){
+// CI 2026-11-18: once the browser process died mid-test ("Target page, context or browser has been closed") with
+// no assertion failing. Each case logs where it runs; a case whose browser crashed is retried once with a fresh
+// browser. Assertion failures and page errors are never retried.
+const crash=(e)=>/Target page, context or browser has been closed|Browser has been closed|browser has disconnected|Target crashed|Page crashed/i.test(String(e?.message||e));
+async function caso(browser,engine,mode,excluded){
      const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,timezoneId:'Europe/Rome',locale:'it-IT'});
+     try{
      const page=await context.newPage(),errors=[];
      page.on('pageerror',e=>errors.push(e.message));
      await page.clock.install({time:new Date('2026-10-16T05:00:00Z')});
@@ -43,10 +43,27 @@ try {
       if(!excluded){assert.equal(await studio.isChecked(),true);assert.equal(await personal.isChecked(),true);}
      }
      assert.deepEqual(errors,[]);
-     await context.close();
+     }finally{await context.close().catch(()=>{});}
+}
+try {
+ for(const [engine, launcher] of [['chromium',chromium],['webkit',webkit]]){
+  let browser=await launcher.launch();
+  try{
+   for(const mode of ['studio','personal']){
+    for(const excluded of [false,true]){
+     const nome=`${engine} ${mode} ${excluded?'excluded':'shared'}`;
+     try{await caso(browser,engine,mode,excluded);}
+     catch(e){
+      if(!crash(e))throw e;
+      console.warn(`${nome}: browser crashed (${String(e.message).split('\n')[0]}), retrying once with a fresh browser`);
+      await browser.close().catch(()=>{});
+      browser=await launcher.launch();
+      await caso(browser,engine,mode,excluded);
+     }
+     console.log(`${nome}: OK`);
     }
    }
-  }finally{await browser.close();}
+  }finally{await browser.close().catch(()=>{});}
  }
  console.log('Occupied Sundays, excluded-entry recovery and shared visibility editor: Chromium/WebKit OK');
 } finally {server.kill();}

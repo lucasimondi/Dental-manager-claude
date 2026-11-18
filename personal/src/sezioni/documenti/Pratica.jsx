@@ -7,6 +7,7 @@ import { cercaArchivio, segnaScadenza, scadenzeDeiDocumenti } from '../../lib/ar
 import { euro } from '../../lib/coreArchivio.js';
 import { colore, dataBreve, titoloDoc, Vuoto, Sezione, Gruppo, RigaPagamento } from '../../ui.jsx';
 import { Miniatura } from '../../Miniatura.jsx';
+import { SchedaPratica } from '../legal/index.jsx';
 
 const STATI_PRATICA = { aperta: 'Aperta', in_corso: 'In corso', risolta: 'Risolta', archiviata: 'Archiviata' };
 
@@ -63,6 +64,8 @@ export function PaginaPratica({ p: base, ctx }) {
           : <button className="pp-bottone pp-bottone-chiaro" onClick={() => cambiaStato('aperta')}>Riapri</button>}
         {p.stato === 'aperta' && <button className="pp-bottone pp-bottone-chiaro" onClick={() => cambiaStato('in_corso')}>In corso</button>}
       </div>
+      {/* LEGAL-SCHEDE: in sintesi, punti salienti, da attenzionare, passi (anche in «Da fare»). */}
+      <SchedaPratica p={p} ctx={ctx} />
       {legal && <Sezione titolo="Aggiungi scadenza o prossima azione">
         <form onSubmit={(e) => { e.preventDefault(); operazione(async () => { await scadenzaLegal(archivioDb, p.id, termine.data, termine.descrizione); setTermine({ data: '', descrizione: '' }); await carica(); aggiorna(); mostra('Scadenza salvata'); }); }}>
           <label className="pp-campo"><span>Data</span><input required type="date" value={termine.data} onChange={(e) => setTermine({ ...termine, data: e.target.value })} /></label>

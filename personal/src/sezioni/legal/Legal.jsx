@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { caricaLegal, salvaPraticaLegal, STATI_LEGAL } from '../../lib/legal.js';
 import { cercaArchivio } from '../../lib/archivio.js';
+import { TabellaScadenze } from './Scadenze.jsx';
 import { Sezione, Vuoto, Chips, ElencoPratiche, RigaDocumento, Gruppo } from '../../ui.jsx';
 export function Legal({ ctx }) {
   const [elenco, setElenco] = useState(null), [docs, setDocs] = useState([]), [filtro, setFiltro] = useState('aperte');
@@ -11,7 +12,8 @@ export function Legal({ ctx }) {
   }); return () => { vivo = false; }; }, [ctx.esegui, ctx.versione]);
   const visibili = (elenco || []).filter((p) => filtro === 'tutte' || (filtro === 'aperte' ? ['aperta', 'in_corso'].includes(p.stato) : ['risolta', 'archiviata'].includes(p.stato)));
   return <>
-    <h2>Legal</h2><p>Pratiche, recuperi crediti e contenziosi. Aggiornamenti manuali e documenti dalle scansioni nello stesso fascicolo.</p>
+    <h2>Legal</h2><p>Scadenze legali ed economiche, pratiche, recuperi crediti e contenziosi. Apri una pratica per la sua scheda: sintesi, punti salienti, cose da attenzionare e passi da fare.</p>
+    <TabellaScadenze ctx={ctx} />
     <button className="pp-bottone" onClick={() => ctx.apri({ tipo: 'legal-modifica' })}>Nuova pratica</button>
     <Chips voci={[[ 'aperte', 'In corso' ], ['chiuse', 'Chiuse'], ['tutte', 'Tutte']]} attiva={filtro} onScegli={setFiltro} />
     {!elenco ? <Vuoto>Carico…</Vuoto> : <ElencoPratiche elenco={visibili} onApri={(p) => ctx.apri({ tipo: 'pratica', p })} />}
