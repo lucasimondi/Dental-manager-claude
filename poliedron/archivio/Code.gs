@@ -1567,9 +1567,9 @@ function aggiornaSchede_() {
   const nuovi = sb_('documenti?select=pratica_id,creato_il&pratica_id=in.(' + schede.map(function (s) { return s.pratica_id; }).join(',') + ')&order=creato_il.desc&limit=500') || [];
   const vecchia = schede.find(function (s) { return nuovi.some(function (d) { return d.pratica_id === s.pratica_id && d.creato_il > s.generata_il; }); });
   if (!vecchia) return false;
-  // Le schede scritte da Claude Code in sessione (con filo temporale e verifica) non si sovrascrivono con un
+  // Le schede scritte da Claude Code o Codex in sessione (con filo temporale e verifica) non si sovrascrivono con un
   // modello: si segnano «da aggiornare» e Luca le vede in Legal; le riscrive lui con «Aggiorna analisi».
-  if (vecchia.modello === 'claude-code') {
+  if (vecchia.modello === 'claude-code' || vecchia.modello === 'codex') {
     sb_('pratiche_schede?pratica_id=eq.' + vecchia.pratica_id, { method: 'patch', prefer: 'return=minimal', body: { stato_analisi: 'da_aggiornare', verificata_il: null } });
     return false;
   }
