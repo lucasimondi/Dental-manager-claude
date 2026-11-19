@@ -1,5 +1,8 @@
 # Handoffs
 
+## 2026-11-19 — CLAUDE — PRATICHE-WORKFLOW batch 3
+- Codex's script guard published (clasp, @26). Banca Alpi Marittime scheda complete (not user-verified), 12 docs moved into the pratica, 3 new Da fare actions, appeal-term scadenza. Register and undo: `docs/coordination/pratiche-batch3-2026-11-19.md`. Next: Mondino 36/2023.
+
 ## 2026-10-18 — CLAUDE — Pulizia in massa (Poliedron + Gemini) e Risolta sulle pratiche
 - Il modello propone soltanto; l'esecuzione parte dall'app dopo la conferma di Luca (eseguiProposta: Drive → Gmail → archivio). Eccezioni alle regole sez. 3 documentate in `poliedron/archivio/CLAUDE.md`.
 
@@ -4868,6 +4871,34 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Rollback: revert; tables stay unused.
 - Next: PO tries Legal on the phone; then notifications for perentorie.
 
+## Handoff — PRATICHE-WORKFLOW batch 1 (2026-11-18) — Claude Code
+- Branch `ccr-30bcc810-y3n89t` (plan merged from `ccr-9a526543-2sagy0`). Context window exhausted: PO asked to stop and hand over to another agent.
+- Files: `supabase/archivio/migrations/20261118230000_pratiche_workflow.sql` (new, applied), `poliedron/archivio/Code.gs` (scheda riscritta → stato 'analizzata' e conferma tolta; schede 'claude-code' non riscritte da aggiornaSchede_, solo segnate 'da_aggiornare'), `personal/src/lib/legal.js`, `personal/src/sezioni/legal/{SchedaPratica,Legal}.jsx`, `personal/src/personal.css`, `tests/praticheWorkflow.test.mjs` (new), `tests/archivioPersonale.test.mjs`, `docs/coordination/pratiche-riordino-2026-11-18.md` (new: every merge and every moved document id, for undo).
+- Database data: 33 merges (duplicates archived, never deleted), 260 legal docs assigned, 11 new pratiche, ATP Ait Rom scheda + 9 passi, 4 obsolete scadenze ATP marked completata, 2 passi on esecuzione 25/2025.
+- Tests: node --test praticheWorkflow, legalSchede, archivioPersonale → 22/22 pass; `npm run build:personal` OK.
+- Unresolved: Code.gs not clasp-pushed (do `clasp push -f` from poliedron/archivio); app change not merged (needs "Mergia" + green checks); 4 Avv. Dottore scans put in Mondino to verify; 4 legal docs left without pratica (LexDo, «Documentazione ricorso» 2022, foto udienza 2013, «Ricorso per D.I. 2020»).
+- URGENT for Luca: ATP Ait Rom — RC policy Revo/Assimedici started 30/11/2025 (after the 4/11/2025 diffida) and expires 30/11/2026; denounce the claim to the right policy and renew; appoint a lawyer; costituzione by 13/12/2026 (Sunday → 14/12); note perentorie 8/1/2027. Esecuzione 25/2025 — no lawyer since May 2026; divisione hearing 14/01/2027, comparsa by 04/01/2027.
+- Next action: see PROGRESS line in current-task.md.
+
+## Handoff — PRATICHE-WORKFLOW batch 2 (2026-11-18) — Codex
+- Task: PRATICHE-WORKFLOW. Previous agent Claude Code; branch `ccr-30bcc810-y3n89t`, base 794c78de. Ownership accepted for this batch; complete continuation record below.
+- Objective: continue legal review from esecuzione 25/2025 with source-linked timeline and verified-vs-missing distinctions.
+- Completed: scheda 25/2025 (4 sources, 18 events, 7 missing groups, 8 actions); missing Gmail text recovered; notification calculation and extinction wording corrected. BAM full sentence read and urgent follow-up recorded; one ZIP decree recovered. BAM full scheda NOT completed: source text coverage problem found.
+- Files: `poliedron/archivio/Code.gs`, new `tests/praticheSchedeAgentGuard.test.mjs`, new `docs/coordination/pratiche-batch2-2026-11-18.md`, current-task and handoffs.
+- Database: data only in archivio-documenti; one scheda insert, one text insert, one source text augmentation, six new 25/2025 actions, two existing action corrections, one BAM action. No schema/RLS change. Full ID-level mutation/rollback log in batch2 document.
+- Checks: 21/21 targeted tests PASS; Code.gs syntax PASS; database read-back 0 missing event source IDs, scheda not user-verified. No frontend change/build.
+- Unresolved/risks: clasp and Google authentication absent, protection NOT published; online script may still overwrite manual cards. No merge/deploy. BAM texts can be falsely marked letto despite only containing the email, or capped at 100k; original technical ZIP has 21 PDFs, some scans. Do not mark BAM fully analysed from these partial texts. No court-file access; mandates, notifications, registration, appeal and extinction remain to verify.
+- Next exact action: read batch2 checkpoint; recover BAM ZIP/PEC/scanned/capped originals from Drive, read every source, then write full BAM scheda. Continue Mondino 36/2023, Primo oppositions, Giraudo. Publish Code.gs from this branch only after reviewing online state and authenticating clasp; merge requires PO “Mergia” plus green checks.
+
+## Handoff — PRATICHE-CONSULENTI (2026-11-19, Claude Code)
+- Task: PRATICHE-CONSULENTI; previous agent: Claude Code; branch `claude/pratiche-consulenti-email`.
+- Objective: consultants with contacts per pratica, email exchanges inside the pratica.
+- Completed: migration `20261119200000_pratiche_consulenti.sql` (applied), app tabs Consulenti/Email, Code.gs consultant email import.
+- Files: supabase/archivio/migrations/20261119200000_pratiche_consulenti.sql, personal/src/lib/consulenti.js, personal/src/sezioni/documenti/PraticaContatti.jsx, personal/src/sezioni/documenti/Pratica.jsx, personal/src/personal.css, poliedron/archivio/Code.gs, poliedron/archivio/CLAUDE.md, tests/praticheConsulenti.test.mjs, tests/archivioPersonale.test.mjs, tests/visual/personal-pratica-consulenti.*.
+- Database: new table pratiche_consulenti + trigger + RPC email_pratica (additive). No data written.
+- Tests: npm test PASS; build:personal PASS; visual personal-pratica-consulenti PASS light/dark.
+- Unresolved/risks: Code.gs not clasp-pushed; until then only emails already in archive appear (by pratica or consultant sender). Emails sent by Luca to a consultant without attachments appear only after the script import. Tab bar of 6 tabs scrolls on narrow phones.
+- Next exact action: on "Mergia" merge PR; then `clasp push -f` from poliedron/archivio after clasp login.
 ## Handoff — CONCORDATO (2026-11-20) — Claude Code
 - Branch `ccr-ed9a8713-vw6jmo` from master 9c7000a. Objective: Concordato section in Personal: property list with quotas + PDF, division with Anna with values, assignments, conguaglio and ready proposals.
 - Files: migration `supabase/archivio/migrations/20261120100000_concordato.sql` (new, applied), `personal/src/lib/{concordato.js,concordatoPdf.js}` (new), `personal/src/sezioni/concordato/{index.jsx,Concordato.jsx,Divisione.jsx,condividi.js}` (new), `personal/src/sezioni/{index.js,altro/index.jsx,legal/Legal.jsx}`, `personal/src/personal.css`, tests `concordato.test.mjs` (new), `personalSezioni.test.mjs`, `archivioPersonale.test.mjs`, visual `tests/visual/personal-concordato.{html,fixture.jsx,mjs}` (new), coordination docs, `poliedron/archivio/CLAUDE.md`.

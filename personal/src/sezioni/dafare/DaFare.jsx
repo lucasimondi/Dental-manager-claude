@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { caricaDaFare, cambiaStato, rimanda, dataTra, rimandato, filtri, filtra, riepilogo, categoria, CATEGORIE, PRIORITA, passi, puoRispondere, bozzaPerPromemoria, testoCondivisione, telefoni, linkIA, linkWhatsApp, linkEmail, eventoDaPromemoria, datiPagamento, conNota, salvaNota, leggiContatti, salvaContatti, linkEmailA } from '../../lib/daFare.js';
+import { caricaDaFare, cambiaStato, rimanda, dataTra, rimandato, filtri, filtra, riepilogo, categoria, CATEGORIE, PRIORITA, passi, puoRispondere, perPratica, bozzaPerPromemoria, testoCondivisione, telefoni, linkIA, linkWhatsApp, linkEmail, eventoDaPromemoria, datiPagamento, conNota, salvaNota, leggiContatti, salvaContatti, linkEmailA } from '../../lib/daFare.js';
 import { salvaImpegno } from '../../lib/studio.js';
-import { dataBreve, Vuoto, tokenSessione } from '../../ui.jsx';
+import { dataBreve, Vuoto, tokenSessione, colore } from '../../ui.jsx';
+import { Miniatura } from '../../Miniatura.jsx';
+import { nomePratica } from '../../lib/praticheCartelle.js';
 
 // DA-FARE v2 (2026-11-16): filtri per urgenza e categoria, riepilogo, Risolta/Elimina con Annulla, Rimanda.
 // DA-FARE (2026-11-16): ogni promemoria è breve (titolo) e spiegato (spiegazione), con quattro tasti:
@@ -48,13 +50,42 @@ export function VistaDaFare({ ctx, db = archivioDb }) {
           </button>
         ))}
       </div>
-      {lista.length ? lista.map((p) => <Promemoria key={p.id} p={p} ctx={ctx} db={db} onChiudi={(stato) => chiudi(p, stato)} onRimanda={(g) => posticipa(p, g)} onAggiorna={(campi) => sost(p.id, campi)} />)
+      {lista.length ? perPratica(lista).map((v) => (v.tipo === 'pratica'
+        ? <VocePratica key={`pr-${v.id}`} v={v} ctx={ctx} />
+        : <Promemoria key={v.id} p={v.p} ctx={ctx} db={db} onChiudi={(stato) => chiudi(v.p, stato)} onRimanda={(g) => posticipa(v.p, g)} onAggiorna={(campi) => sost(v.p.id, campi)} />))
         : <Vuoto>Niente in questo filtro.</Vuoto>}
     </div>
   );
 }
 
 const NOME_CAT = Object.fromEntries(CATEGORIE.map((c) => [c.id, c.nome]));
+
+// DA-FARE-PER-PRATICA: una voce per pratica, con l'anteprima dell'ultimo documento e i passi aperti.
+// Un tocco apre la pratica: documenti, scadenze, filo temporale e passi (dove si spuntano).
+function VocePratica({ v, ctx }) {
+  const oggi = new Date().toISOString().slice(0, 10);
+  const pr = v.pratica;
+  const scaduta = v.scadenza && v.scadenza < oggi;
+  return (
+    <button type="button" className={`pp-pannello pp-promemoria pp-promemoria-pratica pp-priorita-${v.priorita}`} onClick={() => ctx.apri({ tipo: 'pratica', p: pr })} aria-label={`Apri ${nomePratica(pr)}`}>
+      <span className="pp-promemoria-anteprima"><Miniatura doc={pr.anteprima || { fascicolo: pr.fascicolo }} colore={colore(pr.fascicolo)} /></span>
+      <span className="pp-promemoria-corpo">
+        <span className="pp-promemoria-testa">
+          <span className={`pp-etichetta pp-etichetta-${v.priorita}`}>{PRIORITA[v.priorita] || 'Da fare'}</span>
+          <span className="pp-etichetta">Pratica · {pr.n_documenti ?? 0} documenti</span>
+          {v.importo != null && <span className="pp-promemoria-importo">{euro(v.importo)}</span>}
+        </span>
+        <strong className="pp-promemoria-titolo">{nomePratica(pr)}</strong>
+        <span className="pp-riga-meta">{[`${v.voci.length} ${v.voci.length === 1 ? 'passo da fare' : 'passi da fare'}`, v.scadenza ? `${scaduta ? 'scaduto' : 'prossimo entro'} ${dataBreve(v.scadenza)}` : null].filter(Boolean).join(' · ')}</span>
+        <ul className="pp-promemoria-elenco-passi">
+          {v.voci.slice(0, 3).map((x) => <li key={x.id}>{x.titolo}{x.scadenza && <em> · {dataBreve(x.scadenza)}</em>}</li>)}
+          {v.voci.length > 3 && <li className="pp-riga-meta">e altri {v.voci.length - 3}…</li>}
+        </ul>
+        <span className="pp-promemoria-apri">Apri la pratica ›</span>
+      </span>
+    </button>
+  );
+}
 
 function Promemoria({ p, ctx, db, onChiudi, onRimanda, onAggiorna }) {
   const [aperto, setAperto] = useState(null); // 'passi' | 'rispondi' | 'rimanda' | 'elimina' | null
@@ -63,6 +94,12 @@ function Promemoria({ p, ctx, db, onChiudi, onRimanda, onAggiorna }) {
   const scaduta = p.scadenza && p.scadenza < new Date().toISOString().slice(0, 10);
   return (
     <article className={`pp-pannello pp-promemoria pp-priorita-${p.priorita}`}>
+      {p.documento && (
+        <button type="button" className="pp-promemoria-documento" onClick={() => ctx.apri({ tipo: 'documento', id: p.documento.id })} aria-label={`Apri il documento ${p.documento.titolo || ''}`}>
+          <Miniatura doc={p.documento} colore={colore(p.documento.fascicolo)} />
+          <span className="pp-riga-meta">{p.documento.titolo || 'Documento'} ›</span>
+        </button>
+      )}
       <div className="pp-promemoria-testa">
         <span className={`pp-etichetta pp-etichetta-${p.priorita}`}>{PRIORITA[p.priorita] || 'Da fare'}</span>
         <span className="pp-etichetta">{NOME_CAT[categoria(p)]}</span>

@@ -1,26 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { caricaLegal, salvaPraticaLegal, STATI_LEGAL } from '../../lib/legal.js';
+import { caricaLegal, salvaPraticaLegal, STATI_LEGAL, statiSchede, avanzamentoSchede } from '../../lib/legal.js';
 import { cercaArchivio } from '../../lib/archivio.js';
 import { TabellaScadenze } from './Scadenze.jsx';
-import { Sezione, Vuoto, Chips, ElencoPratiche, RigaDocumento, Gruppo } from '../../ui.jsx';
+import { Sezione, Vuoto } from '../../ui.jsx';
+import { ElencoSelezionabile, PraticheCartelle } from '../documenti/index.jsx';
 export function Legal({ ctx }) {
-  const [elenco, setElenco] = useState(null), [docs, setDocs] = useState([]), [filtro, setFiltro] = useState('aperte');
+  const [elenco, setElenco] = useState(null), [docs, setDocs] = useState([]), [schede, setSchede] = useState([]);
   useEffect(() => { let vivo = true; ctx.esegui(async () => {
-    const [p, d] = await Promise.all([caricaLegal(archivioDb), cercaArchivio(archivioDb, { fascicolo: 'legale', limite: 300 })]);
-    if (vivo) { setElenco(p); setDocs(d.filter((x) => !x.pratica_id)); }
+    const [p, d, s] = await Promise.all([caricaLegal(archivioDb), cercaArchivio(archivioDb, { fascicolo: 'legale', limite: 300 }), statiSchede(archivioDb).catch(() => [])]);
+    if (vivo) { setElenco(p); setDocs(d.filter((x) => !x.pratica_id)); setSchede(s); }
   }); return () => { vivo = false; }; }, [ctx.esegui, ctx.versione]);
-  const visibili = (elenco || []).filter((p) => filtro === 'tutte' || (filtro === 'aperte' ? ['aperta', 'in_corso'].includes(p.stato) : ['risolta', 'archiviata'].includes(p.stato)));
   return <>
     <h2>Legal</h2><p>Scadenze legali ed economiche, pratiche, recuperi crediti e contenziosi. Apri una pratica per la sua scheda: sintesi, punti salienti, cose da attenzionare e passi da fare.</p>
     <button type="button" className="pp-cc-entra" onClick={() => ctx.vai ? ctx.vai('concordato') : ctx.apri({ tipo: 'concordato' })}>
       <strong>Concordato</strong><span>I tuoi beni con le quote (PDF) e la divisione con Anna</span><span aria-hidden="true">›</span>
     </button>
     <TabellaScadenze ctx={ctx} />
+    {elenco && (() => { const a = avanzamentoSchede(elenco, schede); return a.totale > 0 && <p className="pp-legal-avanzamento" aria-label="Avanzamento delle analisi"><strong>{a.analizzate}/{a.totale}</strong> pratiche in corso analizzate · {a.verificate} verificate da te</p>; })()}
     <button className="pp-bottone" onClick={() => ctx.apri({ tipo: 'legal-modifica' })}>Nuova pratica</button>
-    <Chips voci={[[ 'aperte', 'In corso' ], ['chiuse', 'Chiuse'], ['tutte', 'Tutte']]} attiva={filtro} onScegli={setFiltro} />
-    {!elenco ? <Vuoto>Carico…</Vuoto> : <ElencoPratiche elenco={visibili} onApri={(p) => ctx.apri({ tipo: 'pratica', p })} />}
-    <Sezione titolo="Documenti da collegare"><p className="pp-riga-meta">Documenti legali ancora senza pratica (ultimi 300 documenti). Apri una pratica per collegarli.</p><Gruppo>{docs.map((d) => <RigaDocumento key={d.id} doc={d} onApri={(x) => ctx.apri({ tipo: 'documento', id: x.id })} />)}</Gruppo>{!docs.length && <Vuoto>Nessun documento da collegare.</Vuoto>}</Sezione>
+    {/* PRATICHE-CARTELLE (proposta B): le pratiche come cartelle «Pratica …» con anteprime e passi. */}
+    <PraticheCartelle ctx={ctx} />
+    <Sezione titolo="Documenti da collegare"><p className="pp-riga-meta">Documenti legali ancora senza pratica (ultimi 300 documenti). Usa «•••» su un documento, o selezionane più di uno, e «Pratica» per metterli nella pratica giusta.</p>{docs.length > 0 ? <ElencoSelezionabile elenco={docs} ctx={ctx} titoloInvio="Documenti legali" intestazione={`${docs.length} documenti senza pratica · «•••» o «Seleziona» → Pratica`} /> : <Vuoto>Nessun documento da collegare.</Vuoto>}</Sezione>
     <p className="pp-riga-meta">Le scansioni alimentano le pratiche tramite la catalogazione esistente. Gli importi riportati nei documenti non certificano un debito né un saldo.</p>
   </>;
 }

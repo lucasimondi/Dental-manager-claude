@@ -5,12 +5,13 @@ import { IconaTema } from '../../IconaTema.jsx';
 // massa: sposta, importanza, ente, persona, Personali, elimina.
 import { useEffect, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { documentiPersonaliStorici, documentiDaDrive, cercaArchivio, enti as caricaEnti, pratiche as caricaPratiche, cambiaStatoPratica } from '../../lib/archivio.js';
+import { documentiPersonaliStorici, documentiDaDrive, cercaArchivio, enti as caricaEnti } from '../../lib/archivio.js';
 import { VistaCartelle } from './Cartelle.jsx';
 import { VistaChiedi } from './Chiedi.jsx';
 import { VistaCose } from './Cose.jsx';
 import { VistaTempo } from './Tempo.jsx';
-import { colore, Vuoto, Sezione, Gruppo, Chips, Segmenti, ElencoPratiche } from '../../ui.jsx';
+import { colore, Vuoto, Sezione, Gruppo, Chips } from '../../ui.jsx';
+import { PraticheCartelle } from './PraticheCartelle.jsx';
 import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaFoto } from '../../Icone.jsx';
 import { ElencoSelezionabile } from './Selezione.jsx';
 import { BarraFiltri, filtriVuoti, conFiltri } from './Filtri.jsx';
@@ -61,13 +62,10 @@ function VistaClassica({ ctx }) {
   const [filtri, setFiltri] = useState(filtriVuoti);
   const [risultati, setRisultati] = useState(null);
   const [elencoEnti, setElencoEnti] = useState(null);
-  const [elencoPratiche, setElencoPratiche] = useState(null);
-  const [filtroPratiche, setFiltroPratiche] = useState('aperte');
   const [rinfresca, setRinfresca] = useState(0);
   const ricerca = testo.trim().length > 1 || conFiltri(filtri);
 
   useEffect(() => { caricaEnti(archivioDb).then(setElencoEnti).catch(() => setElencoEnti([])); }, [versione]);
-  useEffect(() => { if (scheda === 'pratiche') esegui(async () => setElencoPratiche(await caricaPratiche(archivioDb))); }, [scheda, esegui, versione]);
 
   // Ricerca immediata (dopo una breve pausa nella digitazione) o elenco dei recenti.
   useEffect(() => {
@@ -151,16 +149,8 @@ function VistaClassica({ ctx }) {
               )}
             </>
           )}
-          {scheda === 'pratiche' && elencoPratiche && (
-            <>
-              <Segmenti voci={[['aperte', 'Aperte'], ['risolte', 'Risolte'], ['tutte', 'Tutte']]} attiva={filtroPratiche} onScegli={setFiltroPratiche} />
-              <ElencoPratiche
-                elenco={elencoPratiche.filter((p) => (filtroPratiche === 'aperte' ? ['aperta', 'in_corso'].includes(p.stato) : filtroPratiche === 'risolte' ? p.stato === 'risolta' : true))}
-                onApri={(p) => apri({ tipo: 'pratica', p })}
-                onRisolvi={(p) => esegui(async () => { await cambiaStatoPratica(archivioDb, p.id, 'risolta'); setElencoPratiche((el) => el.map((x) => (x.id === p.id ? { ...x, stato: 'risolta' } : x))); ctx.mostra('Pratica risolta: non compare più tra le aperte'); })}
-              />
-            </>
-          )}
+          {/* PRATICHE-CARTELLE (proposta B): ogni pratica è una cartella «Pratica …» con le anteprime. */}
+          {scheda === 'pratiche' && <PraticheCartelle ctx={ctx} />}
         </>
       )}
       {!ricerca && <Sezione titolo="Strumenti dell’archivio">

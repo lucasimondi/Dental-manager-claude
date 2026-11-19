@@ -13,7 +13,7 @@ function App() {
   const ctx = {
     esegui: async (fn) => fn(), aggiorna: () => {}, mostra: () => {}, versione: 0, sotto: null, fascicoli: [], impostazioni: {},
     vai: (v, s) => { window.personaleTest.vai.push([v, s || null]); if (v === 'conti' || v === 'dafare') setVista(v); },
-    apri: (p) => window.personaleTest.aperti.push({ tipo: p.tipo, id: p.id || p.s?.id || null }),
+    apri: (p) => window.personaleTest.aperti.push({ tipo: p.tipo, id: p.id || p.s?.id || p.p?.id || null }),
     apriAggiungi: () => { window.personaleTest.aggiungi += 1; }, pagato: () => {},
   };
   return (

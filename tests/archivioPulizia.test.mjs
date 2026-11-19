@@ -142,7 +142,9 @@ test('app: tasto Risolta sulle pratiche e proposte confermabili nella chat', () 
   const ui = readFileSync('personal/src/ui.jsx', 'utf8');
   assert.match(ui, /export function ElencoPratiche\(\{ elenco, onApri, onRisolvi \}\)/);
   assert.match(ui, /✓ Risolta/);
-  assert.match(readFileSync('personal/src/sezioni/documenti/Documenti.jsx', 'utf8'), /onRisolvi=\{\(p\) => esegui\(async \(\) => \{ await cambiaStatoPratica\(archivioDb, p\.id, 'risolta'\)/);
+  // PRATICHE-CARTELLE (PO 2026-11-19, proposta B): in Documenti le pratiche sono cartelle; «Segna risolta» è nel Riepilogo della pratica.
+  assert.match(readFileSync('personal/src/sezioni/documenti/Documenti.jsx', 'utf8'), /<PraticheCartelle ctx=\{ctx\} \/>/);
+  assert.match(readFileSync('personal/src/sezioni/documenti/Pratica.jsx', 'utf8'), /cambiaStato\('risolta'\)/);
   assert.match(readFileSync('personal/src/sezioni/oggi/Oggi.jsx', 'utf8'), /onRisolvi=/);
   const chat = readFileSync('personal/src/sezioni/poliedron/Poliedron.jsx', 'utf8');
   assert.match(chat, /<Proposta key=\{j\} proposta=\{p\}/);

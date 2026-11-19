@@ -946,6 +946,18 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-promemoria-modulo input { min-height: 38px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--pp-linea); background: transparent; color: inherit; font: inherit; min-width: 0; }
 .pp-promemoria-riga { grid-template-columns: minmax(140px, 1.4fr) minmax(90px, 1fr) auto; align-items: center; }
 .pp-promemoria-riga:has(> input:only-of-type) { grid-template-columns: 1fr auto; }
+/* DA-FARE impaginazione (2026-11-19): le griglie con colonna "auto" si allargavano fino al testo più lungo
+   (titolo del documento su una riga, barra dei filtri) e le schede uscivano dallo schermo a destra. */
+.pp-dafare { grid-template-columns: minmax(0, 1fr); width: 100%; max-width: 100%; box-sizing: border-box; }
+.pp-dafare > * { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.pp-promemoria { grid-template-columns: minmax(0, 1fr); min-width: 0; overflow: hidden; }
+.pp-promemoria > * { min-width: 0; max-width: 100%; }
+.pp-promemoria-titolo, .pp-promemoria-spiega, .pp-promemoria .pp-riga-meta, .pp-promemoria-nota { overflow-wrap: anywhere; word-break: normal; }
+.pp-promemoria-documento { min-width: 0; }
+.pp-promemoria-documento > :first-child { flex: none; }
+.pp-promemoria-documento .pp-riga-meta { flex: 1; }
+.pp-promemoria-testa .pp-etichetta { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-promemoria-azioni .pp-bottone { white-space: nowrap; }
 .pp-promemoria-nota { margin: 0; font-size: 13.5px; padding: 6px 10px; border-radius: 10px; background: color-mix(in srgb, #d97706 10%, transparent); }
 /* CARTELLE-ELENCO-GESTIONE: vista Icone/Elenco, Nuova cartella, selezione delle cartelle */
 .pp-cartelle-barra { margin-top: 10px; flex-wrap: wrap; }
@@ -1303,3 +1315,98 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-cc-cert-certo { color: var(--pp-verde); background: color-mix(in srgb, var(--pp-verde) 13%, transparent); }
 .pp-cc-cert-probabile { color: var(--pp-ambra); background: color-mix(in srgb, var(--pp-ambra) 13%, transparent); }
 .pp-cc-cert-da_verificare { color: var(--pp-grigio); background: color-mix(in srgb, var(--pp-grigio) 15%, transparent); }
+/* PRATICHE-WORKFLOW: filo temporale, parti, documenti mancanti, verifica, avanzamento */
+.pp-sp-filo ol { list-style: none; padding-left: 0; gap: 0; border-left: 2px solid var(--pp-linea); margin-left: 6px; }
+.pp-sp-filo li { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 10px; padding: 6px 0 6px 12px; position: relative; }
+.pp-sp-filo li::before { content: ''; position: absolute; left: -6px; top: 12px; width: 10px; height: 10px; border-radius: 50%; background: var(--pp-blu); }
+.pp-sp-filo-data { color: var(--pp-grigio); font-size: 13px; font-variant-numeric: tabular-nums; }
+.pp-sp-filo-evento { overflow-wrap: anywhere; }
+.pp-sp-filo-evento em { font-style: normal; color: var(--pp-grigio); }
+.pp-sp-parti { list-style: none; padding-left: 0 !important; }
+.pp-sp-mancanti { border-left: 4px solid var(--pp-blu); }
+.pp-sp-verifica { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; background: var(--pp-superficie); border-radius: var(--pp-raggio); padding: 10px 16px; border-left: 4px solid var(--pp-ambra); font-weight: 600; }
+.pp-sp-verifica-verificata { border-left-color: var(--pp-verde); color: var(--pp-verde); }
+.pp-sp-verifica-da_aggiornare { border-left-color: var(--pp-rosso); }
+.pp-legal-avanzamento { margin: 8px 0 12px; color: var(--pp-grigio); }
+.pp-legal-avanzamento strong { color: var(--pp-inchiostro); }
+@media (max-width: 420px) { .pp-sp-filo li { grid-template-columns: 1fr; gap: 2px; } }
+
+/* PRATICHE-PER-NOME: sommario della pagina della pratica (scadenze, passi, date, documenti). */
+.pp-pratica-sommario { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+.pp-pratica-sommario a { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 9px 4px; border-radius: var(--pp-raggio); background: var(--pp-superficie); box-shadow: var(--pp-ombra); color: inherit; text-decoration: none; text-align: center; min-width: 0; }
+.pp-pratica-sommario strong { font-size: 1.15rem; }
+.pp-pratica-sommario span { font-size: .72rem; opacity: .75; line-height: 1.15; }
+.pp-pratica-sommario em { font-style: normal; font-size: .68rem; color: var(--pp-rosso, #c0392b); }
+#pp-sez-scadenze, #pp-sez-documenti, #pp-sez-filo, #pp-sez-passi { scroll-margin-top: 70px; }
+
+/* DOCUMENTI-AZIONI: «•••» su ogni documento negli elenchi. */
+.pp-doc-voce { position: relative; display: flex; align-items: stretch; min-width: 0; }
+.pp-doc-voce > .pp-riga, .pp-doc-voce > .pp-scheda-doc { flex: 1; min-width: 0; }
+.pp-doc-menu { flex: none; min-width: 44px; border: 0; background: transparent; color: var(--pp-testo-2, #667085); font-size: 1rem; letter-spacing: 1px; cursor: pointer; }
+.pp-doc-voce-scheda { display: block; }
+.pp-doc-voce-scheda > .pp-scheda-doc { width: 100%; }
+.pp-doc-voce-scheda > .pp-doc-menu { position: absolute; top: 4px; right: 4px; min-width: 36px; height: 30px; border-radius: 15px; background: color-mix(in srgb, var(--pp-superficie, #fff) 88%, transparent); box-shadow: var(--pp-ombra); }
+.pp-doc-menu:focus-visible { outline: 2px solid var(--pp-accento, #2563eb); outline-offset: -2px; }
+.pp-scorri-corpo > .pp-doc-voce { width: 100%; height: 100%; background: var(--pp-superficie); }
+
+/* DA-FARE-PER-PRATICA: una voce per pratica (anteprima, passi, tocco = apri la pratica); anteprima del documento. */
+.pp-promemoria-pratica { display: flex; gap: 12px; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; align-items: flex-start; }
+.pp-promemoria-anteprima { flex: none; }
+.pp-promemoria-corpo { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.pp-promemoria-elenco-passi { margin: 4px 0 0; padding-left: 18px; font-size: .9rem; }
+.pp-promemoria-elenco-passi li { margin: 2px 0; }
+.pp-promemoria-elenco-passi em { font-style: normal; opacity: .7; }
+.pp-promemoria-apri { align-self: flex-end; font-weight: 600; color: var(--pp-verde, #127a5a); font-size: .9rem; }
+.pp-promemoria-documento { display: flex; align-items: center; gap: 10px; width: 100%; margin: 0 0 8px; padding: 0; border: 0; background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.pp-promemoria-documento .pp-riga-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.pp-pannello.pp-promemoria.pp-promemoria-pratica { display: flex; flex-direction: row; }
+
+/* PRATICHE-CARTELLE (proposta B): pratiche come cartelle con anteprime; schede dentro la pratica. */
+.pp-griglia-pratiche { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 10px; }
+@media (min-width: 720px) { .pp-griglia-pratiche { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.pp-cartella-pratica { display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 16px; border: 1px solid var(--pp-linea); background: var(--pp-superficie); box-shadow: var(--pp-ombra); color: inherit; font: inherit; text-align: left; cursor: pointer; min-width: 0; }
+.pp-cartella-pratica-anteprime { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.pp-cartella-pratica-casella { height: 54px; border-radius: 8px; overflow: hidden; background: color-mix(in srgb, var(--pp-linea) 55%, transparent); display: flex; align-items: center; justify-content: center; }
+.pp-cartella-pratica-casella > * { width: 100% !important; height: 100% !important; border-radius: 0 !important; }
+.pp-cartella-pratica-nome { font-size: .92rem; line-height: 1.2; overflow-wrap: anywhere; }
+.pp-cartella-pratica-meta { font-size: .78rem; opacity: .75; }
+.pp-cartella-pratica-meta.urgente { color: #b42318; opacity: 1; font-weight: 600; }
+.pp-schede-pratica { display: flex; gap: 4px; padding: 4px; margin-top: 12px; border-radius: 14px; background: color-mix(in srgb, var(--pp-linea) 70%, transparent); position: sticky; top: 0; z-index: 2; }
+.pp-schede-pratica button { flex: 1; min-height: 40px; border: 0; border-radius: 10px; background: transparent; color: inherit; font: inherit; font-size: .82rem; cursor: pointer; padding: 2px; line-height: 1.1; }
+.pp-schede-pratica button[aria-selected="true"] { background: var(--pp-superficie); font-weight: 700; box-shadow: var(--pp-ombra); }
+.pp-schede-pratica button span { display: block; font-size: .72rem; opacity: .7; font-weight: 400; }
+.pps-trovate-pratiche { margin-bottom: 10px; }
+/* DA-FARE impaginazione (2026-11-19): titolo del documento su due righe, importo del riepilogo che non esce dal riquadro. */
+.pp-promemoria-documento .pp-riga-meta { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.pp-dafare-riepilogo > div { min-width: 0; }
+.pp-dafare-riepilogo strong { font-size: clamp(1rem, 5vw, 1.25rem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* PRATICHE-CONSULENTI (2026-11-19): sei schede nella pratica (scorrono se lo schermo è stretto), consulenti ed email. */
+.pp-schede-pratica { overflow-x: auto; scrollbar-width: none; }
+.pp-schede-pratica::-webkit-scrollbar { display: none; }
+.pp-schede-pratica button { flex: 1 0 auto; min-width: 62px; padding: 2px 6px; white-space: nowrap; }
+.pp-consulenti { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.pp-consulente { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 14px; border-radius: 16px; background: var(--pp-superficie); box-shadow: var(--pp-ombra); min-width: 0; }
+.pp-consulente-testa { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pp-consulente-iniziali { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: color-mix(in srgb, #0f9f86 16%, transparent); color: #0b7d6a; font-weight: 800; font-size: 15px; }
+.pp-consulente-nome { display: grid; gap: 2px; min-width: 0; }
+.pp-consulente-nome strong { font-size: 1.02rem; overflow-wrap: anywhere; }
+.pp-consulente-contatti { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.pp-consulente-contatti li { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.pp-consulente-contatti li > span { color: var(--pp-grigio); font-size: 12.5px; }
+.pp-consulente-contatti a { color: inherit; font-weight: 600; overflow-wrap: anywhere; text-decoration: none; }
+.pp-consulente-azioni { display: flex; flex-wrap: wrap; gap: 6px; }
+.pp-consulente-azioni .pp-chip { text-decoration: none; font-size: 13.5px; box-shadow: none; border: 1px solid var(--pp-linea); }
+.pp-chip.pp-chip-rosso { background: #dc2626; color: #fff; border-color: #dc2626; }
+.pp-consulente-modulo { display: grid; gap: 8px; }
+.pp-consulente-modulo textarea { font: inherit; }
+.pp-email-pratica { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.pp-email-pratica li { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 12px 14px; border-radius: 14px; background: var(--pp-superficie); box-shadow: var(--pp-ombra); }
+.pp-email-pratica li > .pp-chip { justify-self: start; font-size: 13px; box-shadow: none; border: 1px solid var(--pp-linea); }
+.pp-email-riga { display: grid; gap: 3px; color: inherit; text-decoration: none; min-width: 0; }
+.pp-email-testa { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.pp-email-testa strong { flex: 1; min-width: 0; font-size: .97rem; line-height: 1.3; overflow-wrap: anywhere; }
+.pp-email-testa time { flex: none; font-size: 12.5px; color: var(--pp-grigio); }
+.pp-email-riga > .pp-riga-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-email-segni { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pp-email-segni .pp-etichetta { font-size: 11px; padding: 2px 8px; }
