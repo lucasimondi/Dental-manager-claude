@@ -946,6 +946,18 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-promemoria-modulo input { min-height: 38px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--pp-linea); background: transparent; color: inherit; font: inherit; min-width: 0; }
 .pp-promemoria-riga { grid-template-columns: minmax(140px, 1.4fr) minmax(90px, 1fr) auto; align-items: center; }
 .pp-promemoria-riga:has(> input:only-of-type) { grid-template-columns: 1fr auto; }
+/* DA-FARE impaginazione (2026-11-19): le griglie con colonna "auto" si allargavano fino al testo più lungo
+   (titolo del documento su una riga, barra dei filtri) e le schede uscivano dallo schermo a destra. */
+.pp-dafare { grid-template-columns: minmax(0, 1fr); width: 100%; max-width: 100%; box-sizing: border-box; }
+.pp-dafare > * { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.pp-promemoria { grid-template-columns: minmax(0, 1fr); min-width: 0; overflow: hidden; }
+.pp-promemoria > * { min-width: 0; max-width: 100%; }
+.pp-promemoria-titolo, .pp-promemoria-spiega, .pp-promemoria .pp-riga-meta, .pp-promemoria-nota { overflow-wrap: anywhere; word-break: normal; }
+.pp-promemoria-documento { min-width: 0; }
+.pp-promemoria-documento > :first-child { flex: none; }
+.pp-promemoria-documento .pp-riga-meta { flex: 1; }
+.pp-promemoria-testa .pp-etichetta { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-promemoria-azioni .pp-bottone { white-space: nowrap; }
 .pp-promemoria-nota { margin: 0; font-size: 13.5px; padding: 6px 10px; border-radius: 10px; background: color-mix(in srgb, #d97706 10%, transparent); }
 /* CARTELLE-ELENCO-GESTIONE: vista Icone/Elenco, Nuova cartella, selezione delle cartelle */
 .pp-cartelle-barra { margin-top: 10px; flex-wrap: wrap; }
@@ -1239,3 +1251,7 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-schede-pratica button[aria-selected="true"] { background: var(--pp-superficie); font-weight: 700; box-shadow: var(--pp-ombra); }
 .pp-schede-pratica button span { display: block; font-size: .72rem; opacity: .7; font-weight: 400; }
 .pps-trovate-pratiche { margin-bottom: 10px; }
+/* DA-FARE impaginazione (2026-11-19): titolo del documento su due righe, importo del riepilogo che non esce dal riquadro. */
+.pp-promemoria-documento .pp-riga-meta { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.pp-dafare-riepilogo > div { min-width: 0; }
+.pp-dafare-riepilogo strong { font-size: clamp(1rem, 5vw, 1.25rem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

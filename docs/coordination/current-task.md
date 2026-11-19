@@ -1,3 +1,11 @@
+# Current task — DA-FARE-IMPAGINAZIONE (2026-11-19)
+- OWNER Claude Code; branch `claude/dafare-impaginazione` (from master d109806).
+- REQUEST PO 2026-11-19 (screenshot of Da fare on phone, cards cut on the right): "Devi impaginare bene".
+- CAUSE: `.pp-dafare` and `.pp-promemoria` are CSS grids with an implicit `auto` column; the one-line document title (nowrap) and the scrolling filter bar set the column width, so cards overflowed the viewport.
+- APP (CSS only, `personal/src/personal.css`): `grid-template-columns: minmax(0,1fr)` and `min-width:0` on list and cards; titles/explanations wrap (`overflow-wrap:anywhere`); document title clamped to 2 lines; action buttons nowrap and wrap as a row.
+- VALIDATION: npm test PASS; build:personal PASS; headless Chrome 390px render with long titles: no horizontal overflow.
+- STATUS: PR; merge on "Mergia" (given 2026-11-19 18:29).
+
 # Current task — PRATICHE-CARTELLE (proposta B, 2026-11-19)
 - OWNER Claude Code; branch `ccr-9a526543-2sagy0` (same PR #326 as DA-FARE-PER-PRATICA).
 - REQUEST PO 2026-11-19: "devi fare un elenco delle pratiche chiamandole «pratica (e poi il nome)», deve essere trovabile anche nelle pratiche da gestire, poi li apri e c'è tutto ciò che necessita, deve essere trovabile anche dalla barra di ricerca in home, fammi tre proposte visive" → 3 mockups (artifact «Pratiche – tre proposte») → "Va bene la b".
