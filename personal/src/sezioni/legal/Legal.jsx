@@ -13,6 +13,9 @@ export function Legal({ ctx }) {
   const visibili = (elenco || []).filter((p) => filtro === 'tutte' || (filtro === 'aperte' ? ['aperta', 'in_corso'].includes(p.stato) : ['risolta', 'archiviata'].includes(p.stato)));
   return <>
     <h2>Legal</h2><p>Scadenze legali ed economiche, pratiche, recuperi crediti e contenziosi. Apri una pratica per la sua scheda: sintesi, punti salienti, cose da attenzionare e passi da fare.</p>
+    <button type="button" className="pp-cc-entra" onClick={() => ctx.vai ? ctx.vai('concordato') : ctx.apri({ tipo: 'concordato' })}>
+      <strong>Concordato</strong><span>I tuoi beni con le quote (PDF) e la divisione con Anna</span><span aria-hidden="true">›</span>
+    </button>
     <TabellaScadenze ctx={ctx} />
     <button className="pp-bottone" onClick={() => ctx.apri({ tipo: 'legal-modifica' })}>Nuova pratica</button>
     <Chips voci={[[ 'aperte', 'In corso' ], ['chiuse', 'Chiuse'], ['tutte', 'Tutte']]} attiva={filtro} onScegli={setFiltro} />

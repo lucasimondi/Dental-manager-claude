@@ -14,6 +14,8 @@ export const PER_TE = [
   ['personali', 'Documenti personali', 'personali', 'media', "Carta d'identità, patente, codice fiscale"],
   ['foto', 'Foto', 'foto', 'media'],
   ['note', 'Note', 'nota', 'piccola'], ['diario', 'Diario', 'diario', 'piccola'], ['legal', 'Pratiche', 'pratiche', 'piccola'],
+  // CONCORDATO (2026-11-20): beni con quote, PDF e divisione con Anna (si apre anche da Pratiche).
+  ['concordato', 'Concordato', 'pratiche', 'piccola', 'Beni, quote, divisione con Anna, conguaglio'],
   ['didattica', 'Biblioteca', 'biblioteca', 'pulsante'], ['password', 'Password', 'password', 'pulsante'], ['oggi', 'Oggi', 'oggi', 'pulsante'],
 ];
 

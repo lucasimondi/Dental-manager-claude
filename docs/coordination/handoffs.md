@@ -4867,3 +4867,12 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Risks: Gemini free tier writes the cards (non-clinical only); a card is overwritten when re-analysed (also the Claude Code one); duplicates merging is heuristic (same pratica + date; payments by number).
 - Rollback: revert; tables stay unused.
 - Next: PO tries Legal on the phone; then notifications for perentorie.
+
+## Handoff — CONCORDATO (2026-11-20) — Claude Code
+- Branch `ccr-ed9a8713-vw6jmo` from master 9c7000a. Objective: Concordato section in Personal: property list with quotas + PDF, division with Anna with values, assignments, conguaglio and ready proposals.
+- Files: migration `supabase/archivio/migrations/20261120100000_concordato.sql` (new, applied), `personal/src/lib/{concordato.js,concordatoPdf.js}` (new), `personal/src/sezioni/concordato/{index.jsx,Concordato.jsx,Divisione.jsx,condividi.js}` (new), `personal/src/sezioni/{index.js,altro/index.jsx,legal/Legal.jsx}`, `personal/src/personal.css`, tests `concordato.test.mjs` (new), `personalSezioni.test.mjs`, `archivioPersonale.test.mjs`, visual `tests/visual/personal-concordato.{html,fixture.jsx,mjs}` (new), coordination docs, `poliedron/archivio/CLAUDE.md`.
+- Database: 2 new tables (RLS owner-only); 55 rows of Luca's real property data inserted via SQL (not in the repo).
+- Tests: npm test 1832/1832; builds PASS; visual personal-concordato PASS light/dark.
+- Risks: data transcribed from phone screenshots (rows between screenshots may be missing — the PDF says so); co-owner of some 1/2 units not confirmed; the proposals assume the conguaglio rule at equal halves (legal advice stays with the lawyer).
+- Rollback: revert the commit; tables stay unused (removal needs a PO-approved migration).
+- Next: PO review on the phone after merge; enter values; "Mergia".

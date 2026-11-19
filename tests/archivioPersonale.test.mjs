@@ -47,6 +47,7 @@ test('lo schema di Cowork è la base, seguito dalla migrazione di sicurezza', ()
     '20261117120000_documenti_firmati.sql',
     '20261118200000_vettori_coda_veloce.sql',
     '20261118210000_legal_schede.sql',
+    '20261120100000_concordato.sql',
   ]);
 });
 
