@@ -24,3 +24,12 @@ Branch `ccr-9a526543-2sagy0` (fast-forwarded to `ccr-30bcc810-y3n89t` = Claude C
 - Findings: Luca without counsel in 36/2023 and 25/2025 since May 2026; comparsa in the divisione (36/2023) was due by 19/10/2026; outcome of 29/10/2026 not in archive or Gmail; paying Mondino alone does not stop the procedure (OIRA and AdER intervened).
 - Da fare (new): 0d27262e (nominate counsel not Anna's, both procedures, 24/11), d7d1ed64 (outcome of 29/10 + costituzione, 30/11), 1bec7481 (global settlement proposal incl. Anna, 20/12). Notes appended to 61edc4d6 and 767e0a5c (25/2025).
 - 25/2025 scheda (Codex) amended: +3 timeline events (istanza divisione 9/10/2025, provvedimento 31/10/2025, notification 24/09/2026), +1 attention point: notification of the 16/09/2026 order by Primo's counsel found (24/09/2026, before the 13/11 term), attachment 28051640s.pdf still to open; fonti +3. Not reverted to analizzata—still unverified.
+
+## Settings
+- PO 19/11/2026: "consenti automaticamente sempre gli SQL senza chiedermelo" → `.claude/settings.json` (committed) + `~/.claude/settings.json` allow `mcp__Supabase__execute_sql`, `list_tables`, `list_migrations`. Giraudo: PO said NOT to analyse ("Giraudo no").
+
+## Centri Dentistici Primo – opposizioni D.I. — pratica e0a40aec-47d4-450f-a729-757038465c53 — COMPLETE (not user-verified)
+- Phase 0: pratica «Primo Group – fusione societaria» 956ed965-dd70-4b2b-9cd0-07cce5440c1b merged in (docs 6453f3d3-0a6a-4271-8830-058924c4150b preliminare, cd9fc284-693f-497e-a419-884144949609 atto di fusione; 1 scadenza moved); 956ed965 → stato 'archiviata', note «Unita in e0a40aec…». Undo: reopen and move these 2 docs + its scadenza back.
+- Scheda: tipo causa, 16 events, 8 parties, 3 key points, 4 attention points, 5 missing groups, 45 sources. Sources beyond DB: Gmail threads 18e60caf9991307e (Martini 21/03/2024: accordo 20,000 €, 300 € paid, hearing 15/04/2024) and 190269a8d1fd9288 (17/06/2024: first instalment not proven; advice to pay to avoid execution) — cited in the timeline against the nearest archived doc; emails not archived as documents.
+- Key finding: whether Primo's title in 25/2025 is the D.I.s (≈112k €, if oppositions extinguished, art. 653) or the conciliation/settlement (20k €) → possible art. 615 opposition. Linked note added to the 25/2025 scheda (attenzione).
+- Da fare: 9fb6518b (get settlement + closing order from Martini, 26/11), c7a9d6d0 (check precetto 25/2025 / art. 615, 10/12), 1099c20a (CU integration 241 €, 15/12).
