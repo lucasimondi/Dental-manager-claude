@@ -6,8 +6,8 @@ import { collegaLegal, scadenzaLegal } from '../../lib/legal.js';
 import { cercaArchivio, segnaScadenza, scadenzeDeiDocumenti } from '../../lib/archivio.js';
 import { euro } from '../../lib/coreArchivio.js';
 import { colore, dataBreve, titoloDoc, Vuoto, Sezione, Gruppo, RigaPagamento } from '../../ui.jsx';
-import { Miniatura } from '../../Miniatura.jsx';
 import { SchedaPratica } from '../legal/index.jsx';
+import { ElencoSelezionabile } from './Selezione.jsx';
 import { sommarioPratica } from '../../lib/praticheOrdine.js';
 
 const STATI_PRATICA = { aperta: 'Aperta', in_corso: 'In corso', risolta: 'Risolta', archiviata: 'Archiviata' };
@@ -39,7 +39,6 @@ export function PaginaPratica({ p: base, ctx }) {
   const totaleDoc = (documenti || []).reduce((t, d) => t + Number(d.importo || 0), 0);
   const c = colore(p.fascicolo);
   // Documenti in ordine di tempo, raggruppati per anno.
-  const perAnno = (documenti || []).reduce((g, d) => { const a = String(d.data_documento || d.email_data || '').slice(0, 4) || '—'; (g[a] ||= []).push(d); return g; }, {});
 
   return (
     <>
@@ -99,26 +98,12 @@ export function PaginaPratica({ p: base, ctx }) {
         {candidati.map((d) => <button className="pp-riga" disabled={busy} key={d.id} onClick={() => operazione(async () => { await collegaLegal(archivioDb, d.id, p.id); setCandidati((xs) => xs.filter((x) => x.id !== d.id)); await carica(); aggiorna(); mostra('Documento collegato'); })}>{titoloDoc(d)}</button>)}
       </Sezione>}
       <div id="pp-sez-documenti" />
+      {/* DOCUMENTI-AZIONI: i documenti della pratica con «•••» (apri, scarica, invia, sposta) e la selezione
+          di uno, più o tutti, da scaricare o inviare insieme (file o ZIP). */}
       <Sezione titolo="Documenti" azione={!legal && totaleDoc > 0 ? <span className="pp-riga-meta">{euro(totaleDoc)} in totale</span> : null}>
         {!documenti ? <Vuoto>Carico…</Vuoto> : !documenti.length ? <Vuoto>Nessun documento.</Vuoto> : (
-          <div className="pp-cronologia">
-            {Object.entries(perAnno).map(([anno, docs]) => (
-              <div key={anno}>
-                <h3 className="pp-cronologia-anno">{anno}</h3>
-                {docs.map((d) => (
-                  <button key={d.id} className="pp-cronologia-voce" onClick={() => apri({ tipo: 'documento', id: d.id })}>
-                    <Miniatura doc={d} colore={c} />
-                    <span className="pp-riga-testo">
-                      <span className="pp-riga-titolo">{titoloDoc(d)}</span>
-                      <span className="pp-riga-meta">{[dataBreve(d.data_documento || d.email_data), d.tipo_documento].filter(Boolean).join(' · ')}</span>
-                      {d.riassunto && <span className="pp-cronologia-riassunto">{d.riassunto}</span>}
-                    </span>
-                    {d.importo != null && <span className="pp-riga-importo">{euro(d.importo)}</span>}
-                  </button>
-                ))}
-              </div>
-            ))}
-          </div>
+          <ElencoSelezionabile elenco={documenti} ctx={ctx} onCambiato={carica} titoloInvio={p.titolo || 'Pratica'}
+            intestazione={`${documenti.length} ${documenti.length === 1 ? 'documento' : 'documenti'}, dal più recente`} />
         )}
       </Sezione>
     </>

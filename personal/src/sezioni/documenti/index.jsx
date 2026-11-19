@@ -17,6 +17,8 @@ const PaginaNuovaCartella = differito(() => import('./Cartelle.jsx'), 'PaginaNuo
 const PaginaCartellaMia = differito(() => import('./CartelleMie.jsx'), 'PaginaCartellaMia');
 const PaginaCosa = differito(() => import('./Cose.jsx'), 'PaginaCosa');
 const PaginaFirmati = differito(() => import('./Firmati.jsx'), 'PaginaFirmati');
+// DOCUMENTI-AZIONI: l'elenco con «•••», selezione, Scarica / invia e Pratica, usato anche da Legal.
+export const ElencoSelezionabile = differito(() => import('./Selezione.jsx'), 'ElencoSelezionabile');
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { documentiSenzaCartella } from '../../lib/cartelle.js';
 import { CAMPI_DOC } from '../../lib/archivio.js';

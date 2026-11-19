@@ -1,3 +1,10 @@
+# Current task — DOCUMENTI-AZIONI (2026-11-19)
+- OWNER Claude Code; branch `ccr-9a526543-2sagy0` (master 336305f merged in).
+- REQUEST PO 2026-11-19: "Deve essere tutto più facilmente reperibile a livello documentale e di workflow, nella cartelle delle pratiche e in tutte le cartelle dove ci sono documenti i documenti stessi devono essere elencati ed essere apribili scaricabili spostabili e poi deve esserci la possibilità di selezionarli uno ad uno anche tutti e a quel punto scaricabili tutti insieme o inviabili tutti insieme".
+- APP: `ElencoSelezionabile` (used by Cartelle, Ricerca/elenco, Documenti recenti/risultati/Drive, Chiedi, La mia salute; now also the Pratica page and Legal «Documenti da collegare») — «•••» on every document (Apri, Scarica, Invia o condividi, Sposta in una pratica, Metti in una tua cartella, Cambia categoria, Seleziona più documenti); selection bar + «Scarica / invia» (FoglioInvia from Le mie cartelle: single files or one ZIP, optional password, then Condividi / Scarica) and «Pratica» (open cases first, by name; «Togli dalla pratica»); Mail/WhatsApp and Tutti/Nessuno as before. `lib/documentiAzioni.js` (spostaInPratica never on clinical docs, vociPratiche, preparaInvio). Pratica page: documents list with selection replaces the year timeline.
+- VALIDATION: npm test 1842/1842 (new tests/documentiAzioni.test.mjs 4/4); build:personal PASS; new visual tests/visual/personal-documenti-azioni.mjs PASS Pixel 7 light (rows) / dark (grid); personal-cartelle, personal-chiedi, personal-cartelle-mie, personal-tempo-cose PASS; personal-salute fails identically without these changes (`.pp-ritaglio-box`, pre-existing). Not verified: real Drive download/ZIP on device, iOS share sheet.
+- STATUS: commit on branch; PR/merge on "Mergia".
+
 # Current task — PRATICHE-PER-NOME (2026-11-19)
 - OWNER Claude Code; branch `ccr-9a526543-2sagy0`.
 - REQUEST PO 2026-11-19: "Devi mettere le pratiche per nome poi quando le apro ci devono essere tutti gli elementi documenti date scadenze passi da fare".

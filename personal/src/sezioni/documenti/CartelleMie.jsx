@@ -114,7 +114,7 @@ function FoglioAggiungi({ ctx, giaDentro, onAggiungi, onChiudi }) {
 }
 
 // Invia: file singoli o ZIP, password facoltativa; poi Condividi / Scarica (toccati da te).
-function FoglioInvia({ nomeIniziale, nCartelle, nDocumenti, onPrepara, stato, onChiudi, mostra }) {
+export function FoglioInvia({ nomeIniziale, nCartelle, nDocumenti, onPrepara, stato, onChiudi, mostra }) {
   const singoliPossibili = nCartelle === 0 && nDocumenti > 0 && nDocumenti <= MAX_FILE_SINGOLI;
   const [formato, setFormato] = useState(singoliPossibili && nDocumenti === 1 ? 'file' : 'zip');
   const [nome, setNome] = useState(nomeIniziale);

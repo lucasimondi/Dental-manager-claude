@@ -3,7 +3,8 @@ import { archivioDb } from '../../lib/supabasePersonal.js';
 import { caricaLegal, salvaPraticaLegal, STATI_LEGAL, statiSchede, avanzamentoSchede } from '../../lib/legal.js';
 import { cercaArchivio } from '../../lib/archivio.js';
 import { TabellaScadenze } from './Scadenze.jsx';
-import { Sezione, Vuoto, Chips, ElencoPratiche, RigaDocumento, Gruppo } from '../../ui.jsx';
+import { Sezione, Vuoto, Chips, ElencoPratiche } from '../../ui.jsx';
+import { ElencoSelezionabile } from '../documenti/index.jsx';
 import { perNome } from '../../lib/praticheOrdine.js';
 export function Legal({ ctx }) {
   const [elenco, setElenco] = useState(null), [docs, setDocs] = useState([]), [filtro, setFiltro] = useState('aperte'), [schede, setSchede] = useState([]);
@@ -19,7 +20,7 @@ export function Legal({ ctx }) {
     <button className="pp-bottone" onClick={() => ctx.apri({ tipo: 'legal-modifica' })}>Nuova pratica</button>
     <Chips voci={[[ 'aperte', 'In corso' ], ['chiuse', 'Chiuse'], ['tutte', 'Tutte']]} attiva={filtro} onScegli={setFiltro} />
     {!elenco ? <Vuoto>Carico…</Vuoto> : <ElencoPratiche elenco={visibili} onApri={(p) => ctx.apri({ tipo: 'pratica', p })} />}
-    <Sezione titolo="Documenti da collegare"><p className="pp-riga-meta">Documenti legali ancora senza pratica (ultimi 300 documenti). Apri una pratica per collegarli.</p><Gruppo>{docs.map((d) => <RigaDocumento key={d.id} doc={d} onApri={(x) => ctx.apri({ tipo: 'documento', id: x.id })} />)}</Gruppo>{!docs.length && <Vuoto>Nessun documento da collegare.</Vuoto>}</Sezione>
+    <Sezione titolo="Documenti da collegare"><p className="pp-riga-meta">Documenti legali ancora senza pratica (ultimi 300 documenti). Usa «•••» su un documento, o selezionane più di uno, e «Pratica» per metterli nella pratica giusta.</p>{docs.length > 0 ? <ElencoSelezionabile elenco={docs} ctx={ctx} titoloInvio="Documenti legali" intestazione={`${docs.length} documenti senza pratica · «•••» o «Seleziona» → Pratica`} /> : <Vuoto>Nessun documento da collegare.</Vuoto>}</Sezione>
     <p className="pp-riga-meta">Le scansioni alimentano le pratiche tramite la catalogazione esistente. Gli importi riportati nei documenti non certificano un debito né un saldo.</p>
   </>;
 }

@@ -6,13 +6,16 @@ import { aggiornaDocumenti, eliminaDocumenti, portafoglioDocumenti, cestinaSuDri
 import { euro } from '../../lib/coreArchivio.js';
 import { caricaCartelle } from '../../lib/cartelle.js';
 import { caricaCartelleMie, aggiungiDocumenti, aggiungiAScrivania } from '../../lib/cartelleMie.js';
-import { FoglioCartelleMie } from './CartelleMie.jsx';
+import { FoglioCartelleMie, FoglioInvia } from './CartelleMie.jsx';
+import { spostaInPratica, vociPratiche, preparaInvio } from '../../lib/documentiAzioni.js';
+import { pratiche as caricaPratiche } from '../../lib/archivio.js';
+import { perNome } from '../../lib/praticheOrdine.js';
 import { impostaSalute } from '../../lib/salute.js';
-import { preparaFile, comeFile, condividi, inviaCon } from '../../lib/condividi.js';
+import { preparaFile, comeFile, condividi, inviaCon, scaricaDocumento } from '../../lib/condividi.js';
 import { unisciInPdf } from '../../lib/pdfUnico.js';
 import { colore, dataBreve, titoloDoc, Gruppo, ConfermaElimina, tokenSessione } from '../../ui.jsx';
 import { Miniatura } from '../../Miniatura.jsx';
-import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaCestino, IconaCondividi, IconaEmail, IconaChat } from '../../Icone.jsx';
+import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaCestino, IconaCondividi, IconaEmail, IconaChat, IconaFile, IconaPratiche } from '../../Icone.jsx';
 
 const RILEVANZA = { alta: 'Importante', normale: 'Normale', bassa: 'Poco utile' };
 const MAX_CONDIVISI = 20; // MIA-SALUTE: Mail / WhatsApp e PDF unico in tutti gli elenchi
@@ -57,15 +60,18 @@ function usaPressione(onLungo) {
   return { onTouchStart: inizio, onTouchEnd: fine, onTouchMove: fine, onMouseDown: inizio, onMouseUp: fine, onMouseLeave: fine, eraLungo: () => lungo.current };
 }
 
-export function VoceDocumento({ doc, modo, selezione, onApri, onSeleziona }) {
+export function VoceDocumento({ doc, modo, selezione, onApri, onSeleziona, onMenu }) {
   const scelto = selezione?.has(doc.id);
   const p = usaPressione(() => onSeleziona(doc, true));
   const tocco = () => { if (p.eraLungo()) return; if (selezione) onSeleziona(doc); else onApri(doc); };
   const { eraLungo, ...gesti } = p;
   const meta = [doc.ente, dataBreve(doc.data_documento || doc.email_data)].filter(Boolean).join(' · ');
   const casella = selezione && <span className={`pp-casella${scelto ? ' scelta' : ''}`} aria-hidden="true">{scelto ? '✓' : ''}</span>;
+  // DOCUMENTI-AZIONI: «•••» su ogni documento (apri, scarica, invia, sposta) fuori dalla selezione.
+  const menu = !selezione && onMenu && <button type="button" className="pp-doc-menu" aria-label={`Azioni: ${titoloDoc(doc)}`} onClick={(e) => { e.stopPropagation(); onMenu(doc); }}>•••</button>;
+  const conMenu = (voce, scheda = false) => (menu ? <div className={`pp-doc-voce${scheda ? ' pp-doc-voce-scheda' : ''}`}>{voce}{menu}</div> : voce);
   if (modo === 'righe') {
-    return (
+    return conMenu(
       <button className={`pp-riga pp-riga-doc${scelto ? ' scelta' : ''}`} onClick={tocco} {...gesti} aria-pressed={selezione ? scelto : undefined}>
         {casella}
         <Miniatura doc={doc} colore={colore(doc.fascicolo)} />
@@ -74,11 +80,11 @@ export function VoceDocumento({ doc, modo, selezione, onApri, onSeleziona }) {
           <span className="pp-riga-meta">{[doc.tipo_documento, meta, doc.persona, eCaricato(doc) ? 'caricato da te' : daDrive(doc) ? 'da Drive' : null].filter(Boolean).join(' · ')}</span>
         </span>
         {doc.importo != null && <span className="pp-riga-importo">{euro(doc.importo)}</span>}
-        {!selezione && <IconaFreccia size={16} />}
+        {!selezione && !onMenu && <IconaFreccia size={16} />}
       </button>
     );
   }
-  return (
+  return conMenu(
     <button className={`pp-scheda-doc${scelto ? ' scelta' : ''}${doc.rilevanza === 'bassa' ? ' poco-utile' : ''}`} style={{ '--c': colore(doc.fascicolo) }} onClick={tocco} {...gesti} aria-pressed={selezione ? scelto : undefined}>
       <Miniatura doc={doc} colore={colore(doc.fascicolo)} grande />
       {casella}
@@ -90,7 +96,7 @@ export function VoceDocumento({ doc, modo, selezione, onApri, onSeleziona }) {
       {doc.importo != null && <span className="pp-scheda-doc-importo">{euro(doc.importo)}</span>}
       {doc.rilevanza === 'alta' && !selezione && <span className="pp-scheda-doc-stella" aria-label="Importante"><IconaStella size={12} piena /></span>}
       {doc.azione_richiesta && !selezione && <span className={`pp-pallino pp-${doc.urgenza || 'media'} pp-scheda-doc-pallino`} aria-label="Da gestire" />}
-    </button>
+    </button>, true
   );
 }
 
@@ -106,6 +112,9 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione, max
   const [mie, setMie] = useState(null); // CARTELLE-MIE: le cartelle di Luca, per «Cartella»
   const [pronti, setPronti] = useState(null); // { chiave, file } dei documenti scelti, per Condividi
   const [unico, setUnico] = useState(false); // MIA-SALUTE: unisci i documenti scelti in un solo PDF
+  const [bersaglio, setBersaglio] = useState(null); // DOCUMENTI-AZIONI: i documenti del menu «•••» (uno), altrimenti i scelti
+  const [daInviare, setDaInviare] = useState(null), [statoInvio, setStatoInvio] = useState(null); // Scarica / Invia: file o ZIP
+  const [elencoPratiche, setElencoPratiche] = useState(null);
   const setModo = (m) => { setModoStato(m); try { localStorage.setItem(MODO_KEY, m); } catch { /* facoltativo */ } };
   useEffect(() => { setSelezione((s) => (s ? new Set([...s].filter((id) => elenco.some((d) => d.id === id))) : s)); }, [elenco]);
 
@@ -156,21 +165,63 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione, max
     } catch (e) { mostra(e.message); }
   };
   const statoCondividi = !ids.length ? null : ids.length > maxCondivisi ? `Al massimo ${maxCondivisi}` : !pronti || pronti.chiave !== chiaveScelti ? 'Preparo…' : pronti.errore ? 'Non disponibile' : null;
-  const fatto = (msg) => { setFoglio(null); setSelezione(null); aggiorna(); onCambiato?.(); mostra(msg); };
-  const cambia = (campi, msg) => esegui(async () => { await aggiornaDocumenti(archivioDb, ids, campi); fatto(msg); });
+  const fatto = (msg) => { setFoglio(null); setBersaglio(null); setSelezione(null); aggiorna(); onCambiato?.(); mostra(msg); };
+  const target = bersaglio || scelti;
+  const targetIds = target.map((d) => d.id);
+  const cambia = (campi, msg) => esegui(async () => { await aggiornaDocumenti(archivioDb, targetIds, campi); fatto(msg); });
+  // DOCUMENTI-AZIONI: scarica un file, Scarica / Invia per più file (singoli o ZIP), sposta in una pratica.
+  const scaricaUno = (doc) => esegui(async () => {
+    if (!doc.drive_file_id) { mostra('Questo documento non ha un file'); return; }
+    scaricaDocumento(comeFile(await preparaFile(doc.drive_file_id, await tokenSessione())));
+  });
+  const apriInvio = (docs) => { setStatoInvio(null); setDaInviare(docs); setFoglio(null); };
+  const preparaScelti = async (opzioni) => {
+    setStatoInvio({ fase: 'lavoro', fatti: 0, totale: 0 });
+    try {
+      const token = await tokenSessione();
+      setStatoInvio(await preparaInvio(daInviare, opzioni, (d) => preparaFile(d.drive_file_id, token).then(comeFile), (fatti, totale) => setStatoInvio({ fase: 'lavoro', fatti, totale })));
+    } catch (e) { setStatoInvio({ fase: 'errore', messaggio: e.message || String(e) }); }
+  };
+  const apriPratiche = (docs) => { setBersaglio(docs); setFoglio('pratica'); if (!elencoPratiche) esegui(async () => setElencoPratiche(perNome(await caricaPratiche(archivioDb)))); };
 
+  const unoSolo = bersaglio?.length === 1 ? bersaglio[0] : null;
   const fogli = {
-    sposta: { titolo: `Sposta ${ids.length} in…`, cerca: true, voci: fascicoli.filter((f) => f.codice !== 'clinico_pazienti').map((f) => ({ id: f.codice, nome: f.nome, colore: colore(f.codice) })),
+    doc: { titolo: unoSolo ? titoloDoc(unoSolo) : 'Documento', voci: [
+      { id: 'apri', nome: 'Apri' },
+      { id: 'scarica', nome: 'Scarica', meta: unoSolo?.drive_file_id ? 'il file originale' : 'nessun file' },
+      { id: 'invia', nome: 'Invia o condividi', meta: 'Mail, WhatsApp, AirDrop…' },
+      { id: 'pratica', nome: 'Sposta in una pratica', meta: unoSolo?.pratica?.titolo || (unoSolo?.pratica_id ? 'già in una pratica' : null) },
+      { id: 'mie', nome: 'Metti in una tua cartella' },
+      { id: 'sposta', nome: 'Cambia categoria' },
+      { id: 'seleziona', nome: 'Seleziona più documenti', meta: 'per scaricarli o inviarli insieme' },
+    ], scegli: (id) => {
+      const d = unoSolo; if (!d) return;
+      if (id === 'apri') { setFoglio(null); setBersaglio(null); apri({ tipo: 'documento', id: d.id }); return; }
+      if (id === 'scarica') { setFoglio(null); setBersaglio(null); scaricaUno(d); return; }
+      if (id === 'invia') { setBersaglio(null); apriInvio([d]); return; }
+      if (id === 'pratica') { apriPratiche([d]); return; }
+      if (id === 'mie') { esegui(async () => setMie(await caricaCartelleMie(archivioDb, { ancheArchiviate: false }))); setFoglio('mie'); return; }
+      if (id === 'sposta') { setFoglio('sposta'); return; }
+      if (id === 'seleziona') { setFoglio(null); setBersaglio(null); setSelezione(new Set([d.id])); }
+    } },
+    pratica: { titolo: `Sposta ${targetIds.length === 1 ? 'il documento' : `${targetIds.length} documenti`} in una pratica`, cerca: true,
+      voci: elencoPratiche ? vociPratiche(elencoPratiche, unoSolo?.pratica_id || null) : [{ id: '__carico', nome: 'Carico le pratiche…' }],
+      scegli: (id) => {
+        if (id === '__carico') return;
+        const nome = id === '__nessuna' ? null : elencoPratiche.find((p) => p.id === id)?.titolo;
+        esegui(async () => { await spostaInPratica(archivioDb, target, id === '__nessuna' ? null : id); fatto(nome ? `Nella pratica «${nome}»` : 'Tolto dalla pratica'); });
+      } },
+    sposta: { titolo: `Sposta ${targetIds.length} in…`, cerca: true, voci: fascicoli.filter((f) => f.codice !== 'clinico_pazienti').map((f) => ({ id: f.codice, nome: f.nome, colore: colore(f.codice) })),
       scegli: (id) => cambia({ fascicolo: id }, `Spostati in ${fascicoli.find((f) => f.codice === id)?.nome}`) },
     importanza: { titolo: 'Importanza', voci: Object.entries(RILEVANZA).map(([id, nome]) => ({ id, nome, meta: id === 'bassa' ? 'nascosti nelle ricerche, finché non li chiedi' : null })),
       scegli: (id) => cambia({ rilevanza: id }, `Segnati: ${RILEVANZA[id].toLowerCase()}`) },
     persona: { titolo: 'Di chi è', voci: [{ id: '', nome: 'Nessuno' }, ...impostazioni.persone.map((p) => ({ id: p, nome: p }))],
       scegli: (id) => cambia({ persona: id }, id ? `Assegnati a ${id}` : 'Persona tolta') },
-    cartella: { titolo: `Cartella automatica (ente) per ${ids.length}`, cerca: true,
+    cartella: { titolo: `Cartella automatica (ente) per ${targetIds.length}`, cerca: true,
       voci: [{ id: '__nuova', nome: 'Nuova cartella…' }, ...(cartelle || []).map((c) => ({ id: c.ente, nome: c.ente, meta: `${c.n} documenti`, colore: colore(c.fascicolo) }))],
       scegli: (id) => {
         if (id === '__nuova') {
-          const nome = window.prompt(`Nome della nuova cartella per ${ids.length} documenti (es. Kerdos)`, scelti[0]?.ente || '');
+          const nome = window.prompt(`Nome della nuova cartella per ${targetIds.length} documenti (es. Kerdos)`, scelti[0]?.ente || '');
           if (nome != null && nome.trim()) cambia({ ente: nome }, `Nella cartella ${nome.trim()}`);
           return;
         }
@@ -222,7 +273,7 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione, max
         </span>
       </div>
       <div className={modo === 'griglia' ? 'pp-griglia-doc' : 'pp-gruppo'}>
-        {elenco.map((d) => <ScorriElimina key={d.id} doc={d} ctx={ctx} onCambiato={onCambiato} disabilitato={!!selezione || d.fascicolo === 'clinico_pazienti'}><VoceDocumento doc={d} modo={modo} selezione={selezione} onApri={(x) => apri({ tipo: 'documento', id: x.id })} onSeleziona={seleziona} /></ScorriElimina>)}
+        {elenco.map((d) => <ScorriElimina key={d.id} doc={d} ctx={ctx} onCambiato={onCambiato} disabilitato={!!selezione || d.fascicolo === 'clinico_pazienti'}><VoceDocumento doc={d} modo={modo} selezione={selezione} onApri={(x) => apri({ tipo: 'documento', id: x.id })} onSeleziona={seleziona} onMenu={(x) => { setBersaglio([x]); setFoglio('doc'); }} /></ScorriElimina>)}
       </div>
       {selezione && (
         <div className="pp-barra-selezione" role="toolbar" aria-label="Azioni sui documenti scelti">
@@ -244,6 +295,8 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione, max
               </>}
               <div className="pp-barra-selezione-azioni">
                 {!invio && <button disabled={!ids.length || !!statoCondividi} onClick={condividiScelti}><IconaCondividi size={18} /><span>{statoCondividi || 'Condividi'}</span></button>}
+                <button disabled={!ids.length} onClick={() => apriInvio(scelti)}><IconaFile size={18} /><span>Scarica / invia</span></button>
+                <button disabled={!ids.length} onClick={() => apriPratiche(scelti)}><IconaPratiche size={18} /><span>Pratica</span></button>
                 <button disabled={!ids.length} onClick={() => { esegui(async () => setMie(await caricaCartelleMie(archivioDb, { ancheArchiviate: false }))); setFoglio('mie'); }}><IconaDocumenti size={18} /><span>Cartella</span></button>
                 <button disabled={!ids.length} onClick={() => setFoglio('sposta')}><IconaStella size={18} /><span>Categoria</span></button>
                 <button disabled={!ids.length} onClick={() => setFoglio('altro')}><span className="pp-tre-punti">•••</span><span>Altro</span></button>
@@ -254,10 +307,11 @@ export function ElencoSelezionabile({ elenco, ctx, onCambiato, intestazione, max
         </div>
       )}
       {foglio === 'mie' && mie && (
-        <FoglioCartelleMie ctx={ctx} titolo={`Metti ${ids.length} in una tua cartella`} cartelle={mie} radice onChiudi={() => setFoglio(null)}
-          onScegli={(dest, nome) => esegui(async () => { if (dest) await aggiungiDocumenti(archivioDb, dest, ids); else await aggiungiAScrivania(archivioDb, ids); fatto(`In «${nome}»`); })} />
+        <FoglioCartelleMie ctx={ctx} titolo={`Metti ${targetIds.length} in una tua cartella`} cartelle={mie} radice onChiudi={() => { setFoglio(null); setBersaglio(null); }}
+          onScegli={(dest, nome) => esegui(async () => { if (dest) await aggiungiDocumenti(archivioDb, dest, targetIds); else await aggiungiAScrivania(archivioDb, targetIds); fatto(`In «${nome}»`); })} />
       )}
-      {foglio && foglio !== 'mie' && <FoglioScelta titolo={fogli[foglio].titolo} voci={fogli[foglio].voci} cerca={fogli[foglio].cerca} onScegli={fogli[foglio].scegli} onChiudi={() => setFoglio(null)} />}
+      {foglio && foglio !== 'mie' && <FoglioScelta titolo={fogli[foglio].titolo} voci={fogli[foglio].voci} cerca={fogli[foglio].cerca} onScegli={fogli[foglio].scegli} onChiudi={() => { setFoglio(null); setBersaglio(null); }} />}
+      {daInviare && <FoglioInvia nomeIniziale={daInviare.length === 1 ? titoloDoc(daInviare[0]) : `${titoloInvio} (${daInviare.length})`} nCartelle={0} nDocumenti={daInviare.length} stato={statoInvio} onPrepara={preparaScelti} onChiudi={() => { setDaInviare(null); setStatoInvio(null); }} mostra={mostra} />}
     </>
   );
 }
