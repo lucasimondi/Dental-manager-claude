@@ -2222,6 +2222,59 @@ function emailImportante_(oggetto, messaggi, importanti) {
   return null;
 }
 
+// PRATICHE-CONSULENTI (PO 2026-11-19): indirizzi dei consulenti delle pratiche → pratica. Le loro conversazioni
+// entrano sempre in archivio e finiscono nella pratica del consulente (solo lettura ed etichette, mai invii).
+function consulentiEmail_() {
+  const mappa = {};
+  try {
+    sb_('pratiche_consulenti?select=pratica_id,email,pec&tolto_il=is.null&limit=1000').forEach(function (c) {
+      [c.email, c.pec].forEach(function (a) { indirizzi_(a).forEach(function (x) { if (x !== PROPRIETARIO && !mappa[x]) mappa[x] = c.pratica_id; }); });
+    });
+  } catch (e) { logErrore_('consulenti email', e); }
+  return mappa;
+}
+
+function praticaConsulente_(messaggi, consulenti) {
+  const tutti = indirizzi_(messaggi.map(function (m) { return m.da + ',' + m.a; }).join(','));
+  for (let i = 0; i < tutti.length; i++) if (consulenti[tutti[i]]) return consulenti[tutti[i]];
+  return null;
+}
+
+// Le conversazioni (senza allegati) con un consulente appena inserito, anche vecchie o già scartate:
+// una volta per indirizzo (CONSULENTI_VISTI), al massimo 50 conversazioni per indirizzo. Quelle già in archivio
+// senza pratica vengono collegate alla pratica del consulente (registraEmail_ con esistente).
+function emailConsulenti_(consulenti, scadenza) {
+  const sp = PropertiesService.getScriptProperties();
+  let visti = {};
+  try { visti = JSON.parse(sp.getProperty('CONSULENTI_VISTI') || '{}'); } catch (e) {}
+  const vista = etichetta_(ETICHETTA_EMAIL_VISTA);
+  const importata = etichetta_(ETICHETTA_EMAIL);
+  const indirizzi = Object.keys(consulenti).filter(function (a) { return visti[a] !== consulenti[a]; });
+  for (let k = 0; k < indirizzi.length; k++) {
+    if (Date.now() > scadenza) break;
+    const a = indirizzi[k];
+    const threads = GmailApp.search('-has:attachment -in:chats -in:spam -in:trash (from:' + a + ' OR to:' + a + ')', 0, 50);
+    for (let i = 0; i < threads.length; i++) {
+      if (Date.now() > scadenza) return;
+      const t = threads[i];
+      try {
+        const msgs = t.getMessages();
+        const info = messaggiInfo_(msgs);
+        const oggetto = t.getFirstMessageSubject();
+        if (eClinico_({ oggetto: oggetto, mittente: info.map(function (m) { return m.da + ',' + m.a; }).join(','), destinatari: '' }, '') || EMAIL_CLINICO.test(String(oggetto || ''))) continue;
+        registraEmail_(t, msgs, { motivo: 'consulente', forte: EMAIL_FORTI.test(String(oggetto || '')), pratica_id: consulenti[a] });
+        importata.addToThread(t);
+        try { vista.removeFromThread(t); } catch (x) {}
+      } catch (e) {
+        if (QUOTA_GOOGLE.test(String(e && e.message))) return;
+        logErrore_('email consulente ' + t.getId(), e);
+      }
+    }
+    visti[a] = consulenti[a];
+    sp.setProperty('CONSULENTI_VISTI', JSON.stringify(visti));
+  }
+}
+
 function messaggiInfo_(msgs) {
   return msgs.map(function (m) { return { da: m.getFrom() || '', a: [m.getTo(), m.getCc()].filter(Boolean).join(', ') }; });
 }
@@ -2237,19 +2290,24 @@ function importaEmail_(scadenza) {
   }
   aggiornaEmail_(scadenza);
   if (Date.now() > scadenza) return true;
+  const consulenti = consulentiEmail_();
+  emailConsulenti_(consulenti, scadenza);
+  if (Date.now() > scadenza) return true;
   const vista = etichetta_(ETICHETTA_EMAIL_VISTA);
   const importata = etichetta_(ETICHETTA_EMAIL);
   const threads = GmailApp.search('-has:attachment -in:chats -in:spam -in:trash -category:promotions -category:social after:' + dal +
     ' -label:' + etichettaQuery_(ETICHETTA_EMAIL) + ' -label:' + etichettaQuery_(ETICHETTA_EMAIL_VISTA), 0, EMAIL_PER_GIRO);
   if (!threads.length) return false;
-  const importanti = mittentiImportanti_();
+  const importanti = mittentiImportanti_().concat(Object.keys(consulenti));
   for (let i = 0; i < threads.length; i++) {
     if (Date.now() > scadenza) return true;
     const t = threads[i];
     try {
       const msgs = t.getMessages();
-      const scelta = emailImportante_(t.getFirstMessageSubject(), messaggiInfo_(msgs), importanti);
+      const info = messaggiInfo_(msgs);
+      const scelta = emailImportante_(t.getFirstMessageSubject(), info, importanti);
       if (scelta) {
+        scelta.pratica_id = praticaConsulente_(info, consulenti);
         registraEmail_(t, msgs, scelta);
         importata.addToThread(t);
       } else {
@@ -2278,10 +2336,14 @@ function registraEmail_(t, msgs, scelta) {
     fascicolo: riserva.fascicolo, tipo_documento: riserva.tipo_documento || 'comunicazione', titolo: riserva.titolo,
     riassunto: 'Email (' + msgs.length + (msgs.length === 1 ? ' messaggio' : ' messaggi') + '): verrà letta appena possibile.',
     data_documento: null, azione_richiesta: false, analisi_contenuto: false, tag: ['email', 'da analizzare'],
-    dati_estratti: { motivo: scelta.motivo }, soggetti: [], scadenze: [], pratica: {},
+    dati_estratti: { motivo: scelta.motivo }, soggetti: [], scadenze: [], pratica: scelta.pratica_id ? { id_esistente: scelta.pratica_id } : {},
   } } });
   if (!esito || !esito.documento_id) throw new Error('Email: registrazione non confermata');
-  if (esito.esistente) return;
+  if (esito.esistente) {
+    // Già in archivio senza pratica: la conversazione con il consulente va nella sua pratica.
+    if (scelta.pratica_id && !esito.pratica_id) sb_('documenti?id=eq.' + esito.documento_id + '&pratica_id=is.null', { method: 'patch', body: { pratica_id: scelta.pratica_id } });
+    return;
+  }
   sb_('documenti?id=eq.' + esito.documento_id, { method: 'patch', body: {
     ente: riserva.ente || null, rilevanza: scelta.forte ? 'alta' : (riserva.rilevanza === 'bassa' ? 'normale' : riserva.rilevanza),
     da_analizzare: true, riordinato_il: new Date().toISOString(),

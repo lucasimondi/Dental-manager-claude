@@ -1,3 +1,12 @@
+# Current task — PRATICHE-CONSULENTI (2026-11-19)
+- OWNER Claude Code; branch `claude/pratiche-consulenti-email` (from master a6226ad).
+- REQUEST PO 2026-11-19: "Metti anche lo spazio per inserire i consulenti che se ne occupano con i contatti per ogni pratica e che vengano poi inseriti anche gli scambi di mail dentro la scheda pratica".
+- DB (applied to tkcwvjzjkfhcuebrjvsp, additive): `pratiche_consulenti` (RLS proprietario, trigger normalises name/email/PEC/phone, «Togli» = tolto_il, never deleted); RPC `email_pratica(p)` security invoker, one row per Gmail thread: threads of the pratica's documents + archive documents whose sender is a consultant of the pratica; never clinico_pazienti. Verified on real data (Mondino: 37 threads with a test consultant, inside a rolled-back transaction; table still empty).
+- APP: pratica page gets tabs «Consulenti» (cards with phone/email/PEC, Chiama, WhatsApp, Scrivi, Modifica, Togli with confirmation; suggestions from pratiche_schede.parti with consultant roles; form) and «Email» (threads: subject, date, senders, «consulente» / «non ancora nella pratica», tap opens Gmail thread, «Leggi qui» for email cards, «Tutte le email con i consulenti in Gmail»). Tab bar scrolls horizontally on narrow screens. Files: `lib/consulenti.js`, `documenti/PraticaContatti.jsx`, `Pratica.jsx`, `personal.css`.
+- SCRIPT: `Code.gs` `consulentiEmail_()` each run; consultant addresses count as important senders and their threads get `pratica.id_esistente`; already-imported threads without pratica are linked; `emailConsulenti_()` once per address (`CONSULENTI_VISTI`) imports up to 50 threads with that address (also old or previously discarded). Never clinical (eClinico_ + EMAIL_CLINICO). node --check OK. NOT clasp-pushed (no clasp credentials in this container).
+- VALIDATION: npm test PASS (new tests/praticheConsulenti.test.mjs 4/4; archivioPersonale migration list updated); build:personal PASS; new visual tests/visual/personal-pratica-consulenti.mjs PASS Pixel 7 light/dark.
+- STATUS: PR; merge on "Mergia". After merge: `clasp push -f` from poliedron/archivio needed for automatic import of consultants' emails.
+
 # Current task — DA-FARE-IMPAGINAZIONE (2026-11-19)
 - OWNER Claude Code; branch `claude/dafare-impaginazione` (from master d109806).
 - REQUEST PO 2026-11-19 (screenshot of Da fare on phone, cards cut on the right): "Devi impaginare bene".
