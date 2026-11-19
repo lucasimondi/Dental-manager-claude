@@ -1201,3 +1201,13 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-pratica-sommario span { font-size: .72rem; opacity: .75; line-height: 1.15; }
 .pp-pratica-sommario em { font-style: normal; font-size: .68rem; color: var(--pp-rosso, #c0392b); }
 #pp-sez-scadenze, #pp-sez-documenti, #pp-sez-filo, #pp-sez-passi { scroll-margin-top: 70px; }
+
+/* DOCUMENTI-AZIONI: «•••» su ogni documento negli elenchi. */
+.pp-doc-voce { position: relative; display: flex; align-items: stretch; min-width: 0; }
+.pp-doc-voce > .pp-riga, .pp-doc-voce > .pp-scheda-doc { flex: 1; min-width: 0; }
+.pp-doc-menu { flex: none; min-width: 44px; border: 0; background: transparent; color: var(--pp-testo-2, #667085); font-size: 1rem; letter-spacing: 1px; cursor: pointer; }
+.pp-doc-voce-scheda { display: block; }
+.pp-doc-voce-scheda > .pp-scheda-doc { width: 100%; }
+.pp-doc-voce-scheda > .pp-doc-menu { position: absolute; top: 4px; right: 4px; min-width: 36px; height: 30px; border-radius: 15px; background: color-mix(in srgb, var(--pp-superficie, #fff) 88%, transparent); box-shadow: var(--pp-ombra); }
+.pp-doc-menu:focus-visible { outline: 2px solid var(--pp-accento, #2563eb); outline-offset: -2px; }
+.pp-scorri-corpo > .pp-doc-voce { width: 100%; height: 100%; background: var(--pp-superficie); }
