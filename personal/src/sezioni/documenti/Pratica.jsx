@@ -1,8 +1,11 @@
-// Documenti — una pratica «Pratica <nome>»: schede Riepilogo, Documenti, Scadenze, Passi (proposta B).
+// Documenti — una pratica «Pratica <nome>»: schede Riepilogo, Documenti, Scadenze, Passi (proposta B),
+// Consulenti ed Email (PRATICHE-CONSULENTI, 2026-11-19).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { documentiDellaPratica, cambiaStatoPratica, praticaCompleta } from '../../lib/archivio.js';
-import { collegaLegal, scadenzaLegal, passiPratica } from '../../lib/legal.js';
+import { collegaLegal, scadenzaLegal, passiPratica, schedaPratica } from '../../lib/legal.js';
+import { caricaConsulenti, emailPratica } from '../../lib/consulenti.js';
+import { ConsulentiPratica, EmailPratica } from './PraticaContatti.jsx';
 import { cercaArchivio, segnaScadenza, scadenzeDeiDocumenti } from '../../lib/archivio.js';
 import { euro } from '../../lib/coreArchivio.js';
 import { colore, dataBreve, titoloDoc, Vuoto, Sezione, Gruppo, RigaPagamento } from '../../ui.jsx';
@@ -19,6 +22,8 @@ export function PaginaPratica({ p: base, ctx }) {
   const [candidati, setCandidati] = useState(null), [busy, setBusy] = useState(false);
   const [termine, setTermine] = useState({ data: '', descrizione: '' });
   const [vista, setVista] = useState('documenti'), [passi, setPassi] = useState([]);
+  // PRATICHE-CONSULENTI: chi segue la pratica (con i contatti) e le email della pratica.
+  const [consulenti, setConsulenti] = useState(null), [email, setEmail] = useState(null), [parti, setParti] = useState([]);
   const aggiornaPassi = useCallback((d) => setPassi(d.passi), []);
   const legal = p.fascicolo === 'legale';
   const lock = useRef(false);
@@ -31,7 +36,16 @@ export function PaginaPratica({ p: base, ctx }) {
     }
     setP((x) => ({ ...x, ...completa })); setDocumenti(docs); setPassi(ps);
   }), [esegui, base.id]);
+  const caricaContatti = useCallback(async () => {
+    const [cs, em, sc] = await Promise.all([
+      caricaConsulenti(archivioDb, base.id).catch(() => []),
+      emailPratica(archivioDb, base.id).catch(() => []),
+      schedaPratica(archivioDb, base.id).catch(() => null),
+    ]);
+    setConsulenti(cs); setEmail(em); setParti(sc?.parti || []);
+  }, [base.id]);
   useEffect(() => { carica(); }, [carica]);
+  useEffect(() => { caricaContatti(); }, [caricaContatti]);
   const cambiaStato = (stato) => esegui(async () => { await cambiaStatoPratica(archivioDb, p.id, stato); setP({ ...p, stato }); aggiorna(); mostra(`Pratica ${STATI_PRATICA[stato].toLowerCase()}`); });
 
   const scadenze = p.scadenze || [];
@@ -47,6 +61,8 @@ export function PaginaPratica({ p: base, ctx }) {
     ['documenti', 'Documenti', documenti ? documenti.length : '…'],
     ['scadenze', 'Scadenze', aperte.length],
     ['passi', 'Passi', passiAperti],
+    ['consulenti', 'Consulenti', consulenti ? consulenti.length : '…'],
+    ['email', 'Email', email ? email.length : '…'],
   ];
 
   return (
@@ -122,6 +138,9 @@ export function PaginaPratica({ p: base, ctx }) {
 
       {/* Passi da fare: gli stessi di «Da fare», spuntati qui o là. */}
       {vista === 'passi' && <SchedaPratica p={p} ctx={ctx} parte="passi" onDati={aggiornaPassi} />}
+
+      {vista === 'consulenti' && <ConsulentiPratica p={p} consulenti={consulenti} parti={parti} ctx={ctx} onCambiato={caricaContatti} />}
+      {vista === 'email' && <EmailPratica email={email} consulenti={consulenti} ctx={ctx} />}
     </>
   );
 }

@@ -1,3 +1,23 @@
+<<<<<<< HEAD
+=======
+# Current task — PRATICHE-CONSULENTI (2026-11-19)
+- OWNER Claude Code; branch `claude/pratiche-consulenti-email` (from master a6226ad).
+- REQUEST PO 2026-11-19: "Metti anche lo spazio per inserire i consulenti che se ne occupano con i contatti per ogni pratica e che vengano poi inseriti anche gli scambi di mail dentro la scheda pratica".
+- DB (applied to tkcwvjzjkfhcuebrjvsp, additive): `pratiche_consulenti` (RLS proprietario, trigger normalises name/email/PEC/phone, «Togli» = tolto_il, never deleted); RPC `email_pratica(p)` security invoker, one row per Gmail thread: threads of the pratica's documents + archive documents whose sender is a consultant of the pratica; never clinico_pazienti. Verified on real data (Mondino: 37 threads with a test consultant, inside a rolled-back transaction; table still empty).
+- APP: pratica page gets tabs «Consulenti» (cards with phone/email/PEC, Chiama, WhatsApp, Scrivi, Modifica, Togli with confirmation; suggestions from pratiche_schede.parti with consultant roles; form) and «Email» (threads: subject, date, senders, «consulente» / «non ancora nella pratica», tap opens Gmail thread, «Leggi qui» for email cards, «Tutte le email con i consulenti in Gmail»). Tab bar scrolls horizontally on narrow screens. Files: `lib/consulenti.js`, `documenti/PraticaContatti.jsx`, `Pratica.jsx`, `personal.css`.
+- SCRIPT: `Code.gs` `consulentiEmail_()` each run; consultant addresses count as important senders and their threads get `pratica.id_esistente`; already-imported threads without pratica are linked; `emailConsulenti_()` once per address (`CONSULENTI_VISTI`) imports up to 50 threads with that address (also old or previously discarded). Never clinical (eClinico_ + EMAIL_CLINICO). node --check OK. NOT clasp-pushed (no clasp credentials in this container).
+- VALIDATION: npm test PASS (new tests/praticheConsulenti.test.mjs 4/4; archivioPersonale migration list updated); build:personal PASS; new visual tests/visual/personal-pratica-consulenti.mjs PASS Pixel 7 light/dark.
+- STATUS: PR; merge on "Mergia". After merge: `clasp push -f` from poliedron/archivio needed for automatic import of consultants' emails.
+
+# Current task — DA-FARE-IMPAGINAZIONE (2026-11-19)
+- OWNER Claude Code; branch `claude/dafare-impaginazione` (from master d109806).
+- REQUEST PO 2026-11-19 (screenshot of Da fare on phone, cards cut on the right): "Devi impaginare bene".
+- CAUSE: `.pp-dafare` and `.pp-promemoria` are CSS grids with an implicit `auto` column; the one-line document title (nowrap) and the scrolling filter bar set the column width, so cards overflowed the viewport.
+- APP (CSS only, `personal/src/personal.css`): `grid-template-columns: minmax(0,1fr)` and `min-width:0` on list and cards; titles/explanations wrap (`overflow-wrap:anywhere`); document title clamped to 2 lines; action buttons nowrap and wrap as a row.
+- VALIDATION: npm test PASS; build:personal PASS; headless Chrome 390px render with long titles: no horizontal overflow.
+- STATUS: PR; merge on "Mergia" (given 2026-11-19 18:29).
+
+>>>>>>> origin/master
 # Current task — PRATICHE-CARTELLE (proposta B, 2026-11-19)
 - OWNER Claude Code; branch `ccr-9a526543-2sagy0` (same PR #326 as DA-FARE-PER-PRATICA).
 - REQUEST PO 2026-11-19: "devi fare un elenco delle pratiche chiamandole «pratica (e poi il nome)», deve essere trovabile anche nelle pratiche da gestire, poi li apri e c'è tutto ciò che necessita, deve essere trovabile anche dalla barra di ricerca in home, fammi tre proposte visive" → 3 mockups (artifact «Pratiche – tre proposte») → "Va bene la b".
@@ -29,7 +49,7 @@
 - STATUS: commit on branch; PR/merge on "Mergia".
 
 # Current task — PRATICHE-WORKFLOW (2026-11-18, IN PROGRESS — batch 3 Claude Code 2026-11-19)
-- PROGRESS 2026-11-19 (Claude Code, batch 3, see docs/coordination/pratiche-batch3-2026-11-19.md): script guard published (clasp push, deployment @26). Banca Alpi Marittime COMPLETE (12 stray docs moved in, scheda with 28 events, 3 new actions, appeal scadenza 29/01/2027 prudent). Mondino 36/2023 COMPLETE (5 docs moved, no-counsel alert, 3 actions; 25/2025 scheda amended with the 24/09/2026 notification). Primo oppositions COMPLETE (Primo Group pratica merged in; settlement 20k vs D.I. 112k finding). Giraudo EXCLUDED by PO. SQL auto-allowed (.claude/settings.json). ALL open legal/successione pratiche now have a scheda (22/23; Giraudo excluded); 10 historical closed (risolta), Condominio Armida 3→1, Viglione→Missaglia; consolidated pignoramenti map. Next phase: fiscale/immobili/conti/previdenza, then fornitori/utenze/veicoli/assicurazioni.
+- PROGRESS 2026-11-19 (Claude Code, batch 3, see docs/coordination/pratiche-batch3-2026-11-19.md): script guard published (clasp push, deployment @26). Banca Alpi Marittime COMPLETE (12 stray docs moved in, scheda with 28 events, 3 new actions, appeal scadenza 29/01/2027 prudent). Mondino 36/2023 COMPLETE (5 docs moved, no-counsel alert, 3 actions; 25/2025 scheda amended with the 24/09/2026 notification). Primo oppositions COMPLETE (Primo Group pratica merged in; settlement 20k vs D.I. 112k finding). Giraudo EXCLUDED by PO. SQL auto-allowed (.claude/settings.json). ALL open legal/successione pratiche now have a scheda (22/23; Giraudo excluded); 10 historical closed (risolta), Condominio Armida 3→1, Viglione→Missaglia; consolidated pignoramenti map. Fiscale COMPLETE (17/17 schede). Immobili COMPLETE (5 open with scheda, 42 historical closed, 12 duplicates merged, 2 new actions). Next phase: conti/previdenza/successione, then fornitori/utenze/veicoli/assicurazioni.
 - OWNER Claude Code (from Codex batch 2); branch `ccr-30bcc810-y3n89t` (plan written on `ccr-9a526543-2sagy0`, merged in; master already contains LEGAL-SCHEDE, PR #323).
 - REQUEST PO 2026-11-18: "Ci sono alcune triplicate, poi alcune non completamente analizzate, dobbiamo strutturare un workflow per lettura analisi creazione filo temporale azioni da intraprendere ecc e farlo su tutte".
 - PO DECISIONS (AskUserQuestion 2026-11-18): duplicates → "Analizzi e sistemi tu come un esperto amministratore avvocato consulente commercialista" (Claude Code decides and applies merges itself, no approval step, but records every change); analysis → "Tutte tu in sessione" (ALL pratiche analysed by Claude Code in session, not Gemini). Then: "Dobbiamo farlo in un'altra finestra di contesto" → this plan is the handoff.
