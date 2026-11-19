@@ -1,5 +1,8 @@
 # Handoffs
 
+## 2026-11-19 — CLAUDE — PRATICHE-WORKFLOW batch 3
+- Codex's script guard published (clasp, @26). Banca Alpi Marittime scheda complete (not user-verified), 12 docs moved into the pratica, 3 new Da fare actions, appeal-term scadenza. Register and undo: `docs/coordination/pratiche-batch3-2026-11-19.md`. Next: Mondino 36/2023.
+
 ## 2026-10-18 — CLAUDE — Pulizia in massa (Poliedron + Gemini) e Risolta sulle pratiche
 - Il modello propone soltanto; l'esecuzione parte dall'app dopo la conferma di Luca (eseguiProposta: Drive → Gmail → archivio). Eccezioni alle regole sez. 3 documentate in `poliedron/archivio/CLAUDE.md`.
 

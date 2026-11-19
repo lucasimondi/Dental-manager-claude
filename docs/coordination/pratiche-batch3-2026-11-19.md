@@ -1,0 +1,16 @@
+# PRATICHE-WORKFLOW — batch 3, Claude Code, 2026-11-19
+
+Branch `ccr-9a526543-2sagy0` (fast-forwarded to `ccr-30bcc810-y3n89t` = Claude Code batch 1 + Codex batch 2).
+
+## Script
+- Online script was equal to master (checked with `clasp pull`); pushed the branch Code.gs (PRATICHE-WORKFLOW: rewritten schede reset to `analizzata`/unverified; `aggiornaSchede_` skips `da_aggiornare` and never regenerates `claude-code`/`codex` schede, only flags them). Pull-back identical. Web app redeployed @26. Codex's "NOT clasp-pushed" note is now resolved.
+
+## Banca Alpi Marittime — pratica 842ffcdc-cfdd-44ab-a96c-b1d1749d7c20 — COMPLETE (not user-verified)
+- Phase 0: 12 documents moved INTO this pratica (no scadenze/promemoria attached to them). 11 had `pratica_id = NULL`, 1 came from Mondino 36/2023 `1c79fdfa-74a7-4fc1-8fb4-c665a7d2e930` (`9c9294ac-…`, a copy of the BAM ricorso). To undo: set `pratica_id` back (NULL, or 1c79fdfa for 9c9294ac).
+  fc51afe6-cec3-44f9-9b74-672272ab9cac, f44d0190-19b0-426a-b929-0a87aa219a22, 9c9294ac-6279-4123-b4b5-3552f9d14888 (from Mondino), 0f9e74fd-35c6-43e3-8dd7-662fc2dcfdbe, 70344007-2c1d-44fc-b64b-d4dc542d93ef, e6d3a73e-da8e-46a9-b05c-e37a288267ba, cdc2cb26-e772-41e0-b9cf-b2ca0b81a460, a378c535-f64b-4418-ba1e-511f1d51b48c, 5dc75c85-fba8-4f10-8b9b-c8859b57df38, e820545f-0305-4a65-ac48-5cc45d23dbfe, d6340d56-f413-4d88-b0c5-a4e9171fbeba, b3335ba3-e2f9-444a-ac43-c1e902044662.
+  Not moved: «Sci Club Alpi Marittime» IBAN (unrelated); 3 docs of the Missaglia/affidamento pratica and 1 of Primo Group that only mention the bank.
+- Scheda (`modello claude-code`, `tipo causa`, `analizzata`, not verified): 28 timeline events each linked to a document, 12 parties, 5 key points, 6 attention points, 7 missing-document groups, 62 sources. Read: sentence (header, facts, Acero intervention, dispositivo), precetto, fideiussione (art. 1957 derogation clause), ricorso (diffida), cancelleria communications, bank 2022 letters, Martini mandate/pro forma, Dottore delega.
+- Key legal reasoning recorded: appeal long term art. 327 c.p.c. + 31 days feriale → 29/01/2027 (prudent, if published 29/06) to 08/02/2027 (if published 07/07; 07/02 is Sunday); short term likely already expired if notified in summer; Cass. SU 15130/2024 (French amortisation) weakens appeal; ABI-model art. 1957 derogation (Cass. SU 41994/2021) not raised at first instance and of limited value because an accomandatario is liable anyway (art. 2313 c.c.); precetto typo «28.9.2022»; debt estimate ~140k € (mora 5.10% on 75,565.52 + 13.3% on 21,377.33 from 15/06/2022 ≈ 6.7k €/year + costs).
+- Da fare: updated 1b6265c1 (date 2026-11-19 → 2026-11-26, steps with appeal-term calculation; old text summarised in `note`); note appended to c2f20bb7; new e7bb70fb (appeal decision by 15/12), 244e2fca (FBS: updated count + execution status, 05/12), 8ccc3335 (saldo e stralcio / sovraindebitamento, 31/12). Withdraw with `stato = 'rimosso'`.
+- Scadenza: 4db58994-9ee9-421c-8300-27aecbfe4a85, 2027-01-29, appeal term (prudent date, to confirm).
+- Still pending for this pratica: text of the party technical report ZIP (c3c51f2f, 21 PDFs, OCR needed) and the 6 texts capped at 100,000 chars (bank statements/receipts: not needed for the scheda).

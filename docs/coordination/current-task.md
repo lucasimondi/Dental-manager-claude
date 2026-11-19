@@ -1,5 +1,6 @@
-# Current task — PRATICHE-WORKFLOW (2026-11-18, IN PROGRESS — handoff Codex batch 2)
-- OWNER Codex (batch 2 complete; continuation checkpoint below); branch `ccr-30bcc810-y3n89t` (plan written on `ccr-9a526543-2sagy0`, merged in; master already contains LEGAL-SCHEDE, PR #323).
+# Current task — PRATICHE-WORKFLOW (2026-11-18, IN PROGRESS — batch 3 Claude Code 2026-11-19)
+- PROGRESS 2026-11-19 (Claude Code, batch 3, see docs/coordination/pratiche-batch3-2026-11-19.md): script guard published (clasp push, deployment @26). Banca Alpi Marittime COMPLETE (12 stray docs moved in, scheda with 28 events, 3 new actions, appeal scadenza 29/01/2027 prudent). Next: Mondino 36/2023, Primo oppositions, Giraudo, rest of legal.
+- OWNER Claude Code (from Codex batch 2); branch `ccr-30bcc810-y3n89t` (plan written on `ccr-9a526543-2sagy0`, merged in; master already contains LEGAL-SCHEDE, PR #323).
 - REQUEST PO 2026-11-18: "Ci sono alcune triplicate, poi alcune non completamente analizzate, dobbiamo strutturare un workflow per lettura analisi creazione filo temporale azioni da intraprendere ecc e farlo su tutte".
 - PO DECISIONS (AskUserQuestion 2026-11-18): duplicates → "Analizzi e sistemi tu come un esperto amministratore avvocato consulente commercialista" (Claude Code decides and applies merges itself, no approval step, but records every change); analysis → "Tutte tu in sessione" (ALL pratiche analysed by Claude Code in session, not Gemini). Then: "Dobbiamo farlo in un'altra finestra di contesto" → this plan is the handoff.
 - WORKFLOW per pratica:
