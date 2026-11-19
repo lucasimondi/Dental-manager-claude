@@ -8,6 +8,7 @@ import { euro } from '../../lib/coreArchivio.js';
 import { colore, dataBreve, titoloDoc, Vuoto, Sezione, Gruppo, RigaPagamento } from '../../ui.jsx';
 import { Miniatura } from '../../Miniatura.jsx';
 import { SchedaPratica } from '../legal/index.jsx';
+import { sommarioPratica } from '../../lib/praticheOrdine.js';
 
 const STATI_PRATICA = { aperta: 'Aperta', in_corso: 'In corso', risolta: 'Risolta', archiviata: 'Archiviata' };
 
@@ -17,6 +18,7 @@ export function PaginaPratica({ p: base, ctx }) {
   const [documenti, setDocumenti] = useState(null);
   const [candidati, setCandidati] = useState(null), [busy, setBusy] = useState(false);
   const [termine, setTermine] = useState({ data: '', descrizione: '' });
+  const [datiScheda, setDatiScheda] = useState({ filo: 0, passi: [] });
   const legal = p.fascicolo === 'legale';
   const lock = useRef(false);
   const operazione = (fn) => { if (lock.current) return; lock.current = true; setBusy(true); return esegui(fn).finally(() => { lock.current = false; setBusy(false); }); };
@@ -55,6 +57,14 @@ export function PaginaPratica({ p: base, ctx }) {
         <div><strong>{legal ? aperte.length : aperte.length ? euro(daPagare) : '—'}</strong><span>{legal ? 'termini da verificare' : 'da pagare'}</span></div>
         <div><strong>{p.prossima_scadenza ? dataBreve(p.prossima_scadenza).replace(/ \d{4}$/, '') : '—'}</strong><span>prossima scadenza</span></div>
       </div>
+      {/* PRATICHE-PER-NOME: tutti gli elementi della pratica in un colpo d'occhio; un tocco porta alla sezione. */}
+      <nav className="pp-pratica-sommario" aria-label="Contenuto della pratica">
+        {sommarioPratica({ documenti, scadenze, filo: datiScheda.filo, passi: datiScheda.passi }).map((v) => (
+          <a key={v.id} href={`#${v.id}`} onClick={(e) => { const el = document.getElementById(v.id); if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }}>
+            <strong>{v.n == null ? '…' : v.n}</strong><span>{v.etichetta}</span>{v.prossima && <em>{dataBreve(v.prossima)}</em>}
+          </a>
+        ))}
+      </nav>
       <div className="pp-azioni">
         {legal && <button className="pp-bottone pp-bottone-chiaro" onClick={() => apri({ tipo: 'legal-modifica', p })}>Modifica / aggiorna a mano</button>}
         {legal && <button className="pp-bottone pp-bottone-chiaro" disabled={busy} onClick={() => operazione(async () => setCandidati((await cercaArchivio(archivioDb, { fascicolo: 'legale', limite: 300 })).filter((d) => !d.pratica_id)))}>Collega documento archiviato</button>}
@@ -64,8 +74,19 @@ export function PaginaPratica({ p: base, ctx }) {
           : <button className="pp-bottone pp-bottone-chiaro" onClick={() => cambiaStato('aperta')}>Riapri</button>}
         {p.stato === 'aperta' && <button className="pp-bottone pp-bottone-chiaro" onClick={() => cambiaStato('in_corso')}>In corso</button>}
       </div>
+      <div id="pp-sez-scadenze" />
+      {!scadenze.length && <Sezione titolo="Scadenze"><Vuoto>Nessuna scadenza registrata.</Vuoto></Sezione>}
+      {legal && scadenze.length > 0 && <Sezione titolo="Termini e scadenze"><Gruppo>{scadenze.map((s) => <div className="pp-riga" key={s.id}>
+        <span className="pp-riga-testo"><strong>{s.descrizione}</strong><span className="pp-riga-meta">{dataBreve(s.data)} · {s.completata ? 'Completata' : s.storica ? 'Storica, da verificare' : 'Da gestire'}</span></span>
+        {!s.completata && !s.storica && <button className="pp-chip-azione" disabled={busy} onClick={() => operazione(async () => { await segnaScadenza(archivioDb, s.id); await carica(); aggiorna(); })}>Fatta</button>}
+      </div>)}</Gruppo></Sezione>}
+      {!legal && scadenze.length > 0 && (
+        <Sezione titolo="Pagamenti e scadenze">
+          <Gruppo>{scadenze.map((s) => <RigaPagamento key={s.id} s={s} onApri={(x) => apri({ tipo: 'pagamento', s: x })} onPagato={async (x) => { await pagato(x); carica(); }} />)}</Gruppo>
+        </Sezione>
+      )}
       {/* LEGAL-SCHEDE: in sintesi, punti salienti, da attenzionare, passi (anche in «Da fare»). */}
-      <SchedaPratica p={p} ctx={ctx} />
+      <SchedaPratica p={p} ctx={ctx} onDati={setDatiScheda} />
       {legal && <Sezione titolo="Aggiungi scadenza o prossima azione">
         <form onSubmit={(e) => { e.preventDefault(); operazione(async () => { await scadenzaLegal(archivioDb, p.id, termine.data, termine.descrizione); setTermine({ data: '', descrizione: '' }); await carica(); aggiorna(); mostra('Scadenza salvata'); }); }}>
           <label className="pp-campo"><span>Data</span><input required type="date" value={termine.data} onChange={(e) => setTermine({ ...termine, data: e.target.value })} /></label>
@@ -77,15 +98,7 @@ export function PaginaPratica({ p: base, ctx }) {
         {!candidati.length && <Vuoto>Nessun documento legale senza pratica.</Vuoto>}
         {candidati.map((d) => <button className="pp-riga" disabled={busy} key={d.id} onClick={() => operazione(async () => { await collegaLegal(archivioDb, d.id, p.id); setCandidati((xs) => xs.filter((x) => x.id !== d.id)); await carica(); aggiorna(); mostra('Documento collegato'); })}>{titoloDoc(d)}</button>)}
       </Sezione>}
-      {legal && scadenze.length > 0 && <Sezione titolo="Termini e scadenze"><Gruppo>{scadenze.map((s) => <div className="pp-riga" key={s.id}>
-        <span className="pp-riga-testo"><strong>{s.descrizione}</strong><span className="pp-riga-meta">{dataBreve(s.data)} · {s.completata ? 'Completata' : s.storica ? 'Storica, da verificare' : 'Da gestire'}</span></span>
-        {!s.completata && !s.storica && <button className="pp-chip-azione" disabled={busy} onClick={() => operazione(async () => { await segnaScadenza(archivioDb, s.id); await carica(); aggiorna(); })}>Fatta</button>}
-      </div>)}</Gruppo></Sezione>}
-      {!legal && scadenze.length > 0 && (
-        <Sezione titolo="Pagamenti e scadenze">
-          <Gruppo>{scadenze.map((s) => <RigaPagamento key={s.id} s={s} onApri={(x) => apri({ tipo: 'pagamento', s: x })} onPagato={async (x) => { await pagato(x); carica(); }} />)}</Gruppo>
-        </Sezione>
-      )}
+      <div id="pp-sez-documenti" />
       <Sezione titolo="Documenti" azione={!legal && totaleDoc > 0 ? <span className="pp-riga-meta">{euro(totaleDoc)} in totale</span> : null}>
         {!documenti ? <Vuoto>Carico…</Vuoto> : !documenti.length ? <Vuoto>Nessun documento.</Vuoto> : (
           <div className="pp-cronologia">

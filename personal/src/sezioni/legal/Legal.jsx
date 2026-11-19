@@ -1,19 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { caricaLegal, salvaPraticaLegal, STATI_LEGAL } from '../../lib/legal.js';
+import { caricaLegal, salvaPraticaLegal, STATI_LEGAL, statiSchede, avanzamentoSchede } from '../../lib/legal.js';
 import { cercaArchivio } from '../../lib/archivio.js';
 import { TabellaScadenze } from './Scadenze.jsx';
 import { Sezione, Vuoto, Chips, ElencoPratiche, RigaDocumento, Gruppo } from '../../ui.jsx';
+import { perNome } from '../../lib/praticheOrdine.js';
 export function Legal({ ctx }) {
-  const [elenco, setElenco] = useState(null), [docs, setDocs] = useState([]), [filtro, setFiltro] = useState('aperte');
+  const [elenco, setElenco] = useState(null), [docs, setDocs] = useState([]), [filtro, setFiltro] = useState('aperte'), [schede, setSchede] = useState([]);
   useEffect(() => { let vivo = true; ctx.esegui(async () => {
-    const [p, d] = await Promise.all([caricaLegal(archivioDb), cercaArchivio(archivioDb, { fascicolo: 'legale', limite: 300 })]);
-    if (vivo) { setElenco(p); setDocs(d.filter((x) => !x.pratica_id)); }
+    const [p, d, s] = await Promise.all([caricaLegal(archivioDb), cercaArchivio(archivioDb, { fascicolo: 'legale', limite: 300 }), statiSchede(archivioDb).catch(() => [])]);
+    if (vivo) { setElenco(p); setDocs(d.filter((x) => !x.pratica_id)); setSchede(s); }
   }); return () => { vivo = false; }; }, [ctx.esegui, ctx.versione]);
-  const visibili = (elenco || []).filter((p) => filtro === 'tutte' || (filtro === 'aperte' ? ['aperta', 'in_corso'].includes(p.stato) : ['risolta', 'archiviata'].includes(p.stato)));
+  const visibili = perNome(elenco || []).filter((p) => filtro === 'tutte' || (filtro === 'aperte' ? ['aperta', 'in_corso'].includes(p.stato) : ['risolta', 'archiviata'].includes(p.stato)));
   return <>
     <h2>Legal</h2><p>Scadenze legali ed economiche, pratiche, recuperi crediti e contenziosi. Apri una pratica per la sua scheda: sintesi, punti salienti, cose da attenzionare e passi da fare.</p>
     <TabellaScadenze ctx={ctx} />
+    {elenco && (() => { const a = avanzamentoSchede(elenco, schede); return a.totale > 0 && <p className="pp-legal-avanzamento" aria-label="Avanzamento delle analisi"><strong>{a.analizzate}/{a.totale}</strong> pratiche in corso analizzate · {a.verificate} verificate da te</p>; })()}
     <button className="pp-bottone" onClick={() => ctx.apri({ tipo: 'legal-modifica' })}>Nuova pratica</button>
     <Chips voci={[[ 'aperte', 'In corso' ], ['chiuse', 'Chiuse'], ['tutte', 'Tutte']]} attiva={filtro} onScegli={setFiltro} />
     {!elenco ? <Vuoto>Carico…</Vuoto> : <ElencoPratiche elenco={visibili} onApri={(p) => ctx.apri({ tipo: 'pratica', p })} />}

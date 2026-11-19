@@ -1178,3 +1178,26 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-sp-nuovo input { min-width: 0; padding: 9px 10px; border: 1px solid var(--pp-linea); border-radius: 10px; background: var(--pp-sfondo); color: var(--pp-inchiostro); font: inherit; }
 .pp-sp-nuovo button { grid-column: 1 / -1; }
 .pp-sp-piede { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+/* PRATICHE-WORKFLOW: filo temporale, parti, documenti mancanti, verifica, avanzamento */
+.pp-sp-filo ol { list-style: none; padding-left: 0; gap: 0; border-left: 2px solid var(--pp-linea); margin-left: 6px; }
+.pp-sp-filo li { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 10px; padding: 6px 0 6px 12px; position: relative; }
+.pp-sp-filo li::before { content: ''; position: absolute; left: -6px; top: 12px; width: 10px; height: 10px; border-radius: 50%; background: var(--pp-blu); }
+.pp-sp-filo-data { color: var(--pp-grigio); font-size: 13px; font-variant-numeric: tabular-nums; }
+.pp-sp-filo-evento { overflow-wrap: anywhere; }
+.pp-sp-filo-evento em { font-style: normal; color: var(--pp-grigio); }
+.pp-sp-parti { list-style: none; padding-left: 0 !important; }
+.pp-sp-mancanti { border-left: 4px solid var(--pp-blu); }
+.pp-sp-verifica { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; background: var(--pp-superficie); border-radius: var(--pp-raggio); padding: 10px 16px; border-left: 4px solid var(--pp-ambra); font-weight: 600; }
+.pp-sp-verifica-verificata { border-left-color: var(--pp-verde); color: var(--pp-verde); }
+.pp-sp-verifica-da_aggiornare { border-left-color: var(--pp-rosso); }
+.pp-legal-avanzamento { margin: 8px 0 12px; color: var(--pp-grigio); }
+.pp-legal-avanzamento strong { color: var(--pp-inchiostro); }
+@media (max-width: 420px) { .pp-sp-filo li { grid-template-columns: 1fr; gap: 2px; } }
+
+/* PRATICHE-PER-NOME: sommario della pagina della pratica (scadenze, passi, date, documenti). */
+.pp-pratica-sommario { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+.pp-pratica-sommario a { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 9px 4px; border-radius: var(--pp-raggio); background: var(--pp-superficie); box-shadow: var(--pp-ombra); color: inherit; text-decoration: none; text-align: center; min-width: 0; }
+.pp-pratica-sommario strong { font-size: 1.15rem; }
+.pp-pratica-sommario span { font-size: .72rem; opacity: .75; line-height: 1.15; }
+.pp-pratica-sommario em { font-style: normal; font-size: .68rem; color: var(--pp-rosso, #c0392b); }
+#pp-sez-scadenze, #pp-sez-documenti, #pp-sez-filo, #pp-sez-passi { scroll-margin-top: 70px; }

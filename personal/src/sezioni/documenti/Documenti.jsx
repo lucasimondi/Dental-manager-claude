@@ -11,6 +11,7 @@ import { VistaChiedi } from './Chiedi.jsx';
 import { VistaCose } from './Cose.jsx';
 import { VistaTempo } from './Tempo.jsx';
 import { colore, Vuoto, Sezione, Gruppo, Chips, Segmenti, ElencoPratiche } from '../../ui.jsx';
+import { perNome } from '../../lib/praticheOrdine.js';
 import { IconaCerca, IconaChiudi, IconaDocumenti, IconaFreccia, IconaStella, IconaFoto } from '../../Icone.jsx';
 import { ElencoSelezionabile } from './Selezione.jsx';
 import { BarraFiltri, filtriVuoti, conFiltri } from './Filtri.jsx';
@@ -67,7 +68,7 @@ function VistaClassica({ ctx }) {
   const ricerca = testo.trim().length > 1 || conFiltri(filtri);
 
   useEffect(() => { caricaEnti(archivioDb).then(setElencoEnti).catch(() => setElencoEnti([])); }, [versione]);
-  useEffect(() => { if (scheda === 'pratiche') esegui(async () => setElencoPratiche(await caricaPratiche(archivioDb))); }, [scheda, esegui, versione]);
+  useEffect(() => { if (scheda === 'pratiche') esegui(async () => setElencoPratiche(perNome(await caricaPratiche(archivioDb)))); }, [scheda, esegui, versione]);
 
   // Ricerca immediata (dopo una breve pausa nella digitazione) o elenco dei recenti.
   useEffect(() => {

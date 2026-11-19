@@ -45,7 +45,7 @@ export async function documentiDaGestire(db) {
 }
 
 export async function pratiche(db, testo = '') {
-  let q = db.from('v_pratiche').select('*').order('aggiornata_il', { ascending: false }).limit(100);
+  let q = db.from('v_pratiche').select('*').order('titolo', { ascending: true }).limit(1000);
   if (testo) q = q.ilike('titolo', `%${testo}%`);
   return esito(await q);
 }

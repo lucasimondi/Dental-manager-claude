@@ -1531,6 +1531,8 @@ function schedaPratica_(idPratica) {
     autorita: String(r.autorita || '').slice(0, 200), importo: typeof r.importo === 'number' && isFinite(r.importo) ? r.importo : null,
     sintesi: String(r.sintesi || '').slice(0, 1500), punti: traduci(r.punti, 8), attenzione: traduci(r.attenzione, 8),
     fonti: docs.map(function (d) { return d.id; }), modello: claudeInPausa_() ? 'gemini' : CONFIG.MODELLO, generata_il: new Date().toISOString(),
+    // PRATICHE-WORKFLOW: una scheda riscritta va riguardata da Luca (la conferma precedente non vale più).
+    stato_analisi: 'analizzata', verificata_il: null,
   };
   sb_('pratiche_schede?on_conflict=pratica_id', { method: 'post', prefer: 'resolution=merge-duplicates,return=minimal', body: scheda });
   const nuovi = salvaPassi_(p, docs, r.passi, scheda.controparte);
@@ -1559,11 +1561,18 @@ function salvaPassi_(p, docs, passi, controparte) {
 function aggiornaSchede_() {
   const sp = PropertiesService.getScriptProperties();
   if (Number(sp.getProperty('SCHEDE_ULTIMO') || 0) > Date.now() - 3600 * 1000 || apiInPausa_()) return false;
-  const schede = sb_('pratiche_schede?select=pratica_id,generata_il') || [];
+  // PRATICHE-WORKFLOW: le schede già segnate «da aggiornare» aspettano una nuova analisi e non si rifanno da sole.
+  const schede = sb_('pratiche_schede?select=pratica_id,generata_il,modello&stato_analisi=neq.da_aggiornare') || [];
   if (!schede.length) return false;
   const nuovi = sb_('documenti?select=pratica_id,creato_il&pratica_id=in.(' + schede.map(function (s) { return s.pratica_id; }).join(',') + ')&order=creato_il.desc&limit=500') || [];
   const vecchia = schede.find(function (s) { return nuovi.some(function (d) { return d.pratica_id === s.pratica_id && d.creato_il > s.generata_il; }); });
   if (!vecchia) return false;
+  // Le schede scritte da Claude Code o Codex in sessione (con filo temporale e verifica) non si sovrascrivono con un
+  // modello: si segnano «da aggiornare» e Luca le vede in Legal; le riscrive lui con «Aggiorna analisi».
+  if (vecchia.modello === 'claude-code' || vecchia.modello === 'codex') {
+    sb_('pratiche_schede?pratica_id=eq.' + vecchia.pratica_id, { method: 'patch', prefer: 'return=minimal', body: { stato_analisi: 'da_aggiornare', verificata_il: null } });
+    return false;
+  }
   sp.setProperty('SCHEDE_ULTIMO', String(Date.now()));
   const r = schedaPratica_(vecchia.pratica_id);
   if (!r.ok && !r.clinico) logErrore_('scheda pratica ' + vecchia.pratica_id, new Error(r.errore));

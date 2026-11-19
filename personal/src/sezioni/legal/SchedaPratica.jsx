@@ -2,7 +2,7 @@
 // fare. Scritta leggendo i documenti (mai quelli dei pazienti); i passi sono anche in «Da fare».
 import { useCallback, useEffect, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { schedaPratica, passiPratica, segnaPasso, aggiungiPasso, analizzaPratica } from '../../lib/legal.js';
+import { schedaPratica, passiPratica, segnaPasso, aggiungiPasso, analizzaPratica, confermaScheda, filoOrdinato, STATI_ANALISI } from '../../lib/legal.js';
 import { euro } from '../../lib/coreArchivio.js';
 import { tokenSessione, dataBreve } from '../../ui.jsx';
 
@@ -12,7 +12,7 @@ function Fonti({ ids, fonti = [], ctx }) {
   return <span className="pp-sp-fonti">{ids.map((id) => { const n = fonti.indexOf(id) + 1 || '·'; return <button key={id} type="button" className="pp-sp-fonte" onClick={() => ctx.apri({ tipo: 'documento', id })} aria-label={`Apri il documento ${n}`}>doc {n}</button>; })}</span>;
 }
 
-export function SchedaPratica({ p, ctx }) {
+export function SchedaPratica({ p, ctx, onDati }) {
   const [scheda, setScheda] = useState(undefined), [passi, setPassi] = useState([]);
   const [stato, setStato] = useState(''), [nuovo, setNuovo] = useState({ testo: '', entro: '' });
   const carica = useCallback(async () => {
@@ -20,6 +20,8 @@ export function SchedaPratica({ p, ctx }) {
     setScheda(s || null); setPassi(ps || []);
   }, [p.id]);
   useEffect(() => { carica().catch(() => setScheda(null)); }, [carica, ctx.versione]);
+  // PRATICHE-PER-NOME: la pagina della pratica mostra in cima quante date e quanti passi ci sono.
+  useEffect(() => { if (scheda !== undefined) onDati?.({ filo: filoOrdinato(scheda?.filo).length, passi }); }, [scheda, passi, onDati]);
   const analizza = async () => {
     setStato('Leggo i documenti della pratica…');
     try {
@@ -50,12 +52,16 @@ export function SchedaPratica({ p, ctx }) {
           </dl>
           {scheda.sintesi && <p>{scheda.sintesi}</p>}
         </div>
+        {scheda.parti?.length > 0 && <div className="pp-sp-blocco"><h3>Parti</h3><ul className="pp-sp-parti">{scheda.parti.map((x, i) => <li key={i}><strong>{x.nome}</strong>{x.ruolo && <span> · {x.ruolo}</span>}</li>)}</ul></div>}
+        {filoOrdinato(scheda.filo).length > 0 && <div id="pp-sez-filo" className="pp-sp-blocco pp-sp-filo"><h3>Filo temporale · date e fatti</h3><ol>{filoOrdinato(scheda.filo).map((x, i) => (
+          <li key={i}><span className="pp-sp-filo-data">{x.data ? dataBreve(x.data) : 'senza data'}</span><span className="pp-sp-filo-evento">{x.evento}{x.chi && <em> · {x.chi}</em>}{x.importo != null && <em> · {euro(x.importo)}</em>}{x.rif && <em> · {x.rif}</em>} <Fonti ids={x.doc ? [].concat(x.doc) : []} fonti={scheda.fonti} ctx={ctx} /></span></li>))}</ol></div>}
         {scheda.punti?.length > 0 && <div className="pp-sp-blocco"><h3>Punti salienti</h3><ol>{scheda.punti.map((x, i) => <li key={i}>{x.testo} <Fonti ids={x.doc} fonti={scheda.fonti} ctx={ctx} /></li>)}</ol></div>}
         {scheda.attenzione?.length > 0 && <div className="pp-sp-blocco pp-sp-attenzione"><h3>Da attenzionare</h3><ul>{scheda.attenzione.map((x, i) => <li key={i}>{x.testo} <Fonti ids={x.doc} fonti={scheda.fonti} ctx={ctx} /></li>)}</ul></div>}
+        {scheda.mancanti?.length > 0 && <div className="pp-sp-blocco pp-sp-mancanti"><h3>Documenti mancanti</h3><ul>{scheda.mancanti.map((x, i) => <li key={i}>{x.cosa}{x.perche && <span className="pp-riga-meta"> — {x.perche}</span>}</li>)}</ul></div>}
       </>}
-      <div className="pp-sp-blocco pp-sp-passi">
+      <div id="pp-sez-passi" className="pp-sp-blocco pp-sp-passi">
         <h3>Passi da fare{passi.length ? ` · ${aperti} aperti` : ''}</h3>
-        {passi.length > 0 && <ul>{passi.map((x) => (
+        {passi.length > 0 && <ul>{[...passi].sort((a, b) => (a.stato === 'gestito') - (b.stato === 'gestito') || String(a.scadenza || '9999').localeCompare(String(b.scadenza || '9999'))).map((x) => (
           <li key={x.id} className={x.stato === 'gestito' ? 'fatto' : ''}>
             <label><input type="checkbox" checked={x.stato === 'gestito'} onChange={() => spunta(x)} /><span>{x.titolo}{x.scadenza && <em> · entro {dataBreve(x.scadenza)}</em>}</span></label>
           </li>))}</ul>}
@@ -66,6 +72,12 @@ export function SchedaPratica({ p, ctx }) {
         </form>
         <p className="pp-riga-meta">I passi compaiono anche in «Da fare».</p>
       </div>
+      {scheda && <div className={`pp-sp-verifica pp-sp-verifica-${scheda.stato_analisi || 'analizzata'}`}>
+        <span>{STATI_ANALISI[scheda.stato_analisi] || 'Da verificare'}{scheda.verificata_il && ` il ${dataBreve(scheda.verificata_il)}`}</span>
+        {scheda.stato_analisi === 'verificata'
+          ? <button type="button" className="pp-testo-link" onClick={() => ctx.esegui(async () => { await confermaScheda(archivioDb, p.id, false); await carica(); })}>Togli conferma</button>
+          : <button type="button" className="pp-bottone pp-bottone-verde" onClick={() => ctx.esegui(async () => { await confermaScheda(archivioDb, p.id, true); await carica(); ctx.mostra?.('Scheda confermata'); })}>Conferma</button>}
+      </div>}
       {scheda && <div className="pp-sp-piede">
         <span className="pp-riga-meta">Scritta il {dataBreve(scheda.generata_il)}{scheda.modello === 'claude-code' ? ' da Claude Code' : ''} leggendo {scheda.fonti?.length || 0} documenti. Non è un parere legale.</span>
         <button type="button" className="pp-testo-link" disabled={stato.endsWith('…')} onClick={analizza}>{stato.endsWith('…') ? stato : 'Aggiorna analisi'}</button>
