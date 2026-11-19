@@ -12,7 +12,7 @@ function Fonti({ ids, fonti = [], ctx }) {
   return <span className="pp-sp-fonti">{ids.map((id) => { const n = fonti.indexOf(id) + 1 || '·'; return <button key={id} type="button" className="pp-sp-fonte" onClick={() => ctx.apri({ tipo: 'documento', id })} aria-label={`Apri il documento ${n}`}>doc {n}</button>; })}</span>;
 }
 
-export function SchedaPratica({ p, ctx, onDati }) {
+export function SchedaPratica({ p, ctx, onDati, parte = 'tutto' }) {
   const [scheda, setScheda] = useState(undefined), [passi, setPassi] = useState([]);
   const [stato, setStato] = useState(''), [nuovo, setNuovo] = useState({ testo: '', entro: '' });
   const carica = useCallback(async () => {
@@ -35,7 +35,7 @@ export function SchedaPratica({ p, ctx, onDati }) {
   const aperti = passi.filter((x) => x.stato !== 'gestito').length;
   return (
     <section className="pp-sp" aria-label="Scheda della pratica">
-      {!scheda ? (
+      {parte === 'passi' ? null : !scheda ? (
         <div className="pp-sp-vuota">
           <p>Nessuna scheda ancora. Poliedron legge i documenti e scrive sintesi, punti salienti, cose da attenzionare e passi da fare.</p>
           <button type="button" className="pp-bottone" disabled={!!stato && stato.endsWith('…')} onClick={analizza}>{stato.endsWith('…') ? stato : 'Analizza la pratica'}</button>
@@ -59,7 +59,7 @@ export function SchedaPratica({ p, ctx, onDati }) {
         {scheda.attenzione?.length > 0 && <div className="pp-sp-blocco pp-sp-attenzione"><h3>Da attenzionare</h3><ul>{scheda.attenzione.map((x, i) => <li key={i}>{x.testo} <Fonti ids={x.doc} fonti={scheda.fonti} ctx={ctx} /></li>)}</ul></div>}
         {scheda.mancanti?.length > 0 && <div className="pp-sp-blocco pp-sp-mancanti"><h3>Documenti mancanti</h3><ul>{scheda.mancanti.map((x, i) => <li key={i}>{x.cosa}{x.perche && <span className="pp-riga-meta"> — {x.perche}</span>}</li>)}</ul></div>}
       </>}
-      <div id="pp-sez-passi" className="pp-sp-blocco pp-sp-passi">
+      {parte !== 'scheda' && <div id="pp-sez-passi" className="pp-sp-blocco pp-sp-passi">
         <h3>Passi da fare{passi.length ? ` · ${aperti} aperti` : ''}</h3>
         {passi.length > 0 && <ul>{[...passi].sort((a, b) => (a.stato === 'gestito') - (b.stato === 'gestito') || String(a.scadenza || '9999').localeCompare(String(b.scadenza || '9999'))).map((x) => (
           <li key={x.id} className={x.stato === 'gestito' ? 'fatto' : ''}>
@@ -71,14 +71,14 @@ export function SchedaPratica({ p, ctx, onDati }) {
           <button type="submit" className="pp-bottone pp-bottone-chiaro" disabled={!nuovo.testo.trim()}>Aggiungi</button>
         </form>
         <p className="pp-riga-meta">I passi compaiono anche in «Da fare».</p>
-      </div>
-      {scheda && <div className={`pp-sp-verifica pp-sp-verifica-${scheda.stato_analisi || 'analizzata'}`}>
+      </div>}
+      {scheda && parte !== 'passi' && <div className={`pp-sp-verifica pp-sp-verifica-${scheda.stato_analisi || 'analizzata'}`}>
         <span>{STATI_ANALISI[scheda.stato_analisi] || 'Da verificare'}{scheda.verificata_il && ` il ${dataBreve(scheda.verificata_il)}`}</span>
         {scheda.stato_analisi === 'verificata'
           ? <button type="button" className="pp-testo-link" onClick={() => ctx.esegui(async () => { await confermaScheda(archivioDb, p.id, false); await carica(); })}>Togli conferma</button>
           : <button type="button" className="pp-bottone pp-bottone-verde" onClick={() => ctx.esegui(async () => { await confermaScheda(archivioDb, p.id, true); await carica(); ctx.mostra?.('Scheda confermata'); })}>Conferma</button>}
       </div>}
-      {scheda && <div className="pp-sp-piede">
+      {scheda && parte !== 'passi' && <div className="pp-sp-piede">
         <span className="pp-riga-meta">Scritta il {dataBreve(scheda.generata_il)}{scheda.modello === 'claude-code' ? ' da Claude Code' : ''} leggendo {scheda.fonti?.length || 0} documenti. Non è un parere legale.</span>
         <button type="button" className="pp-testo-link" disabled={stato.endsWith('…')} onClick={analizza}>{stato.endsWith('…') ? stato : 'Aggiorna analisi'}</button>
         {stato && !stato.endsWith('…') && <p className="pp-messaggio pp-messaggio-errore" role="alert">{stato}</p>}

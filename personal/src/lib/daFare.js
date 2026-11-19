@@ -10,7 +10,8 @@ const esito = ({ data, error }) => {
 
 export const PRIORITA = { alta: 'Urgente', media: 'Da fare', bassa: 'Quando puoi' };
 const PESO = { alta: 0, media: 1, bassa: 2 };
-const CAMPI = 'id, documento_id, ente, titolo, spiegazione, cosa_fare, bozza_risposta, scadenza, importo, priorita, stato, stato_il, creato_il, categoria, rimanda_al, note';
+const CAMPI = 'id, documento_id, ente, titolo, spiegazione, cosa_fare, bozza_risposta, scadenza, importo, priorita, stato, stato_il, creato_il, categoria, rimanda_al, note, pratica_id';
+const CAMPI_ANTEPRIMA = 'id, gmail_message_id, titolo, drive_url, drive_file_id, mime_type, nome_file_originale, fascicolo, riassunto, pratica_id, data_documento, email_data';
 
 // DA-FARE v2: categorie per i filtri. Se la riga non ha categoria la deduce dal titolo.
 export const CATEGORIE = [
@@ -78,13 +79,44 @@ export const puoRispondere = (p) => Boolean(p?.documento_id && p?.email);
 export async function caricaDaFare(db) {
   const righe = esito(await db.from('promemoria_azioni').select(CAMPI).eq('stato', 'aperto').limit(500));
   const ids = [...new Set(righe.map((r) => r.documento_id).filter(Boolean))];
-  const docs = ids.length ? esito(await db.from('documenti').select('id, gmail_message_id, titolo, drive_url, fascicolo, riassunto').in('id', ids)) : [];
+  const docs = ids.length ? esito(await db.from('documenti').select(CAMPI_ANTEPRIMA).in('id', ids)) : [];
   const perId = new Map(docs.map((d) => [d.id, d]));
-  return ordina(righe.map((r) => {
+  // DA-FARE-PER-PRATICA: la pratica del promemoria, o quella del suo documento.
+  const conPratica = righe.map((r) => ({ ...r, pratica_id: r.pratica_id || perId.get(r.documento_id)?.pratica_id || null }));
+  const pids = [...new Set(conPratica.map((r) => r.pratica_id).filter(Boolean))];
+  const [pratiche, ultimi] = pids.length ? await Promise.all([
+    db.from('v_pratiche').select('id, titolo, fascicolo, stato, urgenza, n_documenti, prossima_scadenza').in('id', pids).then(esito),
+    db.from('documenti').select(CAMPI_ANTEPRIMA).in('pratica_id', pids).neq('fascicolo', 'clinico_pazienti').not('drive_file_id', 'is', null).order('email_data', { ascending: false, nullsFirst: false }).limit(400).then(esito),
+  ]) : [[], []];
+  const anteprima = new Map();
+  for (const d of ultimi || []) if (!anteprima.has(d.pratica_id)) anteprima.set(d.pratica_id, d);
+  const praticaDi = new Map((pratiche || []).map((p) => [p.id, { ...p, anteprima: anteprima.get(p.id) || null }]));
+  return ordina(conPratica.map((r) => {
     const d = perId.get(r.documento_id);
     const msg = String(d?.gmail_message_id || '');
-    return { ...r, documento: d || null, email: Boolean(msg) && !/^(caricato|drivefile|drivefoto):/.test(msg) };
+    return { ...r, documento: d || null, pratica: praticaDi.get(r.pratica_id) || null, email: Boolean(msg) && !/^(caricato|drivefile|drivefoto):/.test(msg) };
   }));
+}
+
+// DA-FARE-PER-PRATICA (PO 2026-11-19: "io devo vedere l'elenco delle pratiche poi apro e lì ho tutti i documenti"):
+// i promemoria della stessa pratica diventano una sola voce (la pratica, con i suoi passi); gli altri restano singoli.
+// Ordine: urgenza, poi la scadenza più vicina.
+export function perPratica(voci) {
+  const gruppi = new Map();
+  const fuori = [];
+  for (const p of voci) {
+    if (!p.pratica) { fuori.push({ tipo: 'promemoria', id: p.id, p, priorita: p.priorita, scadenza: p.scadenza || null }); continue; }
+    const g = gruppi.get(p.pratica.id) || { tipo: 'pratica', id: p.pratica.id, pratica: p.pratica, voci: [] };
+    g.voci.push(p);
+    gruppi.set(p.pratica.id, g);
+  }
+  const PESO_P = { alta: 0, media: 1, bassa: 2 };
+  const elenco = [...[...gruppi.values()].map((g) => {
+    const voci = ordina(g.voci);
+    return { ...g, voci, priorita: voci[0].priorita, scadenza: voci.map((x) => x.scadenza).filter(Boolean).sort()[0] || null,
+      importo: voci.reduce((t, x) => t + (Number(x.importo) || 0), 0) || null };
+  }), ...fuori];
+  return elenco.sort((a, b) => (PESO_P[a.priorita] ?? 1) - (PESO_P[b.priorita] ?? 1) || String(a.scadenza || '9999').localeCompare(String(b.scadenza || '9999')));
 }
 
 // Rimanda: il promemoria resta aperto ma esce dalla lista fino alla data scelta.

@@ -76,13 +76,21 @@ try {
     assert.deepEqual(await page.evaluate(() => window.legalTest.aperto.at(-1).tipo), 'pratica');
     // Pratica: card.
     await page.goto('http://127.0.0.1:5183/tests/visual/personal-legal.html?vista=pratica');
+    // PRATICHE-CARTELLE (proposta B): la pratica si apre su «Documenti»; Riepilogo e Passi sono schede.
+    await page.getByRole('tab', { name: /^Documenti/ }).waitFor();
+    assert.equal(await page.getByRole('tab', { name: /^Documenti/ }).getAttribute('aria-selected'), 'true');
+    assert.match(await page.locator('.pp-pratica-testa h2').innerText(), /^Pratica Fornitore Prova/);
+    await page.getByRole('tab', { name: 'Riepilogo' }).click();
     await page.getByRole('heading', { name: 'In sintesi' }).waitFor();
-    for (const h of ['Punti salienti', 'Da attenzionare', 'Passi da fare · 1 aperti']) await page.getByRole('heading', { name: h }).waitFor();
+    for (const h of ['Punti salienti', 'Da attenzionare']) await page.getByRole('heading', { name: h }).waitFor();
     assert.deepEqual(await page.locator('.pp-sp-fonte').allTextContents(), ['doc 1', 'doc 2', 'doc 3', 'doc 3'], 'same number for the same document everywhere');
     await page.locator('.pp-sp-fonte').first().click();
     assert.deepEqual(await page.evaluate(() => window.legalTest.aperto.at(-1)), { tipo: 'documento', id: 'd1' });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'no horizontal scroll');
     await page.screenshot({ path: `${out}/scheda-${schema}.png`, fullPage: true });
+    await page.getByRole('tab', { name: /^Passi/ }).click();
+    await page.getByRole('heading', { name: 'Passi da fare · 1 aperti' }).waitFor();
+    await page.screenshot({ path: `${out}/passi-${schema}.png`, fullPage: true });
     await page.locator('.pp-sp-passi label').first().click({ noWaitAfter: true });
     await page.getByRole('heading', { name: 'Passi da fare · 0 aperti' }).waitFor();
     assert.ok(scritture.some((s) => s.path.endsWith('/promemoria_azioni') && /"stato":"gestito"/.test(s.body)));
@@ -91,6 +99,7 @@ try {
     await page.getByText('Telefonare all’avvocato').waitFor();
     const nuovo = JSON.parse(scritture.find((s) => s.path.endsWith('/promemoria_azioni') && s.body?.includes('Telefonare')).body);
     assert.deepEqual([nuovo.pratica_id, nuovo.categoria, nuovo.stato], ['p-uno', 'legale', 'aperto']);
+    await page.getByRole('tab', { name: 'Riepilogo' }).click();
     await page.getByRole('button', { name: 'Aggiorna analisi' }).click();
     await page.waitForFunction(() => window.legalTest.toast.some((t) => /Scheda aggiornata/.test(t)));
     assert.deepEqual(script.at(-1).azione, 'scheda_pratica');

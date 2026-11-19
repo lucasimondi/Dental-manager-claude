@@ -10,6 +10,8 @@ import { indirizzoScan } from '../../lib/scan.js';
 import { ICONE_ALTRO } from '../../../../shared/altro/AltroPage.jsx';
 import { saluto, dataBreve } from '../../ui.jsx';
 import { PER_TE } from './index.jsx';
+import { caricaCartellePratiche } from '../../lib/praticheCartelle.js';
+import { GrigliaPratiche } from '../documenti/index.jsx';
 
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const SCAN = 'M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16';
@@ -47,6 +49,16 @@ export function VistaPersonale({ ctx }) {
     return () => { vivo = false; };
   }, [versione]);
 
+  // PRATICHE-CARTELLE (proposta B): la ricerca della Home trova anche le pratiche, per prime.
+  const [pratiche, setPratiche] = useState([]);
+  useEffect(() => {
+    const t = cerca.trim();
+    if (t.length < 2) { setPratiche([]); return undefined; }
+    let vivo = true;
+    const timer = setTimeout(() => caricaCartellePratiche(archivioDb, { testo: t }).then((e) => { if (vivo) setPratiche(e.slice(0, 6)); }).catch(() => { if (vivo) setPratiche([]); }), 250);
+    return () => { vivo = false; clearTimeout(timer); };
+  }, [cerca, versione]);
+
   const apriSezione = (id) => (id === 'personali' ? vai('documenti', 'personali') : vai(id));
   const trovate = useMemo(() => (cerca ? PER_TE.filter(([, nome, , , sotto]) => norm(`${nome} ${sotto || ''}`).includes(norm(cerca))) : []), [cerca]);
 
@@ -73,7 +85,11 @@ export function VistaPersonale({ ctx }) {
         </button>
       </div>
 
-      {cerca ? (
+      {cerca ? (<>
+        {pratiche.length > 0 && <section className="pps-trovate pps-trovate-pratiche" aria-label="Pratiche trovate">
+          <h2 className="pps-titoletto">Pratiche</h2>
+          <GrigliaPratiche elenco={pratiche} onApri={(p) => apri({ tipo: 'pratica', p })} />
+        </section>}
         <section className="pps-trovate" aria-label="Sezioni trovate">
           {trovate.length ? trovate.map(([id, n, icona, , sotto]) => (
             <button key={id} type="button" className="pps-riga" onClick={() => apriSezione(id)}>
@@ -81,9 +97,9 @@ export function VistaPersonale({ ctx }) {
               <span className="pps-riga-testo"><strong>{n}</strong>{sotto && <span>{sotto}</span>}</span>
               <i aria-hidden="true">›</i>
             </button>
-          )) : <p className="pps-vuoto">Nessuna sezione con «{cerca}». Per cercare nei documenti apri Documenti.</p>}
+          )) : !pratiche.length && <p className="pps-vuoto">Nessuna pratica o sezione con «{cerca}». Per cercare nei documenti apri Documenti.</p>}
         </section>
-      ) : (
+      </>) : (
         <>
           <button type="button" className="pps-dafare" onClick={() => vai('dafare')}>
             <Icona d={ICONE_ALTRO.attivita} tono="vetro" grande />
