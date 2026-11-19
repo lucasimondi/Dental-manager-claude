@@ -1211,3 +1211,15 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-doc-voce-scheda > .pp-doc-menu { position: absolute; top: 4px; right: 4px; min-width: 36px; height: 30px; border-radius: 15px; background: color-mix(in srgb, var(--pp-superficie, #fff) 88%, transparent); box-shadow: var(--pp-ombra); }
 .pp-doc-menu:focus-visible { outline: 2px solid var(--pp-accento, #2563eb); outline-offset: -2px; }
 .pp-scorri-corpo > .pp-doc-voce { width: 100%; height: 100%; background: var(--pp-superficie); }
+
+/* DA-FARE-PER-PRATICA: una voce per pratica (anteprima, passi, tocco = apri la pratica); anteprima del documento. */
+.pp-promemoria-pratica { display: flex; gap: 12px; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; align-items: flex-start; }
+.pp-promemoria-anteprima { flex: none; }
+.pp-promemoria-corpo { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.pp-promemoria-elenco-passi { margin: 4px 0 0; padding-left: 18px; font-size: .9rem; }
+.pp-promemoria-elenco-passi li { margin: 2px 0; }
+.pp-promemoria-elenco-passi em { font-style: normal; opacity: .7; }
+.pp-promemoria-apri { align-self: flex-end; font-weight: 600; color: var(--pp-verde, #127a5a); font-size: .9rem; }
+.pp-promemoria-documento { display: flex; align-items: center; gap: 10px; width: 100%; margin: 0 0 8px; padding: 0; border: 0; background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.pp-promemoria-documento .pp-riga-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.pp-pannello.pp-promemoria.pp-promemoria-pratica { display: flex; flex-direction: row; }

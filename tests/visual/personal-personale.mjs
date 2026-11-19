@@ -7,7 +7,7 @@ const out = 'tests/visual/results-personal-personale'; await mkdir(out, { recurs
 const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', '5181', '--strictPort'], { stdio: 'ignore' });
 const oggi = new Date(); const tra = (g) => { const x = new Date(oggi); x.setDate(x.getDate() + g); return x.toISOString().slice(0, 10); };
 const mese = tra(0).slice(0, 7);
-const PROMEMORIA = [{ id: 'a1', stato: 'aperto', priorita: 'alta', titolo: 'Sollecito prova', spiegazione: 'Spiegazione prova', importo: 120 }, { id: 'a2', stato: 'aperto', priorita: 'media', titolo: 'Rispondere prova', spiegazione: 'Spiegazione prova' }, { id: 'a3', stato: 'aperto', priorita: 'bassa', titolo: 'Rinnovo prova', spiegazione: 'Spiegazione prova' }];
+const PROMEMORIA = [{ id: 'a1', stato: 'aperto', priorita: 'alta', titolo: 'Sollecito prova', spiegazione: 'Spiegazione prova', importo: 120, pratica_id: 'p1', scadenza: tra(7) }, { id: 'a2', stato: 'aperto', priorita: 'media', titolo: 'Rispondere prova', spiegazione: 'Spiegazione prova', pratica_id: 'p1' }, { id: 'a3', stato: 'aperto', priorita: 'bassa', titolo: 'Rinnovo prova', spiegazione: 'Spiegazione prova' }];
 const DOCS = [
   { id: 'd1', titolo: 'Ricevuta acquisto', fascicolo: 'conti', mime_type: 'application/pdf', creato_il: `${tra(0)}T09:00:00Z`, ente: 'Negozio Prova' },
   { id: 'd2', titolo: 'Referto paziente', fascicolo: 'clinico_pazienti', mime_type: 'application/pdf', creato_il: `${tra(0)}T08:00:00Z` },
@@ -34,6 +34,7 @@ try {
       if (u.hostname.endsWith('supabase.co')) {
         if (req.method() !== 'GET') scritture.push(u.pathname);
         if (u.pathname.endsWith('/promemoria_azioni')) return route.fulfill({ json: PROMEMORIA });
+        if (u.pathname.endsWith('/v_pratiche')) return route.fulfill({ json: [{ id: 'p1', titolo: 'Pratica di prova – recupero', fascicolo: 'legale', stato: 'aperta', n_documenti: 3 }] });
         if (u.pathname.endsWith('/documenti')) return route.fulfill({ json: DOCS });
         if (u.pathname.endsWith('/scadenze')) return route.fulfill({ json: SCAD });
         if (u.pathname.endsWith('/movimenti')) return route.fulfill({ json: MOV });
@@ -71,7 +72,12 @@ try {
     await page.getByRole('button', { name: 'Torna' }).click();
     await page.locator('.pps-dafare').click();
     await page.getByText('Sollecito prova').waitFor();
+    // DA-FARE-PER-PRATICA: i due promemoria della pratica sono una sola voce; il tocco apre la pratica.
+    assert.equal(await page.locator('.pp-promemoria-pratica').count(), 1);
+    assert.match(await page.locator('.pp-promemoria-pratica').innerText(), /Pratica di prova – recupero[\s\S]*2 passi da fare[\s\S]*Sollecito prova[\s\S]*Rispondere prova/);
     await page.screenshot({ path: `${out}/dafare-${tema}.png`, fullPage: true });
+    await page.locator('.pp-promemoria-pratica').click();
+    assert.deepEqual(await page.evaluate(() => { const a = window.personaleTest.aperti.at(-1); return [a.tipo, a.id]; }), ['pratica', 'p1']);
     await page.getByRole('button', { name: 'Torna' }).click();
     await page.getByRole('button', { name: 'Impostazioni', exact: true }).click();
     assert.equal((await page.evaluate(() => window.personaleTest.aperti.at(-1).tipo)), 'impostazioni');

@@ -1,3 +1,11 @@
+# Current task — DA-FARE-PER-PRATICA (2026-11-19)
+- OWNER Claude Code; branch `ccr-9a526543-2sagy0` (master a86f3a6 = PR #325 merged in).
+- REQUEST PO 2026-11-19 (screenshot of Da fare): "non vedo anteprima anche piccola ma deve esserci e poi non è cliccabile quindi non apre niente e poi ci sono due uguali, trova una soluzione semplice: io devo vedere l'elenco delle pratiche poi apro e lì ho tutti i documenti ecc".
+- APP: `lib/daFare.js` `caricaDaFare` also loads pratica (reminder's pratica_id or its document's) + the latest document of each pratica as preview; `perPratica` groups reminders of the same pratica into one entry (ordered urgency, then nearest date). `DaFare.jsx`: `VocePratica` card (thumbnail, «Pratica · N documenti», N passi, next date, first 3 steps, «Apri la pratica ›»; whole card opens the pratica page with documents, scadenze, timeline and steps); single reminders get a clickable document preview line on top.
+- DATA: duplicate «nominare avvocato» 0d27262e (Mondino) → rimosso (note), 61edc4d6 retitled for both executions; 767e0a5c retitled (check PEC attachment + ruolo) and priority media. Open reminders: 68 → 19 pratica entries + ~22 singles.
+- VALIDATION: npm test PASS (new tests/daFarePerPratica.test.mjs 2/2); build:personal PASS; personal-personale visual PASS light/dark with pratica grouping and tap → pratica.
+- STATUS: commit on branch; PR/merge on "Mergia".
+
 # Current task — DOCUMENTI-AZIONI (2026-11-19)
 - OWNER Claude Code; branch `ccr-9a526543-2sagy0` (master 336305f merged in).
 - REQUEST PO 2026-11-19: "Deve essere tutto più facilmente reperibile a livello documentale e di workflow, nella cartelle delle pratiche e in tutte le cartelle dove ci sono documenti i documenti stessi devono essere elencati ed essere apribili scaricabili spostabili e poi deve esserci la possibilità di selezionarli uno ad uno anche tutti e a quel punto scaricabili tutti insieme o inviabili tutti insieme".
