@@ -4,13 +4,14 @@ import { caricaLegal, salvaPraticaLegal, STATI_LEGAL, statiSchede, avanzamentoSc
 import { cercaArchivio } from '../../lib/archivio.js';
 import { TabellaScadenze } from './Scadenze.jsx';
 import { Sezione, Vuoto, Chips, ElencoPratiche, RigaDocumento, Gruppo } from '../../ui.jsx';
+import { perNome } from '../../lib/praticheOrdine.js';
 export function Legal({ ctx }) {
   const [elenco, setElenco] = useState(null), [docs, setDocs] = useState([]), [filtro, setFiltro] = useState('aperte'), [schede, setSchede] = useState([]);
   useEffect(() => { let vivo = true; ctx.esegui(async () => {
     const [p, d, s] = await Promise.all([caricaLegal(archivioDb), cercaArchivio(archivioDb, { fascicolo: 'legale', limite: 300 }), statiSchede(archivioDb).catch(() => [])]);
     if (vivo) { setElenco(p); setDocs(d.filter((x) => !x.pratica_id)); setSchede(s); }
   }); return () => { vivo = false; }; }, [ctx.esegui, ctx.versione]);
-  const visibili = (elenco || []).filter((p) => filtro === 'tutte' || (filtro === 'aperte' ? ['aperta', 'in_corso'].includes(p.stato) : ['risolta', 'archiviata'].includes(p.stato)));
+  const visibili = perNome(elenco || []).filter((p) => filtro === 'tutte' || (filtro === 'aperte' ? ['aperta', 'in_corso'].includes(p.stato) : ['risolta', 'archiviata'].includes(p.stato)));
   return <>
     <h2>Legal</h2><p>Scadenze legali ed economiche, pratiche, recuperi crediti e contenziosi. Apri una pratica per la sua scheda: sintesi, punti salienti, cose da attenzionare e passi da fare.</p>
     <TabellaScadenze ctx={ctx} />

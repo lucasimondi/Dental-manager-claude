@@ -14,7 +14,7 @@ export async function salvaPraticaLegal(db, id, campi) {
   return esito(await q.select('*').single());
 }
 export async function caricaLegal(db) {
-  return esito(await db.from('v_pratiche').select('*').eq('fascicolo', 'legale').order('aggiornata_il', { ascending: false }));
+  return esito(await db.from('v_pratiche').select('*').eq('fascicolo', 'legale').order('titolo', { ascending: true }));
 }
 export async function collegaLegal(db, documentoId, praticaId) {
   // Non sovrascrive collegamenti già presenti: se qualcuno lo ha collegato nel frattempo fallisce.
