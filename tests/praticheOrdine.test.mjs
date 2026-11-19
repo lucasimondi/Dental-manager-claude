@@ -26,15 +26,15 @@ test('il sommario della pratica conta scadenze aperte, passi aperti, date e docu
   assert.equal(sommarioPratica({}).find((x) => x.id === 'pp-sez-documenti').n, null);
 });
 
-test('elenchi e pagina della pratica usano ordine per nome e sommario con le ancore', () => {
+test('pratiche come cartelle (proposta B): elenco per nome, schede dentro la pratica, ricerca in Home', () => {
   const legal = readFileSync('personal/src/sezioni/legal/Legal.jsx', 'utf8');
   const doc = readFileSync('personal/src/sezioni/documenti/Documenti.jsx', 'utf8');
   const pagina = readFileSync('personal/src/sezioni/documenti/Pratica.jsx', 'utf8');
-  const scheda = readFileSync('personal/src/sezioni/legal/SchedaPratica.jsx', 'utf8');
-  assert.match(legal, /perNome\(elenco/);
-  assert.match(doc, /perNome\(await caricaPratiche/);
-  for (const id of ['pp-sez-scadenze', 'pp-sez-documenti']) assert.ok(pagina.includes(`id="${id}"`), id);
-  for (const id of ['pp-sez-filo', 'pp-sez-passi']) assert.ok(scheda.includes(`id="${id}"`), id);
-  assert.match(pagina, /onDati=\{setDatiScheda\}/);
-  assert.ok(pagina.indexOf('id="pp-sez-scadenze"') < pagina.indexOf('<SchedaPratica'), 'le scadenze vengono prima della scheda');
+  const home = readFileSync('personal/src/sezioni/altro/Personale.jsx', 'utf8');
+  assert.match(legal, /<PraticheCartelle ctx=\{ctx\} \/>/);
+  assert.match(doc, /<PraticheCartelle ctx=\{ctx\} \/>/);
+  for (const t of ["'riepilogo', 'Riepilogo'", "'documenti', 'Documenti'", "'scadenze', 'Scadenze'", "'passi', 'Passi'", "useState('documenti')", '<h2>{nomePratica(p)}</h2>']) assert.ok(pagina.includes(t), t);
+  assert.match(pagina, /<SchedaPratica p=\{p\} ctx=\{ctx\} parte="scheda" \/>/);
+  assert.match(home, /caricaCartellePratiche\(archivioDb, \{ testo: t \}\)/);
+  assert.match(home, /<GrigliaPratiche elenco=\{pratiche\}/);
 });

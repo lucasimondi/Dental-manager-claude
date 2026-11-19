@@ -1223,3 +1223,19 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-promemoria-documento { display: flex; align-items: center; gap: 10px; width: 100%; margin: 0 0 8px; padding: 0; border: 0; background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .pp-promemoria-documento .pp-riga-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .pp-pannello.pp-promemoria.pp-promemoria-pratica { display: flex; flex-direction: row; }
+
+/* PRATICHE-CARTELLE (proposta B): pratiche come cartelle con anteprime; schede dentro la pratica. */
+.pp-griglia-pratiche { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 10px; }
+@media (min-width: 720px) { .pp-griglia-pratiche { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.pp-cartella-pratica { display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 16px; border: 1px solid var(--pp-linea); background: var(--pp-superficie); box-shadow: var(--pp-ombra); color: inherit; font: inherit; text-align: left; cursor: pointer; min-width: 0; }
+.pp-cartella-pratica-anteprime { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.pp-cartella-pratica-casella { height: 54px; border-radius: 8px; overflow: hidden; background: color-mix(in srgb, var(--pp-linea) 55%, transparent); display: flex; align-items: center; justify-content: center; }
+.pp-cartella-pratica-casella > * { width: 100% !important; height: 100% !important; border-radius: 0 !important; }
+.pp-cartella-pratica-nome { font-size: .92rem; line-height: 1.2; overflow-wrap: anywhere; }
+.pp-cartella-pratica-meta { font-size: .78rem; opacity: .75; }
+.pp-cartella-pratica-meta.urgente { color: #b42318; opacity: 1; font-weight: 600; }
+.pp-schede-pratica { display: flex; gap: 4px; padding: 4px; margin-top: 12px; border-radius: 14px; background: color-mix(in srgb, var(--pp-linea) 70%, transparent); position: sticky; top: 0; z-index: 2; }
+.pp-schede-pratica button { flex: 1; min-height: 40px; border: 0; border-radius: 10px; background: transparent; color: inherit; font: inherit; font-size: .82rem; cursor: pointer; padding: 2px; line-height: 1.1; }
+.pp-schede-pratica button[aria-selected="true"] { background: var(--pp-superficie); font-weight: 700; box-shadow: var(--pp-ombra); }
+.pp-schede-pratica button span { display: block; font-size: .72rem; opacity: .7; font-weight: 400; }
+.pps-trovate-pratiche { margin-bottom: 10px; }

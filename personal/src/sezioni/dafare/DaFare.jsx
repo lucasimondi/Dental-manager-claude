@@ -4,6 +4,7 @@ import { caricaDaFare, cambiaStato, rimanda, dataTra, rimandato, filtri, filtra,
 import { salvaImpegno } from '../../lib/studio.js';
 import { dataBreve, Vuoto, tokenSessione, colore } from '../../ui.jsx';
 import { Miniatura } from '../../Miniatura.jsx';
+import { nomePratica } from '../../lib/praticheCartelle.js';
 
 // DA-FARE v2 (2026-11-16): filtri per urgenza e categoria, riepilogo, Risolta/Elimina con Annulla, Rimanda.
 // DA-FARE (2026-11-16): ogni promemoria è breve (titolo) e spiegato (spiegazione), con quattro tasti:
@@ -66,7 +67,7 @@ function VocePratica({ v, ctx }) {
   const pr = v.pratica;
   const scaduta = v.scadenza && v.scadenza < oggi;
   return (
-    <button type="button" className={`pp-pannello pp-promemoria pp-promemoria-pratica pp-priorita-${v.priorita}`} onClick={() => ctx.apri({ tipo: 'pratica', p: pr })} aria-label={`Apri la pratica ${pr.titolo}`}>
+    <button type="button" className={`pp-pannello pp-promemoria pp-promemoria-pratica pp-priorita-${v.priorita}`} onClick={() => ctx.apri({ tipo: 'pratica', p: pr })} aria-label={`Apri ${nomePratica(pr)}`}>
       <span className="pp-promemoria-anteprima"><Miniatura doc={pr.anteprima || { fascicolo: pr.fascicolo }} colore={colore(pr.fascicolo)} /></span>
       <span className="pp-promemoria-corpo">
         <span className="pp-promemoria-testa">
@@ -74,7 +75,7 @@ function VocePratica({ v, ctx }) {
           <span className="pp-etichetta">Pratica · {pr.n_documenti ?? 0} documenti</span>
           {v.importo != null && <span className="pp-promemoria-importo">{euro(v.importo)}</span>}
         </span>
-        <strong className="pp-promemoria-titolo">{pr.titolo}</strong>
+        <strong className="pp-promemoria-titolo">{nomePratica(pr)}</strong>
         <span className="pp-riga-meta">{[`${v.voci.length} ${v.voci.length === 1 ? 'passo da fare' : 'passi da fare'}`, v.scadenza ? `${scaduta ? 'scaduto' : 'prossimo entro'} ${dataBreve(v.scadenza)}` : null].filter(Boolean).join(' · ')}</span>
         <ul className="pp-promemoria-elenco-passi">
           {v.voci.slice(0, 3).map((x) => <li key={x.id}>{x.titolo}{x.scadenza && <em> · {dataBreve(x.scadenza)}</em>}</li>)}

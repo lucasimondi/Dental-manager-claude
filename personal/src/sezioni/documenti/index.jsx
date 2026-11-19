@@ -19,6 +19,9 @@ const PaginaCosa = differito(() => import('./Cose.jsx'), 'PaginaCosa');
 const PaginaFirmati = differito(() => import('./Firmati.jsx'), 'PaginaFirmati');
 // DOCUMENTI-AZIONI: l'elenco con «•••», selezione, Scarica / invia e Pratica, usato anche da Legal.
 export const ElencoSelezionabile = differito(() => import('./Selezione.jsx'), 'ElencoSelezionabile');
+// PRATICHE-CARTELLE: le pratiche come cartelle (Legal) e la loro griglia (ricerca della Home).
+export const PraticheCartelle = differito(() => import('./PraticheCartelle.jsx'), 'PraticheCartelle');
+export const GrigliaPratiche = differito(() => import('./PraticheCartelle.jsx'), 'GrigliaPratiche');
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { documentiSenzaCartella } from '../../lib/cartelle.js';
 import { CAMPI_DOC } from '../../lib/archivio.js';
