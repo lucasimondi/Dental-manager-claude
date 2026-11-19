@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 # Current task — PRATICHE-CONSULENTI (2026-11-19)
 - OWNER Claude Code; branch `claude/pratiche-consulenti-email` (from master a6226ad).
 - REQUEST PO 2026-11-19: "Metti anche lo spazio per inserire i consulenti che se ne occupano con i contatti per ogni pratica e che vengano poi inseriti anche gli scambi di mail dentro la scheda pratica".
@@ -17,7 +15,6 @@
 - VALIDATION: npm test PASS; build:personal PASS; headless Chrome 390px render with long titles: no horizontal overflow.
 - STATUS: PR; merge on "Mergia" (given 2026-11-19 18:29).
 
->>>>>>> origin/master
 # Current task — PRATICHE-CARTELLE (proposta B, 2026-11-19)
 - OWNER Claude Code; branch `ccr-9a526543-2sagy0` (same PR #326 as DA-FARE-PER-PRATICA).
 - REQUEST PO 2026-11-19: "devi fare un elenco delle pratiche chiamandole «pratica (e poi il nome)», deve essere trovabile anche nelle pratiche da gestire, poi li apri e c'è tutto ciò che necessita, deve essere trovabile anche dalla barra di ricerca in home, fammi tre proposte visive" → 3 mockups (artifact «Pratiche – tre proposte») → "Va bene la b".

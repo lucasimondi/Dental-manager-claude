@@ -42,3 +42,17 @@ Branch `ccr-9a526543-2sagy0` (fast-forwarded to `ccr-30bcc810-y3n89t` = Claude C
 - Existing reminders linked to their pratica: «Conto HYPE bloccato…» → 670888aa; «Yndetech: fattura diversa…» → 3cf63d4e (+ date 28/11, note); «Enel via Boccaccio…» → 7fd5b9ae; «Levrone Anna Bruna: Sorgenia, Serfin e Spinbridge» → 15e99a0a.
 - New Da fare: 0fa7a7c5 (mappa completa debiti, 15/12, alta), 4d91d84c (MPO allegati), f14044fe (Zoppini), 383bdd24 (INPS 100 €), b9af3145 (Best Italia), 84b0109a (One Apple), bd31a1a0 (Giansanti), + Dental Susa compenso, Torres esito, D.I. 2019/Dental Trey pagati.
 - Note: first insert of 7 schede used placeholder doc ids padded with zeros; fixed immediately by prefix lookup (verified: none left).
+
+## Fiscale — COMPLETE (not user-verified)
+- All 17 fiscal pratiche now have a scheda (modello claude-code). Main: Pagani CU 1e631ac5 (importo 7,311.68), AdER cartelle fd24c239 (39,117.16 €), partita IVA, Aruba, ISEE, CAF ACLI FEA, Redditi PF.
+- Reminders linked: d3e7ffe1 → Pagani; 10c453c1 (rottamazione) → AdER. New Da fare: Parazzini ricevute annullamento (5/12), F24 Redditi (20/12).
+- 10 historical fiscal pratiche (2010-2013): short scheda + stato 'risolta' (undo = set 'aperta').
+
+## Immobili — COMPLETE (not user-verified)
+- Active, with full scheda: 2a88403f CILA corso Galileo Ferraris 11 bis (stato in_corso, urgenza alta; Bertola waits since 20/5/2026 for Luca's signed incarico + Dalmasso's assenso — Gmail thread 19e45ad2b8eccdbf), 367cacdb Pradleves sale (renamed; 25,000 €, provvigione 4,000 + IVA, esclusiva to 31/01/2027; Luca 1/4 exposed to executions), bbd2ce2f via Quintino Sella 10 (looks superseded, urgenza bassa), ed530f4b UPPI Pavia (bassa), 4a32cf3b clinica Torino (bassa). 8d185cd4 Raboni Milano: scheda + 'risolta' (contract ended 14/3/2025).
+- Merges (src → dst, src archived with note «Unita in …»; undo = move docs back + reopen): 1f74655e → 367cacdb (Engel & Völkers = Abitare 4); 9dc2b656 → 81fb997e (Levrone PV damage); ccf438b4 → 57de8abe (Pratavecchia; its 04/02/2013 Marchisa report → 73b2be54); b967b939 → 6f53d9ad (Robbio); d6d33310, 42f2844d, 9899c2ae → 19c5a016 (serramenti 2013); de1af771 → e3df325b (Rovere); 9300ad1f, 170f27cc → 8d0d0dae (centro dentistico 2013); b3ac0931 → 6d583397 (cappotto); 17ae0bef → ee8e3667 (Condominio Armida, legale).
+- Moves: 0ef6addd-d393-465d-80ec-5be652d28eff, a0e06da1-e6aa-4390-ad33-f49819b34afc (Jan 2026 bank financing for METO-D Saluzzo) clinica Torino 4a32cf3b → edcdfb67 (scheda: +2 events, sintesi amended).
+- 42 historical pratiche (2003-2013): short scheda (timeline auto-built from document summaries) + stato 'risolta', urgenza bassa. Attention notes where something may still be live: garage piazza Boves, Eucalyptus Golfo Aranci, Robbio, Arnaudo (no rogito), centralina Pradleves (TAR outcome missing), Piccona planimetrie (executions).
+- Scadenze: 8 past ones marked completata (2010-2025). New: 31/01/2027 end of Pradleves esclusiva.
+- New Da fare: CILA firme (28/11, alta, lavoro); Pradleves agenzia/APE/atto + ask lawyer (10/12, media, famiglia).
+- Next: conti/previdenza/successione, then fornitori/utenze/veicoli/assicurazioni.
