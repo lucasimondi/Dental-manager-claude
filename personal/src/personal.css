@@ -1255,3 +1255,33 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-promemoria-documento .pp-riga-meta { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .pp-dafare-riepilogo > div { min-width: 0; }
 .pp-dafare-riepilogo strong { font-size: clamp(1rem, 5vw, 1.25rem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* PRATICHE-CONSULENTI (2026-11-19): sei schede nella pratica (scorrono se lo schermo è stretto), consulenti ed email. */
+.pp-schede-pratica { overflow-x: auto; scrollbar-width: none; }
+.pp-schede-pratica::-webkit-scrollbar { display: none; }
+.pp-schede-pratica button { flex: 1 0 auto; min-width: 62px; padding: 2px 6px; white-space: nowrap; }
+.pp-consulenti { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.pp-consulente { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 14px; border-radius: 16px; background: var(--pp-superficie); box-shadow: var(--pp-ombra); min-width: 0; }
+.pp-consulente-testa { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.pp-consulente-iniziali { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: color-mix(in srgb, #0f9f86 16%, transparent); color: #0b7d6a; font-weight: 800; font-size: 15px; }
+.pp-consulente-nome { display: grid; gap: 2px; min-width: 0; }
+.pp-consulente-nome strong { font-size: 1.02rem; overflow-wrap: anywhere; }
+.pp-consulente-contatti { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.pp-consulente-contatti li { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.pp-consulente-contatti li > span { color: var(--pp-grigio); font-size: 12.5px; }
+.pp-consulente-contatti a { color: inherit; font-weight: 600; overflow-wrap: anywhere; text-decoration: none; }
+.pp-consulente-azioni { display: flex; flex-wrap: wrap; gap: 6px; }
+.pp-consulente-azioni .pp-chip { text-decoration: none; font-size: 13.5px; box-shadow: none; border: 1px solid var(--pp-linea); }
+.pp-chip.pp-chip-rosso { background: #dc2626; color: #fff; border-color: #dc2626; }
+.pp-consulente-modulo { display: grid; gap: 8px; }
+.pp-consulente-modulo textarea { font: inherit; }
+.pp-email-pratica { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.pp-email-pratica li { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 12px 14px; border-radius: 14px; background: var(--pp-superficie); box-shadow: var(--pp-ombra); }
+.pp-email-pratica li > .pp-chip { justify-self: start; font-size: 13px; box-shadow: none; border: 1px solid var(--pp-linea); }
+.pp-email-riga { display: grid; gap: 3px; color: inherit; text-decoration: none; min-width: 0; }
+.pp-email-testa { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.pp-email-testa strong { flex: 1; min-width: 0; font-size: .97rem; line-height: 1.3; overflow-wrap: anywhere; }
+.pp-email-testa time { flex: none; font-size: 12.5px; color: var(--pp-grigio); }
+.pp-email-riga > .pp-riga-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-email-segni { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pp-email-segni .pp-etichetta { font-size: 11px; padding: 2px 8px; }

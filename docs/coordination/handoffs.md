@@ -4889,3 +4889,13 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Checks: 21/21 targeted tests PASS; Code.gs syntax PASS; database read-back 0 missing event source IDs, scheda not user-verified. No frontend change/build.
 - Unresolved/risks: clasp and Google authentication absent, protection NOT published; online script may still overwrite manual cards. No merge/deploy. BAM texts can be falsely marked letto despite only containing the email, or capped at 100k; original technical ZIP has 21 PDFs, some scans. Do not mark BAM fully analysed from these partial texts. No court-file access; mandates, notifications, registration, appeal and extinction remain to verify.
 - Next exact action: read batch2 checkpoint; recover BAM ZIP/PEC/scanned/capped originals from Drive, read every source, then write full BAM scheda. Continue Mondino 36/2023, Primo oppositions, Giraudo. Publish Code.gs from this branch only after reviewing online state and authenticating clasp; merge requires PO “Mergia” plus green checks.
+
+## Handoff — PRATICHE-CONSULENTI (2026-11-19, Claude Code)
+- Task: PRATICHE-CONSULENTI; previous agent: Claude Code; branch `claude/pratiche-consulenti-email`.
+- Objective: consultants with contacts per pratica, email exchanges inside the pratica.
+- Completed: migration `20261119200000_pratiche_consulenti.sql` (applied), app tabs Consulenti/Email, Code.gs consultant email import.
+- Files: supabase/archivio/migrations/20261119200000_pratiche_consulenti.sql, personal/src/lib/consulenti.js, personal/src/sezioni/documenti/PraticaContatti.jsx, personal/src/sezioni/documenti/Pratica.jsx, personal/src/personal.css, poliedron/archivio/Code.gs, poliedron/archivio/CLAUDE.md, tests/praticheConsulenti.test.mjs, tests/archivioPersonale.test.mjs, tests/visual/personal-pratica-consulenti.*.
+- Database: new table pratiche_consulenti + trigger + RPC email_pratica (additive). No data written.
+- Tests: npm test PASS; build:personal PASS; visual personal-pratica-consulenti PASS light/dark.
+- Unresolved/risks: Code.gs not clasp-pushed; until then only emails already in archive appear (by pratica or consultant sender). Emails sent by Luca to a consultant without attachments appear only after the script import. Tab bar of 6 tabs scrolls on narrow phones.
+- Next exact action: on "Mergia" merge PR; then `clasp push -f` from poliedron/archivio after clasp login.
