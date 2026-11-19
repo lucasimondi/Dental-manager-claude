@@ -4876,3 +4876,11 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Risks: data transcribed from phone screenshots (rows between screenshots may be missing — the PDF says so); co-owner of some 1/2 units not confirmed; the proposals assume the conguaglio rule at equal halves (legal advice stays with the lawyer).
 - Rollback: revert the commit; tables stay unused (removal needs a PO-approved migration).
 - Next: PO review on the phone after merge; enter values; "Mergia".
+
+## Handoff — CONCORDATO-IPOCATASTALE (2026-11-20) — Claude Code
+- Branch `ccr-ed9a8713-vw6jmo`. Objective: match the catasto visure (Drive) and ipotecarie screenshots, enrich the Concordato section, produce documents for the lawyer and for Anna.
+- Files: migration `20261120120000_concordato_ipocatastale.sql` (new, applied), `personal/src/lib/{concordato.js,concordatoPdf.js}`, `personal/src/sezioni/concordato/{Concordato.jsx,Atti.jsx (new),index.jsx}`, `personal/src/personal.css`, tests `concordato.test.mjs`, `archivioPersonale.test.mjs`, visual `personal-concordato.mjs`, coordination docs.
+- Database: 3 columns + 1 table (RLS owner-only); real data written via SQL (not in the repo).
+- Tests: npm test 1834/1834; builds PASS; visual PASS light/dark.
+- Risks: unit-level links of ipoteche are partly inferred (marked probabile/da verificare); Anna's PDF exposes the gravami on Luca's quota (needed for the division) but no other debts.
+- Rollback: revert; tables/columns stay unused. Next: PO review, PR on request.

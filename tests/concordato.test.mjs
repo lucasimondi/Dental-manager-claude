@@ -89,7 +89,7 @@ test('valore catastale di riferimento e controlli sui campi', () => {
 test('i PDF si generano: elenco dei beni con le quote e proposta di divisione', () => {
   const elenco = pdfBeni(jsPDF, BENI, { data: new Date('2026-11-20T10:00:00') });
   assert.ok(elenco.getNumberOfPages() >= 3);
-  assert.match(elenco.output(), /\/Title \(Beni immobili di Luca Simondi\)/);
+  assert.match(elenco.output(), /\/Title \(Situazione degli immobili di Luca Simondi\)/);
   const div = pdfDivisione(jsPDF, BENI, { nome: 'Proposta A', assegnazioni: assegnazioniProposta('equa', BENI, { casaLuca: 'casaL', casaAnna: 'casaA' }), voci: [] });
   assert.equal(div.getNumberOfPages(), 1);
   assert.match(div.output(), /\/Title /);
@@ -113,4 +113,38 @@ test('la sezione è registrata e raggiungibile da Pratiche e dalla ricerca di Pe
   assert.match(indice, /SEZIONI = \[[^\]]*concordato/); assert.match(indice, /VISTE = \[[^\]]*concordato/);
   assert.match(readFileSync('personal/src/sezioni/legal/Legal.jsx', 'utf8'), /vai\('concordato'\)/);
   assert.match(readFileSync('personal/src/sezioni/altro/index.jsx', 'utf8'), /\['concordato', 'Concordato'/);
+});
+
+test('situazione ipocatastale: formalità per bene, stato dei gravami, PDF per Anna senza altri debiti', async () => {
+  const { formalitaDi, statoGravami, intestatariTesto, riferimentoFormalita } = await import('../personal/src/lib/concordato.js');
+  const { pdfBeniComuni } = await import('../personal/src/lib/concordatoPdf.js');
+  const F = [
+    { id: 'f1', verso: 'contro', natura: 'pignoramento', tipo: 'trascrizione', data: '2025-02-25', reg_particolare: '1402', reg_generale: '1692', beni: [{ id: 'casaL', certezza: 'certo' }] },
+    { id: 'f2', verso: 'contro', natura: 'ipoteca_giudiziale', tipo: 'iscrizione', data: '2024-10-17', reg_particolare: '980', beni: [{ id: 'casaL', certezza: 'probabile' }, { id: 'beinette', certezza: 'certo' }] },
+    { id: 'f3', verso: 'favore', natura: 'successione', tipo: 'trascrizione', data: '2024-04-08', reg_particolare: '2748', beni: [{ id: 'casaL', certezza: 'certo' }] },
+    { id: 'f4', verso: 'contro', natura: 'convenzione', tipo: 'trascrizione', data: '2014-06-20', reg_particolare: '4181', beni: [{ id: 'garage', certezza: 'da_verificare' }] },
+  ];
+  assert.deepEqual(formalitaDi('casaL', F).map((f) => [f.id, f.certezza]), [['f1', 'certo'], ['f2', 'probabile'], ['f3', 'certo']]);
+  assert.deepEqual(formalitaDi('casaL', F, { soloGravami: true }).map((f) => f.id), ['f1', 'f2']);
+  assert.deepEqual(statoGravami('casaL', F), { pignorato: 'certo', ipoteca: 'probabile', divisione: false, n: 2, certi: 1 });
+  assert.equal(statoGravami('beinette', F).ipoteca, 'certo');
+  assert.equal(statoGravami('garage', F).n, 0, 'la convenzione edilizia non è un gravame');
+  assert.equal(intestatariTesto({ intestatari: [{ nome: 'Comune', quota: 'area', diritto: "Proprietà per l'area" }, { nome: 'Anna', quota: '1/2', diritto: 'Proprietà' }] }), "Comune area (proprietà per l'area); Anna 1/2");
+  assert.equal(riferimentoFormalita(F[0]), `Trascr. ${new Date('2025-02-25T12:00:00').toLocaleDateString('it-IT')} RP 1402 RG 1692`);
+  const doc = pdfBeniComuni(jsPDF, BENI, F, { data: new Date('2026-11-20T10:00:00') });
+  assert.ok(doc.getNumberOfPages() >= 2);
+  assert.match(doc.output(), /\/Title \(Beni in comune tra Luca e Anna Simondi\)/);
+  // Il documento per Anna non parla di concordato.
+  assert.doesNotMatch(readFileSync('personal/src/lib/concordatoPdf.js', 'utf8').split('export function pdfBeniComuni')[1].split('export function pdfDivisione')[0], /concordato|creditori del|sovraindebit/i);
+});
+
+test('database: formalità solo del proprietario, senza cancellazioni', () => {
+  const sql = readFileSync('supabase/archivio/migrations/20261120120000_concordato_ipocatastale.sql', 'utf8');
+  assert.match(sql, /create table if not exists concordato_formalita/);
+  assert.match(sql, /alter table concordato_formalita enable row level security/);
+  assert.match(sql, /create policy proprietario on concordato_formalita for all to authenticated\s+using \(\(select e_proprietario\(\)\)\) with check \(\(select e_proprietario\(\)\)\)/);
+  assert.match(sql, /revoke all on concordato_formalita from anon/);
+  assert.match(sql, /revoke delete on concordato_formalita from authenticated/);
+  assert.match(sql, /add column if not exists intestatari jsonb/);
+  assert.doesNotMatch(sql, /drop |truncate |delete from/i);
 });

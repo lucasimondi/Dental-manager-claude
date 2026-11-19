@@ -1269,3 +1269,37 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-cc-togli { grid-column: 3; grid-row: 1; border: 0; border-radius: 10px; background: color-mix(in srgb, var(--pp-rosso) 12%, transparent); color: var(--pp-rosso); font-size: 20px; cursor: pointer; }
 .pp-cc-azioni { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 18px; }
 .pp-cc-azioni .pp-testo-link { grid-column: 1 / -1; justify-content: center; }
+/* CONCORDATO › situazione ipocatastale */
+.pp-cc-doc-anna .pp-cc-doc-icona { color: #6941c6; background: color-mix(in srgb, #7a5af8 14%, transparent); }
+.pp-cc-pignorato { color: var(--pp-rosso); background: color-mix(in srgb, var(--pp-rosso) 12%, transparent); }
+.pp-cc-incerto { opacity: .75; border: 1px dashed currentColor; }
+.pp-cc-blocco { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--pp-superficie); box-shadow: var(--pp-ombra); }
+.pp-cc-blocco h3 { margin: 0 0 8px; font-size: 15px; }
+.pp-cc-intestatari { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.pp-cc-intestatari li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; font-size: 14px; }
+.pp-cc-intestatari li small { grid-column: 1 / -1; font-size: 12px; color: var(--pp-grigio); }
+.pp-cc-intestatari .pp-cc-io { color: var(--pp-blu); font-weight: 700; }
+.pp-cc-formalita, .pp-cc-atti { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.pp-cc-formalita li { display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; background: var(--pp-sfondo); border-left: 4px solid var(--pp-linea); font-size: 13px; }
+.pp-cc-formalita li span { color: var(--pp-grigio); overflow-wrap: anywhere; }
+.pp-cc-formalita li em { font-style: normal; font-size: 12px; color: var(--pp-ambra); }
+.pp-cc-f-rosso { border-left-color: var(--pp-rosso) !important; }
+.pp-cc-f-ambra { border-left-color: var(--pp-ambra) !important; }
+.pp-cc-f-blu { border-left-color: var(--pp-blu) !important; }
+.pp-cc-atti { margin-top: 10px; }
+.pp-cc-atto { border-radius: var(--pp-raggio); background: var(--pp-superficie); box-shadow: var(--pp-ombra); border-left: 4px solid var(--pp-linea); overflow: hidden; }
+.pp-cc-atto > button { display: grid; gap: 3px; width: 100%; padding: 12px 14px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.pp-cc-atto-testa { display: flex; justify-content: space-between; gap: 8px; }
+.pp-cc-atto-testa strong { font-size: 15px; }
+.pp-cc-atto-testa span { font-size: 13px; color: var(--pp-grigio); white-space: nowrap; }
+.pp-cc-atto-chi { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.pp-cc-atto small { font-size: 12.5px; color: var(--pp-grigio); }
+.pp-cc-atto-dettagli { padding: 0 14px 12px; font-size: 13.5px; }
+.pp-cc-atto-dettagli p { margin: 0 0 6px; }
+.pp-cc-atto-dettagli ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.pp-cc-atto-dettagli li { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.pp-cc-atto-dettagli li button { border: 0; background: none; padding: 4px 0; color: var(--pp-blu); font: inherit; text-align: left; cursor: pointer; }
+.pp-cc-atto-dettagli em { font-style: normal; font-size: 11.5px; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.pp-cc-cert-certo { color: var(--pp-verde); background: color-mix(in srgb, var(--pp-verde) 13%, transparent); }
+.pp-cc-cert-probabile { color: var(--pp-ambra); background: color-mix(in srgb, var(--pp-ambra) 13%, transparent); }
+.pp-cc-cert-da_verificare { color: var(--pp-grigio); background: color-mix(in srgb, var(--pp-grigio) 15%, transparent); }

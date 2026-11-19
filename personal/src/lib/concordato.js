@@ -144,3 +144,42 @@ export async function salvaScenario(db, s) {
 export async function eliminaScenario(db, id) {
   return esito(await db.from('divisione_scenari').delete().eq('id', id).select('id'));
 }
+
+/* ---------- Situazione ipocatastale (PO 2026-11-20): intestatari dalla visura e formalità ipotecarie ---------- */
+// natura → [etichetta, tono]. «contro» = pesa sul bene (ipoteche, pignoramenti, domande giudiziali).
+export const NATURE = {
+  pignoramento: ['Pignoramento', 'rosso'], domanda_divisione: ['Domanda di divisione', 'rosso'],
+  ipoteca_giudiziale: ['Ipoteca giudiziale', 'ambra'], ipoteca_volontaria: ['Ipoteca volontaria (mutuo)', 'ambra'],
+  convenzione: ['Convenzione edilizia', 'grigio'], cessione: ['Cessione di diritti', 'grigio'],
+  successione: ['Successione', 'blu'], accettazione: ['Accettazione di eredità', 'blu'], altro: ['Altro', 'grigio'],
+};
+export const CERTEZZE = { certo: 'certo', probabile: 'probabile', da_verificare: 'da verificare' };
+export const etichettaNatura = (n) => NATURE[n]?.[0] || n;
+export async function caricaFormalita(db) {
+  return esito(await db.from('concordato_formalita').select('*').order('data').order('ordine'));
+}
+// Formalità di un bene, con quanto è certo il collegamento. Solo «contro» se `soloGravami`.
+export function formalitaDi(beneId, formalita = [], { soloGravami = false } = {}) {
+  const out = [];
+  for (const f of formalita) {
+    if (soloGravami && f.verso !== 'contro') continue;
+    const l = (f.beni || []).find((x) => x.id === beneId);
+    if (l) out.push({ ...f, certezza: l.certezza });
+  }
+  return out;
+}
+// Riassunto per le etichette: il gravame più pesante e se è certo.
+export function statoGravami(beneId, formalita) {
+  const g = formalitaDi(beneId, formalita, { soloGravami: true }).filter((f) => !['convenzione', 'cessione'].includes(f.natura));
+  const certi = g.filter((f) => f.certezza === 'certo');
+  const pign = g.filter((f) => f.natura === 'pignoramento');
+  const ipo = g.filter((f) => f.natura.startsWith('ipoteca'));
+  return {
+    pignorato: pign.some((f) => f.certezza === 'certo') ? 'certo' : pign.length ? 'probabile' : null,
+    ipoteca: ipo.some((f) => f.certezza === 'certo') ? 'certo' : ipo.some((f) => f.certezza === 'probabile') ? 'probabile' : ipo.length ? 'da_verificare' : null,
+    divisione: g.some((f) => f.natura === 'domanda_divisione' && f.certezza === 'certo'),
+    n: g.length, certi: certi.length,
+  };
+}
+export const intestatariTesto = (b) => (b.intestatari || []).map((i) => `${i.nome} ${i.quota}${i.diritto && i.diritto !== 'Proprietà' ? ` (${i.diritto.toLowerCase()})` : ''}`).join('; ');
+export const riferimentoFormalita = (f) => `${f.tipo === 'iscrizione' ? 'Iscr.' : 'Trascr.'} ${new Date(`${f.data}T12:00:00`).toLocaleDateString('it-IT')} RP ${f.reg_particolare}${f.reg_generale ? ` RG ${f.reg_generale}` : ''}`;

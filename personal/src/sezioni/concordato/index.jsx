@@ -10,7 +10,7 @@ export const concordato = {
   id: 'concordato', nome: 'Concordato', Icona: IconaPratiche, Vista: Concordato,
   pagine: {
     concordato: { titolo: 'Concordato', render: (p, { ctx }) => <Concordato ctx={ctx} iniziale={p.scheda} /> },
-    'concordato-bene': { titolo: (p) => p.bene?.nome || 'Bene', modulo: true, render: (p, { ctx, chiudi }) => <ModuloBene bene={p.bene} ctx={ctx} chiudi={chiudi} /> },
+    'concordato-bene': { titolo: (p) => p.bene?.nome || 'Bene', modulo: true, render: (p, { ctx, chiudi }) => <ModuloBene bene={p.bene} formalita={p.formalita} ctx={ctx} chiudi={chiudi} /> },
     'divisione-proposta': { titolo: 'Proposta di divisione', modulo: true, render: (p, { ctx, chiudi }) => <PropostaDivisione id={p.id} ctx={ctx} chiudi={chiudi} /> },
   },
 };
