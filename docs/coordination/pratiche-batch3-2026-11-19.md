@@ -56,3 +56,10 @@ Branch `ccr-9a526543-2sagy0` (fast-forwarded to `ccr-30bcc810-y3n89t` = Claude C
 - Scadenze: 8 past ones marked completata (2010-2025). New: 31/01/2027 end of Pradleves esclusiva.
 - New Da fare: CILA firme (28/11, alta, lavoro); Pradleves agenzia/APE/atto + ask lawyer (10/12, media, famiglia).
 - Next: conti/previdenza/successione, then fornitori/utenze/veicoli/assicurazioni.
+
+## 2026-11-20 — Visura catastale, concordato e sovraindebitamento (not user-verified)
+- Visura catastale 20/11/2026 read (2 files uploaded by Luca to Drive, now registered as documenti `drivefile:13OPnjFV…`, `drivefile:1NmIh7mF…` in pratica 28dc3c57). Findings: 4 box piazza Boves still owned (pratica ae342e87 reopened), negozio c.so Galileo Ferraris 6 and Beinette flat unknown to the archive, Pradleves via IV Novembre = 4 units (note on 367cacdb), Pradleves division never done and mother's quotas not volturate (wrong CF) — attention added to afee64fb.
+- Network: Default environment allowlist extended (PO-approved prompts) with agenziaentrate.gov.it, agenziaentrateriscossione.gov.it, normattiva.it, gazzettaufficiale.it, occcuneo.com, iscos.it, giustizia.it, ordineavvocatitorino.it, ordineavvocaticuneo.it.
+- Official sources downloaded and uploaded to Drive (Archivio personale / «Concordato e crisi – documenti ufficiali», 14 PDF + sintesi) and (Archivio personale / «Sovraindebitamento – fascicolo OCC Cuneo»: OCC Cuneo forms, Torino guidelines, Cuneo decree, fascicolo draft). All registered in `documenti` with `gmail_message_id = drivefile:<id>`, `drive_fissa = true`, `da_analizzare = false`, tag `sovraindebitamento`.
+- New pratiche: 28dc3c57-ea38-4909-84db-3dfa8414c860 «Sovraindebitamento – OCC Cuneo» (in_corso, alta; scheda; 18 documents; OCC contact in pratiche_consulenti; 5 new Da fare + existing «mappa debiti» 0fa7a7c5 linked); 275cca08-a036-4c7d-899d-b2d050172175 «Concordato preventivo biennale (CPB) – documenti ufficiali» (risolta: Luca forfettario, excluded since 2025; 10 documents).
+- AdER pratica fd24c239: new Da fare «Rottamazione-quinquies: controllare se hai fatto domanda (rata 30/11)» (26/11, alta) + attention note.
