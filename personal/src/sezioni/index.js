@@ -4,6 +4,7 @@ import { didattica } from './didattica/index.jsx';
 export { IconaDiario } from './diario/index.jsx';
 import { diario } from './diario/index.jsx';
 import { legal } from './legal/index.jsx';
+import { concordato } from './concordato/index.jsx';
 // POL-VITA-017 — Personal a sezioni. Ogni sezione vive nella sua cartella con un index.jsx che
 // dichiara cosa porta all'app: la vista del dock (Vista), le pagine che apre (pagine: tipo →
 // titolo, modulo, render) e, se serve, azioni e classi per testata e contenuto. L'app (App.jsx)
@@ -22,12 +23,12 @@ import { poliedron } from './poliedron/index.jsx';
 import { impostazioni } from './impostazioni/index.jsx';
 import { dafare } from './dafare/index.jsx';
 
-export const SEZIONI = [altro, dafare, oggi, note, password, documenti, agenda, conti, personali, foto, legal, diario, didattica, poliedron, impostazioni];
+export const SEZIONI = [altro, dafare, oggi, note, password, documenti, agenda, conti, personali, foto, legal, concordato, diario, didattica, poliedron, impostazioni];
 // DOCK-PER-TE (PO 2026-11-08): Agenda · Documenti · Poliedron · Studio · Per te.
 // App aggiunge Poliedron al centro, Studio (la pagina Studio dell'app) e Per te (sezione «altro»).
 export const DOCK = [agenda, documenti];
 export const DOCK_DOPO = [];
-export const VISTE = [dafare, oggi, agenda, note, password, documenti, poliedron, altro, foto, conti, legal, personali, diario, didattica];
+export const VISTE = [dafare, oggi, agenda, note, password, documenti, poliedron, altro, foto, conti, legal, concordato, personali, diario, didattica];
 
 export const sezione = (id) => VISTE.find((s) => s.id === id);
 

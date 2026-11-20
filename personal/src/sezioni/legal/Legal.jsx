@@ -13,6 +13,9 @@ export function Legal({ ctx }) {
   }); return () => { vivo = false; }; }, [ctx.esegui, ctx.versione]);
   return <>
     <h2>Legal</h2><p>Scadenze legali ed economiche, pratiche, recuperi crediti e contenziosi. Apri una pratica per la sua scheda: sintesi, punti salienti, cose da attenzionare e passi da fare.</p>
+    <button type="button" className="pp-cc-entra" onClick={() => ctx.vai ? ctx.vai('concordato') : ctx.apri({ tipo: 'concordato' })}>
+      <strong>Concordato</strong><span>I tuoi beni con le quote (PDF) e la divisione con Anna</span><span aria-hidden="true">›</span>
+    </button>
     <TabellaScadenze ctx={ctx} />
     {elenco && (() => { const a = avanzamentoSchede(elenco, schede); return a.totale > 0 && <p className="pp-legal-avanzamento" aria-label="Avanzamento delle analisi"><strong>{a.analizzate}/{a.totale}</strong> pratiche in corso analizzate · {a.verificate} verificate da te</p>; })()}
     <button className="pp-bottone" onClick={() => ctx.apri({ tipo: 'legal-modifica' })}>Nuova pratica</button>
