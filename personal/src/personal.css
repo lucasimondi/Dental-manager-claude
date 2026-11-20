@@ -368,6 +368,9 @@ a { color: var(--pp-blu); text-decoration: none; }
 .pp-etichette { display: flex; flex-wrap: wrap; gap: 8px; }
 .pp-etichetta-scelta { padding: 7px 12px; border-radius: 999px; border: 1.5px solid var(--c); color: var(--c); background: var(--pp-superficie); font-weight: 650; font-size: 14px; }
 .pp-etichetta-scelta.attiva { background: var(--c); color: #fff; }
+.pp-etichetta-nuova { --c: var(--pp-tenue, #64748b); border-style: dashed; }
+.pp-etichetta-modulo { flex-basis: 100%; display: grid; gap: 8px; min-width: 0; }
+.pp-etichetta-modulo input { min-width: 0; }
 .pp-colore { width: 100%; height: 44px; padding: 2px; border: 1px solid var(--pp-linea); border-radius: 12px; background: var(--pp-superficie); }
 .pp-colore-piccolo { width: 40px; height: 34px; flex-shrink: 0; }
 .pp-voce-azioni { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }

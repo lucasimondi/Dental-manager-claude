@@ -192,6 +192,27 @@ export async function impostazioniAgenda() {
   return riga?.agenda_settings || {};
 }
 
+// AGENDA-ETICHETTE (PO 2026-11-20): etichette comuni dell'agenda unica, in
+// studio_info.agenda_settings.etichette. Si riscrive solo quella chiave, il resto delle
+// impostazioni dell'agenda resta com'è. Senza sessione dello studio: errore, nessun ripiego.
+export async function etichetteAgendaStudio() {
+  const sessione = await sessioneStudio();
+  if (!sessione) return null;
+  const impostazioni = await impostazioniAgenda();
+  return Array.isArray(impostazioni.etichette) && impostazioni.etichette.length ? impostazioni.etichette : null;
+}
+
+export async function salvaEtichetteAgendaStudio(etichette) {
+  const sessione = await sessioneStudio();
+  const studioId = studioDellaSessione(sessione);
+  if (!sessione || !studioId) throw new Error("Collega l'agenda dello studio per salvare le etichette.");
+  const riga = esito(await studioDb.from('studio_info').select('agenda_settings').eq('studio_id', studioId).maybeSingle());
+  if (!riga) throw new Error('Impostazioni dello studio non trovate.');
+  const agenda_settings = { ...(riga.agenda_settings || {}), etichette };
+  esito(await studioDb.from('studio_info').update({ agenda_settings }).eq('studio_id', studioId).select('studio_id'));
+  return etichette;
+}
+
 /* ---------- POL-VITA-022: incassi registrati anche nello studio ---------- */
 // id di pagamenti_esterni: lo assegna il client come fa il gestionale (Date.now()); payments.id
 // è un'identity del database.

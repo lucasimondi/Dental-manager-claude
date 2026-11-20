@@ -5,6 +5,8 @@ import { sessioneStudio, esciStudio, studioDb } from '../../lib/studio.js';
 import { slug } from '../../lib/impostazioni.js';
 import LabelSwatches from '../../../../shared/agenda/LabelSwatches.jsx';
 import { labelColor } from '../../../../shared/agenda/labelPalette.js';
+import { nuovaEtichetta } from '../../../../shared/agenda/etichette.js';
+import { sectionDestination } from '../../../../shared/agenda/navigation.js';
 import { colore, Sezione, Gruppo, Conferma, tokenSessione } from '../../ui.jsx';
 import { statoNotifiche, attivaNotifiche, disattivaNotifiche, provaNotifica } from '../../lib/notifiche.js';
 import { IconaPiu, IconaChiudi, IconaFreccia, IconaCestino, IconaEsci } from '../../Icone.jsx';
@@ -65,10 +67,21 @@ function NotificheTelefono({ ctx }) {
 }
 
 export function PaginaImpostazioni({ ctx, email }) {
-  const { impostazioni, salvaImp, apri } = ctx;
+  const { impostazioni, salvaImp, salvaEtichette, apri, esegui } = ctx;
   const { persone, categorie, sezioni, etichette } = impostazioni;
+  // AGENDA-ETICHETTE: una sola lista per Studio e Personal (salvata nello studio).
+  const cambiaEtichette = (nuove) => esegui(async () => { await salvaEtichette(nuove); });
   return (
     <>
+      <Sezione titolo="Impostazioni comuni">
+        <p className="pp-riga-meta pp-spiegazione">Le impostazioni sono un solo insieme per tutto Poliedra: qui quelle della vita personale, nello Studio orari dell'agenda, tipi di appuntamento, documenti e team. Le etichette dell'agenda sono le stesse in entrambe.</p>
+        <Gruppo>
+          <a className="pp-riga" href={sectionDestination('studio', 'set')}>
+            <span className="pp-riga-testo"><span className="pp-riga-titolo">Impostazioni dello Studio</span><span className="pp-riga-meta">Agenda, tipi di appuntamento, documenti, team</span></span>
+            <IconaFreccia size={16} />
+          </a>
+        </Gruppo>
+      </Sezione>
       <Sezione titolo="Persone">
         <p className="pp-riga-meta pp-spiegazione">A chi appartengono i documenti personali (carta d'identità, codice fiscale, …).</p>
         <ListaModificabile
@@ -116,20 +129,20 @@ export function PaginaImpostazioni({ ctx, email }) {
         />
       </Sezione>
       <Sezione titolo="Etichette dell'agenda">
-        <p className="pp-riga-meta pp-spiegazione">Per i tuoi eventi. Il colore compare anche nell'agenda dello studio.</p>
+        <p className="pp-riga-meta pp-spiegazione">Comuni a Studio e Personal: le trovi quando crei un impegno, con il loro colore. «Compleanni» c'è sempre.</p>
         <Gruppo>
           {etichette.map((e) => (
             <div key={e.id} className="pp-voce">
               <span><span className="pp-punto" style={{ '--c': labelColor(e.colore) }} />{e.nome}</span>
               <span className="pp-voce-azioni">
                 <input type="color" className="pp-colore pp-colore-piccolo" value={e.colore} aria-label={`Colore di ${e.nome}`}
-                  onChange={(ev) => salvaImp({ ...impostazioni, etichette: etichette.map((x) => (x.id === e.id ? { ...x, colore: ev.target.value } : x)) })} />
-                <button className="pp-icona-bottone pp-piccolo" aria-label={`Togli ${e.nome}`} disabled={etichette.length < 2}
-                  onClick={() => salvaImp({ ...impostazioni, etichette: etichette.filter((x) => x.id !== e.id) })}><IconaChiudi size={16} /></button>
+                  onChange={(ev) => cambiaEtichette(etichette.map((x) => (x.id === e.id ? { ...x, colore: ev.target.value } : x)))} />
+                <button className="pp-icona-bottone pp-piccolo" aria-label={`Togli ${e.nome}`} disabled={etichette.length < 2 || e.id === 'compleanni'}
+                  onClick={() => cambiaEtichette(etichette.filter((x) => x.id !== e.id))}><IconaChiudi size={16} /></button>
               </span>
             </div>
           ))}
-          <NuovaEtichetta onAggiungi={(nome, colore) => salvaImp({ ...impostazioni, etichette: [...etichette, { id: slug(nome), nome, colore }] })} />
+          <NuovaEtichetta onAggiungi={(nome, colore) => cambiaEtichette([...etichette, nuovaEtichetta(etichette, nome, colore)])} />
         </Gruppo>
       </Sezione>
       <Sezione titolo="Notifiche sul telefono">

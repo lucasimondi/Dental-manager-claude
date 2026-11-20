@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { salvaImpegno, salvaImpegni, eliminaImpegno, impegniDellaSerie, aggiornaImpegni, eliminaImpegni } from '../../lib/studio.js';
 import {
   daIso, oggi, minuti, ora, generaDateRipetizione, piuGiorni, nomeEtichetta, nuovoIdRipetizione, AMBITI_SERIE, occorrenzeDaToccare, applicaAOccorrenza, giorniTra,
+  RIPETIZIONI, fineRipetizionePredefinita, nuovaEtichetta,
 } from '../../lib/agenda.js';
 import { IconaCestino } from '../../Icone.jsx';
 import { ModuloAppuntamento } from './Appuntamento.jsx';
@@ -84,7 +85,9 @@ function ModuloEvento({ iniziale, proposta, ctx, chiudi, scelta }) {
         const payload = {
           ...ev,
           data_fine: dataFineEvento,
-          colore: ev.colore || etichetta?.colore || null,
+          // AGENDA-ETICHETTE: senza colore proprio vale quello dell'etichetta (anche se poi cambia).
+          colore: ev.colore || null,
+          etichetta: ev.tipo,
         };
         if (!ev.id && ev.ripeti && ev.ripeti !== 'nessuna') {
           const date = generaDateRipetizione(ev.data_inizio, dataFineRipetizione, ev.ripeti);
@@ -171,16 +174,12 @@ function ModuloEvento({ iniziale, proposta, ctx, chiudi, scelta }) {
               ...x,
               ripeti: e.target.value,
               ripeti_fino: e.target.value === 'nessuna' ? '' : (
-                x.ripeti === 'nessuna' || !x.ripeti_fino || x.ripeti_fino <= x.data_inizio
-                  ? piuGiorni(x.data_inizio, ({ giornaliera: 7, settimanale: 28, quindicinale: 56, mensile: 180 })[e.target.value] || 28)
+                x.ripeti === 'nessuna' || !x.ripeti_fino || x.ripeti_fino <= x.data_inizio || e.target.value === 'annuale'
+                  ? (e.target.value === 'annuale' ? fineRipetizionePredefinita(x.data_inizio, 'annuale') : piuGiorni(x.data_inizio, ({ giornaliera: 7, settimanale: 28, quindicinale: 56, mensile: 180 })[e.target.value] || 28))
                   : x.ripeti_fino
               ),
             }))}>
-              <option value="nessuna">Non si ripete</option>
-              <option value="giornaliera">Ogni giorno</option>
-              <option value="settimanale">Ogni settimana</option>
-              <option value="quindicinale">Ogni 2 settimane</option>
-              <option value="mensile">Ogni mese</option>
+              {RIPETIZIONI.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
             </select>
           </label>
           {ev.ripeti !== 'nessuna' && (
@@ -193,8 +192,13 @@ function ModuloEvento({ iniziale, proposta, ctx, chiudi, scelta }) {
       <div className="pp-campo"><span>Etichetta</span>
         <div className="pp-etichette">
           {etichette.map((e) => (
-            <button key={e.id} type="button" className={'pp-etichetta-scelta' + ((ev.tipo === e.id || ev.tipo === e.nome) ? ' attiva' : '')} style={{ '--c': labelColor(e.colore) }} onClick={() => setEv((x) => ({ ...x, tipo: e.id, etichetta: e.id, colore: '' }))}>{e.nome}</button>
+            <button key={e.id} type="button" className={'pp-etichetta-scelta' + ((ev.tipo === e.id || ev.tipo === e.nome) ? ' attiva' : '')} style={{ '--c': labelColor(e.colore) }} onClick={() => setEv((x) => ({
+              ...x, tipo: e.id, etichetta: e.id, colore: '',
+              // Compleanni: tutto il giorno e, per un nuovo evento, ogni anno.
+              ...(e.id === 'compleanni' ? { tutto_il_giorno: true, ...(!x.id ? { ripeti: 'annuale', ripeti_fino: fineRipetizionePredefinita(x.data_inizio, 'annuale') } : {}) } : {}),
+            }))}>{e.nome}</button>
           ))}
+          <NuovaEtichettaEvento etichette={etichette} ctx={ctx} onCreata={(n) => setEv((x) => ({ ...x, tipo: n.id, etichetta: n.id, colore: '' }))} />
         </div>
       </div>
       <div className="pp-campo"><span>Colore di questo evento</span>
@@ -242,3 +246,27 @@ function ModuloEvento({ iniziale, proposta, ctx, chiudi, scelta }) {
   );
 }
 
+
+// AGENDA-ETICHETTE: nuova etichetta direttamente dall'evento; va nella lista comune (Studio e Personal).
+function NuovaEtichettaEvento({ etichette, ctx, onCreata }) {
+  const [aperta, setAperta] = useState(false);
+  const [nome, setNome] = useState('');
+  const [colore, setColore] = useState('#8460CC');
+  if (!aperta) return <button type="button" className="pp-etichetta-scelta pp-etichetta-nuova" onClick={() => setAperta(true)}>+ Nuova</button>;
+  const crea = () => ctx.esegui(async () => {
+    const n = nuovaEtichetta(etichette, nome, colore);
+    await ctx.salvaEtichette([...etichette, n]);
+    onCreata(n); setAperta(false); setNome('');
+  });
+  return (
+    <div className="pp-etichetta-modulo">
+      <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome dell'etichetta" aria-label="Nome della nuova etichetta" autoFocus
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (nome.trim()) crea(); } }} />
+      <LabelSwatches value={colore} onChange={setColore} size={24} />
+      <span className="pp-voce-azioni">
+        <button type="button" className="pp-chip-azione" disabled={!nome.trim()} onClick={crea}>Aggiungi</button>
+        <button type="button" className="pp-testo-link" onClick={() => setAperta(false)}>Annulla</button>
+      </span>
+    </div>
+  );
+}
