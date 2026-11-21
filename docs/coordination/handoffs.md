@@ -4948,3 +4948,14 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Unresolved/risks: Drive file is not moved until phase 2; «Da catalogare» total = documents − catalogued (count query + client set), its list pages client-side over 200-row blocks; landscape on a phone is short (84 px dock) until phase 3 shrinks the bar to 48 px; not tried on a real phone.
 - Rollback: revert the commit (no data or schema changes).
 - Next exact action: PO tries the Vercel preview on the phone; "Mergia" for the phase 1 PR; then phase 2 (Code.gs `cartella_drive` / `sposta_documenti`, clasp push by Luca).
+
+## Handoff — PERSONAL-ESPLORA-WIN11 fase 2 (2026-11-21, Claude Code)
+- Task: PERSONAL-ESPLORA-WIN11 (phase 2 of 3); previous agent: Claude Code (phase 1 merged, PR #335 → 2eacb31); branch `ccr-37864811-5h4ztp` restarted from master 2eacb31.
+- Objective: Drive aligned immediately with Esplora file (twin folders on create/rename/move, files moved into the twin).
+- Completed: see current-task.md PHASE 2.
+- Files: `poliedron/archivio/Code.gs`, `poliedron/archivio/CLAUDE.md` (architecture table), `personal/src/lib/esplora.js`, `personal/src/sezioni/documenti/Esplora.jsx`, `tests/esplora.test.mjs`, `tests/esploraDrive.test.mjs` (new), `tests/visual/personal-esplora.mjs`, coordination docs.
+- Database: none.
+- Tests: npm test 1890/1890; builds PASS; visual personal-esplora PASS; node --check Code.gs OK.
+- Unresolved/risks: script not published (no clasp credentials in the container) — Luca must `clasp push -f` and create a new web app version; Annulla of a move from «Da catalogare»/«Per categoria» resets drive_fissa to false (a document that was fixed elsewhere before would go back to automatic order); real Drive not exercised (vm mocks only).
+- Rollback: revert the commit; already-moved files stay in their Drive folder (drive_fissa keeps them there), nothing deleted.
+- Next exact action: Luca publishes the script (steps in the PR); "Mergia" for the phase 2 PR; then phase 3 (barra e Start).

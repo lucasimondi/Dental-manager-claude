@@ -223,3 +223,60 @@ test('Da catalogare: pagine che saltano i documenti già in una cartella', async
   assert.deepEqual(p3.documenti.map((d) => d.id), ['d11', 'd12']);
   assert.equal(p3.finito, true);
 });
+
+/* ---------- fase 2: Drive allineato subito ---------- */
+import { chiamateDrive, allineaDrive } from '../personal/src/lib/esplora.js';
+
+test('Drive: chiamate per sposta, crea, rinomina; archiviare non tocca Drive', () => {
+  const op = operazioneSposta([
+    { tipo: 'doc', id: 'd2', da: 'utenze' }, { tipo: 'doc', id: 'd7', da: DA_CATALOGARE },
+    { tipo: 'cartella', id: 'luce', da: 'utenze' }, { tipo: 'doc', id: 'd3', da: 'casa' },
+  ], 'auto', opz);
+  assert.deepEqual(chiamateDrive(op), [
+    { azione: 'cartella_drive', id: 'luce' },
+    { azione: 'sposta_documenti', ids: ['d2', 'd7', 'd3'], cartella_id: 'auto' },
+  ]);
+  // Annulla: d7 torna «fuori» → torna all'ordine automatico per Categoria/anno
+  assert.deepEqual(chiamateDrive(inversa(op)), [
+    { azione: 'cartella_drive', id: 'luce' },
+    { azione: 'sposta_documenti', ids: ['d2'], cartella_id: 'utenze' },
+    { azione: 'sposta_documenti', ids: ['d3'], cartella_id: 'casa' },
+    { azione: 'automatico', ids: ['d7'] },
+  ]);
+  assert.deepEqual(chiamateDrive(operazioneSposta([{ tipo: 'doc', id: 'd3', da: 'casa' }], RADICE, opz)), [{ azione: 'sposta_documenti', ids: ['d3'], cartella_id: RADICE }]);
+  assert.deepEqual(chiamateDrive({ tipo: 'crea', id: 'n', nome: 'N', padre: RADICE }), [{ azione: 'cartella_drive', id: 'n' }]);
+  assert.deepEqual(chiamateDrive({ tipo: 'rinomina', cosa: 'cartella', id: 'casa', da: 'A', a: 'B' }), [{ azione: 'cartella_drive', id: 'casa' }]);
+  assert.deepEqual(chiamateDrive({ tipo: 'rinomina', cosa: 'doc', id: 'd1', da: 'A', a: 'B' }), []);
+  assert.deepEqual(chiamateDrive({ tipo: 'archivia', ids: ['casa'] }), []);
+});
+
+const dbFinto = () => {
+  const scritture = [];
+  const db = { from: (t) => {
+    const q = { t, corpo: null, filtri: [], update(c) { q.corpo = c; return q; }, in(k, v) { q.filtri.push(['in', k, v]); return q; }, or(f) { q.filtri.push(['or', f]); return q; },
+      then(ok, ko) { scritture.push({ t, corpo: q.corpo, filtri: q.filtri }); return Promise.resolve({ error: null }).then(ok, ko); } };
+    return q;
+  } };
+  return { db, scritture };
+};
+
+test('Drive: chiama lo script; se non risponde lascia la nota «da spostare» e conta il problema', async () => {
+  const op = operazioneSposta([{ tipo: 'doc', id: 'd3', da: 'casa' }, { tipo: 'cartella', id: 'auto', da: RADICE }], 'casa' === 'x' ? 'x' : 'luce', opz);
+  const inviati = [];
+  const ok = async (url, o) => { inviati.push(JSON.parse(o.body)); return { json: async () => ({ ok: true, spostati: ['d3'], errori: [] }) }; };
+  const a = dbFinto();
+  assert.deepEqual(await allineaDrive(a.db, op, { token: 't', fetchImpl: ok }), { problemi: 0 });
+  assert.deepEqual(inviati, [{ token: 't', azione: 'cartella_drive', id: 'auto' }, { token: 't', azione: 'sposta_documenti', ids: ['d3'], cartella_id: 'luce' }]);
+  assert.deepEqual(a.scritture, []);
+  const b = dbFinto();
+  const giu = async () => { throw new Error('offline'); };
+  assert.deepEqual(await allineaDrive(b.db, op, { token: 't', fetchImpl: giu }), { problemi: 2 });
+  assert.deepEqual(b.scritture, [{ t: 'documenti', corpo: { drive_fissa: true, drive_cartella: '>cartella:luce' }, filtri: [['in', 'id', ['d3']]] }]);
+  // errori di singoli file riportati dallo script
+  const parziale = async () => ({ json: async () => ({ ok: true, spostati: [], errori: [{ id: 'd3' }] }) });
+  assert.equal((await allineaDrive(dbFinto().db, { tipo: 'sposta', mosse: [{ tipo: 'doc', id: 'd3', da: 'casa', a: 'luce' }] }, { token: 't', fetchImpl: parziale })).problemi, 1);
+  // ritorno all'ordine automatico: solo database, solo file fissati da cartelle
+  const c = dbFinto();
+  await allineaDrive(c.db, { tipo: 'sposta', mosse: [{ tipo: 'doc', id: 'd7', da: 'auto', a: FUORI }] }, { token: 't', fetchImpl: giu });
+  assert.deepEqual(c.scritture, [{ t: 'documenti', corpo: { drive_fissa: false, drive_cartella: null }, filtri: [['in', 'id', ['d7']], ['or', 'drive_cartella.like.cartella:*,drive_cartella.like.>cartella:*']] }]);
+});

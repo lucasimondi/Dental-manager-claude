@@ -132,6 +132,8 @@ function elabora() {
 
     // Cartelle di Poliedron con la gemella su Drive: stesso nome e stesso padre (DOCUMENTI-FIRMATI).
     try { allineaCartelleDrive_(); } catch (e) { logErrore_('cartelle Drive', e); }
+    // Spostamenti di Esplora file non riusciti su Drive (drive_cartella '>cartella:…'): si rifanno qui.
+    try { recuperaSpostamenti_(Date.now() + 20000); } catch (e) { logErrore_('spostamenti Esplora', e); }
     // Nome dei file su Drive allineato al titolo dell'archivio (drive_rinomina): un po' a ogni giro.
     try { rinominaDrive_(Date.now() + RINOMINA_DRIVE_MS); } catch (e) { logErrore_('rinomina Drive', e); }
 
@@ -1302,6 +1304,10 @@ function mettiInCartella_(idCartella, idDoc) {
 
 // A ogni giro: le gemelle su Drive seguono nome e padre delle cartelle di Poliedron (poche cartelle).
 function allineaCartelleDrive_() {
+  // ESPLORA-WIN11: la gemella nasce con la cartella. Se l'app non è riuscita a crearla, la crea il giro.
+  (sb_('cartelle_mie?select=id&drive_cartella_id=is.null&archiviata_il=is.null&order=creato_il&limit=10') || []).forEach(function (c) {
+    try { cartellaDriveDi_(c.id); } catch (e) { logErrore_('gemella Drive ' + c.id, e); }
+  });
   const cartelle = sb_('cartelle_mie?select=id,nome,padre_id,drive_cartella_id&drive_cartella_id=not.is.null') || [];
   const perId = {};
   cartelle.forEach(function (c) { perId[c.id] = c; });
@@ -1318,6 +1324,92 @@ function allineaCartelleDrive_() {
       try { f.moveTo(DriveApp.getFolderById(idPadre)); } catch (e) { logErrore_('cartella Drive ' + c.id, e); }
     }
   });
+}
+
+/* =====================================================================
+ * ESPLORA FILE ALLINEATO A DRIVE (PERSONAL-ESPLORA-WIN11 fase 2, 2026-11-21)
+ * Luca: Drive identico all'app. In Esplora file un documento ha una posizione: spostarlo sposta anche il
+ * file su Drive nella cartella gemella (moveTo: niente copie né cancellazioni, id e link uguali) e lo
+ * fissa lì (drive_fissa = true, drive_cartella = 'cartella:<id>', ordinaDrive_ non lo tocca più).
+ * Prima dello spostamento si scrive '>cartella:<id>' (= da fare): se Drive fallisce, recuperaSpostamenti_()
+ * lo rifà al giro successivo. «Personale» (id 'radice') = la cartella "Archivio personale".
+ * Le email senza file (message/rfc822) non hanno niente da spostare. Nessun modello: vale anche per i pazienti.
+ * Il comando «aggiungi anche a un'altra cartella» resta com'era (il file su Drive non si sposta).
+ * ===================================================================*/
+const DA_SPOSTARE_ = '>';
+
+function cartellaEsplora_(dest) {
+  if (dest === 'radice') return cartellaRadice_();
+  if (!UUID_.test(dest)) throw new Error('Cartella non valida');
+  return cartellaDriveDi_(dest);
+}
+
+// Gemella di una cartella subito: creata se manca, stesso nome e stesso padre di Poliedron.
+function allineaCartella_(id) {
+  if (!UUID_.test(id)) return { ok: false, errore: 'Cartella non valida' };
+  const f = cartellaDriveDi_(id);
+  const c = (sb_('cartelle_mie?select=id,nome,padre_id&id=eq.' + enc_(id)) || [])[0];
+  const nome = pulisciNome_(c.nome) || 'Cartella';
+  if (f.getName() !== nome) f.setName(nome);
+  const padre = c.padre_id ? cartellaDriveDi_(c.padre_id) : cartellaRadice_();
+  const padri = f.getParents();
+  if (!padri.hasNext() || padri.next().getId() !== padre.getId()) f.moveTo(padre);
+  return { ok: true, drive_cartella_id: f.getId() };
+}
+
+const senzaFileDrive_ = function (d) { return !d.drive_file_id || String(d.mime_type || '').toLowerCase() === 'message/rfc822'; };
+
+function spostaDocumentiDrive_(req) {
+  const dest = String(req.cartella_id || '');
+  if (dest !== 'radice' && !UUID_.test(dest)) return { ok: false, errore: 'Cartella non valida' };
+  const ids = (Array.isArray(req.ids) ? req.ids : []).map(String).filter(function (x) { return UUID_.test(x); }).slice(0, 200);
+  const esito = { ok: true, spostati: [], senza_file: [], non_trovati: [], errori: [] };
+  if (!ids.length) return esito;
+  const segno = 'cartella:' + dest;
+  const docs = sb_('documenti?select=id,drive_file_id,mime_type&id=in.(' + ids.join(',') + ')') || [];
+  const trovati = {};
+  docs.forEach(function (d) { trovati[d.id] = true; });
+  esito.non_trovati = ids.filter(function (x) { return !trovati[x]; });
+  if (!docs.length) return esito;
+  // Prima la nota «da spostare»: se qualcosa si interrompe, il giro successivo lo rifà.
+  sb_('documenti?id=in.(' + docs.map(function (d) { return d.id; }).join(',') + ')', { method: 'patch', body: { drive_fissa: true, drive_cartella: DA_SPOSTARE_ + segno } });
+  let cartella;
+  try { cartella = cartellaEsplora_(dest); }
+  catch (e) { logErrore_('Esplora cartella ' + dest, e); return { ok: false, errore: 'Cartella su Drive non pronta: la sistemo al prossimo giro' }; }
+  docs.forEach(function (d) {
+    if (senzaFileDrive_(d)) {
+      esito.senza_file.push(d.id);
+    } else {
+      try { DriveApp.getFileById(d.drive_file_id).moveTo(cartella); esito.spostati.push(d.id); }
+      catch (e) { esito.errori.push({ id: d.id, errore: String(e.message || e).slice(0, 200) }); logErrore_('Esplora Drive ' + d.id, e); return; }
+    }
+    sb_('documenti?id=eq.' + d.id, { method: 'patch', body: { drive_cartella: segno } });
+  });
+  return esito;
+}
+
+// I '>cartella:…' rimasti (Drive non raggiungibile al momento dello spostamento): rifatti a ogni giro.
+function recuperaSpostamenti_(scadenza) {
+  const docs = sb_('documenti?select=id,drive_file_id,mime_type,drive_cartella&drive_cartella=like.' + enc_(DA_SPOSTARE_ + 'cartella:*') + '&order=id&limit=100') || [];
+  const cartelle = {};
+  for (let i = 0; i < docs.length; i++) {
+    if (Date.now() > scadenza) return true;
+    const d = docs[i];
+    const segno = String(d.drive_cartella).slice(DA_SPOSTARE_.length);
+    const dest = segno.slice('cartella:'.length);
+    let esito = segno;
+    if (!senzaFileDrive_(d)) {
+      try {
+        if (!cartelle[dest]) cartelle[dest] = cartellaEsplora_(dest);
+        DriveApp.getFileById(d.drive_file_id).moveTo(cartelle[dest]);
+      } catch (e) {
+        if (/non trovat|not found|Cartella non valida/i.test(String(e.message || e))) esito = '!' + segno; // sparito: non si riprova
+        else { logErrore_('recupero Esplora ' + d.id, e); continue; }
+      }
+    }
+    sb_('documenti?id=eq.' + d.id, { method: 'patch', body: { drive_cartella: esito } });
+  }
+  return false;
 }
 
 // Titolo suggerito dal contenuto (prime righe del PDF lette sul telefono). Mai a un modello se il
@@ -1618,6 +1710,9 @@ function doPost(e) {
     if (req.azione === 'bozza_allegato') return rispostaJson_(bozzaConAllegato_(req));
     if (req.azione === 'scheda_pratica') return rispostaJson_(schedaPratica_(String(req.pratica_id || '')));
     if (req.azione === 'destinatari_risposta') return rispostaJson_(destinatariRisposta_(req));
+    // PERSONAL-ESPLORA-WIN11 fase 2: Esplora file allinea subito Drive (gemelle e file spostati).
+    if (req.azione === 'cartella_drive') return rispostaJson_(allineaCartella_(String(req.id || '')));
+    if (req.azione === 'sposta_documenti') return rispostaJson_(spostaDocumentiDrive_(req));
     if (req.azione === 'contenuto') {
       const filtri = req.filtri && typeof req.filtri === 'object' ? req.filtri : {};
       return rispostaJson_({ ok: true, documenti: cercaNelContenuto_(req.testo, filtri, 20, CAMPI_APP) });

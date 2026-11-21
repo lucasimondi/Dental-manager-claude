@@ -22,6 +22,8 @@ const scenario = () => {
     LINK: { casa: ['rogito', 'imu'], utenze: ['gas'], luce: ['bol'], auto: [] },
     SCRIVANIA: ['pol'],
     chiamate: [],
+    drive: [],
+    driveGiu: false,
   };
   return s;
 };
@@ -36,6 +38,11 @@ const avvia = async (browser, { width, height, nome }) => {
   await page.route('**/*', async (route) => {
     const req = route.request(); const u = new URL(req.url());
     if (u.hostname === '127.0.0.1') return route.continue();
+    if (u.hostname === 'script.google.com') {
+      const b = JSON.parse(req.postData() || '{}'); S.drive.push(b);
+      if (S.driveGiu) return route.abort();
+      return route.fulfill({ json: { ok: true, spostati: b.ids || [], senza_file: [], non_trovati: [], errori: [] } });
+    }
     if (!u.hostname.endsWith('supabase.co')) return route.abort();
     const p = u.pathname; const m = req.method(); const corpo = () => JSON.parse(req.postData() || 'null');
     if (p.endsWith('/v_cartelle_mie')) return route.fulfill({ json: S.CARTELLE.filter((c) => !c.archiviata_il).map((c) => ({ ...c, n_documenti: (S.LINK[c.id] || []).length, n_sottocartelle: S.CARTELLE.filter((x) => x.padre_id === c.id).length })) });
@@ -67,6 +74,7 @@ const avvia = async (browser, { width, height, nome }) => {
       return route.fulfill({ json: Object.entries(S.LINK).flatMap(([c, ds]) => ds.map((d) => ({ cartella_id: c, documento_id: d, documenti: { fascicolo: S.DOC[d].fascicolo } }))) });
     }
     if (p.endsWith('/scadenze')) return route.fulfill({ json: [{ id: 's1', data: '2026-11-25', importo: 40, completata: false, storica: false, documento_id: 'gas', documento: { id: 'gas', titolo: 'Contratto gas', fascicolo: 'utenze', tipo_documento: 'avviso', tag: [] } }] });
+    if (p.endsWith('/documenti') && m === 'PATCH') { S.chiamate.push(['documenti', u.searchParams.get('id'), corpo()]); return route.fulfill({ json: [] }); }
     if (p.endsWith('/documenti')) {
       if (m === 'HEAD') return route.fulfill({ status: 200, headers: { 'content-range': `*/${Object.keys(S.DOC).length}`, 'access-control-allow-origin': '*', 'access-control-expose-headers': 'Content-Range' }, body: '' });
       if (u.searchParams.get('azione_richiesta')) return route.fulfill({ json: Object.values(S.DOC).filter((d) => d.azione_richiesta).map(({ id, fascicolo }) => ({ id, fascicolo, azione_richiesta: true })) });
@@ -131,6 +139,9 @@ try {
     await page.locator('.esp-avviso', { hasText: 'Spostato in «Auto»' }).waitFor();
     assert.deepEqual(S.chiamate.at(-1), ['sposta', { p_documenti: ['rogito'], p_da: 'casa', p_a: 'auto' }]);
     assert.equal(await tessera(page, 'Rogito casa').count(), 0);
+    // fase 2: subito anche su Drive
+    for (let i = 0; i < 30 && !S.drive.length; i++) await page.waitForTimeout(100);
+    assert.deepEqual(S.drive.at(-1), { token: 'token-finto', azione: 'sposta_documenti', ids: ['rogito'], cartella_id: 'auto' });
     await page.locator('.esp-avviso button', { hasText: 'Annulla' }).click();
     await tessera(page, 'Rogito casa').waitFor();
     assert.deepEqual(S.chiamate.at(-1), ['sposta', { p_documenti: ['rogito'], p_da: 'auto', p_a: 'casa' }]);
@@ -180,6 +191,10 @@ try {
     await campo.press('Enter');
     await tessera(page, 'Cartella Mutuo').waitFor();
     assert.deepEqual(S.chiamate.at(-1), ['crea', { nome: 'Mutuo', padre_id: 'casa' }]);
+    for (let i = 0; i < 30 && S.drive.at(-1)?.azione !== 'cartella_drive'; i++) await page.waitForTimeout(100);
+    assert.equal(S.drive.at(-1).azione, 'cartella_drive');
+    // Drive non raggiungibile: lo spostamento resta fatto nell'app e lo script lo recupera
+    S.driveGiu = true;
 
     // Esc annulla una nuova cartella
     await page.locator('.esp-cmd-testo').click();
@@ -195,7 +210,10 @@ try {
     await page.screenshot({ path: `${out}/verticale-da-catalogare.png` });
     await premi(T, tessera(page, 'Ricevuta nuova'), ramo(page, 'Personale'));
     await page.locator('.esp-avviso', { hasText: 'Spostato in «Personale»' }).waitFor();
-    assert.deepEqual(S.chiamate.at(-1), ['scrivania+', ['n1']]);
+    assert.ok(S.chiamate.some((c) => c[0] === 'scrivania+' && c[1].join() === 'n1'));
+    await page.locator('.esp-avviso', { hasText: 'Su Drive lo sistemo al prossimo giro' }).waitFor();
+    assert.ok(S.chiamate.some((c) => c[0] === 'documenti' && c[1] === 'in.(n1)' && c[2].drive_cartella === '>cartella:radice' && c[2].drive_fissa === true));
+    S.driveGiu = false;
     assert.equal(await tessera(page, 'Ricevuta nuova').count(), 0);
     // nelle cartelle virtuali non si lascia niente
     const n = S.chiamate.length;
