@@ -1,0 +1,13 @@
+/* ETICHETTE-PREMIUM (PO 2026-11-21): tempi e promemoria del tipo di appuntamento (Impostazioni → Agenda). */
+.tipo-extra { margin: 6px 0 4px; display: flex; flex-direction: column; }
+.tipo-extra-titolo { font-size: 13px; font-weight: 700; color: var(--text-primary, #0f172a); margin: 10px 0 8px; }
+.tipo-extra-anteprima { display: flex; flex-direction: column; gap: 2px; padding: 10px; border-radius: 10px; background: var(--surface-interactive, #f2f2f7); margin-bottom: 6px; }
+.tipo-extra-anteprima p { margin: 6px 2px 0; font-size: 12px; line-height: 1.35; color: var(--text-secondary, #5f6068); }
+.tipo-extra-blocco { border-radius: 6px; padding: 4px 9px; font-size: 12.5px; font-weight: 700; display: flex; align-items: flex-start; overflow: hidden; box-sizing: border-box; min-height: 22px; }
+.tipo-extra-fascia, .agenda-fascia-tipo { border-radius: 6px; background: repeating-linear-gradient(135deg, rgba(118,118,128,.18) 0 4px, transparent 4px 8px); font-size: 11px; color: var(--text-secondary, #5f6068); display: flex; align-items: center; padding-left: 8px; overflow: hidden; white-space: nowrap; box-sizing: border-box; }
+.tipo-extra-riga { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0 12px; }
+.tipo-extra-riga span { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--text-primary, #0f172a); }
+.tipo-extra-riga small { font-size: 12px; color: var(--text-secondary, #5f6068); }
+.tipo-extra-anteprima-wa { white-space: pre-line; overflow-wrap: anywhere; background: #e7f1e4; color: #12301a; border-radius: 14px 14px 14px 4px; padding: 10px 12px; font-size: 13px; line-height: 1.4; }
+.tipo-extra-nota { margin: 6px 2px 10px; font-size: 11.5px; line-height: 1.35; color: var(--text-secondary, #5f6068); }
+.agenda-fascia-tipo { position: absolute; z-index: 1; pointer-events: none; padding-left: 6px; font-size: 10px; }

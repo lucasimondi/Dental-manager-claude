@@ -1,3 +1,12 @@
+# Current task — ETICHETTE-PREMIUM (2026-11-21)
+- OWNER Claude Code; branch `claude/etichette-premium` (from master f3d241a).
+- REQUEST PO 2026-11-21: "Come potremmo mettere le impostazioni in più delle etichette per essere ancora più premium" → mockup «Poliedra · Etichette premium» (Elenco, Modifica Chirurgia, Ferie) → "Mi piace vai". First step agreed: **Tempi e Promemoria** of the appointment types.
+- DATA MODEL (no migration, no new app_types columns): `studio_info.agenda_settings.tipi_extra[<app_types.id>] = { prima, dopo, testo, istruzioni, conferma }`, written alone with the existing studio_info update (functional updater, only that key).
+- CODE: `shared/agenda/tipiExtra.js` (+ `tipiExtra.css`): normalise, read by id/name, write without touching other types, minutes occupied, WhatsApp message with {nome} {data} {ora} {tipo} {studio}, instructions and «Risponda SÌ per confermare.». Studio Impostazioni → Agenda → tipo: «Tempi in agenda» (preparazione prima / sanificazione dopo, preview block) and «Promemoria WhatsApp» (message, instructions, Chiedi conferma, live preview); saved on «Salva», removed when the type is deleted. Studio Agenda: choosing a type sets its duration; prep/sanitisation drawn as hatched bands above/below the block (view only, saved duration unchanged); WhatsApp reminder from the agenda uses the type text.
+- NOT IN THIS STEP: automatic Meta reminders (approved template, unchanged); bands are not counted as busy by booking/conflict checks; Personal agenda does not draw the bands; mockup parts Listino, Regole, materiali, icon/style, impegni options.
+- VALIDATION: npm test 1876/1876 (new tests/tipiExtra.test.mjs 5/5); build and build:personal PASS; temporary Chromium fixture 390px (removed): bands drawn around Chirurgia, WhatsApp text from type, editor preview and save of tipi_extra, no page errors, no horizontal overflow.
+- STATUS: PR; merge on "Mergia".
+
 # Current task — IMPOSTAZIONI-UNICHE (2026-11-21)
 - OWNER Claude Code; branch `ccr-95ada4ed-jk2mry` (master 7c21dbe = PR #332 merged in; old branch head merged without force push, no content difference).
 - REQUEST PO 2026-11-21: "Devi mettere le impostazioni che siano nella stessa pagina tanto l'agenda deve essere la stessa, quindi impostazioni agenda con aggiunta categorie etichette ecc visualizzazione, poi nella pagina impostazioni ci sarà tasto studio e personale per le impostazioni dei due, deve essere tutto impostabile".
