@@ -1,3 +1,10 @@
+# Current task — PERSONAL-ESPLORA-WIN11 (2026-11-21)
+- OWNER Claude Code; branch `ccr-37864811-5h4ztp` (from master f3d241a = PR #333 IMPOSTAZIONI-UNICHE merged; no overlap).
+- REQUEST PO 2026-11-21: Esplora file stile Windows 11 in Personal (apri, sposta trascinando file e cartelle, nuova cartella con pressione prolungata, albero di fianco/sopra) e barra in basso stile Windows 11. Spec: `docs/architecture/personal-esplora-win11.md`.
+- PLAN: 3 PR, one per phase (1 Esplora file UI on existing data · 2 Apps Script `cartella_drive` / `sposta_documenti` · 3 barra e Start). Each: build, test, Vercel preview with `_vercel_share`, merge only on "Mergia".
+- PHASE 1 (in progress): `personal/src/lib/esplora.js`, `sezioni/documenti/Esplora.jsx` + `esplora.css`; reuse `cartelleMie.js` and the existing additive RPC `sposta_documenti_mie` (POL-VITA-033, already atomic → no new migration); badge rule extracted from `revisioneArchivio.js` (`scadenzaDaGestire`).
+- DB: none for phase 1.
+
 # Current task — IMPOSTAZIONI-UNICHE (2026-11-21)
 - OWNER Claude Code; branch `ccr-95ada4ed-jk2mry` (master 7c21dbe = PR #332 merged in; old branch head merged without force push, no content difference).
 - REQUEST PO 2026-11-21: "Devi mettere le impostazioni che siano nella stessa pagina tanto l'agenda deve essere la stessa, quindi impostazioni agenda con aggiunta categorie etichette ecc visualizzazione, poi nella pagina impostazioni ci sarà tasto studio e personale per le impostazioni dei due, deve essere tutto impostabile".
