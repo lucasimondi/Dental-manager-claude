@@ -4926,3 +4926,13 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Risks: Studio Impostazioni «Salva» upserts the whole studio_info from its local copy, so a label added from Personal in the meantime could be overwritten by a stale Studio page (reload fixes it); repeated impegni are stored as copies (yearly: 30 by default).
 - Rollback: revert the commit; saved labels stay as unused jsonb.
 - Next: PO review on phone; PR on request; "Mergia".
+
+
+## Handoff — IMPOSTAZIONI-UNICHE (2026-11-21, Claude Code)
+- Task: IMPOSTAZIONI-UNICHE; previous agent: Claude Code (AGENDA-ETICHETTE, merged PR #332 → 7c21dbe); branch `ccr-95ada4ed-jk2mry`.
+- Objective: one settings page (Agenda · Studio · Personale) in both apps, everything settable.
+- Files: `src/components/Impostazioni.jsx`, `src/components/ImpostazioniPersonali.jsx` (new), `personal/src/sezioni/impostazioni/Impostazioni.jsx`, `personal/src/lib/studio.js` (aggiornaAgendaStudio), `personal/src/personal.css`, tests `agendaEtichette.test.mjs`, `impostazioniHomeTab.test.mjs`.
+- Database: no change.
+- Tests: npm test 1871/1871; builds PASS; Chromium fixture checks PASS.
+- Risks: Studio «Salva impostazioni agenda» upserts the whole studio_info from the page copy (a change made from Personal meanwhile can be overwritten until reload); writes from the other app depend on RLS not verified in production.
+- Rollback: revert the commit. Next: PO check on phone; "Mergia".

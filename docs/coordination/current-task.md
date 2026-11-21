@@ -1,3 +1,14 @@
+# Current task — IMPOSTAZIONI-UNICHE (2026-11-21)
+- OWNER Claude Code; branch `ccr-95ada4ed-jk2mry` (master 7c21dbe = PR #332 merged in; old branch head merged without force push, no content difference).
+- REQUEST PO 2026-11-21: "Devi mettere le impostazioni che siano nella stessa pagina tanto l'agenda deve essere la stessa, quindi impostazioni agenda con aggiunta categorie etichette ecc visualizzazione, poi nella pagina impostazioni ci sarà tasto studio e personale per le impostazioni dei due, deve essere tutto impostabile".
+- APP: one Impostazioni page with the same structure in Studio and Personal: three buttons **Agenda · Studio · Personale** (`?imp=` chooses the area).
+  - Studio (`src/components/Impostazioni.jsx`): Agenda = tipi di appuntamento, Visualizzazione (orari, slot, durata, zoom, giorni visibili), Etichette degli impegni, multi-agenda; Studio = the previous tabs (Studio, Home, Documenti, Privacy, Prenotazione, Aspetto, Azioni rapide, WhatsApp, Profilo e team); Personale = new `ImpostazioniPersonali.jsx`: persone, documenti personali, sezioni dei documenti (fascicoli + parole chiave), categorie spese e incassi, read/written in the archive `impostazioni_app` with the archive session already saved by Personal on the same address (re-read before each write, only the touched key changes); without session → «Apri Personal». Notifiche and account stay in Personal (device permissions).
+  - Personal (`sezioni/impostazioni/Impostazioni.jsx`): Agenda = etichette + Visualizzazione editable (written to studio `agenda_settings` via `aggiornaAgendaStudio(parte)`, only the given keys) + link to tipi/multi-agenda; Studio = link to Studio settings + agenda connection; Personale = previous content.
+- DB: none (existing `studio_info.agenda_settings`, archive `impostazioni_app`).
+- VALIDATION: npm test 1871/1871 (agendaEtichette extended; impostazioniHomeTab regex updated for the area prefix); build and build:personal PASS; temporary Chromium fixture 390px for Studio Agenda/Personale and Personal Agenda/Personale: no page errors, no horizontal overflow (found and fixed a dev-mode TDZ: React.lazy declared before the React import).
+- NOT VERIFIED: real writes against production RLS (archive from Studio, studio_info from Personal); real phone.
+- STATUS: PR; merge on "Mergia".
+
 # Current task — AGENDA-ETICHETTE (2026-11-20)
 - OWNER Claude Code; branch `ccr-95ada4ed-jk2mry` (from master c7c52b5).
 - REQUEST PO 2026-11-20: "Le impostazioni devono essere comuni in tutto il software anche personal, devo poter inserire nuove etichette in agenda (agenda è già comune) poi gli impegni devono poter essere ripetibili, ci deve essere etichetta compleanni".
