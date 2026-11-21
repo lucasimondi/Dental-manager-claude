@@ -36,9 +36,18 @@ export function propostaDocumento(d) {
   if (d.analisi_contenuto === false || /catalogo provvisorio/.test(t)) return 'Contenuto ancora da leggere: propongo di rileggere mail e allegato prima di decidere.';
   return d.azione_descrizione || 'Propongo di verificare obblighi, termini e documenti collegati prima di archiviare.';
 }
+// Ultimo giorno della finestra «entro 14 giorni» (incluso).
+export function limiteAvviso(oggi = oggiRoma(), giorni = 14) {
+  const limite = new Date(`${oggi}T12:00:00Z`); limite.setUTCDate(limite.getUTCDate() + giorni);
+  return limite.toISOString().slice(0, 10);
+}
+// Una scadenza «da gestire»: aperta, non storica, già passata o entro 14 giorni, non un invito/escluso.
+// Regola unica: la usano le cartelle di Documenti (avvisoCartella) ed Esplora file (pallini rossi).
+export function scadenzaDaGestire(s, oggi = oggiRoma(), entro = limiteAvviso(oggi)) {
+  return !s.completata && !s.storica && !!s.data && s.data <= entro && !['opportunita', 'escluso'].includes(valutaScadenza(s, oggi).tipo);
+}
 export function avvisoCartella(scadenze, oggi = oggiRoma()) {
-  const limite = new Date(`${oggi}T12:00:00Z`); limite.setUTCDate(limite.getUTCDate() + 14);
-  const entro = limite.toISOString().slice(0, 10);
-  const attive = scadenze.filter((s) => !s.completata && !s.storica && s.data <= entro && !['opportunita', 'escluso'].includes(valutaScadenza(s, oggi).tipo));
+  const entro = limiteAvviso(oggi);
+  const attive = scadenze.filter((s) => scadenzaDaGestire(s, oggi, entro));
   return { n: attive.length, colore: attive.some((s) => s.data <= oggi) ? '#B42318' : '#d97706' };
 }

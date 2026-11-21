@@ -4936,3 +4936,15 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Tests: npm test 1871/1871; builds PASS; Chromium fixture checks PASS.
 - Risks: Studio «Salva impostazioni agenda» upserts the whole studio_info from the page copy (a change made from Personal meanwhile can be overwritten until reload); writes from the other app depend on RLS not verified in production.
 - Rollback: revert the commit. Next: PO check on phone; "Mergia".
+
+
+## Handoff — PERSONAL-ESPLORA-WIN11 fase 1 (2026-11-21, Claude Code)
+- Task: PERSONAL-ESPLORA-WIN11 (phase 1 of 3); previous agent: none (new PO request); branch `ccr-37864811-5h4ztp` from master f3d241a.
+- Objective: Windows 11 style file explorer in Personal on existing data (spec `docs/architecture/personal-esplora-win11.md`).
+- Completed: see current-task.md PHASE 1.
+- Files: `docs/architecture/personal-esplora-win11.md` (new, spec), `personal/src/lib/esplora.js` (new), `personal/src/sezioni/documenti/Esplora.jsx` (new), `personal/src/sezioni/documenti/esplora.css` (new), `personal/src/sezioni/documenti/index.jsx`, `personal/src/sezioni/documenti/Documenti.jsx`, `personal/src/sezioni/documenti/Trascina.jsx`, `personal/src/lib/revisioneArchivio.js`, `tests/esplora.test.mjs` (new), `tests/visual/personal-esplora.{html,fixture.jsx,mjs}` (new), coordination docs.
+- Database: none (existing RPC `sposta_documenti_mie`, tables `cartelle_mie_documenti`, `cartelle_mie_scrivania`).
+- Tests: npm test 1883/1883; build, build:personal PASS; visual personal-esplora PASS (390×844, 844×390, dark), personal-cartelle-mie PASS.
+- Unresolved/risks: Drive file is not moved until phase 2; «Da catalogare» total = documents − catalogued (count query + client set), its list pages client-side over 200-row blocks; landscape on a phone is short (84 px dock) until phase 3 shrinks the bar to 48 px; not tried on a real phone.
+- Rollback: revert the commit (no data or schema changes).
+- Next exact action: PO tries the Vercel preview on the phone; "Mergia" for the phase 1 PR; then phase 2 (Code.gs `cartella_drive` / `sposta_documenti`, clasp push by Luca).

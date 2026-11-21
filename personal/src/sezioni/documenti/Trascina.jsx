@@ -2,7 +2,8 @@
 // Tieni premuto ~0,4 s: l'icona si stacca e segue il dito; il punto sotto il dito viene evidenziato
 // se è un posto dove lasciarla ([data-bersaglio="tipo:id"]). Se lasci senza esserti mosso,
 // l'icona viene scelta (selezione). Se sposti il dito prima del tempo, la pagina scorre normalmente.
-// Vicino ai bordi la pagina scorre da sola.
+// Vicino ai bordi la pagina scorre da sola (o, con `scorrevoli`, il pannello sotto il dito).
+// PERSONAL-ESPLORA-WIN11: `onFermo` riceve anche il punto ({x, y}) per aprire lì il menu contestuale.
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const ATTESA_MS = 380;
@@ -18,13 +19,13 @@ const leggiBersaglio = (x, y) => {
 };
 
 /**
- * @param {{ onLascia:(sorgente:object, bersaglio:object)=>void, onPresa?:(sorgente:object)=>void, onFermo?:(sorgente:object)=>void, valido?:(sorgente:object, bersaglio:object)=>boolean }} opz
+ * @param {{ onLascia:(sorgente:object, bersaglio:object)=>void, onPresa?:(sorgente:object)=>void, onFermo?:(sorgente:object, punto:{x:number,y:number})=>void, valido?:(sorgente:object, bersaglio:object)=>boolean, scorrevoli?:()=>(Element|null)[] }} opz
  */
-export function useTrascina({ onLascia, onFermo, valido = () => true }) {
+export function useTrascina({ onLascia, onFermo, valido = () => true, scorrevoli = null }) {
   const [presa, setPresa] = useState(null); // { sorgente, x, y, bersaglio }
   const stato = useRef({ timer: null, inizio: null, sorgente: null, attivo: false, mosso: false, appenaTrascinato: false });
-  const richiami = useRef({ onLascia, onFermo, valido });
-  richiami.current = { onLascia, onFermo, valido };
+  const richiami = useRef({ onLascia, onFermo, valido, scorrevoli });
+  richiami.current = { onLascia, onFermo, valido, scorrevoli };
 
   const annullaAttesa = () => { clearTimeout(stato.current.timer); stato.current.timer = null; };
 
@@ -35,6 +36,16 @@ export function useTrascina({ onLascia, onFermo, valido = () => true }) {
     let b = leggiBersaglio(x, y);
     if (b && !richiami.current.valido(s.sorgente, b)) b = null;
     setPresa((p) => (p ? { ...p, x, y, bersaglio: b } : p));
+    const pannelli = richiami.current.scorrevoli?.()?.filter(Boolean);
+    if (pannelli?.length) {
+      for (const el of pannelli) {
+        const r = el.getBoundingClientRect();
+        if (x < r.left || x > r.right || y < r.top - 30 || y > r.bottom + 30) continue;
+        const bordo = Math.min(48, r.height / 4);
+        if (y < r.top + bordo) el.scrollBy(0, -12); else if (y > r.bottom - bordo) el.scrollBy(0, 12);
+      }
+      return;
+    }
     if (y < BORDO) window.scrollBy(0, -14); else if (y > window.innerHeight - BORDO) window.scrollBy(0, 14);
   }, []);
 
@@ -51,7 +62,7 @@ export function useTrascina({ onLascia, onFermo, valido = () => true }) {
     s.sorgente = null;
     setPresa(null);
     if (b) richiami.current.onLascia(sorgente, b);
-    else if (!s.mosso) richiami.current.onFermo?.(sorgente);
+    else if (!s.mosso) richiami.current.onFermo?.(sorgente, { x: x ?? s.inizio?.x ?? 0, y: y ?? s.inizio?.y ?? 0 });
   }, []);
 
   // Durante la presa: il dito non fa scorrere la pagina.
