@@ -4970,3 +4970,6 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Unresolved/risks: «notifiche» = open Da fare reminders (no in-app notification list exists); Studio is no longer one tap away (it is in Start); `DOCK`/`DOCK_DOPO` in sezioni/index.js are now unused (kept, still asserted by tests); `pro.css`/`personale.css` rules for `.pp-schede.pp-dock` are now dead CSS (left to keep the diff small); Esci signs out without the old confirmation pattern (two taps). Not tried on a real phone. Script of phase 2 still to be published by Luca.
 - Rollback: revert the commit (the dock comes back unchanged).
 - Next exact action: PO tries the preview on the phone; "Mergia" for the phase 3 PR; then the task is closed.
+
+## Note — PERSONAL-ESPLORA-WIN11 fase 2 script published (2026-11-21, Claude Code)
+- On Luca's explicit request ("Dami link clasp io autorizzo") clasp was authorized in this session; online script pulled and diffed (identical to master before phase 2), then `clasp push -f` and web app deployment AKfycbzQf7…UDw moved from version 26 to 27 (same URL). No secrets written to the repository. Luca can revoke the clasp grant from myaccount.google.com → Sicurezza → App di terze parti.
