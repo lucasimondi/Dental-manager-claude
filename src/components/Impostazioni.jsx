@@ -2,6 +2,8 @@
 import GestioneUtenti from './GestioneUtenti.jsx';
 import GestioneRisorseAgenda from './GestioneRisorseAgenda.jsx';
 import { etichetteDaImpostazioni, nuovaEtichetta } from '../../shared/agenda/etichette.js';
+import { normalizzaExtra, extraTipo, conExtraTipo, MINUTI_TEMPI, minutiOccupati, messaggioPromemoria } from '../../shared/agenda/tipiExtra.js';
+import '../../shared/agenda/tipiExtra.css';
 import LabelSwatches from '../../shared/agenda/LabelSwatches.jsx';
 import { sectionDestination } from '../../shared/agenda/navigation.js';
 import FarmaciPreferitiSettings from './FarmaciPreferitiSettings.jsx';
@@ -76,6 +78,10 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
     try { const v = new URLSearchParams(window.location.search).get('imp'); return ['agenda', 'studio', 'personale'].includes(v) ? v : 'agenda'; } catch { return 'agenda'; }
   });
   const [tipoForm, setTipoForm] = useState({ nome: '', colore: COLORI_DISPONIBILI[0], durata: '', online_abilitato: false, online_giorni: [1, 2, 3, 4, 5], online_ora_inizio: '09:00', online_ora_fine: '18:00' });
+  // ETICHETTE-PREMIUM (PO 2026-11-21): tempi e promemoria del tipo, fuori dalla riga app_types
+  // (studio_info.agenda_settings.tipi_extra), salvati subito e solo loro.
+  const [tipoExtra, setTipoExtra] = useState(() => normalizzaExtra(null));
+  const TE = (f) => setTipoExtra((e) => ({ ...e, ...f }));
   const S = (f) => setSi((s) => ({ ...s, ...f }));
   const agSet = { ...DEF_AGENDA_SETTINGS, ...(si.agenda_settings || {}) };
   const SA = (f) => S({ agenda_settings: { ...agSet, ...f } });
@@ -365,17 +371,26 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
     setWaMsg('Salvato ✓');
   };
 
-  const openNewTipo = () => { setTipoForm({ nome: '', colore: COLORI_DISPONIBILI[Math.floor(Math.random() * COLORI_DISPONIBILI.length)] }); setTipoModal('new'); };
-  const openEditTipo = (t) => { setTipoForm({ durata: '', online_abilitato: false, online_giorni: [1, 2, 3, 4, 5], online_ora_inizio: '09:00', online_ora_fine: '18:00', ...t }); setTipoModal(t.id); };
+  const openNewTipo = () => { setTipoForm({ nome: '', colore: COLORI_DISPONIBILI[Math.floor(Math.random() * COLORI_DISPONIBILI.length)] }); setTipoExtra(normalizzaExtra(null)); setTipoModal('new'); };
+  const openEditTipo = (t) => { setTipoForm({ durata: '', online_abilitato: false, online_giorni: [1, 2, 3, 4, 5], online_ora_inizio: '09:00', online_ora_fine: '18:00', ...t }); setTipoExtra(extraTipo(agSet, t)); setTipoModal(t.id); };
+  const salvaExtraTipo = async (id, extra) => {
+    if (JSON.stringify(extraTipo(agSet, { id })) === JSON.stringify(normalizzaExtra(extra))) return;
+    SA({ tipi_extra: conExtraTipo(agSet, id, extra) });
+    const ok = await setStudioInfo((prev) => ({ ...prev, agenda_settings: { ...DEF_AGENDA_SETTINGS, ...(prev?.agenda_settings || {}), tipi_extra: conExtraTipo(prev?.agenda_settings, id, extra) } }));
+    if (ok === false) setToast('Tempi e promemoria non salvati — riprova');
+  };
   const saveTipo = () => {
     if (!tipoForm.nome) return;
-    if (tipoModal === 'new') setAppTypes((p) => [...p, { ...tipoForm, id: uid() }]);
+    const id = tipoModal === 'new' ? uid() : tipoModal;
+    if (tipoModal === 'new') setAppTypes((p) => [...p, { ...tipoForm, id }]);
     else setAppTypes((p) => p.map((t) => (t.id === tipoModal ? { ...tipoForm } : t)));
+    salvaExtraTipo(id, tipoExtra);
     setTipoModal(null);
   };
   const delTipo = (id) => {
     if (confirm('Eliminare questo tipo di appuntamento?')) {
       setAppTypes((p) => p.filter((t) => t.id !== id));
+      salvaExtraTipo(id, null);
       setTipoModal(null);
     }
   };
@@ -1358,6 +1373,53 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
               placeholder={`Predefinita studio (${agSet.durataDefault} min)`}
             />
           </Fld>
+
+          {/* ETICHETTE-PREMIUM (PO 2026-11-21): tempi in agenda e promemoria WhatsApp del tipo. */}
+          <div className="tipo-extra">
+            <div className="tipo-extra-titolo">Tempi in agenda</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <Fld label="Preparazione prima">
+                <Sel aria-label="Minuti di preparazione prima" value={tipoExtra.prima} onChange={(e) => TE({ prima: Number(e.target.value) })}>
+                  {MINUTI_TEMPI.map((m) => <option key={m} value={m}>{m ? `${m} min` : 'Nessuna'}</option>)}
+                </Sel>
+              </Fld>
+              <Fld label="Sanificazione dopo">
+                <Sel aria-label="Minuti di sanificazione dopo" value={tipoExtra.dopo} onChange={(e) => TE({ dopo: Number(e.target.value) })}>
+                  {MINUTI_TEMPI.map((m) => <option key={m} value={m}>{m ? `${m} min` : 'Nessuna'}</option>)}
+                </Sel>
+              </Fld>
+            </div>
+            {(() => {
+              const durata = Number(tipoForm.durata) || Number(agSet.durataDefault) || 30;
+              const tot = minutiOccupati(durata, tipoExtra);
+              const h = (m) => `${Math.max(m ? 14 : 0, Math.round((m / tot) * 120))}px`;
+              return (
+                <div className="tipo-extra-anteprima" aria-label={`Anteprima: occupa ${tot} minuti in agenda`}>
+                  {tipoExtra.prima > 0 && <div className="tipo-extra-fascia" style={{ height: h(tipoExtra.prima) }}>Preparazione {tipoExtra.prima}′</div>}
+                  <div className="tipo-extra-blocco" style={{ height: h(durata), background: tipoForm.colore, color: '#fff' }}>{tipoForm.nome || 'Tipo'} · {durata}′</div>
+                  {tipoExtra.dopo > 0 && <div className="tipo-extra-fascia" style={{ height: h(tipoExtra.dopo) }}>Sanificazione {tipoExtra.dopo}′</div>}
+                  <p>Occupa {tot} minuti in agenda. Preparazione e sanificazione bloccano lo spazio ma non compaiono al paziente.</p>
+                </div>
+              );
+            })()}
+
+            <div className="tipo-extra-titolo">Promemoria WhatsApp</div>
+            <Fld label="Messaggio">
+              <Txt rows={4} value={tipoExtra.testo} onChange={(e) => TE({ testo: e.target.value })} placeholder="Vuoto = messaggio standard. Es. Buongiorno {nome}, le ricordiamo l'appuntamento di {data} alle {ora}." />
+            </Fld>
+            <Fld label="Istruzioni per il paziente">
+              <Txt rows={3} value={tipoExtra.istruzioni} onChange={(e) => TE({ istruzioni: e.target.value })} placeholder="Es. Colazione leggera, niente fumo nelle 24 ore, porti gli esami." />
+            </Fld>
+            <div className="tipo-extra-riga">
+              <span><strong>Chiedi conferma</strong><small>Aggiunge «Risponda SÌ per confermare.»</small></span>
+              <Toggle on={tipoExtra.conferma} onChange={() => TE({ conferma: !tipoExtra.conferma })} ariaLabel="Chiedi conferma al paziente" />
+            </div>
+            <div className="tipo-extra-anteprima-wa" aria-label="Anteprima del messaggio">
+              {messaggioPromemoria({ extra: tipoExtra, nome: 'Maria Rossi', data: 'mar 25/11', ora: '09:00', tipo: tipoForm.nome || 'Visita', studio: si.nome || 'lo studio',
+                predefinito: `Gentile Maria Rossi,\nricordiamo il suo appuntamento:\nmar 25/11 alle 09:00\n${tipoForm.nome || 'Visita'}\nPer variazioni contattarci entro 24h. Grazie!` })}
+            </div>
+            <p className="tipo-extra-nota">Segnaposto: {'{nome}'} {'{data}'} {'{ora}'} {'{tipo}'} {'{studio}'}. Si usa quando invii il promemoria dall'agenda; i promemoria automatici restano il modello approvato da Meta.</p>
+          </div>
 
           <div style={{ marginTop: 14, marginBottom: 4 }}>
             <button

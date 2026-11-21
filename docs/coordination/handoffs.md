@@ -4936,3 +4936,14 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Tests: npm test 1871/1871; builds PASS; Chromium fixture checks PASS.
 - Risks: Studio «Salva impostazioni agenda» upserts the whole studio_info from the page copy (a change made from Personal meanwhile can be overwritten until reload); writes from the other app depend on RLS not verified in production.
 - Rollback: revert the commit. Next: PO check on phone; "Mergia".
+
+
+## Handoff — ETICHETTE-PREMIUM step 1 (2026-11-21, Claude Code)
+- Task: ETICHETTE-PREMIUM; previous agent: none (new PO request after mockup approval); branch `claude/etichette-premium` from master f3d241a.
+- Objective: appointment types with preparation/sanitisation times and per-type WhatsApp reminder.
+- Files: `shared/agenda/tipiExtra.js` (new), `shared/agenda/tipiExtra.css` (new), `src/components/Impostazioni.jsx`, `src/components/Agenda.jsx`, `tests/tipiExtra.test.mjs` (new), coordination docs.
+- Database: no schema change; new key `tipi_extra` inside existing `studio_info.agenda_settings`.
+- Tests: npm test 1876/1876; build and build:personal PASS; temporary Chromium fixture at 390px PASS (not committed).
+- Risks: as for AGENDA-ETICHETTE, a stale Studio settings page that later presses the general «Salva» rewrites agenda_settings from its copy; bands are visual only (an appointment can still be booked inside a sanitisation band).
+- Rollback: revert the commit; `tipi_extra` stays as unused jsonb.
+- Next: PO check on phone; "Mergia"; then step 2 (Listino/acconto, Regole, richiamo automatico) on request.

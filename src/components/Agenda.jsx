@@ -2,6 +2,8 @@ import { uniqueAppointmentTypes } from '../lib/appointmentTypes.js';
 import { validatePatientAgendaSlot } from '../lib/patientAgendaBooking.js';
 import DayEvents from '../../shared/agenda/DayEvents.jsx';
 import { labelColor, labelOn } from '../../shared/agenda/labelPalette.js';
+import { extraTipo, durataTipo, messaggioPromemoria } from '../../shared/agenda/tipiExtra.js';
+import '../../shared/agenda/tipiExtra.css';
 import { etichetteDaImpostazioni, coloreImpegno, nomeEtichettaImpegno, tipoPerDb, nuovaEtichetta, RIPETIZIONI, dateRipetizione, fineRipetizionePredefinita, durataGiorni, piuGiorniIso } from '../../shared/agenda/etichette.js';
 import LabelSwatches from '../../shared/agenda/LabelSwatches.jsx';
 import { useTimeline } from '../../shared/agenda/useTimeline.js';
@@ -71,7 +73,7 @@ function AppointmentMenuLayer({ portal, children }) {
   return portal ? createPortal(children, document.body) : children;
 }
 
-function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, followUpMode, onOccupiedSlot, canPrescribe = true, etichetteImp = [] }) {
+function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, followUpMode, onOccupiedSlot, canPrescribe = true, etichetteImp = [], fasceDi = null }) {
   const containerRef = useRef(null); // unico scroll container
   const resizeRef = useRef(null);
   const [now, setNow] = useState(new Date());
@@ -243,8 +245,17 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                   // Appuntamenti sovrapposti nello stesso slot (es. operatori diversi con filtro
                   // "Tutti" attivo) si affiancano in colonne invece di disegnarsi uno sopra
                   // l'altro, così restano tutti visibili e cliccabili.
+                  // ETICHETTE-PREMIUM (PO 2026-11-21): preparazione e sanificazione del tipo come fasce
+                  // tratteggiate sopra e sotto il blocco (solo vista: la durata salvata non cambia).
+                  const fasce = fasceDi ? fasceDi(a) : null;
+                  const hPrima = fasce?.prima ? (fasce.prima / slotMin) * effectiveSlotH : 0;
+                  const hDopo = fasce?.dopo ? (fasce.dopo / slotMin) * effectiveSlotH : 0;
+                  const posFascia = { left: `calc(${(100 / totalCols) * col}% + 2px)`, width: `calc(${100 / totalCols}% - 4px)` };
                   return (
-                    <AppointmentBlock touchScroll={isMobile} aCapo={isSettimana} compatto={compatto} key={a.id} a={a} label={etichetta(p)} co={co} top={top} height={height} col={col} totalCols={totalCols} isBeingResized={isBeingResized} isBeingMoved={isBeingMoved} selectionMode={selModeWA} selectable={isSelezionabileWA} selected={isSelected} operatore={operatore} poltrona={poltrona} selectionIndicator={<Ic n="ok" s={9} c="#fff" />}
+                    <React.Fragment key={a.id}>
+                    {hPrima > 0 && <div className="agenda-fascia-tipo" aria-hidden="true" style={{ ...posFascia, top: top - hPrima, height: hPrima - 2 }}>{!compatto && hPrima >= 14 ? `Preparazione ${fasce.prima}′` : ''}</div>}
+                    {hDopo > 0 && <div className="agenda-fascia-tipo" aria-hidden="true" style={{ ...posFascia, top: top + height + 2, height: hDopo - 2 }}>{!compatto && hDopo >= 14 ? `Sanificazione ${fasce.dopo}′` : ''}</div>}
+                    <AppointmentBlock touchScroll={isMobile} aCapo={isSettimana} compatto={compatto} a={a} label={etichetta(p)} co={co} top={top} height={height} col={col} totalCols={totalCols} isBeingResized={isBeingResized} isBeingMoved={isBeingMoved} selectionMode={selModeWA} selectable={isSelezionabileWA} selected={isSelected} operatore={operatore} poltrona={poltrona} selectionIndicator={<Ic n="ok" s={9} c="#fff" />}
                       onResizeMouse={e => { if (followUpMode) return; e.stopPropagation(); e.preventDefault(); setResizing({ id: a.id, startY: e.clientY, startDurata: Number(a.durata) }); }}
                       onMoveMouse={e => { if (followUpMode || selModeWA || isBeingResized) return; movedRef.current = false; setMoving({ id: a.id, startY: e.clientY, startOra: a.ora }); }}
                       onResizeTouch={e => { if (followUpMode) return; e.stopPropagation(); setResizing({ id: a.id, startY: e.touches[0].clientY, startDurata: Number(a.durata) }); }}
@@ -257,6 +268,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                           setMenuApp(a);
                         }}
                     />
+                    </React.Fragment>
                   );
                 })}</>;
         }} />
@@ -653,6 +665,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   }
 
   const getColore = (a) => a.colore || tipiList.find(t => t.nome === a.tipo)?.colore || C.pri;
+  const extraDi = (a) => extraTipo(si?.agenda_settings, a?.tipo, tipiList);
 
   const weekStart = startOfWeek(selDay);
   // La vista normale può mostrare/nascondere il fine settimana con il controllo rapido;
@@ -760,7 +773,8 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     const p = patients.find(x => x.id === a.pazienteId);
     if (!p?.telefono) { alert('Nessun telefono per questo paziente'); return; }
     const defMsg = `Gentile ${p.nome},\nricordiamo il suo appuntamento:\n📅 ${fmtD(a.data)} alle ${a.ora}\n📌 ${a.tipo}\nPer variazioni contattarci entro 24h. Grazie!`;
-    setWaModal(a); setWaTplId(''); setWaMsg(defMsg);
+    // ETICHETTE-PREMIUM: testo, istruzioni e conferma del tipo, se impostati.
+    setWaModal(a); setWaTplId(''); setWaMsg(messaggioPromemoria({ extra: extraDi(a), predefinito: defMsg, nome: p.nome, data: fmtD(a.data), ora: a.ora, tipo: a.tipo || '', studio: si?.nome || '' }));
   };
 
   const sendWA = () => {
@@ -1030,7 +1044,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   // Anche il foglio «Crea» dell'orario libero blocca la pagina e nasconde icona Poliedron e dock.
   useEffect(() => (sceltaSlot ? lockPageScroll() : undefined), [sceltaSlot]);
   const toccaSlot = (data, ora) => { if (!isMobile || followUpRequest) { apriNuovo(data, ora); return; } setSceltaSlot({ data, ora }); };
-  const gridProps = { slots, slotH, slotMin, oraInizio: timelineStart, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo: toccaSlot, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, canPrescribe: !si?.vertical || VERTICALI_CON_RICETTA.has(si.vertical), etichetteImp, followUpMode: !!followUpRequest, onOccupiedSlot: () => setToast('Questo spazio è occupato. Scegli un altro orario.') };
+  const gridProps = { slots, slotH, slotMin, oraInizio: timelineStart, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo: toccaSlot, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, canPrescribe: !si?.vertical || VERTICALI_CON_RICETTA.has(si.vertical), etichetteImp, fasceDi: extraDi, followUpMode: !!followUpRequest, onOccupiedSlot: () => setToast('Questo spazio è occupato. Scegli un altro orario.') };
 
   // AGENDA-UNICA (PO 2026-11-08): sul telefono anche le scadenze dell'archivio personale, flottanti
   // come gli impegni del giorno; toccandole si apre Conti in Personal (stesso indirizzo).
@@ -1459,7 +1473,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
             <Fld label="Ora"><TimePicker value={form.ora} onChange={(v) => F({ ora: v })} label="Orario appuntamento" /></Fld>
             <Fld label="Durata">
               <Sel value={form.durata} onChange={e => F({ durata: e.target.value })}>
-                {[15,30,45,60,90,120].map(d => <option key={d} value={d}>{d} min</option>)}
+                {[...new Set([15,30,45,60,90,120, Number(form.durata) || 30])].sort((x, y) => x - y).map(d => <option key={d} value={d}>{d} min</option>)}
               </Sel>
             </Fld>
             <Fld label="Stato">
@@ -1475,7 +1489,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
             <div className="appointment-type-tags" role="group" aria-label="Tipo visita e colore">
               {tipiList.map(tipo => {
                 const attiva = form.tipo === tipo.nome, c = labelColor(tipo.colore);
-                return <button type="button" key={tipo.id} className={`appointment-label${attiva ? ' attiva' : ''}`} aria-pressed={attiva} onClick={() => F({ tipo: tipo.nome, colore: tipo.colore })} style={{ '--c': c, '--c-on': labelOn(c) }}>{tipo.nome}</button>;
+                return <button type="button" key={tipo.id} className={`appointment-label${attiva ? ' attiva' : ''}`} aria-pressed={attiva} onClick={() => { const d = durataTipo(tipo); F({ tipo: tipo.nome, colore: tipo.colore, ...(d ? { durata: d } : {}) }); }} style={{ '--c': c, '--c-on': labelOn(c) }}>{tipo.nome}</button>;
               })}
             </div>
             <LabelSwatches className="appointment-label-colors" value={form.colore} onChange={c => F({ colore: c })} size={26} custom={false} />
