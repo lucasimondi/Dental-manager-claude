@@ -2,6 +2,7 @@ import TastoAcquisisci from '../../shared/acquisisci/TastoAcquisisci.jsx';
 import { useIngressoPdf } from './pdf/useIngressoPdf.js';
 import { startAndroidAgendaWidget } from './lib/androidAgendaWidget.js';
 import { studioDb, sessioneStudio, studioDellaSessione, appuntamentoPerId, impegnoPerId } from './lib/studio.js';
+import { useImpostazioniComuni } from './lib/etichetteComuni.js';
 import { avviaAzioneWidget } from './lib/widgetAzioni.js';
 // DOCK-UGUALE: stesse icone e stessa gemma del dock di Studio.
 import { IconaDock as Ic } from './IconeDock.jsx';
@@ -20,7 +21,7 @@ import { conteggiFascicoli } from './lib/archivio.js';
 import { segnaPagato, annullaPagato } from './lib/automatismi.js';
 import { impostaToken } from './lib/miniature.js';
 import { CHAT_VUOTA } from './lib/chat.js';
-import { IMPOSTAZIONI_PREDEFINITE, leggiImpostazioni, salvaImpostazioni } from './lib/impostazioni.js';
+import { IMPOSTAZIONI_PREDEFINITE, salvaImpostazioni } from './lib/impostazioni.js';
 import { saluto, VISTA_KEY, leggiVista, tokenSessione } from './ui.jsx';
 import { differito } from './Differito.jsx';
 const FoglioAggiungi = differito(() => import('./Aggiungi.jsx'), 'FoglioAggiungi');
@@ -69,7 +70,7 @@ function Archivio({ email }) {
     timerToast.current = setTimeout(() => setToast(null), azione ? 7000 : 2600);
   }, []);
   useEffect(() => { conteggiFascicoli(archivioDb).then(setFascicoli).catch(() => {}); }, [versione]);
-  useEffect(() => { leggiImpostazioni(archivioDb).then(setImpostazioni).catch(() => {}); }, []);
+  const salvaEtichette = useImpostazioniComuni(setImpostazioni, setErrore); // AGENDA-ETICHETTE: etichette comuni con lo studio
 
   const salvaImp = useCallback(async (nuove) => {
     setImpostazioni(nuove);
@@ -83,6 +84,8 @@ function Archivio({ email }) {
   }, []);
   const apri = useCallback((p) => { contatore.current += 1; setErrore(null); setFoglio(false); setPagine((st) => [...st, { ...p, chiave: contatore.current }]); }, []);
   useIngressoPdf(apri, setErrore);
+  // AGENDA-ETICHETTE: «Impostazioni di Personal» dalle Impostazioni dello Studio (?sezione=impostazioni).
+  useEffect(() => { if (readSectionLocation() === 'impostazioni') apri({ tipo: 'impostazioni' }); }, [apri]);
   // Azioni dei widget Android (nuovo, apri riga, rimanda): solo editor, mai salvataggi automatici.
   const widgetOpened = useRef(false);
   useEffect(() => {
@@ -110,7 +113,7 @@ function Archivio({ email }) {
   }, [vai]);
 
   const ctx = {
-    esegui, aggiorna, mostra, versione, impostazioni, salvaImp, fascicoli, apri, vai, aggiungi, sotto, apriChat, chat, setChat, indietro,
+    esegui, aggiorna, mostra, versione, impostazioni, salvaImp, salvaEtichette, fascicoli, apri, vai, aggiungi, sotto, apriChat, chat, setChat, indietro,
     apriAggiungi: () => setFoglio(true), // PERSONALE-HOME: il + della Home personale apre lo stesso foglio del tasto +
     // Pagato da un elenco: spesa e prossimo fisso si creano da soli, Annulla li toglie (POL-VITA-021).
     pagato: (s) => esegui(async () => {

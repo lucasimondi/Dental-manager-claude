@@ -1,8 +1,9 @@
 import { uniqueAppointmentTypes } from '../lib/appointmentTypes.js';
 import { validatePatientAgendaSlot } from '../lib/patientAgendaBooking.js';
 import DayEvents from '../../shared/agenda/DayEvents.jsx';
-import LabelSwatches from '../../shared/agenda/LabelSwatches.jsx';
 import { labelColor, labelOn } from '../../shared/agenda/labelPalette.js';
+import { etichetteDaImpostazioni, coloreImpegno, nomeEtichettaImpegno, tipoPerDb, nuovaEtichetta, RIPETIZIONI, dateRipetizione, fineRipetizionePredefinita, durataGiorni, piuGiorniIso } from '../../shared/agenda/etichette.js';
+import LabelSwatches from '../../shared/agenda/LabelSwatches.jsx';
 import { useTimeline } from '../../shared/agenda/useTimeline.js';
 import AgendaVisibility from '../../shared/agenda/AgendaVisibility.jsx';
 import { agendaVisible, keepOccupiedWeekends } from '../../shared/agenda/visibility.js';
@@ -41,26 +42,17 @@ const orarioInMinutiUI = (ora) => {
   const [h, m] = (ora || '0:0').split(':').map(Number);
   return (h || 0) * 60 + (m || 0);
 };
-const TIPO_IMPEGNO = [
-  { id: 'personale', label: 'Personale', colore: '#64748b' },
-  { id: 'ferie', label: 'Ferie', colore: '#f59e0b' },
-  { id: 'chiamata', label: 'Chiamata', colore: '#8b5cf6' },
-  { id: 'altro', label: 'Altro', colore: '#6b7280' },
-];
+// AGENDA-ETICHETTE (PO 2026-11-20): le etichette degli impegni sono la lista comune di Studio e
+// Personal (studio_info.agenda_settings.etichette, shared/agenda/etichette.js), con Compleanni.
 const ETICHETTE_SUGGERITE = [
-  { titolo: 'Ferie', tipo: 'ferie' },
-  { titolo: 'Malattia', tipo: 'personale' },
-  { titolo: 'Corso/Formazione', tipo: 'altro' },
-  { titolo: 'Riunione', tipo: 'chiamata' },
-  { titolo: 'Chiamata', tipo: 'chiamata' },
-  { titolo: 'Impegno privato', tipo: 'personale' },
-  { titolo: 'Congresso', tipo: 'altro' },
-];
-const RIPETI_OPZIONI = [
-  { id: 'no', label: 'Non si ripete', giorni: 0 },
-  { id: 'giornaliera', label: 'Ogni giorno', giorni: 1 },
-  { id: 'settimanale', label: 'Ogni settimana', giorni: 7 },
-  { id: 'due_settimane', label: 'Ogni 2 settimane', giorni: 14 },
+  { titolo: 'Compleanno di ', etichetta: 'compleanni' },
+  { titolo: 'Ferie', etichetta: 'ferie' },
+  { titolo: 'Malattia', etichetta: 'personale' },
+  { titolo: 'Corso/Formazione', etichetta: 'altro' },
+  { titolo: 'Riunione', etichetta: 'chiamata' },
+  { titolo: 'Chiamata', etichetta: 'chiamata' },
+  { titolo: 'Impegno privato', etichetta: 'personale' },
+  { titolo: 'Congresso', etichetta: 'altro' },
 ];
 // Calcola per ogni appuntamento del giorno la colonna e il numero totale di colonne
 // del suo "cluster" di sovrapposizione temporale, così quelli che si sovrappongono
@@ -79,7 +71,7 @@ function AppointmentMenuLayer({ portal, children }) {
   return portal ? createPortal(children, document.body) : children;
 }
 
-function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, followUpMode, onOccupiedSlot, canPrescribe = true }) {
+function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo, apriEdit, apriWA, apriMail, apriSposta, delApp, selDay, setSelDay, setView, today: t, features, impegni, apriEditImpegno, onSwipeDay, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, followUpMode, onOccupiedSlot, canPrescribe = true, etichetteImp = [] }) {
   const containerRef = useRef(null); // unico scroll container
   const resizeRef = useRef(null);
   const [now, setNow] = useState(new Date());
@@ -232,7 +224,7 @@ function GridView({ days, slots, slotH, slotMin, oraInizio, appointments, setApp
                   const top = (inizioMin / slotMin) * effectiveSlotH;
                   const height = Math.max(((fineMin - inizioMin) / slotMin) * effectiveSlotH, effectiveSlotH * 0.5);
                   if (top + height < 0 || top >= slots.length * effectiveSlotH) return null;
-                  const co = imp.colore || TIPO_IMPEGNO.find(x => x.id === imp.tipo)?.colore || C.pri;
+                  const co = coloreImpegno(imp, etichetteImp, C.pri);
                   return (
                     <EventBlock col={col} totalCols={totalCols} key={'imp-' + imp.id} title={imp.titolo} startTime={(imp.oraInizio || '').slice(0, 5)} description={imp.note || ''} aCapo={isSettimana} compatto={compatto} top={top} height={height} co={co} onClick={() => apriEditImpegno(imp)} />
                   );
@@ -443,6 +435,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   // così tutti i collaboratori vedono la stessa configurazione. localStorage resta solo come
   // valore iniziale offline-first prima che arrivi lo studioInfo dal server.
   const agSet = { ...DEF_AGENDA_SETTINGS, ...(si?.agenda_settings || {}) };
+  const etichetteImp = etichetteDaImpostazioni(si?.agenda_settings);
   const [oraInizio, setOraInizio] = useState(() => { try { return si?.agenda_settings?.oraInizio ?? Number(localStorage.getItem('ag_oraInizio') || DEF_AGENDA_SETTINGS.oraInizio); } catch { return DEF_AGENDA_SETTINGS.oraInizio; } });
   const [oraFine, setOraFine] = useState(() => { try { return si?.agenda_settings?.oraFine ?? Number(localStorage.getItem('ag_oraFine') || DEF_AGENDA_SETTINGS.oraFine); } catch { return DEF_AGENDA_SETTINGS.oraFine; } });
   const [slotMin, setSlotMin] = useState(() => { try { return si?.agenda_settings?.slotMin ?? Number(localStorage.getItem('ag_slotMin') || DEF_AGENDA_SETTINGS.slotMin); } catch { return DEF_AGENDA_SETTINGS.slotMin; } });
@@ -552,7 +545,8 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   const waBatchTimersRef = useRef([]);
   const [impModal, setImpModal] = useState(false);
   const [editImp, setEditImp] = useState(null);
-  const [impForm, setImpForm] = useState({ titolo: '', tipo: 'personale', colore: '', dataInizio: today(), dataFine: today(), tuttoIlGiorno: true, oraInizio: '09:00', oraFine: '10:00', note: '', ripeti: 'no', ripetiFino: today(), visibileStudio: true, visibilePersonal: true });
+  const [impForm, setImpForm] = useState({ titolo: '', etichetta: 'personale', colore: '', dataInizio: today(), dataFine: today(), tuttoIlGiorno: true, oraInizio: '09:00', oraFine: '10:00', note: '', ripeti: 'nessuna', ripetiFino: today(), serie: false, visibileStudio: true, visibilePersonal: true });
+  const [nuovaEt, setNuovaEt] = useState(null); // { nome, colore } mentre si crea un'etichetta dal modulo
   const IF = (f) => setImpForm((p) => ({ ...p, ...f }));
 
   const F = (f) => setForm(p => ({ ...p, ...f }));
@@ -906,79 +900,99 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
 
   const apriNuovoImpegno = (data, ora) => {
     setEditImp(null);
+    setNuovaEt(null);
     // Toccando un orario libero l'impegno parte da lì, per un'ora.
     const oraFineSlot = ora ? `${String(Math.min(23, Number(ora.slice(0, 2)) + 1)).padStart(2, '0')}:${ora.slice(3, 5)}` : '10:00';
-    setImpForm({ titolo: '', tipo: 'personale', colore: '', dataInizio: data || selDay, dataFine: data || selDay, tuttoIlGiorno: !ora, oraInizio: ora || '09:00', oraFine: oraFineSlot, note: '', ripeti: 'no', ripetiFino: data || selDay, visibileStudio: true, visibilePersonal: true });
+    setImpForm({ titolo: '', etichetta: 'personale', colore: '', dataInizio: data || selDay, dataFine: data || selDay, tuttoIlGiorno: !ora, oraInizio: ora || '09:00', oraFine: oraFineSlot, note: '', ripeti: 'nessuna', ripetiFino: data || selDay, serie: false, visibileStudio: true, visibilePersonal: true });
     setImpModal(true);
   };
 
   const apriEditImpegno = (imp) => {
     if (followUpRequest) { setToast('Questo spazio è occupato da un impegno.'); return; }
     setEditImp(imp);
+    setNuovaEt(null);
     setImpForm({
-      titolo: imp.titolo, tipo: imp.tipo, colore: imp.colore || '', dataInizio: imp.dataInizio, dataFine: imp.dataFine,
+      titolo: imp.titolo, etichetta: imp.etichetta || imp.tipo || 'personale', colore: imp.colore || '', dataInizio: imp.dataInizio, dataFine: imp.dataFine,
       tuttoIlGiorno: imp.tuttoIlGiorno !== false, oraInizio: imp.oraInizio || '09:00', oraFine: imp.oraFine || '10:00', note: imp.note || '',
-      ripeti: 'no', ripetiFino: imp.dataInizio,
+      ripeti: 'nessuna', ripetiFino: imp.dataInizio, serie: false,
       visibileStudio: agendaVisible(imp, 'studio'), visibilePersonal: agendaVisible(imp, 'personal'),
     });
     setImpModal(true);
   };
 
+  // Scelta dell'etichetta: Compleanni = tutto il giorno e, se nuovo, ogni anno.
+  const scegliEtichetta = (id) => IF(id === 'compleanni'
+    ? { etichetta: id, colore: '', tuttoIlGiorno: true, dataFine: impForm.dataInizio, ...(!editImp ? { ripeti: 'annuale', ripetiFino: fineRipetizionePredefinita(impForm.dataInizio, 'annuale') } : {}) }
+    : { etichetta: id, colore: '' });
+  const scegliRipetizione = (ripeti) => IF({
+    ripeti,
+    ripetiFino: ripeti === 'nessuna' ? impForm.dataInizio
+      : (ripeti === 'annuale' || !impForm.ripetiFino || impForm.ripetiFino <= impForm.dataInizio) ? fineRipetizionePredefinita(impForm.dataInizio, ripeti) : impForm.ripetiFino,
+  });
+  // Nuova etichetta dal modulo: entra nella lista comune (Impostazioni di Studio e Personal).
+  const creaEtichetta = async () => {
+    let et;
+    try { et = nuovaEtichetta(etichetteImp, nuovaEt?.nome, nuovaEt?.colore); } catch (e) { setToast(e.message); return; }
+    const ok = await setStudioInfo?.(p => ({ ...p, agenda_settings: { ...DEF_AGENDA_SETTINGS, ...(p?.agenda_settings || {}), etichette: [...etichetteDaImpostazioni(p?.agenda_settings), et] } }));
+    if (ok === false) { setToast('Etichetta non salvata — riprova'); return; }
+    setNuovaEt(null);
+    IF({ etichetta: et.id, colore: '' });
+    setToast(`Etichetta «${et.nome}» aggiunta ✓`);
+  };
+
   const saveImpegno = () => {
     if (!impForm.titolo.trim()) return;
-    const base = { titolo: impForm.titolo, tipo: impForm.tipo, colore: impForm.colore, tuttoIlGiorno: impForm.tuttoIlGiorno, note: impForm.note, visibileStudio: agendaVisible(impForm, 'studio'), visibilePersonal: agendaVisible(impForm, 'personal') };
+    // Senza colore proprio vale quello dell'etichetta (anche se poi lo si cambia nelle Impostazioni).
+    const base = { titolo: impForm.titolo.trim(), etichetta: impForm.etichetta, tipo: tipoPerDb(impForm.etichetta), colore: impForm.colore, tuttoIlGiorno: impForm.tuttoIlGiorno, note: impForm.note, visibileStudio: agendaVisible(impForm, 'studio'), visibilePersonal: agendaVisible(impForm, 'personal') };
+    const fineDi = (inizio) => (impForm.tuttoIlGiorno ? piuGiorniIso(inizio, durataGiorni(impForm.dataInizio, impForm.dataFine)) : inizio);
+    const orari = impForm.tuttoIlGiorno ? { oraInizio: null, oraFine: null } : { oraInizio: impForm.oraInizio, oraFine: impForm.oraFine };
 
     if (editImp) {
-      const payload = impForm.tuttoIlGiorno
-        ? { ...base, dataInizio: impForm.dataInizio, dataFine: impForm.dataFine, oraInizio: null, oraFine: null }
-        : { ...base, dataInizio: impForm.dataInizio, dataFine: impForm.dataInizio, oraInizio: impForm.oraInizio, oraFine: impForm.oraFine };
-      setImpegni(p => p.map(i => i.id === editImp.id ? { ...i, ...payload } : i));
-      setToast('Aggiornato ✓');
-      setImpModal(false);
-      return;
-    }
-
-    if (impForm.tuttoIlGiorno) {
-      if (impForm.dataFine < impForm.dataInizio) return;
-      setImpegni(p => [...p, { ...base, dataInizio: impForm.dataInizio, dataFine: impForm.dataFine, oraInizio: null, oraFine: null, id: uid() }]);
-      setToast('Salvato ✓');
-      setImpModal(false);
-      return;
-    }
-
-    // Impegno con orario specifico: opzionalmente ripetuto su piu' occorrenze,
-    // ognuna un impegno indipendente (modificabile/eliminabile singolarmente).
-    const passo = RIPETI_OPZIONI.find(r => r.id === impForm.ripeti)?.giorni || 0;
-    const occorrenze = [];
-    if (passo === 0) {
-      occorrenze.push(impForm.dataInizio);
-    } else {
-      const fine = impForm.ripetiFino || impForm.dataInizio;
-      let cursore = new Date(impForm.dataInizio + 'T12:00');
-      const limite = new Date(fine + 'T12:00');
-      let guardia = 0;
-      while (cursore <= limite && guardia < 366) {
-        occorrenze.push(toISO(cursore));
-        cursore.setDate(cursore.getDate() + passo);
-        guardia++;
+      const payload = { ...base, ...orari, dataInizio: impForm.dataInizio, dataFine: fineDi(impForm.dataInizio) };
+      // «Anche le prossime volte»: titolo, etichetta, orari e note uguali sulle occorrenze successive
+      // della serie, ognuna resta nel suo giorno.
+      if (impForm.serie && editImp.recurrenceId) {
+        const { dataInizio: _di, dataFine: _df, ...comuni } = payload;
+        let n = 0;
+        setImpegni(p => p.map(i => {
+          if (i.id === editImp.id) { n += 1; return { ...i, ...payload }; }
+          if (i.recurrenceId === editImp.recurrenceId && i.dataInizio > editImp.dataInizio) {
+            n += 1;
+            return { ...i, ...comuni, dataFine: impForm.tuttoIlGiorno ? piuGiorniIso(i.dataInizio, durataGiorni(impForm.dataInizio, impForm.dataFine)) : i.dataInizio };
+          }
+          return i;
+        }));
+        setToast('Aggiornati anche i prossimi ✓');
+      } else {
+        setImpegni(p => p.map(i => i.id === editImp.id ? { ...i, ...payload } : i));
+        setToast('Aggiornato ✓');
       }
+      setImpModal(false);
+      return;
     }
-    if (occorrenze.length === 0) return;
+
+    if (impForm.tuttoIlGiorno && impForm.dataFine < impForm.dataInizio) return;
+    // Ripetizione (anche per gli impegni di tutto il giorno, es. compleanni ogni anno):
+    // ogni occorrenza è un impegno indipendente con lo stesso recurrenceId.
+    const occorrenze = dateRipetizione(impForm.dataInizio, impForm.ripetiFino, impForm.ripeti);
+    if (occorrenze.length === 0) { setToast('Controlla la data «Ripeti fino al».'); return; }
     // recurrence_id è uuid nel database (id invece è bigint).
     const recurrenceId = occorrenze.length > 1 ? crypto.randomUUID() : null;
-    const nuovi = occorrenze.map(data => ({
-      ...base, dataInizio: data, dataFine: data, oraInizio: impForm.oraInizio, oraFine: impForm.oraFine,
-      recurrenceId, id: uid(),
-    }));
+    const nuovi = occorrenze.map(data => ({ ...base, ...orari, dataInizio: data, dataFine: fineDi(data), recurrenceId, id: uid() }));
     setImpegni(p => [...p, ...nuovi]);
     setToast(occorrenze.length > 1 ? `Creati ${occorrenze.length} impegni ✓` : 'Salvato ✓');
     setImpModal(false);
   };
 
-  const delImpegno = () => {
+  const delImpegno = (tutti = false) => {
     if (!editImp) return;
-    if (!confirm('Eliminare questo impegno?')) return;
-    setImpegni(p => p.filter(i => i.id !== editImp.id));
+    if (tutti && editImp.recurrenceId) {
+      if (!confirm('Eliminare questo impegno e tutte le prossime ripetizioni?')) return;
+      setImpegni(p => p.filter(i => !(i.id === editImp.id || (i.recurrenceId === editImp.recurrenceId && i.dataInizio >= editImp.dataInizio))));
+    } else {
+      if (!confirm('Eliminare questo impegno?')) return;
+      setImpegni(p => p.filter(i => i.id !== editImp.id));
+    }
     setImpModal(false);
   };
 
@@ -1016,7 +1030,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
   // Anche il foglio «Crea» dell'orario libero blocca la pagina e nasconde icona Poliedron e dock.
   useEffect(() => (sceltaSlot ? lockPageScroll() : undefined), [sceltaSlot]);
   const toccaSlot = (data, ora) => { if (!isMobile || followUpRequest) { apriNuovo(data, ora); return; } setSceltaSlot({ data, ora }); };
-  const gridProps = { slots, slotH, slotMin, oraInizio: timelineStart, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo: toccaSlot, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, canPrescribe: !si?.vertical || VERTICALI_CON_RICETTA.has(si.vertical), followUpMode: !!followUpRequest, onOccupiedSlot: () => setToast('Questo spazio è occupato. Scegli un altro orario.') };
+  const gridProps = { slots, slotH, slotMin, oraInizio: timelineStart, appointments: appointmentsAgenda, setAppointments, patients, getColore, getOperatore, getPoltrona, apriNuovo: toccaSlot, apriEdit, apriWA, apriMail, apriSposta, delApp: del, selDay, setSelDay, setView, today: t, impegni, apriEditImpegno, selModeWA, selAppIds, toggleSelApp, isMobile, oraColW, onOpenPatient, onPatientAction, renderAppointmentWorkspace, onOpenRecall, onOpenActivity, onPoliedronCommand, mobileOverlayHeight, canPrescribe: !si?.vertical || VERTICALI_CON_RICETTA.has(si.vertical), etichetteImp, followUpMode: !!followUpRequest, onOccupiedSlot: () => setToast('Questo spazio è occupato. Scegli un altro orario.') };
 
   // AGENDA-UNICA (PO 2026-11-08): sul telefono anche le scadenze dell'archivio personale, flottanti
   // come gli impegni del giorno; toccandole si apre Conti in Personal (stesso indirizzo).
@@ -1025,7 +1039,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     const date = toISO(d);
     return { date, items: [
       ...(isMobile ? scadenzeDelGiorno(scadenzePersonali, date, apriScadenza) : []),
-      ...impegni.filter(i => (i.tuttoIlGiorno || !i.oraInizio) && date >= i.dataInizio && date <= (i.dataFine || i.dataInizio)).map(i => ({ id: i.id, title: i.titolo, color: i.colore || TIPO_IMPEGNO.find(t => t.id === i.tipo)?.colore, onOpen: () => apriEditImpegno(i) })),
+      ...impegni.filter(i => (i.tuttoIlGiorno || !i.oraInizio) && date >= i.dataInizio && date <= (i.dataFine || i.dataInizio)).map(i => ({ id: i.id, title: i.titolo, color: coloreImpegno(i, etichetteImp, C.pri), onOpen: () => apriEditImpegno(i) })),
     ] };
   });
   const dayEvents = <DayEvents days={ribbonDays} gutter={oraColW} />;
@@ -1036,7 +1050,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     oggi: t,
     elementi: [
       ...appointments.filter(a => a.stato !== 'annullato').map(a => ({ id: a.id, tipo: 'appuntamento', titolo: nomePaziente(a.pazienteId), sottotitolo: a.tipo, data: a.data, ora: a.ora, colore: getColore(a), dato: a })),
-      ...tuttiImpegni.map(i => ({ id: i.id, tipo: 'impegno', titolo: i.titolo || 'Impegno', sottotitolo: i.tuttoIlGiorno || !i.oraInizio ? 'tutto il giorno' : '', data: i.dataInizio, ora: i.tuttoIlGiorno ? null : i.oraInizio, colore: i.colore || TIPO_IMPEGNO.find(x => x.id === i.tipo)?.colore, dato: i })),
+      ...tuttiImpegni.map(i => ({ id: i.id, tipo: 'impegno', titolo: i.titolo || 'Impegno', sottotitolo: i.tuttoIlGiorno || !i.oraInizio ? 'tutto il giorno' : '', data: i.dataInizio, ora: i.tuttoIlGiorno ? null : i.oraInizio, colore: coloreImpegno(i, etichetteImp, C.pri), dato: i })),
     ],
     cercaPazienti: q => cercaPazientiLocali(patients, q).slice(0, 5).map(p => ({ id: p.id, titolo: `${p.nome || ''} ${p.cognome || ''}`.trim(), sottotitolo: p.telefono || '', apri: () => onOpenPatient?.(p) })),
     apri: e => { setSelDay(e.data); if (e.tipo === 'impegno') apriEditImpegno(e.dato); else setView('giorno'); },
@@ -1332,11 +1346,11 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
       {view === 'mese' && (() => {
         return (
           <div className={isMobile ? 'agenda-mobile-month-surface' : undefined}>
-            <MonthCalendar palette={C} date={vd} selDay={selDay} today={t} onNavigate={navMese} onSelect={ds => { setSelDay(ds); setView('giorno'); }} daySummary={ds => ({ count: appointmentsAgenda.filter(a => a.data === ds).length, marks: [...(isMobile ? scadenzePersonali.filter(sc => sc.data === ds).map(sc => ({ id: `scadenza-${sc.id}`, colore: '#b45309' })) : []), ...(impegni || []).filter(imp => ds >= imp.dataInizio && ds <= imp.dataFine).map(imp => ({ ...imp, colore: imp.colore || TIPO_IMPEGNO.find(x => x.id === imp.tipo)?.colore || C.pri }))] })} />
+            <MonthCalendar palette={C} date={vd} selDay={selDay} today={t} onNavigate={navMese} onSelect={ds => { setSelDay(ds); setView('giorno'); }} daySummary={ds => ({ count: appointmentsAgenda.filter(a => a.data === ds).length, marks: [...(isMobile ? scadenzePersonali.filter(sc => sc.data === ds).map(sc => ({ id: `scadenza-${sc.id}`, colore: '#b45309' })) : []), ...(impegni || []).filter(imp => ds >= imp.dataInizio && ds <= imp.dataFine).map(imp => ({ ...imp, colore: coloreImpegno(imp, etichetteImp, C.pri) }))] })} />
             {(impegni || []).filter(imp => selDay >= imp.dataInizio && selDay <= imp.dataFine).map(imp => {
-              const co = imp.colore || TIPO_IMPEGNO.find(x => x.id === imp.tipo)?.colore || C.pri;
+              const co = coloreImpegno(imp, etichetteImp, C.pri);
               return (
-                <MonthDetailCard key={imp.id} palette={C} co={co} title={imp.titolo} badge={TIPO_IMPEGNO.find(x => x.id === imp.tipo)?.label || imp.tipo} subtitle={<>{imp.tuttoIlGiorno ? 'Tutto il giorno' : `${(imp.oraInizio || '').slice(0,5)} – ${(imp.oraFine || '').slice(0,5)}`}{imp.dataInizio !== imp.dataFine ? ` · ${fmtD(imp.dataInizio)} – ${fmtD(imp.dataFine)}` : ''}</>} onClick={() => apriEditImpegno(imp)} />
+                <MonthDetailCard key={imp.id} palette={C} co={co} title={imp.titolo} badge={nomeEtichettaImpegno(imp, etichetteImp)} subtitle={<>{imp.tuttoIlGiorno ? 'Tutto il giorno' : `${(imp.oraInizio || '').slice(0,5)} – ${(imp.oraFine || '').slice(0,5)}`}{imp.dataInizio !== imp.dataFine ? ` · ${fmtD(imp.dataInizio)} – ${fmtD(imp.dataFine)}` : ''}</>} onClick={() => apriEditImpegno(imp)} />
               );
             })}
             <MonthDateLabel palette={C} day={selDay} />
@@ -1543,24 +1557,43 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
           </Fld>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: -6, marginBottom: 12 }}>
             {ETICHETTE_SUGGERITE.map(et => (
-              <button key={et.titolo} onClick={() => IF({ titolo: et.titolo, tipo: et.tipo })} style={{ padding: '3px 8px', borderRadius: 20, border: `1px solid ${C.brd}`, background: C.bg, cursor: 'pointer', fontSize: 10, fontWeight: 600, color: C.txm }}>
-                {et.titolo}
+              <button key={et.titolo} type="button" onClick={() => { IF({ titolo: et.titolo }); scegliEtichetta(et.etichetta); }} style={{ padding: '3px 8px', borderRadius: 20, border: `1px solid ${C.brd}`, background: C.bg, cursor: 'pointer', fontSize: 10, fontWeight: 600, color: C.txm }}>
+                {et.titolo.trim()}
               </button>
             ))}
           </div>
-          <Fld label="Tipo / colore">
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-              {TIPO_IMPEGNO.map(tp => (
-                <button key={tp.id} onClick={() => IF({ tipo: tp.id, colore: '' })} style={{ padding: '5px 10px', borderRadius: 20, border: `1.5px solid ${impForm.tipo === tp.id && !impForm.colore ? tp.colore : C.brd}`, background: impForm.tipo === tp.id && !impForm.colore ? tp.colore + '18' : C.sur, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: tp.colore }} />
-                  <span style={{ fontSize: 11, fontWeight: impForm.tipo === tp.id && !impForm.colore ? 700 : 500, color: impForm.tipo === tp.id && !impForm.colore ? tp.colore : C.txm }}>{tp.label}</span>
-                </button>
-              ))}
+          {/* AGENDA-ETICHETTE: etichette comuni (Impostazioni › Agenda, anche in Personal) + nuova al volo. */}
+          <Fld label="Etichetta">
+            <div className="agenda-impegno-etichette" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+              {etichetteImp.map(et => {
+                const on = impForm.etichetta === et.id && !impForm.colore;
+                return (
+                  <button key={et.id} type="button" aria-pressed={impForm.etichetta === et.id} onClick={() => scegliEtichetta(et.id)} style={{ padding: '5px 10px', borderRadius: 20, border: `1.5px solid ${on ? et.colore : C.brd}`, background: on ? et.colore + '18' : C.sur, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: et.colore }} />
+                    <span style={{ fontSize: 11, fontWeight: on ? 700 : 500, color: on ? et.colore : C.txm }}>{et.nome}</span>
+                  </button>
+                );
+              })}
+              {!nuovaEt && (
+                <button type="button" onClick={() => setNuovaEt({ nome: '', colore: '#8460CC' })} style={{ padding: '5px 10px', borderRadius: 20, border: `1.5px dashed ${C.brd}`, background: C.sur, cursor: 'pointer', fontSize: 11, fontWeight: 700, color: C.pri }}>+ Nuova etichetta</button>
+              )}
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 20, border: `1.5px solid ${impForm.colore ? impForm.colore : C.brd}`, background: impForm.colore ? impForm.colore + '18' : C.sur, cursor: 'pointer' }}>
-                <input type="color" value={impForm.colore || TIPO_IMPEGNO.find(x => x.id === impForm.tipo)?.colore || C.pri} onChange={e => IF({ colore: e.target.value })} style={{ width: 16, height: 16, border: 'none', padding: 0, background: 'none', cursor: 'pointer' }} />
-                <span style={{ fontSize: 11, fontWeight: 600, color: C.txm }}>Colore personalizzato</span>
+                <input type="color" value={impForm.colore || coloreImpegno({ etichetta: impForm.etichetta }, etichetteImp, C.pri)} onChange={e => IF({ colore: e.target.value })} style={{ width: 16, height: 16, border: 'none', padding: 0, background: 'none', cursor: 'pointer' }} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: C.txm }}>Colore solo per questo</span>
               </label>
             </div>
+            {nuovaEt && (
+              <div style={{ display: 'grid', gap: 8, marginTop: 8, padding: 10, border: `1px solid ${C.brd}`, borderRadius: 10, background: C.bg }}>
+                <Inp value={nuovaEt.nome} onChange={e => setNuovaEt(x => ({ ...x, nome: e.target.value }))} placeholder="Nome della nuova etichetta (es. Palestra)" aria-label="Nome della nuova etichetta"
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); creaEtichetta(); } }} />
+                <LabelSwatches value={nuovaEt.colore} onChange={c => setNuovaEt(x => ({ ...x, colore: c }))} size={24} />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Btn ch="Annulla" v="sec" onClick={() => setNuovaEt(null)} full />
+                  <Btn ch="Aggiungi etichetta" onClick={creaEtichetta} dis={!nuovaEt.nome.trim()} full />
+                </div>
+                <div style={{ fontSize: 10.5, color: C.txl }}>Resta nell'elenco per i prossimi impegni, qui e in Personal. Si gestisce da Impostazioni › Agenda.</div>
+              </div>
+            )}
           </Fld>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, cursor: 'pointer' }}>
             <input type="checkbox" checked={impForm.tuttoIlGiorno} onChange={e => IF({ tuttoIlGiorno: e.target.checked })} />
@@ -1569,37 +1602,46 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
 
           {impForm.tuttoIlGiorno ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
-              <Fld label="Dal"><Inp type="date" value={impForm.dataInizio} onChange={e => IF({ dataInizio: e.target.value, dataFine: e.target.value > impForm.dataFine ? e.target.value : impForm.dataFine })} /></Fld>
+              <Fld label="Dal"><Inp type="date" value={impForm.dataInizio} onChange={e => IF({ dataInizio: e.target.value, dataFine: e.target.value > impForm.dataFine ? e.target.value : impForm.dataFine, ripetiFino: e.target.value > impForm.ripetiFino ? e.target.value : impForm.ripetiFino })} /></Fld>
               <Fld label="Al"><Inp type="date" value={impForm.dataFine} onChange={e => IF({ dataFine: e.target.value })} /></Fld>
             </div>
           ) : (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : '1fr 1fr 1fr', gap: 10 }}>
-                {/* Sul telefono la data prende tutta la riga e gli orari stanno sotto: niente campi tagliati. */}
-                <div style={isMobile ? { gridColumn: '1 / -1', minWidth: 0 } : undefined}><Fld label="Data"><Inp type="date" value={impForm.dataInizio} onChange={e => IF({ dataInizio: e.target.value, ripetiFino: e.target.value > impForm.ripetiFino ? e.target.value : impForm.ripetiFino })} /></Fld></div>
-                <Fld label="Dalle"><TimePicker value={impForm.oraInizio} onChange={(v) => IF({ oraInizio: v })} label="Orario inizio" /></Fld>
-                <Fld label="Alle"><TimePicker value={impForm.oraFine} onChange={(v) => IF({ oraFine: v })} label="Orario fine" /></Fld>
-              </div>
-              {!editImp && (
-                <>
-                  <Fld label="Ripeti">
-                    <Sel value={impForm.ripeti} onChange={e => IF({ ripeti: e.target.value })}>
-                      {RIPETI_OPZIONI.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-                    </Sel>
-                  </Fld>
-                  {impForm.ripeti !== 'no' && (
-                    <Fld label="Ripeti fino al"><Inp type="date" value={impForm.ripetiFino} onChange={e => IF({ ripetiFino: e.target.value })} /></Fld>
-                  )}
-                </>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : '1fr 1fr 1fr', gap: 10 }}>
+              {/* Sul telefono la data prende tutta la riga e gli orari stanno sotto: niente campi tagliati. */}
+              <div style={isMobile ? { gridColumn: '1 / -1', minWidth: 0 } : undefined}><Fld label="Data"><Inp type="date" value={impForm.dataInizio} onChange={e => IF({ dataInizio: e.target.value, ripetiFino: e.target.value > impForm.ripetiFino ? e.target.value : impForm.ripetiFino })} /></Fld></div>
+              <Fld label="Dalle"><TimePicker value={impForm.oraInizio} onChange={(v) => IF({ oraInizio: v })} label="Orario inizio" /></Fld>
+              <Fld label="Alle"><TimePicker value={impForm.oraFine} onChange={(v) => IF({ oraFine: v })} label="Orario fine" /></Fld>
+            </div>
+          )}
+          {/* Ripetizione: anche per gli impegni di tutto il giorno (compleanni ogni anno). */}
+          {!editImp && (
+            <div style={{ display: 'grid', gridTemplateColumns: impForm.ripeti !== 'nessuna' ? 'repeat(2, minmax(0, 1fr))' : '1fr', gap: 10 }}>
+              <Fld label="Ripeti">
+                <Sel value={impForm.ripeti} onChange={e => scegliRipetizione(e.target.value)} aria-label="Ripeti">
+                  {RIPETIZIONI.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                </Sel>
+              </Fld>
+              {impForm.ripeti !== 'nessuna' && (
+                <Fld label="Ripeti fino al"><Inp type="date" value={impForm.ripetiFino} min={impForm.dataInizio} onChange={e => IF({ ripetiFino: e.target.value })} /></Fld>
               )}
-            </>
+            </div>
+          )}
+          {!editImp && impForm.ripeti !== 'nessuna' && (
+            <div style={{ fontSize: 11, color: C.txm, marginTop: -6, marginBottom: 10 }}>Verranno creati {dateRipetizione(impForm.dataInizio, impForm.ripetiFino, impForm.ripeti).length} impegni, ognuno modificabile da solo.</div>
+          )}
+          {editImp?.recurrenceId && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, cursor: 'pointer' }}>
+              <input type="checkbox" checked={impForm.serie} onChange={e => IF({ serie: e.target.checked })} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: C.txm }}>Si ripete: applica le modifiche anche alle prossime volte</span>
+            </label>
           )}
 
           <AgendaVisibility value={impForm} onChange={flags => IF({ visibileStudio: flags.visibile_studio, visibilePersonal: flags.visibile_personal })} />
           <Fld label="Note (opzionale)"><Txt value={impForm.note} onChange={e => IF({ note: e.target.value })} /></Fld>
           {impForm.tuttoIlGiorno && impForm.dataFine < impForm.dataInizio && <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.danL, borderRadius: 8, padding: '8px 12px', marginBottom: 8, fontSize: 12, color: C.dan, fontWeight: 700 }}><Ic n="warn" s={13} c={C.dan} />La data di fine deve essere uguale o successiva alla data di inizio</div>}
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            {editImp && <Btn ch="Elimina" v="dan" onClick={delImpegno} />}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+            {editImp && <Btn ch="Elimina" v="dan" onClick={() => delImpegno(false)} />}
+            {editImp?.recurrenceId && <Btn ch="Elimina anche i prossimi" v="dan" onClick={() => delImpegno(true)} />}
             <Btn ch="Annulla" v="sec" onClick={() => setImpModal(false)} full />
             <Btn ch={editImp ? 'Aggiorna' : 'Salva'} onClick={saveImpegno} dis={!impForm.titolo.trim() || (impForm.tuttoIlGiorno && impForm.dataFine < impForm.dataInizio)} full />
           </div>

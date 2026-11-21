@@ -1,4 +1,6 @@
 import { agendaVisibility, hasVisibleAgenda } from '../../../shared/agenda/visibility.js';
+import { dateRipetizione, ETICHETTE_BASE, tipoPerDb, coloreImpegno, nomeEtichettaImpegno } from '../../../shared/agenda/etichette.js';
+export { RIPETIZIONI, fineRipetizionePredefinita, normalizzaEtichette, nuovaEtichetta, ETICHETTA_COMPLEANNI } from '../../../shared/agenda/etichette.js';
 // POL-VITA-004 — calcoli dell'agenda di Personal (puri, testabili): date, griglia del mese,
 // elementi di un giorno (appuntamenti, eventi, scadenze) e colonne per gli orari sovrapposti.
 const due = (n) => String(n).padStart(2, '0');
@@ -9,33 +11,9 @@ export const oggi = () => isoData(new Date());
 
 // Genera occorrenze usando date locali e un limite esplicito: nessuna conversione UTC
 // e nessuna deriva del giorno nei mesi più corti (es. 31 gennaio → 28 febbraio → 31 marzo).
+// AGENDA-ETICHETTE: calcolo unico con l'agenda dello studio (anche «Ogni anno» per i compleanni).
 export function generaDateRipetizione(dataInizio, finoAl, frequenza, massimo = 366) {
-  if (!dataInizio) return [];
-  if (!frequenza || frequenza === 'nessuna') return [dataInizio];
-  if (!finoAl || finoAl < dataInizio) return [];
-  const passi = { giornaliera: 1, settimanale: 7, quindicinale: 14 };
-  if (frequenza !== 'mensile' && !passi[frequenza]) return [];
-  const limite = Math.max(1, Math.min(366, Number(massimo) || 366));
-  const out = [];
-  const giornoAncoraggio = daIso(dataInizio).getDate();
-  let indice = 0;
-  while (out.length < limite) {
-    let data;
-    if (frequenza === 'mensile') {
-      const d = daIso(dataInizio);
-      d.setDate(1);
-      d.setMonth(d.getMonth() + indice);
-      const ultimoGiorno = new Date(d.getFullYear(), d.getMonth() + 1, 0, 12).getDate();
-      d.setDate(Math.min(giornoAncoraggio, ultimoGiorno));
-      data = isoData(d);
-    } else {
-      data = piuGiorni(dataInizio, indice * passi[frequenza]);
-    }
-    if (data > finoAl) break;
-    out.push(data);
-    indice += 1;
-  }
-  return out;
+  return dateRipetizione(dataInizio, finoAl, frequenza, massimo);
 }
 
 export const minuti = (ora) => {
@@ -57,18 +35,15 @@ export function grigliaMese(s) {
 }
 export const stessoMese = (a, b) => a.slice(0, 7) === b.slice(0, 7);
 
-export const ETICHETTE_PREDEFINITE = Object.freeze([
-  { id: 'personale', nome: 'Personale', colore: '#64748b' },
-  { id: 'famiglia', nome: 'Famiglia', colore: '#db2777' },
-  { id: 'sport', nome: 'Sport', colore: '#059669' },
-  { id: 'viaggio', nome: 'Viaggio', colore: '#0284c7' },
-  { id: 'ferie', nome: 'Ferie', colore: '#f59e0b' },
-]);
+// AGENDA-ETICHETTE: le etichette di base sono quelle comuni dell'agenda unica (anche Compleanni).
+export const ETICHETTE_PREDEFINITE = ETICHETTE_BASE;
 export const COLORE_SCADENZA = '#b45309';
 
 // Colore di un evento: il suo, poi quello dell'etichetta, poi grigio.
-export const coloreEvento = (ev, etichette) => ev.colore || etichette.find((e) => e.id === (ev.etichetta || ev.tipo) || e.nome === (ev.etichetta || ev.tipo))?.colore || '#64748b';
-export const nomeEtichetta = (tipo, etichette) => etichette.find((e) => e.id === (typeof tipo === 'object' ? (tipo.etichetta || tipo.tipo) : tipo) || e.nome === (typeof tipo === 'object' ? (tipo.etichetta || tipo.tipo) : tipo))?.nome || tipo || 'Personale';
+export const coloreEvento = (ev, etichette) => coloreImpegno(ev, etichette);
+export const nomeEtichetta = (tipo, etichette) => (typeof tipo === 'object' && tipo
+  ? nomeEtichettaImpegno(tipo, etichette)
+  : nomeEtichettaImpegno({ etichetta: tipo }, etichette)) || 'Personale';
 
 // Tutto ciò che cade in un giorno, già separato fra "in alto" (tutto il giorno, scadenze) e "a orario".
 export function elementiDelGiorno(giorno, { appuntamenti = [], impegni = [], scadenze = [] }) {
@@ -129,7 +104,7 @@ export function rigaImpegno(evento) {
   const tuttoIlGiorno = !!evento.tutto_il_giorno;
   return {
     titolo: String(evento.titolo || '').trim() || 'Evento',
-    tipo: ['personale', 'ferie', 'chiamata', 'altro'].includes(evento.tipo) ? evento.tipo : 'personale',
+    tipo: tipoPerDb(evento.tipo || evento.etichetta || 'personale'),
     etichetta: evento.tipo || evento.etichetta || 'personale',
     colore: evento.colore || null,
     data_inizio: evento.data_inizio,

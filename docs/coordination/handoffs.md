@@ -4915,3 +4915,14 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Tests: npm test 1834/1834; builds PASS; visual PASS light/dark.
 - Risks: unit-level links of ipoteche are partly inferred (marked probabile/da verificare); Anna's PDF exposes the gravami on Luca's quota (needed for the division) but no other debts.
 - Rollback: revert; tables/columns stay unused. Next: PO review, PR on request.
+
+
+## Handoff — AGENDA-ETICHETTE (2026-11-20, Claude Code)
+- Task: AGENDA-ETICHETTE; previous agent: none (new PO request); branch `ccr-95ada4ed-jk2mry`.
+- Objective: common settings Studio/Personal for agenda labels, new labels from the agenda, repeatable impegni, Compleanni label.
+- Done: see current-task.md. Files: `shared/agenda/etichette.js` (new), `src/components/Agenda.jsx`, `src/components/Impostazioni.jsx`, `personal/src/App.jsx`, `personal/src/lib/{agenda.js,studio.js,etichetteComuni.js (new)}`, `personal/src/sezioni/agenda/Evento.jsx`, `personal/src/sezioni/impostazioni/Impostazioni.jsx`, `personal/src/personal.css`, `tests/agendaEtichette.test.mjs` (new).
+- Database: no schema change; labels stored in existing `studio_info.agenda_settings.etichette`.
+- Tests: npm test 1871/1871; builds PASS; Chromium visual agenda.reliability/ricerca/motion, appointment-workspace PASS.
+- Risks: Studio Impostazioni «Salva» upserts the whole studio_info from its local copy, so a label added from Personal in the meantime could be overwritten by a stale Studio page (reload fixes it); repeated impegni are stored as copies (yearly: 30 by default).
+- Rollback: revert the commit; saved labels stay as unused jsonb.
+- Next: PO review on phone; PR on request; "Mergia".

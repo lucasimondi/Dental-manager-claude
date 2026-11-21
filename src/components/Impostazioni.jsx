@@ -1,6 +1,9 @@
 ﻿import ProfiloUtente from './ProfiloUtente.jsx';
 import GestioneUtenti from './GestioneUtenti.jsx';
 import GestioneRisorseAgenda from './GestioneRisorseAgenda.jsx';
+import { etichetteDaImpostazioni, nuovaEtichetta } from '../../shared/agenda/etichette.js';
+import LabelSwatches from '../../shared/agenda/LabelSwatches.jsx';
+import { sectionDestination } from '../../shared/agenda/navigation.js';
 import FarmaciPreferitiSettings from './FarmaciPreferitiSettings.jsx';
 import WhatsAppEmbeddedSignup from './WhatsAppEmbeddedSignup.jsx';
 import React, { useState, useEffect, useRef } from 'react';
@@ -426,6 +429,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           ['azioni_rapide', 'zap', 'Azioni rapide'],
           ['whatsapp', 'wa', 'WhatsApp'],
           ['team', 'users', 'Profilo e team'],
+          ['personale', 'user', 'Personale'],
         ].map(([id, ic, lbl]) => (
           <button
             key={id}
@@ -846,6 +850,9 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       </Crd>
       <Btn ch="Salva impostazioni agenda" ic="save" onClick={save} dis={agSet.oraInizio >= agSet.oraFine} full sz="lg" />
 
+      {/* AGENDA-ETICHETTE (PO 2026-11-20): etichette degli impegni comuni a Studio e Personal. */}
+      <EtichetteAgenda studioInfo={studioInfo} setStudioInfo={setStudioInfo} onSaved={(etichette) => S({ agenda_settings: { ...agSet, etichette } })} setToast={setToast} />
+
       <div style={{ marginTop: 26, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Multi-agenda</div>
         <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Più professionisti e più {(!si?.vertical || si.vertical === 'dentistico') ? 'poltrone' : 'postazioni'}, ognuno con la propria agenda filtrabile</div>
@@ -1240,6 +1247,21 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       </>
       )}
 
+      {sezione === 'personale' && (
+        <>
+          <div style={{ marginTop: 26, marginBottom: 14 }}>
+            <div style={{ fontSize: 20, fontWeight: 800 }}>Personale</div>
+            <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Le impostazioni sono comuni a tutto Poliedra: persone, documenti personali, sezioni, categorie di spese e incassi, notifiche</div>
+          </div>
+          <Crd style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 12.5, color: C.txm, marginBottom: 12 }}>Le etichette dell'agenda sono le stesse qui e in Personal (le trovi in Agenda). Il resto delle impostazioni della vita personale si apre in Personal.</div>
+            <a href={sectionDestination('personal', 'impostazioni')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 44, borderRadius: 10, background: C.pri, color: '#fff', fontWeight: 700, fontSize: 13, textDecoration: 'none' }}>
+              <Ic n="set" s={14} c="#fff" />Apri le impostazioni di Personal
+            </a>
+          </Crd>
+        </>
+      )}
+
       {sezione === 'team' && (
       <>
       <ProfiloUtente onNomeChange={onNomeChange} vertical={si.vertical} />
@@ -1389,3 +1411,49 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
 }
 
 
+
+// AGENDA-ETICHETTE: un'etichetta si aggiunge, si ricolora o si toglie e viene salvata subito
+// (studio_info.agenda_settings.etichette); Personal legge e scrive la stessa lista.
+function EtichetteAgenda({ studioInfo, setStudioInfo, onSaved, setToast }) {
+  const etichette = etichetteDaImpostazioni(studioInfo?.agenda_settings);
+  const [nome, setNome] = useState('');
+  const [colore, setColore] = useState('#8460CC');
+  const salva = async (nuove, messaggio) => {
+    const ok = await setStudioInfo((p) => ({ ...p, agenda_settings: { ...DEF_AGENDA_SETTINGS, ...(p?.agenda_settings || {}), etichette: nuove } }));
+    if (ok === false) { setToast('Non salvato — riprova'); return; }
+    onSaved(nuove);
+    setToast(messaggio);
+  };
+  const aggiungi = () => {
+    try {
+      const et = nuovaEtichetta(etichette, nome, colore);
+      salva([...etichette, et], `Etichetta «${et.nome}» aggiunta ✓`);
+      setNome('');
+    } catch (e) { setToast(e.message); }
+  };
+  return (
+    <>
+      <div style={{ marginTop: 26, marginBottom: 14 }}>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>Etichette degli impegni</div>
+        <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Comuni a Studio e Personal: compaiono quando crei un impegno. «Compleanni» c'è sempre.</div>
+      </div>
+      <Crd style={{ marginBottom: 14, padding: 0, overflow: 'hidden' }}>
+        {etichette.map((e, i) => (
+          <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 13px', borderBottom: i < etichette.length - 1 ? `1px solid ${C.brd}` : 'none' }}>
+            <div style={{ width: 14, height: 14, borderRadius: '50%', background: e.colore, flexShrink: 0 }} />
+            <span style={{ flex: 1, minWidth: 0, fontWeight: 600, fontSize: 13 }}>{e.nome}</span>
+            <input type="color" aria-label={`Colore di ${e.nome}`} value={e.colore} onChange={(ev) => salva(etichette.map((x) => (x.id === e.id ? { ...x, colore: ev.target.value } : x)), 'Colore salvato ✓')} style={{ width: 28, height: 28, border: 'none', padding: 0, background: 'none', cursor: 'pointer' }} />
+            <button type="button" aria-label={`Togli ${e.nome}`} disabled={e.id === 'compleanni' || etichette.length < 2} onClick={() => { if (confirm(`Togliere l'etichetta «${e.nome}»? Gli impegni restano.`)) salva(etichette.filter((x) => x.id !== e.id), 'Etichetta tolta ✓'); }} style={{ minWidth: 36, minHeight: 36, border: 0, borderRadius: 8, background: 'none', cursor: e.id === 'compleanni' ? 'default' : 'pointer', opacity: e.id === 'compleanni' ? 0.3 : 1 }}><Ic n="x" s={13} c={C.txm} /></button>
+          </div>
+        ))}
+      </Crd>
+      <Crd style={{ marginBottom: 14 }}>
+        <Fld label="Nuova etichetta">
+          <Inp value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Es. Palestra, Scuola, Medico" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (nome.trim()) aggiungi(); } }} />
+        </Fld>
+        <div style={{ marginBottom: 12 }}><LabelSwatches value={colore} onChange={setColore} size={24} /></div>
+        <Btn ch="+ Aggiungi etichetta" v="sec" onClick={aggiungi} dis={!nome.trim()} full />
+      </Crd>
+    </>
+  );
+}
