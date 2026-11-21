@@ -17,7 +17,7 @@ try {
   // SCAN-HUB: Scan opens on its Home; «Scanner» opens the scanner page on top.
   await page.getByRole('button', { name: /^Scanner/ }).click();
   await page.getByRole('button', { name: /Scatta/ }).waitFor();
-  assert.equal(await page.locator('.pp-schede, .pp-fab').count(), 0, 'no dock and no + in Scan');
+  assert.equal(await page.locator('.pp-schede, .pb-barra, .pp-fab').count(), 0, 'no dock/taskbar and no + in Scan');
   await page.screenshot({ path: `${out}/scan-vuota.png` });
   const foto = await page.evaluate(async () => { const c = document.createElement('canvas'); c.width = 600; c.height = 800; const g = c.getContext('2d'); g.fillStyle = '#222'; g.fillRect(0, 0, 600, 800); g.fillStyle = '#fff'; g.fillRect(100, 100, 400, 600); g.fillStyle = '#000'; g.font = '30px sans-serif'; g.fillText('DOCUMENTO FITTIZIO', 120, 200); const b = await new Promise((r) => c.toBlob(r, 'image/png')); return Array.from(new Uint8Array(await b.arrayBuffer())); });
   await page.locator('.pp-pagina input[type=file]').first().setInputFiles({ name: 'foglio.png', mimeType: 'image/png', buffer: Buffer.from(foto) });

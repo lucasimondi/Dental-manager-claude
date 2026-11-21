@@ -1,0 +1,118 @@
+/* PERSONAL-ESPLORA-WIN11 fase 3 — barra delle applicazioni e Start stile Windows 11.
+   Colori della modalità chiara dal prototipo; in modalità scura le variabili di pro.css. */
+:root:root { --pp-dock: 64px; }
+@media (orientation: landscape) and (max-height: 500px) { :root:root { --pp-dock: 48px; } }
+
+.pb-barra, .pb-start {
+  --pb-font: 'Segoe UI Variable Text', 'Segoe UI', Inter, system-ui, sans-serif;
+  --pb-sfondo: rgba(243, 243, 243, .85);
+  --pb-pannello: rgba(243, 243, 243, .92);
+  --pb-testo: #1A1A1A;
+  --pb-secondario: #5C5C5C;
+  --pb-accento: #005FB8;
+  --pb-attiva: #FFFFFF;
+  --pb-hover: rgba(0, 0, 0, .05);
+  --pb-linea: rgba(0, 0, 0, .08);
+  --pb-pallino: #C42B1C;
+  --pb-campo: #FFFFFF;
+}
+@media (prefers-color-scheme: dark) {
+  .pb-barra, .pb-start {
+    --pb-sfondo: color-mix(in srgb, var(--pp-sfondo) 85%, transparent);
+    --pb-pannello: color-mix(in srgb, var(--pp-superficie) 94%, transparent);
+    --pb-testo: var(--pp-inchiostro);
+    --pb-secondario: var(--pp-grigio);
+    --pb-accento: #60CDFF;
+    --pb-attiva: color-mix(in srgb, var(--pp-inchiostro) 12%, transparent);
+    --pb-hover: color-mix(in srgb, var(--pp-inchiostro) 7%, transparent);
+    --pb-linea: var(--pp-linea);
+    --pb-campo: var(--pp-sfondo);
+  }
+}
+
+/* Le pagine sopra la sezione finiscono sopra la barra (prima: 84 px fissi del dock). */
+.pp-app > .pp-pagina { bottom: calc(var(--pp-dock) + env(safe-area-inset-bottom)); }
+body.pp-tastiera .pb-barra { display: none; }
+
+.pb-barra {
+  position: fixed; z-index: 45; left: 0; right: 0; bottom: 0;
+  height: calc(var(--pp-dock) + env(safe-area-inset-bottom)); padding: 0 6px env(safe-area-inset-bottom);
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center;
+  background: var(--pb-sfondo); border-top: 1px solid var(--pb-linea);
+  backdrop-filter: saturate(180%) blur(24px); -webkit-backdrop-filter: saturate(180%) blur(24px);
+  font-family: var(--pb-font); color: var(--pb-testo);
+}
+.pb-icone { display: flex; align-items: center; gap: 2px; }
+.pb-voce {
+  position: relative; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 6px;
+  color: var(--pb-testo); transition: background-color .12s;
+}
+.pb-voce:hover { background: var(--pb-hover); }
+.pb-voce:active { transform: scale(.94); }
+.pb-voce.attiva { background: var(--pb-attiva); box-shadow: 0 1px 2px rgba(0, 0, 0, .06); }
+.pb-voce.attiva::after { content: ''; position: absolute; bottom: 2px; left: 50%; width: 12px; height: 3px; margin-left: -6px; border-radius: 2px; background: var(--pb-accento); }
+.pb-voce:focus-visible, .pb-area:focus-visible, .pb-app:focus-visible, .pb-consigliato:focus-visible { outline: 2px solid var(--pb-accento); outline-offset: 1px; }
+.pb-logo { width: 28px; height: 28px; object-fit: contain; pointer-events: none; }
+.pb-pallino {
+  position: absolute; top: 0; right: -2px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px;
+  display: grid; place-items: center; background: var(--pb-pallino); color: #fff; font-size: 10px; font-weight: 700; line-height: 1;
+  border: 1.5px solid #fff; font-family: var(--pb-font);
+}
+.pb-area {
+  justify-self: end; position: relative; display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 6px; border-radius: 6px;
+  color: var(--pb-testo); font-size: 11px; line-height: 1.25; text-align: right;
+}
+.pb-area:hover { background: var(--pb-hover); }
+.pb-ora { display: flex; flex-direction: column; align-items: flex-end; white-space: nowrap; }
+.pb-data-breve { display: none; }
+.pb-notifiche { min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 10px; display: grid; place-items: center; background: var(--pb-accento); color: #fff; font-size: 11px; font-weight: 700; }
+@media (prefers-color-scheme: dark) { .pb-notifiche { color: #00243a; } }
+/* Telefono in verticale: la data si accorcia (giorno/mese) per lasciare le icone al centro. */
+@media (max-width: 400px) {
+  .pb-barra { padding: 0 2px env(safe-area-inset-bottom); }
+  .pb-icone { gap: 0; }
+  .pb-area { padding: 0 2px; gap: 3px; font-size: 10px; }
+  .pb-data { display: none; }
+  .pb-data-breve { display: inline; }
+}
+
+/* Start */
+.pb-velo { position: fixed; inset: 0; z-index: 44; background: transparent; }
+.pb-start {
+  position: fixed; left: 50%; bottom: calc(var(--pp-dock) + 8px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  width: min(560px, calc(100vw - 16px)); max-height: calc(100dvh - var(--pp-dock) - 24px - env(safe-area-inset-bottom) - env(safe-area-inset-top));
+  display: flex; flex-direction: column; overflow: hidden; border-radius: 8px; border: 1px solid var(--pb-linea);
+  background: var(--pb-pannello); color: var(--pb-testo); font-family: var(--pb-font);
+  backdrop-filter: saturate(180%) blur(30px); -webkit-backdrop-filter: saturate(180%) blur(30px);
+  box-shadow: 0 32px 64px rgba(0, 0, 0, .19), 0 2px 21px rgba(0, 0, 0, .15); animation: pb-sale .18s cubic-bezier(.1, .9, .2, 1);
+}
+@keyframes pb-sale { from { transform: translate(-50%, 24px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pb-start { animation: none; } }
+.pb-cerca { flex-shrink: 0; display: flex; align-items: center; gap: 8px; margin: 16px 16px 4px; padding: 0 12px; height: 40px; border-radius: 20px; background: var(--pb-campo); border: 1px solid var(--pb-linea); border-bottom: 2px solid var(--pb-accento); color: var(--pb-secondario); }
+.pb-cerca input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 14px; color: var(--pb-testo); }
+.pb-start-corpo { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 4px 16px 12px; }
+.pb-start h2 { margin: 14px 8px 8px; font-size: 14px; font-weight: 600; }
+.pb-aggiunte { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; }
+.pb-app { min-width: 0; min-height: 76px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 8px 2px; border-radius: 6px; color: var(--pb-testo); }
+.pb-app:hover, .pb-app:active { background: var(--pb-hover); }
+.pb-app-icona { position: relative; width: 36px; height: 36px; display: grid; place-items: center; color: var(--pb-accento); }
+.pb-app-nome { width: 100%; font-size: 12px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-consigliati { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; }
+.pb-consigliato { min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 8px; border-radius: 6px; text-align: left; color: var(--pb-testo); }
+.pb-consigliato:hover, .pb-consigliato:active { background: var(--pb-hover); }
+.pb-consigliato svg { flex-shrink: 0; }
+.pb-consigliato span { min-width: 0; display: flex; flex-direction: column; }
+.pb-consigliato strong { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-consigliato small { font-size: 11px; color: var(--pb-secondario); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pb-nota { grid-column: 1 / -1; margin: 4px 8px; color: var(--pb-secondario); font-size: 13px; }
+.pb-start-piede { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 24px; border-top: 1px solid var(--pb-linea); background: color-mix(in srgb, var(--pb-pannello) 70%, rgba(0, 0, 0, .03)); }
+.pb-utente { display: flex; align-items: center; gap: 10px; font-size: 13px; min-width: 0; }
+.pb-avatar { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--pb-accento); color: #fff; font-weight: 700; flex-shrink: 0; }
+.pb-esci { display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 10px; border-radius: 6px; font-size: 13px; color: var(--pb-testo); }
+.pb-esci:hover { background: var(--pb-hover); }
+.pb-esci.conferma { background: var(--pb-pallino); color: #fff; }
+@media (max-width: 400px) {
+  .pb-start-corpo { padding: 4px 8px 8px; }
+  .pb-consigliati { grid-template-columns: minmax(0, 1fr); }
+  .pb-start-piede { padding: 8px 12px; }
+}

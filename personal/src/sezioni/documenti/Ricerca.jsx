@@ -6,9 +6,9 @@ import { Vuoto } from '../../ui.jsx';
 import { IconaCerca, IconaChiudi } from '../../Icone.jsx';
 import { ElencoSelezionabile } from './Selezione.jsx';
 
-export function PaginaRicerca({ filtri: base = {}, sezione, carica, ctx }) {
+export function PaginaRicerca({ filtri: base = {}, sezione, carica, ctx, testoIniziale = '' }) {
   const { esegui, versione } = ctx;
-  const [testo, setTesto] = useState('');
+  const [testo, setTesto] = useState(testoIniziale || ''); // testoIniziale: dalla ricerca di Start
   const [anchePocoUtili, setAnchePocoUtili] = useState(false);
   const [elenco, setElenco] = useState(null);
   const [rinfresca, setRinfresca] = useState(0);

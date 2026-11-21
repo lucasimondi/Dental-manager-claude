@@ -6,8 +6,9 @@ import { readFileSync } from 'node:fs';
 const read = (p) => readFileSync(p, 'utf8');
 
 test('dock: «Personale» apre direttamente la Home personale, in Personal e in Studio', () => {
-  assert.match(read('personal/src/App.jsx'), /<span className="pp-dock-nome">Personale<\/span>/);
-  assert.doesNotMatch(read('personal/src/App.jsx'), /<span>Per te<\/span>/);
+  // PERSONAL-ESPLORA-WIN11 fase 3: la barra stile Windows 11 tiene «Personale» → stessa vista.
+  assert.match(read('personal/src/lib/barra.js'), /\{ id: 'altro', nome: 'Personale', vista: 'altro' \}/);
+  assert.doesNotMatch(read('personal/src/lib/barra.js'), /Per te/);
   assert.match(read('src/components/poliedron/PoliedronMobileDock.jsx'), /\{ id: 'perte', label: 'Personale', icon: 'user' \}/);
   assert.match(read('personal/src/sezioni/altro/index.jsx'), /id: 'altro', nome: 'Personale', Icona: IconaPerTe, Vista: VistaPersonale/);
 });
@@ -59,22 +60,22 @@ test('PERSONALE-GRAFICA: niente più «Per te»; Home con testata propria; dock 
   assert.match(css, /\.pp-vista-dafare \.pp-dafare-riepilogo \{/);
 });
 
-test('DOCK-UGUALE: il dock di Personal ha le misure e le icone di quello di Studio', async () => {
-  const { MOBILE_DOCK_BOTTOM, MOBILE_DOCK_HEIGHT, MOBILE_DOCK_MAX_WIDTH, MOBILE_DOCK_WIDTH_RATIO } = await import('../src/lib/poliedron/poliedronMobileDock.js');
-  const css = read('personal/src/personale.css');
-  assert.match(css, new RegExp(`bottom: calc\\(${MOBILE_DOCK_BOTTOM}px \\+ env\\(safe-area-inset-bottom, 0px\\)\\)`));
-  assert.match(css, new RegExp(`height: ${MOBILE_DOCK_HEIGHT}px;`));
-  assert.match(css, new RegExp(`width: min\\(${MOBILE_DOCK_WIDTH_RATIO * 100}vw, ${MOBILE_DOCK_MAX_WIDTH}px`));
-  assert.match(css, /\.pp-schede\.pp-dock \.pp-scheda \{\n  position: relative; width: 44px; height: 44px;/);
+test('PERSONAL-ESPLORA-WIN11 fase 3: barra stile Windows 11 al posto del dock (misure dalla specifica)', () => {
+  // Sostituisce DOCK-UGUALE (PO 2026-11-16) per decisione del PO del 2026-11-21 (prototipo approvato).
+  const css = read('personal/src/barra.css');
+  assert.match(css, /:root:root \{ --pp-dock: 64px; \}/);
+  assert.match(css, /@media \(orientation: landscape\) and \(max-height: 500px\) \{ :root:root \{ --pp-dock: 48px; \} \}/);
+  assert.match(css, /\.pb-voce \{\n  position: relative; width: 44px; height: 44px;/);
+  assert.match(css, /--pb-accento: #005FB8;/);
+  assert.match(css, /width: 12px; height: 3px;/);
+  assert.match(css, /backdrop-filter: saturate\(180%\) blur\(24px\)/);
+  assert.match(css, /env\(safe-area-inset-bottom\)/);
   const app = read('personal/src/App.jsx');
-  assert.match(app, /<nav className="pp-schede pp-dock" aria-label="Sezioni">/);
-  assert.match(app, /ICONE_DOCK = \{ agenda: 'cal', documenti: 'folder' \}/);
-  assert.match(app, /<Ic n="brief" s=\{22\} \/>[^\n]*Studio/);
-  assert.match(app, /<Ic n="user" s=\{22\} \/>[^\n]*Personale/);
-  assert.match(app, /className="pp-dock-gemma" src=\{gemmaPoliedron\}/);
-  // stessi disegni delle icone di Studio
+  assert.doesNotMatch(app, /pp-schede pp-dock/);
+  assert.match(app, /<BarraApplicazioni vista=\{vista\} pagine=\{pagine\}/);
+  // l'icona del calendario resta quella di Studio
   const ic = read('src/components/ui/Ic.jsx'), mie = read('personal/src/IconeDock.jsx');
-  for (const d of ['M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z', 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2', 'M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16']) { assert.ok(ic.includes(d)); assert.ok(mie.includes(d)); }
+  for (const d of ['M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16']) { assert.ok(ic.includes(d)); assert.ok(mie.includes(d)); }
 });
 
 test('PERSONALE-GRAFICA 2: in Conti i tasti affiancati vanno a capo invece di uscire dal bordo', () => {

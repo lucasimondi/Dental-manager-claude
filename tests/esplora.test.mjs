@@ -280,3 +280,34 @@ test('Drive: chiama lo script; se non risponde lascia la nota «da spostare» e 
   await allineaDrive(c.db, { tipo: 'sposta', mosse: [{ tipo: 'doc', id: 'd7', da: 'auto', a: FUORI }] }, { token: 't', fetchImpl: giu });
   assert.deepEqual(c.scritture, [{ t: 'documenti', corpo: { drive_fissa: false, drive_cartella: null }, filtri: [['in', 'id', ['d7']], ['or', 'drive_cartella.like.cartella:*,drive_cartella.like.>cartella:*']] }]);
 });
+
+/* ---------- fase 3: barra e Start ---------- */
+import { VOCI_BARRA, voceAttiva, vociStart, numeroNotifiche, oraData, nomeUtente, consigliati, etichettaNumero } from '../personal/src/lib/barra.js';
+
+test('barra: Start · Oggi · Agenda · Esplora file · Assistente · Personale; stesse viste di prima', () => {
+  assert.deepEqual(VOCI_BARRA.map((v) => v.nome), ['Start', 'Oggi', 'Agenda', 'Esplora file', 'Assistente', 'Personale']);
+  assert.deepEqual(VOCI_BARRA.filter((v) => v.vista).map((v) => v.vista), ['oggi', 'agenda', 'poliedron', 'altro']);
+  assert.equal(voceAttiva({ vista: 'agenda' }), 'agenda');
+  assert.equal(voceAttiva({ vista: 'poliedron' }), 'poliedron');
+  assert.equal(voceAttiva({ vista: 'conti' }), 'altro'); // come prima: le altre sezioni accendono Personale
+  assert.equal(voceAttiva({ vista: 'agenda', pagine: [{ tipo: 'documento' }, { tipo: 'esplora' }] }), 'esplora');
+  assert.equal(voceAttiva({ vista: 'agenda', pagine: [{ tipo: 'esplora' }, { tipo: 'documento' }] }), 'agenda');
+  assert.equal(voceAttiva({ vista: 'agenda', start: true }), 'start');
+});
+
+test('Start: aggiunte con pallini dai conteggi esistenti, notifiche = Da fare aperti, ora e data, nome, consigliati', () => {
+  const v = vociStart({ esplora: 7, dafare: 3, urgenti: 1, documenti: 12 });
+  const n = Object.fromEntries(v.map((x) => [x.id, x.n]));
+  assert.deepEqual([n.oggi, n.documenti, n.esplora, n.dafare, n.conti], [1, 12, 7, 3, 0]);
+  for (const id of ['oggi', 'agenda', 'documenti', 'esplora', 'conti', 'legal', 'pratiche', 'personali', 'diario', 'studio', 'impostazioni']) assert.ok(v.some((x) => x.id === id), id);
+  assert.deepEqual(v.find((x) => x.id === 'esplora').azione, { apri: { tipo: 'esplora' } });
+  assert.equal(numeroNotifiche({ dafare: 4 }), 4);
+  assert.equal(numeroNotifiche({}), 0);
+  assert.deepEqual(oraData(new Date('2026-11-21T13:05:00Z')), { ora: '14:05', data: '21/11/2026', breve: '21/11' });
+  assert.equal(nomeUtente('luca.simondi@gmail.com'), 'Luca');
+  assert.equal(nomeUtente(''), 'Account');
+  const c = consigliati([{ id: 'r1', nome: 'scan.pdf', data: 5, tipo: 'application/pdf' }], [{ id: 'd1', titolo: 'Bolletta', creato_il: '2026-11-01T00:00:00Z' }, { id: 'd2', titolo: 'IMU' }], 2);
+  assert.deepEqual(c.map((x) => [x.tipo, x.id]), [['recente', 'r1'], ['documento', 'd1']]);
+  assert.equal(etichettaNumero(0), null);
+  assert.equal(etichettaNumero(150), '99+');
+});

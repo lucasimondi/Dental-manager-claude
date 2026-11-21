@@ -41,10 +41,13 @@ test('DOCK-PER-TE: Agenda · Documenti · Poliedron · Studio · Per te, in Stud
   const dock = read('src/components/poliedron/PoliedronMobileDock.jsx');
   assert.doesNotMatch(dock, /__personal__|agendaDestination|id: 'altro'|id: 'note'/);
   assert.match(dock, /\{ id: 'agenda'[^\n]*\n\s*\{ id: 'archivio'[^\n]*\n\s*\{ id: '__poliedron__'[^\n]*\n\s*\{ id: 'studio', label: 'Studio'[^\n]*\n\s*\{ id: 'perte', label: 'Personale'/);
-  const pApp = read('personal/src/App.jsx');
-  assert.match(pApp, /href=\{sectionDestination\('studio', 'studio'\)\}[^\n]*<span className="pp-dock-nome">Studio<\/span>/);
-  assert.match(pApp, /<span className="pp-dock-nome">Personale<\/span>/);
-  assert.doesNotMatch(pApp, /<span>Altro<\/span>/);
+  // PERSONAL-ESPLORA-WIN11 fase 3 (PO 2026-11-21): in Personal il dock diventa la barra stile Windows 11;
+  // Studio passa in Start («Aggiunte»), Personale resta nella barra con la stessa vista.
+  const barra = read('personal/src/lib/barra.js');
+  assert.match(read('personal/src/App.jsx'), /<BarraApplicazioni /);
+  assert.match(barra, /\{ id: 'studio', nome: 'Studio', azione: \{ href: 'studio' \} \}/);
+  assert.match(barra, /\{ id: 'altro', nome: 'Personale', vista: 'altro' \}/);
+  assert.match(read('personal/src/Barra.jsx'), /sectionDestination\(azione\.href, azione\.href\)/);
   assert.match(read('personal/src/sezioni/index.js'), /export const DOCK = \[agenda, documenti\];/);
   assert.match(read('personal/src/pro.css'), /\.pp-schede \{\n  grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)/);
 });
