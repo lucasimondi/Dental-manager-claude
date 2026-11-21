@@ -3,7 +3,8 @@
 // se è un posto dove lasciarla ([data-bersaglio="tipo:id"]). Se lasci senza esserti mosso,
 // l'icona viene scelta (selezione). Se sposti il dito prima del tempo, la pagina scorre normalmente.
 // Vicino ai bordi la pagina scorre da sola (o, con `scorrevoli`, il pannello sotto il dito).
-// PERSONAL-ESPLORA-WIN11: `onFermo` riceve anche il punto ({x, y}) per aprire lì il menu contestuale.
+// PERSONAL-ESPLORA-WIN11: `onFermo` riceve anche il punto ({x, y}) per aprire lì il menu contestuale;
+// `attesa` e `vibrazione` facoltative (Esplora: 500 ms, 10 ms; predefinite 380 ms e 15 ms come prima).
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const ATTESA_MS = 380;
@@ -21,7 +22,7 @@ const leggiBersaglio = (x, y) => {
 /**
  * @param {{ onLascia:(sorgente:object, bersaglio:object)=>void, onPresa?:(sorgente:object)=>void, onFermo?:(sorgente:object, punto:{x:number,y:number})=>void, valido?:(sorgente:object, bersaglio:object)=>boolean, scorrevoli?:()=>(Element|null)[] }} opz
  */
-export function useTrascina({ onLascia, onFermo, valido = () => true, scorrevoli = null }) {
+export function useTrascina({ onLascia, onFermo, valido = () => true, scorrevoli = null, attesa = ATTESA_MS, vibrazione = 15 }) {
   const [presa, setPresa] = useState(null); // { sorgente, x, y, bersaglio }
   const stato = useRef({ timer: null, inizio: null, sorgente: null, attivo: false, mosso: false, appenaTrascinato: false });
   const richiami = useRef({ onLascia, onFermo, valido, scorrevoli });
@@ -89,7 +90,7 @@ export function useTrascina({ onLascia, onFermo, valido = () => true, scorrevoli
   const prendi = (sorgente, x, y) => {
     const s = stato.current;
     s.attivo = true; s.mosso = false; s.sorgente = sorgente; s.inizio = { x, y };
-    navigator.vibrate?.(15);
+    navigator.vibrate?.(vibrazione);
     setPresa({ sorgente, x, y, bersaglio: null });
   };
 
@@ -100,7 +101,7 @@ export function useTrascina({ onLascia, onFermo, valido = () => true, scorrevoli
       const s = stato.current;
       s.inizio = { x: t.clientX, y: t.clientY }; s.sorgente = sorgente;
       annullaAttesa();
-      s.timer = setTimeout(() => prendi(sorgente, s.inizio.x, s.inizio.y), ATTESA_MS);
+      s.timer = setTimeout(() => prendi(sorgente, s.inizio.x, s.inizio.y), attesa);
     },
     onTouchMove: (e) => {
       const s = stato.current;
@@ -114,7 +115,7 @@ export function useTrascina({ onLascia, onFermo, valido = () => true, scorrevoli
       const s = stato.current;
       s.inizio = { x: e.clientX, y: e.clientY }; s.sorgente = sorgente;
       annullaAttesa();
-      s.timer = setTimeout(() => prendi(sorgente, s.inizio.x, s.inizio.y), ATTESA_MS);
+      s.timer = setTimeout(() => prendi(sorgente, s.inizio.x, s.inizio.y), attesa);
       const mm = (ev) => {
         if (Math.hypot(ev.clientX - s.inizio.x, ev.clientY - s.inizio.y) > 6 && !s.attivo) { annullaAttesa(); prendi(sorgente, ev.clientX, ev.clientY); s.mosso = true; }
       };

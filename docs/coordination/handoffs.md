@@ -4973,3 +4973,13 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 
 ## Note — PERSONAL-ESPLORA-WIN11 fase 2 script published (2026-11-21, Claude Code)
 - On Luca's explicit request ("Dami link clasp io autorizzo") clasp was authorized in this session; online script pulled and diffed (identical to master before phase 2), then `clasp push -f` and web app deployment AKfycbzQf7…UDw moved from version 26 to 27 (same URL). No secrets written to the repository. Luca can revoke the clasp grant from myaccount.google.com → Sicurezza → App di terze parti.
+
+## Handoff — PERSONAL-ESPLORA-WIN11 PR #337 follow-up (2026-11-21, Claude Code)
+- Task: PERSONAL-ESPLORA-WIN11, PR #337 (phase 3 + PO follow-up: Win11 taskbar details, views, direct open, Win11 context menu, Drive-first rules); branch `ccr-37864811-5h4ztp`.
+- Completed: see current-task.md «PR #337 FOLLOW-UP».
+- Files: `personal/src/{Barra.jsx,barra.css,lib/barra.js,lib/statoDrive.js (new),lib/esplora.js}`, `personal/src/sezioni/documenti/{Esplora.jsx,EsploraFinestre.jsx (new),esplora.css,Trascina.jsx}`, `poliedron/archivio/{Code.gs,CLAUDE.md}`, tests `esplora.test.mjs`, `esploraDrive.test.mjs`, `personaleHome.test.mjs`, visual `personal-esplora.mjs`, `personal-barra.mjs`, coordination docs.
+- Database: none (favourites in the existing `impostazioni_app` key/value table, key `esplora_preferiti`).
+- Tests: npm test 1901/1901; builds PASS; visuals PASS (see current-task).
+- Unresolved/risks: script changes not published (needs clasp push + web app version 28); «Gestisci accesso» grants real Drive permissions (only after an explicit confirmation in the app, no Drive email); Altra app… uses Capacitor FileOpener only if the app is ever wrapped with Capacitor (not today: falls back to the system share sheet); 40 px buttons on phone are below the 44 px touch guideline (PO spec); Copia keeps the file on Drive where it is (PO decision).
+- Rollback: revert the commits on the branch; script: redeploy web app version 27.
+- Next exact action: Luca says whether to publish the script now; PO tries the preview; "Mergia" for PR #337.

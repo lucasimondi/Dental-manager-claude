@@ -5,14 +5,15 @@
 // Start sale dal basso: ricerca reale dell'archivio, «Aggiunte» (sezioni con pallino), «Consigliati»
 // (file recenti del telefono, poi ultimi documenti), account ed Esci. Si chiude con un tocco fuori,
 // con Indietro (Android / browser), con Esc o toccando di nuovo il logo.
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { archivioDb } from './lib/supabasePersonal.js';
 import { documentiRecenti, documentiDaGestire } from './lib/archivio.js';
 import { caricaDaGestire } from './lib/esplora.js';
 import { contaDaFare } from './lib/daFare.js';
 import { elencoRecenti, fileRecente } from './lib/recenti.js';
 import { scaricaDocumento } from './lib/condividi.js';
-import { VOCI_BARRA, voceAttiva, vociStart, numeroNotifiche, oraData, nomeUtente, consigliati, etichettaNumero } from './lib/barra.js';
+import { VOCI_BARRA, voceAttiva, vociAperte, badgeBarra, vociStart, numeroNotifiche, oraData, nomeUtente, consigliati, etichettaNumero } from './lib/barra.js';
+import { statoDrive, ascoltaStatoDrive, attesaDrive, testoStatoDrive } from './lib/statoDrive.js';
 import { sectionDestination } from '../../shared/agenda/navigation.js';
 import { IconaCartellaW11, IconaFileW11 } from './IconeW11.jsx';
 import { IconaDock } from './IconeDock.jsx';
@@ -41,7 +42,9 @@ export function useConteggiBarra(versione) {
         caricaDaGestire(archivioDb).then((m) => m.size).catch(() => 0),
         contaDaFare(archivioDb).catch(() => ({ aperte: 0, urgenti: 0 })),
         documentiDaGestire(archivioDb).then((l) => l.length).catch(() => 0),
-      ]).then(([esplora, dafare, documenti]) => { if (vivo) setConteggi({ esplora, dafare: dafare.aperte, urgenti: dafare.urgenti, documenti }); });
+        // file che lo script deve ancora sistemare su Drive (note '>cartella:…'): stato di sincronizzazione
+        archivioDb.from('documenti').select('id', { count: 'exact', head: true }).like('drive_cartella', '>cartella:%').then((r) => r.count || 0, () => 0),
+      ]).then(([esplora, dafare, documenti, inAttesa]) => { if (vivo) { setConteggi({ esplora, dafare: dafare.aperte, urgenti: dafare.urgenti, documenti }); attesaDrive(inAttesa); } });
     }, 1200);
     return () => { vivo = false; clearTimeout(t); };
   }, [versione]);
@@ -50,9 +53,12 @@ export function useConteggiBarra(versione) {
 
 function IconaVoce({ id }) {
   if (id === 'start') return <img className="pb-logo" src={gemmaPoliedron} alt="" draggable={false} />;
+  if (id === 'drive-ok') return <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M6 15.5h8.5a3.2 3.2 0 0 0 .4-6.4A4.8 4.8 0 0 0 5.6 8 3.8 3.8 0 0 0 6 15.5Z" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="m8 11.5 1.6 1.6L12.5 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+  if (id === 'drive-sync') return <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" className="pb-gira"><path d="M15 8.5A5.2 5.2 0 0 0 5.3 7M5 11.5a5.2 5.2 0 0 0 9.7 1.5M5.3 4.5V7H8M14.7 15.5V13H12" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+  if (id === 'drive-errore') return <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M6 15.5h8.5a3.2 3.2 0 0 0 .4-6.4A4.8 4.8 0 0 0 5.6 8 3.8 3.8 0 0 0 6 15.5Z" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="M10 9v2.6M10 13.3v.1" stroke="#C42B1C" strokeWidth="1.6" strokeLinecap="round" /></svg>;
   if (id === 'oggi') return <IconaOggi size={24} />;
   if (id === 'agenda') return <IconaDock n="cal" s={24} />;
-  if (id === 'esplora') return <IconaCartellaW11 size={28} />;
+  if (id === 'esplora') return <IconaCartellaW11 size={24} />;
   if (id === 'poliedron') return <IconaChat size={24} />;
   return <IconaPerTe size={24} />;
 }
@@ -62,6 +68,8 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
   const [adesso, setAdesso] = useState(() => new Date());
   useEffect(() => { const t = setInterval(() => setAdesso(new Date()), 20000); return () => clearInterval(t); }, []);
   const attiva = voceAttiva({ vista, pagine, start });
+  const aperte = vociAperte({ vista, pagine, start });
+  const drive = useSyncExternalStore(ascoltaStatoDrive, statoDrive);
   const { ora, data, breve } = oraData(adesso);
   const notifiche = numeroNotifiche(conteggi);
 
@@ -99,22 +107,28 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
         <span className="pb-lato" aria-hidden="true" />
         <div className="pb-icone">
           {VOCI_BARRA.map((v) => {
-            const n = v.id === 'esplora' ? conteggi.esplora : 0;
+            const n = badgeBarra(v.id, conteggi);
+            const etichetta = n ? `${v.nome}, ${n} ${v.id === 'oggi' ? 'urgenti' : 'da gestire'}` : v.nome;
             return (
-              <button key={v.id} type="button" className={`pb-voce${attiva === v.id ? ' attiva' : ''}`} onClick={() => tocca(v)}
-                aria-label={v.id === 'esplora' && n ? `${v.nome}, ${n} da gestire` : v.nome} aria-current={attiva === v.id && v.id !== 'start' ? 'page' : undefined}
+              <button key={v.id} type="button" className={`pb-voce${attiva === v.id ? ' attiva' : ''}${aperte.has(v.id) ? ' aperta' : ''}`} onClick={() => tocca(v)}
+                aria-label={etichetta} title={v.nome} aria-current={attiva === v.id && v.id !== 'start' ? 'page' : undefined}
                 aria-expanded={v.id === 'start' ? start : undefined}>
                 <IconaVoce id={v.id} />
-                {v.id === 'esplora' && <Numero n={n} />}
+                <Numero n={n} />
               </button>
             );
           })}
         </div>
-        <button type="button" className="pb-area" onClick={() => { if (start) chiudi(); vai('dafare'); }}
-          aria-label={`${ora}, ${data}. ${notifiche ? `${notifiche} notifiche` : 'Nessuna notifica'}: apri Da fare`}>
-          <span className="pb-ora"><span>{ora}</span><span className="pb-data">{data}</span><span className="pb-data-breve">{breve}</span></span>
-          {notifiche > 0 && <span className="pb-notifiche">{etichettaNumero(notifiche)}</span>}
-        </button>
+        <div className="pb-sistema">
+          <span className={`pb-drive pb-drive-${drive.stato}`} role="status" title={testoStatoDrive(drive)} aria-label={testoStatoDrive(drive)}>
+            <IconaVoce id={`drive-${drive.stato === 'ok' ? 'ok' : drive.stato === 'errore' ? 'errore' : 'sync'}`} />
+          </span>
+          <button type="button" className="pb-area" onClick={() => { if (start) chiudi(); vai('dafare'); }}
+            aria-label={`${ora}, ${data}. ${notifiche ? `${notifiche} notifiche` : 'Nessuna notifica'}: apri Da fare`}>
+            <span className="pb-ora"><span>{ora}</span><span className="pb-data">{data}</span><span className="pb-data-breve">{breve}</span></span>
+            {notifiche > 0 && <span className="pb-notifiche">{etichettaNumero(notifiche)}</span>}
+          </button>
+        </div>
       </nav>
     </>
   );

@@ -1,6 +1,11 @@
-// PERSONAL-ESPLORA-WIN11 fase 1: synthetic data only, real touch (CDP) at 390×844 and 844×390.
-// Tree + grid, tap opens, long press + move drags (file and folder), long press still = context menu,
-// Annulla reverses, invalid targets refused, Sposta in…, new folder inline, Da catalogare → Personale.
+// PERSONAL-ESPLORA-WIN11 (fasi 1–2 e PR #337): synthetic data only.
+// Telefono 390×844 con tocchi reali (CDP): tocco apre (cartelle, anteprima dei file), pressione prolungata +
+// movimento trascina (prima Drive, poi database), pressione ferma = selezione con caselle + menu dal basso,
+// Drive giù = niente cambia e «Riprova», Annulla, viste (Dettagli ordinabile, Elenco 48 px) salvate per
+// cartella, nuova cartella, rinomina via Drive, Copia/Incolla senza file nuovi, Da catalogare → Personale.
+// Desktop 1280×800 con mouse e tastiera: clic seleziona, doppio clic apre, Ctrl/Maiusc, tasto destro = menu
+// Win11 (riga rapida, scorciatoie, sottomenu), F2, Canc con Annulla (Ctrl+Z), colonne ridimensionabili,
+// Proprietà, Gestisci accesso, avviso di errore in basso a destra. Orizzontale 844×390: disposizione.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
@@ -9,38 +14,45 @@ const out = 'tests/visual/results-personal-esplora'; await mkdir(out, { recursiv
 const PORTA = 5181;
 const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', String(PORTA), '--strictPort'], { stdio: 'ignore' });
 const cart = (id, nome, padre_id, posizione = 0) => ({ id, nome, padre_id, colore: null, posizione, creato_il: '2026-11-01T10:00:00Z', modificato_il: '2026-11-01T10:00:00Z', archiviata_il: null, speciale: null, drive_cartella_id: null });
-const doc = (id, titolo, fascicolo = 'utenze', mime = 'application/pdf', extra = {}) => ({ id, titolo, ente: 'Ente', fascicolo, data_documento: '2026-10-01', email_data: '2026-10-01T09:00:00Z', creato_il: '2026-10-01T09:00:00Z', drive_file_id: `f-${id}`, nome_file_originale: `${id}.pdf`, mime_type: mime, tag: [], azione_richiesta: false, ...extra });
+const doc = (id, titolo, fascicolo = 'utenze', mime = 'application/pdf', extra = {}) => ({ id, titolo, ente: 'Ente', fascicolo, data_documento: '2026-10-01', email_data: '2026-10-01T09:00:00Z', creato_il: '2026-10-01T09:00:00Z', drive_file_id: `f-${id}`, drive_url: `https://drive.google.com/file/d/f-${id}/view`, nome_file_originale: `${id}.pdf`, mime_type: mime, tag: [], azione_richiesta: false, dimensione_byte: 120000, ...extra });
+const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
-const scenario = () => {
-  const s = {
-    CARTELLE: [cart('casa', 'Casa', null, 0), cart('utenze', 'Utenze', 'casa'), cart('luce', 'Luce', 'utenze'), cart('auto', 'Auto', null, 1)],
-    DOC: {
-      rogito: doc('rogito', 'Rogito casa', 'immobili'), imu: doc('imu', 'IMU 2026', 'fiscale', 'application/pdf', { azione_richiesta: true }),
-      gas: doc('gas', 'Contratto gas'), bol: doc('bol', 'Bolletta luce'), pol: doc('pol', 'Polizza auto', 'veicoli', 'image/jpeg'),
-      n1: doc('n1', 'Ricevuta nuova', 'utenze'), n2: doc('n2', 'Foglio spese', 'utenze', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
-    },
-    LINK: { casa: ['rogito', 'imu'], utenze: ['gas'], luce: ['bol'], auto: [] },
-    SCRIVANIA: ['pol'],
-    chiamate: [],
-    drive: [],
-    driveGiu: false,
-  };
-  return s;
-};
+const scenario = () => ({
+  CARTELLE: [cart('casa', 'Casa', null, 0), cart('utenze', 'Utenze', 'casa'), cart('luce', 'Luce', 'utenze'), cart('auto', 'Auto', null, 1)],
+  DOC: {
+    rogito: doc('rogito', 'Rogito casa', 'immobili', 'application/pdf', { dimensione_byte: 2_400_000, creato_il: '2026-09-01T09:00:00Z' }),
+    imu: doc('imu', 'IMU 2026', 'fiscale', 'application/pdf', { azione_richiesta: true, dimensione_byte: 80_000 }),
+    gas: doc('gas', 'Contratto gas'), bol: doc('bol', 'Bolletta luce'),
+    pol: doc('pol', 'Polizza auto', 'veicoli', 'image/png', { nome_file_originale: 'polizza.png' }),
+    n1: doc('n1', 'Ricevuta nuova', 'utenze'), n2: doc('n2', 'Foglio spese', 'utenze', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', { nome_file_originale: 'spese.xlsx' }),
+  },
+  LINK: { casa: ['rogito', 'imu'], utenze: ['gas'], luce: ['bol'], auto: [] },
+  SCRIVANIA: ['pol'],
+  PREFERITI: [],
+  PERMESSI: [{ id: 'own', type: 'user', role: 'owner', emailAddress: 'io@example.com', displayName: 'Io' }],
+  chiamate: [], drive: [], driveGiu: false,
+});
 
-const avvia = async (browser, { width, height, nome }) => {
+const avvia = async (browser, { width, height, nome, touch }) => {
   const S = scenario();
-  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
+  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1, hasTouch: touch, isMobile: touch });
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  const catalogati = () => new Set([...Object.values(S.LINK).flat(), ...S.SCRIVANIA]);
   await page.route('**/*', async (route) => {
     const req = route.request(); const u = new URL(req.url());
     if (u.hostname === '127.0.0.1') return route.continue();
     if (u.hostname === 'script.google.com') {
       const b = JSON.parse(req.postData() || '{}'); S.drive.push(b);
-      if (S.driveGiu) return route.abort();
+      if (S.driveGiu && ['sposta_documenti', 'cartella_drive', 'rinomina_file'].includes(b.azione)) return route.abort();
+      if (b.azione === 'file') return route.fulfill({ json: { ok: true, nome: 'polizza.png', mime: 'image/png', dati: PNG } });
+      if (b.azione === 'proprieta_file') return route.fulfill({ json: { ok: true, nome: 'Rogito casa.pdf', dimensione: 2_400_000, creato: '2026-09-01T09:00:00Z', modificato: '2026-10-02T09:00:00Z', proprietario: 'io@example.com', percorso: 'Archivio personale / Casa', link: 'https://drive/x', versioni: [{ id: 'v2', quando: '2026-10-02T09:00:00Z', chi: 'Io', dimensione: 2_400_000 }, { id: 'v1', quando: '2026-09-01T09:00:00Z', chi: 'Io', dimensione: 2_300_000 }] } });
+      if (b.azione === 'accesso_file') {
+        if (b.azione === 'accesso_file' && b.email) S.PERMESSI.push({ id: `p${S.PERMESSI.length}`, type: 'user', role: b.ruolo, emailAddress: b.email });
+        return route.fulfill({ json: { ok: true, clinico: false, link: 'https://drive/x', permessi: S.PERMESSI.map((p) => ({ id: p.id, tipo: p.type, ruolo: p.role, email: p.emailAddress, nome: p.displayName || null })) } });
+      }
+      if (b.azione === 'rinomina_file') return route.fulfill({ json: { ok: true, nome: `${b.nome}.pdf` } });
+      if (b.azione === 'cestina') return route.fulfill({ json: { ok: true, cestinati: b.ids, non_trovati: [] } });
       return route.fulfill({ json: { ok: true, spostati: b.ids || [], senza_file: [], non_trovati: [], errori: [] } });
     }
     if (!u.hostname.endsWith('supabase.co')) return route.abort();
@@ -54,7 +66,7 @@ const avvia = async (browser, { width, height, nome }) => {
       const b = corpo(); const f = u.searchParams.get('id') || ''; const ids = f.startsWith('eq.') ? [f.slice(3)] : f.replace(/^in\.\(|\)$/g, '').split(',').map((x) => x.replace(/"/g, ''));
       S.chiamate.push(['cartelle', ids, b]);
       for (const c of S.CARTELLE) if (ids.includes(c.id)) Object.assign(c, b);
-      return route.fulfill({ json: ids.map((id) => ({ id, ...b })) });
+      return route.fulfill({ json: ids.length === 1 && f.startsWith('eq.') ? { id: ids[0], ...b } : ids.map((id) => ({ id, ...b })) });
     }
     if (p.endsWith('/rpc/sposta_documenti_mie')) {
       const b = corpo(); S.chiamate.push(['sposta', b]);
@@ -65,19 +77,27 @@ const avvia = async (browser, { width, height, nome }) => {
     }
     if (p.endsWith('/cartelle_mie_scrivania')) {
       if (m === 'POST') { const b = corpo(); S.chiamate.push(['scrivania+', b.map((r) => r.documento_id)]); S.SCRIVANIA.push(...b.map((r) => r.documento_id)); return route.fulfill({ json: b.map((r) => ({ documento_id: r.documento_id })) }); }
-      if (m === 'DELETE') { const ids = (u.searchParams.get('documento_id') || '').replace(/^in\.\(|\)$/g, '').split(',').map((x) => x.replace(/"/g, '')); S.chiamate.push(['scrivania-', ids]); S.SCRIVANIA = S.SCRIVANIA.filter((x) => !ids.includes(x)); return route.fulfill({ json: ids.map((documento_id) => ({ documento_id })) }); }
+      if (m === 'DELETE') { const ids = (u.searchParams.get('documento_id') || '').replace(/^in\.\(|\)$/g, '').split(','); S.chiamate.push(['scrivania-', ids]); S.SCRIVANIA = S.SCRIVANIA.filter((x) => !ids.includes(x)); return route.fulfill({ json: ids.map((documento_id) => ({ documento_id })) }); }
       return route.fulfill({ json: S.SCRIVANIA.map((id) => ({ documento_id: id, aggiunto_il: '2026-11-01T10:00:00Z', documenti: S.DOC[id] })) });
     }
     if (p.endsWith('/cartelle_mie_documenti')) {
+      if (m === 'POST') { const b = corpo(); S.chiamate.push(['aggiungi', b.map((r) => [r.cartella_id, r.documento_id])]); for (const r of b) S.LINK[r.cartella_id] = [...new Set([...(S.LINK[r.cartella_id] || []), r.documento_id])]; return route.fulfill({ json: b.map((r) => ({ documento_id: r.documento_id })) }); }
       const f = u.searchParams.get('cartella_id');
       if (f?.startsWith('eq.')) { const id = f.slice(3); return route.fulfill({ json: (S.LINK[id] || []).map((d) => ({ aggiunto_il: '2026-11-01T10:00:00Z', documenti: S.DOC[d] })) }); }
       return route.fulfill({ json: Object.entries(S.LINK).flatMap(([c, ds]) => ds.map((d) => ({ cartella_id: c, documento_id: d, documenti: { fascicolo: S.DOC[d].fascicolo } }))) });
     }
+    if (p.endsWith('/impostazioni_app')) {
+      if (m === 'POST') { const b = corpo(); S.PREFERITI = b.valore; S.chiamate.push(['preferiti', b.valore]); return route.fulfill({ json: [] }); }
+      return route.fulfill({ json: { valore: S.PREFERITI } });
+    }
     if (p.endsWith('/scadenze')) return route.fulfill({ json: [{ id: 's1', data: '2026-11-25', importo: 40, completata: false, storica: false, documento_id: 'gas', documento: { id: 'gas', titolo: 'Contratto gas', fascicolo: 'utenze', tipo_documento: 'avviso', tag: [] } }] });
-    if (p.endsWith('/documenti') && m === 'PATCH') { S.chiamate.push(['documenti', u.searchParams.get('id'), corpo()]); return route.fulfill({ json: [] }); }
+    if (p.endsWith('/documenti') && m === 'PATCH') { const b = corpo(); S.chiamate.push(['documenti', u.searchParams.get('id'), b]); const id = (u.searchParams.get('id') || '').replace(/^eq\./, ''); if (S.DOC[id] && b.titolo) S.DOC[id].titolo = b.titolo; return route.fulfill({ json: { id, ...b } }); }
+    if (p.endsWith('/documenti') && m === 'DELETE') { S.chiamate.push(['elimina', u.searchParams.get('id')]); return route.fulfill({ json: [] }); }
     if (p.endsWith('/documenti')) {
       if (m === 'HEAD') return route.fulfill({ status: 200, headers: { 'content-range': `*/${Object.keys(S.DOC).length}`, 'access-control-allow-origin': '*', 'access-control-expose-headers': 'Content-Range' }, body: '' });
       if (u.searchParams.get('azione_richiesta')) return route.fulfill({ json: Object.values(S.DOC).filter((d) => d.azione_richiesta).map(({ id, fascicolo }) => ({ id, fascicolo, azione_richiesta: true })) });
+      const inn = u.searchParams.get('id');
+      if (inn?.startsWith('in.')) { const ids = inn.slice(4, -1).split(','); return route.fulfill({ json: ids.map((i) => S.DOC[i]).filter(Boolean) }); }
       const fasc = u.searchParams.get('fascicolo');
       let righe = Object.values(S.DOC);
       if (fasc?.startsWith('eq.')) righe = righe.filter((d) => d.fascicolo === fasc.slice(3));
@@ -87,207 +107,321 @@ const avvia = async (browser, { width, height, nome }) => {
   });
   await page.goto(`http://127.0.0.1:${PORTA}/tests/visual/personal-esplora.html`);
   await page.locator('.esp-albero').waitFor();
-  return { S, page, context, errors, cdp: await context.newCDPSession(page), catalogati, nome, width, height };
+  await page.waitForTimeout(300);
+  return { S, page, context, errors, cdp: touch ? await context.newCDPSession(page) : null, nome, width, height };
 };
 
 const centro = async (loc) => { const b = await loc.boundingBox(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; };
-const premi = async ({ cdp, page }, loc, verso = null, foto = null, out2 = null) => {
-  const a = await centro(loc);
+const premi = async ({ cdp, page }, loc, verso = null, foto = null) => {
+  const a = typeof loc.x === 'number' ? loc : await centro(loc);
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [a] });
-  await page.waitForTimeout(560);
+  await page.waitForTimeout(650);
   if (!verso) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await page.waitForTimeout(250); return; }
   const b = await centro(verso);
   for (let i = 1; i <= 12; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: a.x + ((b.x - a.x) * i) / 12, y: a.y + ((b.y - a.y) * i) / 12 }] });
   await page.waitForTimeout(100);
-  if (foto) await page.screenshot({ path: `${out2}/${foto}.png` });
+  if (foto) await page.screenshot({ path: `${out}/${foto}.png` });
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(400);
 };
-const tessera = (page, nome) => page.locator(`.esp-griglia .esp-tessera-bottone[aria-label="${nome}"]`);
+const tessera = (page, nome) => page.locator(`.esp-contenuto [data-elemento][aria-label="${nome}"]`);
 const ramo = (page, nome) => page.locator('.esp-albero-nome', { hasText: new RegExp(`^${nome}`) }).first();
-const dentroSchermo = async (page, sel) => page.evaluate((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return !!r && r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight; }, sel);
+const dentroSchermo = async (page, sel) => page.evaluate((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return !!r && r.left >= -0.5 && r.top >= -0.5 && r.right <= innerWidth + 0.5 && r.bottom <= innerHeight + 0.5; }, sel);
 const senzaSforamento = async (page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1 && document.querySelector('.esp').scrollWidth <= document.querySelector('.esp').clientWidth + 1);
+const aspetta = async (cond, ms = 4000) => { for (let i = 0; i < ms / 50; i++) { if (await cond()) return true; await new Promise((r) => setTimeout(r, 50)); } return false; };
+const voceMenu = (page, nome) => page.locator('.esp-menu-voce', { hasText: new RegExp(`^${nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`) }).first();
+const sceltaMenu = async (page, nome) => { await page.waitForTimeout(500); await voceMenu(page, nome).click(); };
 
 let browser;
 try {
   for (let i = 0; i < 100; i++) { try { if ((await fetch(`http://127.0.0.1:${PORTA}`)).ok) break; } catch {} await new Promise((r) => setTimeout(r, 100)); }
   browser = await chromium.launch({ ...(process.env.CHROMIUM_EXECUTABLE ? { executablePath: process.env.CHROMIUM_EXECUTABLE } : {}), args: ['--no-sandbox', '--disable-dev-shm-usage'] });
 
-  /* ---------- verticale 390×844 ---------- */
+  /* ================= TELEFONO 390×844 ================= */
   {
-    const T = await avvia(browser, { width: 390, height: 844, nome: 'verticale' });
+    const T = await avvia(browser, { width: 390, height: 844, nome: 'telefono', touch: true });
     const { page, S } = T;
     await tessera(page, 'Cartella Casa').waitFor();
-    assert.ok(await page.locator('.esp-verticale').count(), 'disposizione verticale');
-    // pallini: Casa = IMU (azione) + gas (scadenza entro 14 giorni, in Utenze) = 2
-    assert.equal(await page.locator('.esp-griglia .esp-tessera-bottone[aria-label="Cartella Casa"] .esp-pallino').textContent(), '2');
-    assert.equal(await ramo(page, 'Da catalogare').locator('.esp-pallino').textContent(), '2');
     assert.equal(await page.locator('.esp-stato').textContent(), '3 elementi · 2 da gestire');
-    await page.screenshot({ path: `${out}/verticale-personale.png` });
-
-    // tocco su una cartella = la apre
-    await tessera(page, 'Cartella Casa').click();
+    // tocco su cartella = apre; tocco su immagine = anteprima nella finestra Win11
+    await tessera(page, 'Cartella Casa').tap();
     await tessera(page, 'Rogito casa').waitFor();
-    assert.equal(await page.locator('.esp-intestazione strong').textContent(), 'Casa');
-    assert.equal(await page.locator('.esp-percorso').innerText(), 'Personale\n›\nCasa');
-    // tocco su un file = anteprima (pagina Documento)
-    await tessera(page, 'Rogito casa').click();
-    assert.deepEqual(await page.evaluate(() => window.espTest.aperti.at(-1)), { tipo: 'documento', id: 'rogito' });
+    await ramo(page, 'Personale').tap();
+    await tessera(page, 'Polizza auto').tap();
+    const fin = page.getByRole('dialog', { name: 'Polizza auto' });
+    await fin.waitFor();
+    await fin.locator('img').waitFor();
+    assert.ok(await fin.getByRole('button', { name: 'Riduci a icona' }).count() && await fin.getByRole('button', { name: 'Ingrandisci' }).count() && await fin.getByRole('button', { name: 'Chiudi' }).count());
+    await page.screenshot({ path: `${out}/telefono-anteprima.png` });
+    await fin.getByRole('button', { name: 'Riduci a icona' }).tap();
+    await page.getByRole('button', { name: 'Ripristina Polizza auto' }).tap();
+    await fin.getByRole('button', { name: 'Chiudi' }).tap();
+    await fin.waitFor({ state: 'detached' });
 
-    // trascina un file su una cartella dell'albero, poi Annulla
-    await premi(T, tessera(page, 'Rogito casa'), ramo(page, 'Auto'), 'verticale-trascina', out);
+    // trascina: PRIMA Drive (sposta_documenti), poi il database; Annulla rifà al contrario
+    await tessera(page, 'Cartella Casa').tap();
+    await tessera(page, 'Rogito casa').waitFor();
+    const d0 = S.drive.length;
+    await premi(T, tessera(page, 'Rogito casa'), ramo(page, 'Auto'), 'telefono-trascina');
     await page.locator('.esp-avviso', { hasText: 'Spostato in «Auto»' }).waitFor();
+    assert.deepEqual(S.drive.slice(d0).map((b) => [b.azione, b.cartella_id, b.ids]), [['sposta_documenti', 'auto', ['rogito']]]);
     assert.deepEqual(S.chiamate.at(-1), ['sposta', { p_documenti: ['rogito'], p_da: 'casa', p_a: 'auto' }]);
     assert.equal(await tessera(page, 'Rogito casa').count(), 0);
-    // fase 2: subito anche su Drive
-    for (let i = 0; i < 30 && !S.drive.length; i++) await page.waitForTimeout(100);
-    assert.deepEqual(S.drive.at(-1), { token: 'token-finto', azione: 'sposta_documenti', ids: ['rogito'], cartella_id: 'auto' });
-    await page.locator('.esp-avviso button', { hasText: 'Annulla' }).click();
+    await page.locator('.esp-avviso button', { hasText: 'Annulla' }).tap();
     await tessera(page, 'Rogito casa').waitFor();
+    assert.deepEqual(S.drive.at(-1).cartella_id, 'casa');
     assert.deepEqual(S.chiamate.at(-1), ['sposta', { p_documenti: ['rogito'], p_da: 'auto', p_a: 'casa' }]);
 
-    // una cartella non va dentro una sua sottocartella: nessuna chiamata
-    const prima = S.chiamate.length;
-    await ramo(page, 'Casa').locator('..').locator('.esp-albero-freccia').click(); // apri Casa nell'albero (era già aperta: richiudi/riapri)
-    if (!(await ramo(page, 'Utenze').isVisible())) await ramo(page, 'Casa').locator('..').locator('.esp-albero-freccia').click();
-    await premi(T, tessera(page, 'Cartella Utenze'), ramo(page, 'Utenze'));
-    assert.equal(S.chiamate.length, prima, 'nessuno spostamento dentro sé stessa');
-
-    // pressione prolungata ferma = menu contestuale, dentro lo schermo
-    await premi(T, tessera(page, 'IMU 2026'));
-    await page.locator('.esp-menu').waitFor(); await page.waitForTimeout(500);
-    assert.deepEqual(await page.locator('.esp-menu-voce').allInnerTexts(), ['Apri', 'Taglia', 'Sposta in…', 'Rinomina', 'Elimina']);
-    assert.ok(await dentroSchermo(page, '.esp-menu'), 'menu dentro lo schermo');
-    await page.screenshot({ path: `${out}/verticale-menu-file.png` });
-    await page.locator('.esp-menu-voce', { hasText: 'Sposta in…' }).click();
-    await page.locator('.esp-sposta').waitFor();
-    await page.waitForTimeout(300); // fine dell'animazione dal basso
-    assert.ok(await dentroSchermo(page, '.esp-sposta'), 'foglio dentro lo schermo');
-    assert.ok(await page.locator('.esp-sposta-lista button', { hasText: 'Casa' }).locator('em', { hasText: 'attuale' }).count());
-    assert.equal(await page.locator('.esp-sposta-lista button', { hasText: 'Casa' }).isDisabled(), true);
-    await page.screenshot({ path: `${out}/verticale-sposta-in.png` });
-    await page.locator('.esp-sposta-lista button', { hasText: 'Luce' }).click();
-    await page.locator('.esp-avviso', { hasText: 'Spostato in «Luce»' }).waitFor();
-    assert.deepEqual(S.chiamate.at(-1), ['sposta', { p_documenti: ['imu'], p_da: 'casa', p_a: 'luce' }]);
-    // il pallino si ricalcola: Utenze ora conta anche IMU (in Luce, sua sottocartella)
-    assert.equal(await page.locator('.esp-griglia .esp-tessera-bottone[aria-label="Cartella Utenze"] .esp-pallino').textContent(), '2');
-
-    // pressione prolungata sullo spazio vuoto: Nuova cartella inline
-    await page.locator('.esp-avviso').waitFor({ state: 'detached', timeout: 8000 }); // l'avviso sparisce da solo dopo 4,5 s
-    const vuoto = page.locator('.esp-contenuto');
-    const bb = await vuoto.boundingBox();
-    await T.cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: bb.x + bb.width / 2, y: bb.y + bb.height - 30 }] });
-    await page.waitForTimeout(600);
-    await T.cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    await page.locator('.esp-menu').waitFor(); await page.waitForTimeout(500);
-    assert.deepEqual(await page.locator('.esp-menu-voce').allInnerTexts(), ['Nuova cartella', 'Incolla', 'Aggiorna']);
-    await page.locator('.esp-menu-voce', { hasText: 'Nuova cartella' }).click();
-    const campo = page.getByRole('textbox', { name: 'Nome della nuova cartella' });
-    await campo.waitFor();
-    assert.equal(await campo.inputValue(), 'Nuova cartella');
-    assert.equal(await campo.evaluate((el) => el.selectionStart === 0 && el.selectionEnd === el.value.length), true, 'nome già selezionato');
-    await page.screenshot({ path: `${out}/verticale-nuova-cartella.png` });
-    await campo.fill('Mutuo');
-    await campo.press('Enter');
-    await tessera(page, 'Cartella Mutuo').waitFor();
-    assert.deepEqual(S.chiamate.at(-1), ['crea', { nome: 'Mutuo', padre_id: 'casa' }]);
-    for (let i = 0; i < 30 && S.drive.at(-1)?.azione !== 'cartella_drive'; i++) await page.waitForTimeout(100);
-    assert.equal(S.drive.at(-1).azione, 'cartella_drive');
-    // Drive non raggiungibile: lo spostamento resta fatto nell'app e lo script lo recupera
+    // Drive giù: niente cambia nell'app, avviso con «Riprova»
     S.driveGiu = true;
+    const c0 = S.chiamate.length;
+    await premi(T, tessera(page, 'Rogito casa'), ramo(page, 'Auto'));
+    await page.locator('.esp-avviso.errore', { hasText: 'Non riuscito' }).waitFor();
+    assert.equal(S.chiamate.length, c0, 'nessuna scrittura nel database se Drive non risponde');
+    assert.equal(await tessera(page, 'Rogito casa').count(), 1, 'il documento resta dov’era');
+    await page.screenshot({ path: `${out}/telefono-errore-riprova.png` });
+    S.driveGiu = false;
+    await page.locator('.esp-avviso button', { hasText: 'Riprova' }).tap();
+    await page.locator('.esp-avviso', { hasText: 'Spostato in «Auto»' }).waitFor();
+    assert.deepEqual(S.chiamate.at(-1), ['sposta', { p_documenti: ['rogito'], p_da: 'casa', p_a: 'auto' }]);
 
-    // Esc annulla una nuova cartella
-    await page.locator('.esp-cmd-testo').click();
-    await page.getByRole('textbox', { name: 'Nome della nuova cartella' }).press('Escape');
-    await page.waitForTimeout(200);
-    assert.equal(S.chiamate.filter((c) => c[0] === 'crea').length, 1, 'Esc non crea niente');
-    assert.equal(await page.getByRole('textbox', { name: 'Nome della nuova cartella' }).count(), 0);
+    // pressione ferma = selezione con caselle + menu dal basso con riga rapida e sottomenu
+    await premi(T, tessera(page, 'IMU 2026'));
+    const foglio = page.locator('.esp-foglio-menu');
+    await foglio.waitFor();
+    assert.ok(await dentroSchermo(page, '.esp-foglio-menu'));
+    const fr = await foglio.boundingBox();
+    assert.ok(Math.abs(fr.width - 390) < 1 && Math.abs(fr.y + fr.height - 844) < 2, 'foglio a tutta larghezza in basso');
+    assert.deepEqual(await page.locator('.esp-menu-rapida').evaluateAll((e) => e.map((x) => x.getAttribute('aria-label'))), ['Taglia', 'Copia', 'Rinomina', 'Condividi', 'Elimina']);
+    assert.ok(await page.locator('.esp-casella.attiva').count() >= 1, 'casella di selezione');
+    await page.screenshot({ path: `${out}/telefono-menu.png` });
+    await sceltaMenu(page, 'Apri con');
+    assert.deepEqual(await page.locator('.esp-foglio-menu .esp-menu-voce:not(.esp-menu-indietro) .esp-menu-nome').allInnerTexts(), ['Anteprima Poliedra', 'Google Drive (visualizzatore)', 'Google Documenti / Fogli', 'Nuova scheda del browser', 'Scarica', 'Altra app… (condividi)']);
+    await page.locator('.esp-menu-indietro').tap();
+    await sceltaMenu(page, 'Sposta in…');
+    await page.locator('.esp-sposta').waitFor(); await page.waitForTimeout(300);
+    assert.ok(await dentroSchermo(page, '.esp-sposta'));
+    await page.locator('.esp-sposta-lista button', { hasText: 'Luce' }).tap();
+    await page.locator('.esp-avviso', { hasText: 'Spostato in «Luce»' }).waitFor();
+    assert.deepEqual(S.drive.at(-1).cartella_id, 'luce');
+    assert.equal(await page.locator('.esp-barra-selezione').count(), 0, 'selezione chiusa dopo l’azione');
 
-    // Da catalogare: in sola lettura; trascina un documento su «Personale»
-    await ramo(page, 'Da catalogare').click();
+    // Visualizza (in «Personale»): Dettagli ordinabile, salvato per cartella; Elenco con righe da 48 px
+    await ramo(page, 'Personale').tap();
+    await tessera(page, 'Polizza auto').waitFor();
+    await page.getByRole('button', { name: /^Visualizza/ }).tap();
+    await sceltaMenu(page, 'Dettagli');
+    await page.locator('.esp-dettagli').waitFor();
+    const nomi = () => page.locator('.esp-dettagli-riga .esp-dettagli-testo').allInnerTexts();
+    assert.deepEqual(await nomi(), ['Auto', 'Casa', 'Polizza auto']);
+    await page.getByRole('button', { name: /^Nome/ }).tap();
+    assert.deepEqual(await nomi(), ['Casa', 'Auto', 'Polizza auto']); // cartelle sempre prima
+    assert.equal(await page.getByRole('columnheader').first().getAttribute('aria-sort'), 'descending');
+    await page.screenshot({ path: `${out}/telefono-dettagli.png` });
+    await ramo(page, 'Casa').tap();
+    await page.locator('.esp-griglia').waitFor();
+    await ramo(page, 'Personale').tap();
+    await page.locator('.esp-dettagli').waitFor(); // la vista di «Personale» è rimasta Dettagli
+    await page.getByRole('button', { name: /^Visualizza/ }).tap();
+    await page.locator('.esp-foglio-menu').waitFor();
+    await sceltaMenu(page, 'Elenco');
+    await page.locator('.esp-elenco').waitFor();
+    const altezzaRiga = await page.locator('.esp-riga-bottone').first().evaluate((e) => e.getBoundingClientRect().height);
+    assert.ok(altezzaRiga >= 48 && altezzaRiga < 50, `righe da 48 px (${altezzaRiga})`);
+    assert.match(await page.locator('.esp-riga-testo small').last().textContent(), /\d{2}\/\d{2}\/\d{4} · \d/);
+    await page.screenshot({ path: `${out}/telefono-elenco.png` });
+
+    // spazio vuoto: Nuova cartella → database e gemella su Drive
+    await page.locator('.esp-avviso').waitFor({ state: 'detached', timeout: 8000 });
+    const bb = await page.locator('.esp-contenuto').boundingBox();
+    await premi(T, { x: bb.x + bb.width / 2, y: bb.y + bb.height - 30 });
+    await page.locator('.esp-foglio-menu').waitFor();
+    await sceltaMenu(page, 'Nuova cartella');
+    const campo = page.getByRole('textbox', { name: 'Nome della nuova cartella' });
+    await campo.fill('Mutuo'); await campo.press('Enter');
+    await page.locator('.esp-avviso', { hasText: 'Cartella «Mutuo» creata' }).waitFor();
+    assert.deepEqual(S.chiamate.filter((c) => c[0] === 'crea').at(-1), ['crea', { nome: 'Mutuo', padre_id: null }]);
+    assert.equal(S.drive.at(-1).azione, 'cartella_drive');
+
+    // rinomina un documento: prima Drive (rinomina_file), poi il titolo
+    await ramo(page, 'Casa').tap();
+    await tessera(page, 'Cartella Utenze').tap();
+    await tessera(page, 'Contratto gas').waitFor();
+    await premi(T, tessera(page, 'Contratto gas'));
+    await sceltaMenu(page, 'Rinomina');
+    const rin = page.getByRole('textbox', { name: 'Nuovo nome' });
+    await rin.fill('Contratto gas 2026'); await rin.press('Enter');
+    await page.locator('.esp-avviso', { hasText: 'Rinominato' }).waitFor();
+    assert.deepEqual(S.drive.find((b) => b.azione === 'rinomina_file'), { token: 'token-finto', azione: 'rinomina_file', id: 'gas', nome: 'Contratto gas 2026' });
+    assert.deepEqual(S.chiamate.at(-1).slice(0, 2), ['documenti', 'eq.gas']);
+    await tessera(page, 'Contratto gas 2026').waitFor();
+    await page.locator('.esp-barra-selezione button', { hasText: 'Fine' }).tap().catch(() => {});
+
+    // Copia / Incolla: il documento compare anche in «Auto», nessuna chiamata a Drive
+    await premi(T, tessera(page, 'Contratto gas 2026'));
+    await page.locator('.esp-menu-rapida[aria-label="Copia"]').waitFor(); await page.waitForTimeout(500);
+    await page.locator('.esp-menu-rapida[aria-label="Copia"]').tap();
+    await page.locator('.esp-barra-selezione button', { hasText: 'Fine' }).tap();
+    await ramo(page, 'Auto').tap();
+    await tessera(page, 'Rogito casa').waitFor();
+    const nDrive = S.drive.length;
+    await page.locator('.esp-avviso').waitFor({ state: 'detached', timeout: 8000 });
+    const ab = await page.locator('.esp-contenuto').boundingBox();
+    await premi(T, { x: ab.x + ab.width / 2, y: ab.y + ab.height - 30 });
+    await sceltaMenu(page, 'Incolla «Contratto gas 2026»');
+    await tessera(page, 'Contratto gas 2026').waitFor();
+    assert.deepEqual(S.chiamate.at(-1), ['aggiungi', [['auto', 'gas']]]);
+    assert.equal(S.drive.length, nDrive, 'Copia non tocca Drive');
+    assert.ok(S.LINK.utenze.includes('gas'), 'resta anche in Utenze');
+
+    // Da catalogare → Personale: prima Drive (radice), poi la scrivania
+    await ramo(page, 'Da catalogare').tap();
     await tessera(page, 'Ricevuta nuova').waitFor();
-    assert.equal(await tessera(page, 'Rogito casa').count(), 0, 'i documenti già in cartella non sono da catalogare');
-    await page.screenshot({ path: `${out}/verticale-da-catalogare.png` });
     await premi(T, tessera(page, 'Ricevuta nuova'), ramo(page, 'Personale'));
     await page.locator('.esp-avviso', { hasText: 'Spostato in «Personale»' }).waitFor();
+    assert.deepEqual([S.drive.at(-1).azione, S.drive.at(-1).cartella_id], ['sposta_documenti', 'radice']);
     assert.ok(S.chiamate.some((c) => c[0] === 'scrivania+' && c[1].join() === 'n1'));
-    await page.locator('.esp-avviso', { hasText: 'Su Drive lo sistemo al prossimo giro' }).waitFor();
-    assert.ok(S.chiamate.some((c) => c[0] === 'documenti' && c[1] === 'in.(n1)' && c[2].drive_cartella === '>cartella:radice' && c[2].drive_fissa === true));
-    S.driveGiu = false;
-    assert.equal(await tessera(page, 'Ricevuta nuova').count(), 0);
-    // nelle cartelle virtuali non si lascia niente
-    const n = S.chiamate.length;
-    await premi(T, tessera(page, 'Foglio spese'), ramo(page, 'Per categoria'));
-    assert.equal(S.chiamate.length, n);
 
-    // menu della cartella «Personale»: voci non applicabili disattivate
-    await premi(T, ramo(page, 'Personale'));
-    await page.locator('.esp-menu').waitFor(); await page.waitForTimeout(500);
-    const dis = await page.locator('.esp-menu-voce').evaluateAll((els) => els.map((e) => `${e.textContent}:${e.disabled ? 'no' : 'si'}`));
-    assert.deepEqual(dis, ['Apri:si', 'Nuova cartella qui:si', 'Taglia:no', 'Sposta in…:no', 'Rinomina:no', 'Elimina:no']);
-    await page.locator('.esp-velo-menu').click({ position: { x: 5, y: 5 } });
-
-    // Per categoria: niente pazienti
-    await ramo(page, 'Per categoria').click();
-    await tessera(page, 'Cartella Utenze').waitFor();
-    assert.equal(await tessera(page, 'Cartella Pazienti').count(), 0);
-
-    assert.ok(await senzaSforamento(page), 'nessuno sforamento orizzontale (verticale)');
+    assert.ok(await senzaSforamento(page), 'nessuno sforamento orizzontale (telefono)');
     assert.deepEqual(T.errors, []);
     await T.context.close();
   }
 
-  /* ---------- orizzontale 844×390 ---------- */
+  /* ================= DESKTOP 1280×800: mouse e tastiera ================= */
   {
-    const T = await avvia(browser, { width: 844, height: 390, nome: 'orizzontale' });
+    const T = await avvia(browser, { width: 1280, height: 800, nome: 'desktop', touch: false });
     const { page, S } = T;
     await tessera(page, 'Cartella Casa').waitFor();
-    assert.ok(await page.locator('.esp-orizzontale').count(), 'disposizione orizzontale');
-    await page.waitForTimeout(400); // fine dell'animazione d'ingresso della pagina
-    const albero = await page.locator('.esp-albero').boundingBox();
-    const contenuto = await page.locator('.esp-contenuto').boundingBox();
-    assert.ok(Math.abs(albero.width - 200) < 2 && contenuto.x >= albero.x + albero.width - 1, 'albero a sinistra, contenuto di fianco');
-    const colonne = await page.locator('.esp-griglia').evaluate((g) => getComputedStyle(g).gridTemplateColumns.split(' ').length);
-    assert.equal(colonne, 6);
-    await page.screenshot({ path: `${out}/orizzontale-personale.png` });
-    // trascina una cartella su un'altra (Auto dentro Casa) e Annulla
-    await premi(T, tessera(page, 'Cartella Auto'), tessera(page, 'Cartella Casa'), 'orizzontale-trascina-cartella', out);
-    await page.locator('.esp-avviso', { hasText: 'Spostato in «Casa»' }).waitFor();
-    assert.deepEqual(S.chiamate.at(-1), ['cartelle', ['auto'], { padre_id: 'casa' }]);
-    await page.locator('.esp-avviso button', { hasText: 'Annulla' }).click();
-    await tessera(page, 'Cartella Auto').waitFor();
-    assert.deepEqual(S.chiamate.at(-1), ['cartelle', ['auto'], { padre_id: null }]);
-    // menu su cartella e foglio Sposta in… come finestra di dialogo
-    await premi(T, tessera(page, 'Cartella Auto'));
-    await page.locator('.esp-menu').waitFor(); await page.waitForTimeout(500);
-    assert.ok(await dentroSchermo(page, '.esp-menu'), 'menu dentro lo schermo (orizzontale)');
-    await page.screenshot({ path: `${out}/orizzontale-menu-cartella.png` });
-    await page.locator('.esp-menu-voce', { hasText: 'Sposta in…' }).click();
-    await page.locator('.esp-dialogo-orizzontale.esp-sposta').waitFor();
-    assert.ok(await dentroSchermo(page, '.esp-sposta'), 'dialogo dentro lo schermo');
-    await page.screenshot({ path: `${out}/orizzontale-sposta-in.png` });
-    await page.getByRole('dialog').getByRole('button', { name: 'Annulla' }).click();
-    // Elimina cartella = archivia, con Annulla
-    await premi(T, tessera(page, 'Cartella Auto'));
-    await page.locator('.esp-menu').waitFor(); await page.waitForTimeout(500);
-    await page.locator('.esp-menu-voce', { hasText: 'Elimina' }).click();
-    await page.locator('.esp-avviso', { hasText: 'archiviata' }).waitFor();
-    assert.equal(S.chiamate.at(-1)[0], 'cartelle');
-    assert.ok(S.chiamate.at(-1)[2].archiviata_il);
-    await page.locator('.esp-avviso button', { hasText: 'Annulla' }).click();
-    await tessera(page, 'Cartella Auto').waitFor();
-    assert.equal(S.chiamate.at(-1)[2].archiviata_il, null);
-    assert.ok(await senzaSforamento(page), 'nessuno sforamento orizzontale (orizzontale)');
+    // clic = seleziona; doppio clic = apre
+    await tessera(page, 'Cartella Auto').click();
+    assert.equal(await tessera(page, 'Cartella Auto').getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('.esp-intestazione, .esp-percorso [aria-current="page"]').last().textContent(), 'Personale');
+    await tessera(page, 'Cartella Casa').dblclick();
+    await tessera(page, 'Rogito casa').waitFor();
+    // Ctrl e Maiusc
+    await tessera(page, 'Cartella Utenze').click();
+    await tessera(page, 'IMU 2026').click({ modifiers: ['Shift'] });
+    assert.match(await page.locator('.esp-stato').textContent(), /3 selezionati/);
+    await tessera(page, 'Rogito casa').click({ modifiers: ['Control'] });
+    assert.match(await page.locator('.esp-stato').textContent(), /2 selezionati/);
+    // tasto destro su un file = menu Win11: riga rapida, scorciatoie, sottomenu dentro lo schermo
+    await tessera(page, 'Rogito casa').click();
+    await tessera(page, 'Rogito casa').click({ button: 'right' });
+    await page.locator('.esp-menu').first().waitFor();
+    await page.waitForTimeout(500);
+    assert.ok(await dentroSchermo(page, '.esp-menu'));
+    assert.equal(await page.locator('.esp-menu-rapida').count(), 5);
+    assert.deepEqual(await page.locator('.esp-menu-tasto').allInnerTexts().then((t) => t.slice(0, 3)), ['Invio', 'Ctrl+X', 'Ctrl+C']);
+    assert.ok(await page.locator('.esp-menu-sep').count() >= 3);
+    await voceMenu(page, 'Condividi').hover();
+    await page.locator('.esp-sottomenu').waitFor(); await page.waitForTimeout(200);
+    const [mm, ss] = [await page.locator('.esp-menu').first().boundingBox(), await page.locator('.esp-sottomenu').boundingBox()];
+    assert.ok(Math.abs(ss.x - (mm.x + mm.width - 4)) < 2, 'sottomenu attaccato al menu');
+    assert.ok(await dentroSchermo(page, '.esp-sottomenu'));
+    assert.deepEqual(await page.locator('.esp-sottomenu .esp-menu-nome').allInnerTexts(), ['Condivisione di sistema', 'Copia link Drive', 'Email', 'WhatsApp', 'Gestisci accesso Drive']);
+    await page.screenshot({ path: `${out}/desktop-menu.png` });
+    // Gestisci accesso: lettura e aggiunta con conferma, senza email da Drive
+    await page.locator('.esp-sottomenu .esp-menu-voce', { hasText: 'Gestisci accesso Drive' }).click();
+    const acc = page.getByRole('dialog', { name: /Gestisci accesso/ });
+    await acc.waitFor();
+    await acc.getByText('Proprietario').waitFor();
+    await acc.getByLabel('Email della persona').fill('anna@example.com');
+    await acc.getByRole('button', { name: 'Aggiungi' }).click();
+    await acc.getByRole('button', { name: 'Conferma' }).click();
+    await acc.getByText('anna@example.com').waitFor();
+    assert.deepEqual(S.drive.filter((b) => b.azione === 'accesso_file').at(-1), { token: 'token-finto', azione: 'accesso_file', id: 'rogito', operazione: 'aggiungi', email: 'anna@example.com', ruolo: 'reader' });
+    await page.screenshot({ path: `${out}/desktop-accesso.png` });
+    await acc.getByRole('button', { name: 'Chiudi' }).click();
+    // Proprietà (Alt+Invio): dimensione, proprietario, versioni
+    await tessera(page, 'Rogito casa').click();
+    await page.keyboard.press('Alt+Enter');
+    const pr = page.getByRole('dialog', { name: /Proprietà/ });
+    await pr.getByText('io@example.com').waitFor();
+    await pr.getByText('Cronologia versioni su Drive').waitFor();
+    assert.match(await pr.textContent(), /2,3 MB/);
+    await pr.getByRole('button', { name: 'Chiudi' }).click();
+    // F2 rinomina, Esc annulla
+    await tessera(page, 'Rogito casa').click();
+    await page.keyboard.press('F2');
+    await page.getByRole('textbox', { name: 'Nuovo nome' }).press('Escape');
+    // Canc → conferma → Annulla con Ctrl+Z: niente va nel Cestino
+    await page.keyboard.press('Delete');
+    await page.getByRole('alertdialog', { name: 'Elimina' }).getByRole('button', { name: 'Elimina' }).click();
+    await page.locator('.esp-avviso', { hasText: 'Cestino di Drive' }).waitFor();
+    const av = await page.locator('.esp-avviso').boundingBox();
+    assert.ok(Math.abs(1280 - (av.x + av.width) - 16) < 2, 'avviso in basso a destra');
+    assert.equal(await tessera(page, 'Rogito casa').count(), 0);
+    await page.keyboard.press('Control+z');
+    await tessera(page, 'Rogito casa').waitFor();
+    await page.waitForTimeout(5300);
+    assert.ok(!S.drive.some((b) => b.azione === 'cestina'), 'annullato: nessun file nel Cestino');
+    // Visualizza Dettagli: colonne ridimensionabili e ordinabili
+    await page.getByRole('button', { name: /^Visualizza/ }).click();
+    await page.waitForTimeout(500);
+    await voceMenu(page, 'Dettagli').click();
+    await page.locator('.esp-dettagli').waitFor();
+    const col = page.getByRole('columnheader').nth(1);
+    const w0 = (await col.boundingBox()).width;
+    const handle = await page.locator('.esp-ridimensiona').first().boundingBox();
+    await page.mouse.move(handle.x + 3, handle.y + 5); await page.mouse.down(); await page.mouse.move(handle.x + 83, handle.y + 5, { steps: 5 }); await page.mouse.up();
+    const nome0 = (await page.getByRole('columnheader').first().boundingBox()).width;
+    assert.ok(nome0 > 280 - 2, `colonna Nome allargata (${nome0})`);
+    assert.ok((await col.boundingBox()).width === w0, 'le altre colonne restano uguali');
+    await page.getByRole('button', { name: /^Dimensione/ }).click();
+    assert.deepEqual(await page.locator('.esp-dettagli-riga .esp-dettagli-testo').allInnerTexts(), ['Utenze', 'IMU 2026', 'Rogito casa']);
+    await page.getByRole('button', { name: /^Dimensione/ }).click();
+    assert.deepEqual(await page.locator('.esp-dettagli-riga .esp-dettagli-testo').allInnerTexts(), ['Utenze', 'Rogito casa', 'IMU 2026']);
+    assert.match(await page.getByRole('columnheader').nth(3).textContent(), /▼/);
+    await page.screenshot({ path: `${out}/desktop-dettagli.png` });
+    // errore con Riprova in basso a destra
+    S.driveGiu = true;
+    await page.locator('.esp-dettagli-riga', { hasText: 'IMU 2026' }).click();
+    await page.keyboard.press('F2');
+    const r2 = page.getByRole('textbox', { name: 'Nuovo nome' });
+    await r2.fill('IMU saldo'); await r2.press('Enter');
+    await page.locator('.esp-avviso.errore button', { hasText: 'Riprova' }).waitFor();
+    assert.equal(await page.locator('.esp-dettagli-riga', { hasText: 'IMU 2026' }).count(), 1, 'il nome resta quello di prima');
+    await page.screenshot({ path: `${out}/desktop-errore.png` });
+    S.driveGiu = false;
+    await page.locator('.esp-avviso button', { hasText: 'Riprova' }).click();
+    await page.locator('.esp-dettagli-riga', { hasText: 'IMU saldo' }).waitFor();
+    // Accesso rapido
+    await page.locator('.esp-dettagli-riga', { hasText: 'Utenze' }).click({ button: 'right' });
+    await page.waitForTimeout(500);
+    await voceMenu(page, 'Aggiungi ad Accesso rapido').click();
+    await page.locator('.esp-avviso', { hasText: 'Aggiunto ad Accesso rapido' }).waitFor();
+    assert.deepEqual(S.PREFERITI, [{ tipo: 'cartella', id: 'utenze' }]);
+    assert.ok(await page.locator('.esp-albero li[aria-expanded] ul .esp-albero-nome', { hasText: 'Utenze' }).count() >= 1);
+    assert.ok(await senzaSforamento(page), 'nessuno sforamento orizzontale (desktop)');
     assert.deepEqual(T.errors, []);
     await T.context.close();
   }
 
-  /* ---------- modalità scura (solo foto) ---------- */
+  /* ================= TELEFONO ORIZZONTALE 844×390 ================= */
   {
-    const T = await avvia(browser, { width: 390, height: 844, nome: 'scura' });
+    const T = await avvia(browser, { width: 844, height: 390, nome: 'orizzontale', touch: true });
+    const { page } = T;
+    await tessera(page, 'Cartella Casa').waitFor();
+    assert.ok(await page.locator('.esp-orizzontale').count());
+    const albero = await page.locator('.esp-albero').boundingBox();
+    assert.ok(Math.abs(albero.width - 200) < 2);
+    await page.screenshot({ path: `${out}/orizzontale.png` });
+    await premi(T, tessera(page, 'Cartella Auto'));
+    await page.locator('.esp-foglio-menu').waitFor(); await page.waitForTimeout(300);
+    assert.ok(await dentroSchermo(page, '.esp-foglio-menu'));
+    assert.ok(await senzaSforamento(page));
+    assert.deepEqual(T.errors, []);
+    await T.context.close();
+  }
+
+  /* modalità scura (foto) */
+  {
+    const T = await avvia(browser, { width: 1280, height: 800, nome: 'scura', touch: false });
     await T.page.emulateMedia({ colorScheme: 'dark' });
-    await tessera(T.page, 'Cartella Casa').waitFor();
-    await T.page.screenshot({ path: `${out}/verticale-scura.png` });
+    await tessera(T.page, 'Cartella Casa').dblclick();
+    await tessera(T.page, 'Rogito casa').click({ button: 'right' });
+    await T.page.waitForTimeout(400);
+    await T.page.screenshot({ path: `${out}/desktop-scura.png` });
     assert.deepEqual(T.errors, []);
     await T.context.close();
   }

@@ -63,12 +63,21 @@ test('PERSONALE-GRAFICA: niente più «Per te»; Home con testata propria; dock 
 test('PERSONAL-ESPLORA-WIN11 fase 3: barra stile Windows 11 al posto del dock (misure dalla specifica)', () => {
   // Sostituisce DOCK-UGUALE (PO 2026-11-16) per decisione del PO del 2026-11-21 (prototipo approvato).
   const css = read('personal/src/barra.css');
-  assert.match(css, /:root:root \{ --pp-dock: 64px; \}/);
-  assert.match(css, /@media \(orientation: landscape\) and \(max-height: 500px\) \{ :root:root \{ --pp-dock: 48px; \} \}/);
-  assert.match(css, /\.pb-voce \{\n  position: relative; width: 44px; height: 44px;/);
+  // PR #337 (PO 2026-11-21): 48 px desktop / 56 px mobile, pulsanti 40×40, trattino 16/6 px, Mica/Acrylic.
+  assert.match(css, /:root:root \{ --pp-dock: 48px; \}/);
+  assert.match(css, /@media \(pointer: coarse\), \(max-width: 767px\) \{ :root:root \{ --pp-dock: 56px; \} \}/);
+  assert.match(css, /\.pb-voce \{\n  position: relative; width: 40px; height: 40px;[^}]*border-radius: 6px;/);
+  assert.match(css, /\.pb-icone \{[^}]*gap: 4px;/);
+  assert.match(css, /\.pb-voce:active \{ transform: scale\(\.92\); \}/);
+  assert.match(css, /transition: background-color \.12s, transform \.12s;/);
   assert.match(css, /--pb-accento: #005FB8;/);
-  assert.match(css, /width: 12px; height: 3px;/);
-  assert.match(css, /backdrop-filter: saturate\(180%\) blur\(24px\)/);
+  assert.match(css, /\.pb-voce\.attiva::after \{ width: 16px; \}/);
+  assert.match(css, /\.pb-voce\.aperta:not\(\.attiva\)::after \{ width: 6px;/);
+  assert.match(css, /backdrop-filter: blur\(30px\) saturate\(150%\)/);
+  assert.match(css, /--pb-hover: rgba\(255, 255, 255, \.08\);/);
+  assert.match(css, /--pb-linea: rgba\(255, 255, 255, \.08\);/);
+  assert.match(css, /\.pb-lato, \.pb-sistema \{ display: none; \}/);
+  assert.match(css, /'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', system-ui/);
   assert.match(css, /env\(safe-area-inset-bottom\)/);
   const app = read('personal/src/App.jsx');
   assert.doesNotMatch(app, /pp-schede pp-dock/);

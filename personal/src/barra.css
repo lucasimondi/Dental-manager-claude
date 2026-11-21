@@ -1,16 +1,18 @@
-/* PERSONAL-ESPLORA-WIN11 fase 3 — barra delle applicazioni e Start stile Windows 11.
-   Colori della modalità chiara dal prototipo; in modalità scura le variabili di pro.css. */
-:root:root { --pp-dock: 64px; }
-@media (orientation: landscape) and (max-height: 500px) { :root:root { --pp-dock: 48px; } }
+/* PERSONAL-ESPLORA-WIN11 — barra delle applicazioni e Start stile Windows 11.
+   PR #337 (PO 2026-11-21): 48 px desktop / 56 px mobile, sfondo Mica/Acrylic, pulsanti 40×40 con icone 24 px,
+   trattino attivo 16 px / aperta 6 px, badge rossi «99+», area di sistema (ora, data, Drive) solo su desktop.
+   Tema chiaro/scuro automatico. */
+:root:root { --pp-dock: 48px; }
+@media (pointer: coarse), (max-width: 767px) { :root:root { --pp-dock: 56px; } }
 
 .pb-barra, .pb-start {
-  --pb-font: 'Segoe UI Variable Text', 'Segoe UI', Inter, system-ui, sans-serif;
-  --pb-sfondo: rgba(243, 243, 243, .85);
+  --pb-font: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  --pb-sfondo: rgba(243, 243, 243, .78);
   --pb-pannello: rgba(243, 243, 243, .92);
   --pb-testo: #1A1A1A;
   --pb-secondario: #5C5C5C;
   --pb-accento: #005FB8;
-  --pb-attiva: #FFFFFF;
+  --pb-attiva: rgba(255, 255, 255, .7);
   --pb-hover: rgba(0, 0, 0, .05);
   --pb-linea: rgba(0, 0, 0, .08);
   --pb-pallino: #C42B1C;
@@ -18,62 +20,74 @@
 }
 @media (prefers-color-scheme: dark) {
   .pb-barra, .pb-start {
-    --pb-sfondo: color-mix(in srgb, var(--pp-sfondo) 85%, transparent);
-    --pb-pannello: color-mix(in srgb, var(--pp-superficie) 94%, transparent);
-    --pb-testo: var(--pp-inchiostro);
-    --pb-secondario: var(--pp-grigio);
+    --pb-sfondo: rgba(32, 32, 32, .78);
+    --pb-pannello: rgba(40, 40, 40, .92);
+    --pb-testo: #FFFFFF;
+    --pb-secondario: #C5C5C5;
     --pb-accento: #60CDFF;
-    --pb-attiva: color-mix(in srgb, var(--pp-inchiostro) 12%, transparent);
-    --pb-hover: color-mix(in srgb, var(--pp-inchiostro) 7%, transparent);
-    --pb-linea: var(--pp-linea);
-    --pb-campo: var(--pp-sfondo);
+    --pb-attiva: rgba(255, 255, 255, .06);
+    --pb-hover: rgba(255, 255, 255, .08);
+    --pb-linea: rgba(255, 255, 255, .08);
+    --pb-campo: rgba(255, 255, 255, .06);
   }
 }
 
-/* Le pagine sopra la sezione finiscono sopra la barra (prima: 84 px fissi del dock). */
+/* Le pagine sopra la sezione finiscono sopra la barra. */
 .pp-app > .pp-pagina { bottom: calc(var(--pp-dock) + env(safe-area-inset-bottom)); }
 body.pp-tastiera .pb-barra { display: none; }
 
 .pb-barra {
   position: fixed; z-index: 45; left: 0; right: 0; bottom: 0;
-  height: calc(var(--pp-dock) + env(safe-area-inset-bottom)); padding: 0 6px env(safe-area-inset-bottom);
+  height: calc(var(--pp-dock) + env(safe-area-inset-bottom)); padding: 0 8px env(safe-area-inset-bottom);
   display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center;
-  background: var(--pb-sfondo); border-top: 1px solid var(--pb-linea);
-  backdrop-filter: saturate(180%) blur(24px); -webkit-backdrop-filter: saturate(180%) blur(24px);
+  background: var(--pb-sfondo); border-top: 1px solid var(--pb-linea); box-shadow: 0 -2px 12px rgba(0, 0, 0, .06);
+  backdrop-filter: blur(30px) saturate(150%); -webkit-backdrop-filter: blur(30px) saturate(150%);
   font-family: var(--pb-font); color: var(--pb-testo);
 }
-.pb-icone { display: flex; align-items: center; gap: 2px; }
+.pb-icone { display: flex; align-items: center; justify-content: center; gap: 4px; }
 .pb-voce {
-  position: relative; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 6px;
-  color: var(--pb-testo); transition: background-color .12s;
+  position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 6px;
+  color: var(--pb-testo); transition: background-color .12s, transform .12s;
 }
+.pb-voce svg, .pb-voce img { width: 24px; height: 24px; }
 .pb-voce:hover { background: var(--pb-hover); }
-.pb-voce:active { transform: scale(.94); }
+.pb-voce:active { transform: scale(.92); }
 .pb-voce.attiva { background: var(--pb-attiva); box-shadow: 0 1px 2px rgba(0, 0, 0, .06); }
-.pb-voce.attiva::after { content: ''; position: absolute; bottom: 2px; left: 50%; width: 12px; height: 3px; margin-left: -6px; border-radius: 2px; background: var(--pb-accento); }
+.pb-voce.attiva::after, .pb-voce.aperta::after {
+  content: ''; position: absolute; bottom: 1px; left: 50%; height: 3px; border-radius: 2px; background: var(--pb-accento); transform: translateX(-50%); transition: width .12s;
+}
+.pb-voce.attiva::after { width: 16px; }
+.pb-voce.aperta:not(.attiva)::after { width: 6px; background: var(--pb-secondario); }
 .pb-voce:focus-visible, .pb-area:focus-visible, .pb-app:focus-visible, .pb-consigliato:focus-visible { outline: 2px solid var(--pb-accento); outline-offset: 1px; }
-.pb-logo { width: 28px; height: 28px; object-fit: contain; pointer-events: none; }
+.pb-logo { object-fit: contain; pointer-events: none; }
 .pb-pallino {
-  position: absolute; top: 0; right: -2px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px;
+  position: absolute; top: -2px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px;
   display: grid; place-items: center; background: var(--pb-pallino); color: #fff; font-size: 10px; font-weight: 700; line-height: 1;
   border: 1.5px solid #fff; font-family: var(--pb-font);
 }
+@media (prefers-color-scheme: dark) { .pb-pallino { border-color: #202020; } }
+
+/* Area di sistema: ora e data su due righe (12 px), stato di Drive, notifiche. Solo su desktop. */
+.pb-sistema { justify-self: end; display: flex; align-items: center; gap: 2px; }
+.pb-drive { width: 32px; height: 40px; display: grid; place-items: center; border-radius: 6px; color: var(--pb-testo); }
+.pb-drive:hover { background: var(--pb-hover); }
+.pb-drive-sync { color: var(--pb-accento); }
+.pb-gira { animation: pb-gira 1.2s linear infinite; }
+@keyframes pb-gira { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .pb-gira { animation: none; } }
 .pb-area {
-  justify-self: end; position: relative; display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 6px; border-radius: 6px;
-  color: var(--pb-testo); font-size: 11px; line-height: 1.25; text-align: right;
+  position: relative; display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 8px; border-radius: 6px;
+  color: var(--pb-testo); font-size: 12px; line-height: 1.3; text-align: right;
 }
 .pb-area:hover { background: var(--pb-hover); }
 .pb-ora { display: flex; flex-direction: column; align-items: flex-end; white-space: nowrap; }
 .pb-data-breve { display: none; }
 .pb-notifiche { min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 10px; display: grid; place-items: center; background: var(--pb-accento); color: #fff; font-size: 11px; font-weight: 700; }
 @media (prefers-color-scheme: dark) { .pb-notifiche { color: #00243a; } }
-/* Telefono in verticale: la data si accorcia (giorno/mese) per lasciare le icone al centro. */
-@media (max-width: 400px) {
-  .pb-barra { padding: 0 2px env(safe-area-inset-bottom); }
-  .pb-icone { gap: 0; }
-  .pb-area { padding: 0 2px; gap: 3px; font-size: 10px; }
-  .pb-data { display: none; }
-  .pb-data-breve { display: inline; }
+/* Su mobile l'area di sistema si nasconde e la barra resta centrata. */
+@media (pointer: coarse), (max-width: 767px) {
+  .pb-barra { grid-template-columns: 1fr; padding: 0 4px env(safe-area-inset-bottom); }
+  .pb-lato, .pb-sistema { display: none; }
 }
 
 /* Start */

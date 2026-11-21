@@ -25,6 +25,21 @@ export function voceAttiva({ vista, pagine = [], start = false }) {
   return 'altro';
 }
 
+/**
+ * PR #337: app «aperte ma non in primo piano» (trattino corto da 6 px): la vista sotto una pagina aperta
+ * e Esplora file quando è aperto sotto un'altra pagina.
+ */
+export function vociAperte({ vista, pagine = [], start = false }) {
+  const fuori = new Set();
+  const attiva = voceAttiva({ vista, pagine, start });
+  if (pagine.length) fuori.add(VISTE_BARRA.has(vista) ? vista : 'altro');
+  if (pagine.some((p) => p.tipo === 'esplora')) fuori.add('esplora');
+  fuori.delete(attiva);
+  return fuori;
+}
+// Badge rossi sulle icone: Oggi = scadenze/promemoria urgenti, Esplora = documenti da gestire.
+export const badgeBarra = (id, conteggi = {}) => (id === 'oggi' ? Number(conteggi.urgenti) || 0 : id === 'esplora' ? Number(conteggi.esplora) || 0 : 0);
+
 // Le sezioni in «Aggiunte» (griglia di 4 colonne), ognuna col suo pallino quando c'è un conteggio.
 // azione: { vai: vista } | { apri: { tipo } } | { href } ; conteggio: chiave in `conteggi`.
 export const AGGIUNTE = [
