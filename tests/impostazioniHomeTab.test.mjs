@@ -18,7 +18,7 @@ test('the NAV entry is labeled "Impostazioni", matching the page it opens (no mo
 
 test('Impostazioni has a "Home" tab whose button asks Dashboard to open the same "Personalizza Home" editor — not a duplicate implementation', () => {
   assert.match(impostazioni, /\['home', 'home', 'Home'\]/);
-  assert.match(impostazioni, /\{sezione === 'home' && \(/);
+  assert.match(impostazioni, /\{area === 'studio' && sezione === 'home' && \(/); // IMPOSTAZIONI-UNICHE: Home sta nell'area Studio
   assert.match(impostazioni, /onOpenHomeCustomizer && <Btn ic="home" ch="Personalizza Home" onClick=\{onOpenHomeCustomizer\} \/>/);
 });
 

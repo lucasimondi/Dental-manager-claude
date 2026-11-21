@@ -73,8 +73,17 @@ test('agenda dello studio e impostazioni usano la lista comune e la ripetizione 
   assert.doesNotMatch(agenda, /TIPO_IMPEGNO/);
   const imp = readFileSync(new URL('../src/components/Impostazioni.jsx', import.meta.url), 'utf8');
   assert.match(imp, /Etichette degli impegni/);
-  assert.match(imp, /sectionDestination\('personal', 'impostazioni'\)/);
+  assert.match(imp, /\['agenda', 'cal', 'Agenda'\], \['studio', 'brief', 'Studio'\], \['personale', 'user', 'Personale'\]/);
+  assert.match(imp, /area === 'agenda' && \(/);
+  assert.match(imp, /<ImpostazioniPersonali setToast=\{setToast\} \/>/);
+  const persStudio = readFileSync(new URL('../src/components/ImpostazioniPersonali.jsx', import.meta.url), 'utf8');
+  assert.match(persStudio, /salvaImpostazioni\(db, \{ \.\.\.attuali, \.\.\.parte \}\)/);
+  assert.match(persStudio, /sectionDestination\('personal', 'impostazioni'\)/);
   const pers = readFileSync(new URL('../personal/src/sezioni/impostazioni/Impostazioni.jsx', import.meta.url), 'utf8');
   assert.match(pers, /sectionDestination\('studio', 'set'\)/);
   assert.match(pers, /salvaEtichette/);
+  assert.match(pers, /\['agenda', 'Agenda'\], \['studio', 'Studio'\], \['personale', 'Personale'\]/);
+  assert.match(pers, /aggiornaAgendaStudio\(parte\)/);
+  const studio = readFileSync(new URL('../personal/src/lib/studio.js', import.meta.url), 'utf8');
+  assert.match(studio, /agenda_settings = \{ \.\.\.\(riga\.agenda_settings \|\| \{\}\), \.\.\.parte \}/);
 });

@@ -202,14 +202,21 @@ export async function etichetteAgendaStudio() {
   return Array.isArray(impostazioni.etichette) && impostazioni.etichette.length ? impostazioni.etichette : null;
 }
 
-export async function salvaEtichetteAgendaStudio(etichette) {
+// IMPOSTAZIONI-UNICHE: anche orari, slot, zoom e giorni visibili dell'agenda si cambiano da Personal.
+// Si riscrivono solo le chiavi passate, il resto di agenda_settings resta com'è.
+export async function aggiornaAgendaStudio(parte) {
   const sessione = await sessioneStudio();
+  if (!sessione) throw new Error("Collega l'agenda dello studio per salvare le impostazioni dell'agenda.");
   const studioId = studioDellaSessione(sessione);
-  if (!sessione || !studioId) throw new Error("Collega l'agenda dello studio per salvare le etichette.");
   const riga = esito(await studioDb.from('studio_info').select('agenda_settings').eq('studio_id', studioId).maybeSingle());
   if (!riga) throw new Error('Impostazioni dello studio non trovate.');
-  const agenda_settings = { ...(riga.agenda_settings || {}), etichette };
+  const agenda_settings = { ...(riga.agenda_settings || {}), ...parte };
   esito(await studioDb.from('studio_info').update({ agenda_settings }).eq('studio_id', studioId).select('studio_id'));
+  return agenda_settings;
+}
+
+export async function salvaEtichetteAgendaStudio(etichette) {
+  await aggiornaAgendaStudio({ etichette });
   return etichette;
 }
 

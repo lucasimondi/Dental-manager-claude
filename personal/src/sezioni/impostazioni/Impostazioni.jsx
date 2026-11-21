@@ -1,7 +1,7 @@
 // Impostazioni — persone, documenti personali, sezioni dei documenti, categorie, etichette, studio, account.
 import { useEffect, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { sessioneStudio, esciStudio, studioDb } from '../../lib/studio.js';
+import { sessioneStudio, esciStudio, studioDb, impostazioniAgenda, aggiornaAgendaStudio } from '../../lib/studio.js';
 import { slug } from '../../lib/impostazioni.js';
 import LabelSwatches from '../../../../shared/agenda/LabelSwatches.jsx';
 import { labelColor } from '../../../../shared/agenda/labelPalette.js';
@@ -66,22 +66,146 @@ function NotificheTelefono({ ctx }) {
   );
 }
 
+// IMPOSTAZIONI-UNICHE (PO 2026-11-21): stessa pagina in Studio e Personal. In cima l'Agenda (comune:
+// etichette e visualizzazione), poi i tasti Studio e Personale. «?imp=» sceglie l'area.
+const AREE = [['agenda', 'Agenda'], ['studio', 'Studio'], ['personale', 'Personale']];
+const areaIniziale = () => {
+  try { const v = new URLSearchParams(globalThis.location?.search || '').get('imp'); return AREE.some(([k]) => k === v) ? v : 'agenda'; } catch { return 'agenda'; }
+};
+const versoStudio = (imp) => { const url = new URL(sectionDestination('studio', 'set')); url.searchParams.set('imp', imp); return url.href; };
+
 export function PaginaImpostazioni({ ctx, email }) {
-  const { impostazioni, salvaImp, salvaEtichette, apri, esegui } = ctx;
-  const { persone, categorie, sezioni, etichette } = impostazioni;
-  // AGENDA-ETICHETTE: una sola lista per Studio e Personal (salvata nello studio).
-  const cambiaEtichette = (nuove) => esegui(async () => { await salvaEtichette(nuove); });
+  const [area, setArea] = useState(areaIniziale);
   return (
     <>
-      <Sezione titolo="Impostazioni comuni">
-        <p className="pp-riga-meta pp-spiegazione">Le impostazioni sono un solo insieme per tutto Poliedra: qui quelle della vita personale, nello Studio orari dell'agenda, tipi di appuntamento, documenti e team. Le etichette dell'agenda sono le stesse in entrambe.</p>
+      <div className="pp-segmenti pp-impostazioni-aree" role="tablist" aria-label="Impostazioni">
+        {AREE.map(([k, l]) => <button key={k} type="button" role="tab" aria-selected={area === k} className={area === k ? 'attivo' : ''} onClick={() => setArea(k)}>{l}</button>)}
+      </div>
+      {area === 'agenda' && <AreaAgenda ctx={ctx} />}
+      {area === 'studio' && <AreaStudio />}
+      {area === 'personale' && <AreaPersonale ctx={ctx} email={email} />}
+    </>
+  );
+}
+
+function AreaStudio() {
+  return (
+    <>
+      <Sezione titolo="Impostazioni dello Studio">
+        <p className="pp-riga-meta pp-spiegazione">Dati dello studio, Home, documenti, privacy, prenotazione online, aspetto, azioni rapide, WhatsApp, profilo e team.</p>
         <Gruppo>
-          <a className="pp-riga" href={sectionDestination('studio', 'set')}>
-            <span className="pp-riga-testo"><span className="pp-riga-titolo">Impostazioni dello Studio</span><span className="pp-riga-meta">Agenda, tipi di appuntamento, documenti, team</span></span>
+          <a className="pp-riga" href={versoStudio('studio')}>
+            <span className="pp-riga-testo"><span className="pp-riga-titolo">Apri le impostazioni dello Studio</span><span className="pp-riga-meta">Stessa pagina, scheda Studio</span></span>
             <IconaFreccia size={16} />
           </a>
         </Gruppo>
       </Sezione>
+      <Sezione titolo="Collegamento all'agenda dello studio">
+        <StatoStudio />
+      </Sezione>
+    </>
+  );
+}
+
+// Visualizzazione dell'agenda (stessa di studio_info.agenda_settings): valori predefiniti come
+// DEF_AGENDA_SETTINGS dello studio (src/lib/utils.js).
+const VISUALIZZAZIONE_BASE = { oraInizio: 8, oraFine: 20, slotMin: 30, durataDefault: 45, zoom: 1, hiddenWeekdays: [] };
+const GIORNI = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+const ORE = Array.from({ length: 16 }, (_, i) => i + 6);
+
+function AreaAgenda({ ctx }) {
+  const { impostazioni, salvaEtichette, esegui, mostra } = ctx;
+  const { etichette } = impostazioni;
+  const cambiaEtichette = (nuove) => esegui(async () => { await salvaEtichette(nuove); });
+  const [vis, setVis] = useState(null);
+  const [collegata, setCollegata] = useState(true);
+  useEffect(() => {
+    let vivo = true;
+    sessioneStudio().then(async (s) => {
+      if (!s) { if (vivo) setCollegata(false); return; }
+      const a = await impostazioniAgenda();
+      if (vivo) setVis({ ...VISUALIZZAZIONE_BASE, ...a });
+    }).catch(() => { if (vivo) setCollegata(false); });
+    return () => { vivo = false; };
+  }, []);
+  const salvaVis = (parte) => {
+    const prossima = { ...vis, ...parte };
+    if (prossima.oraInizio >= prossima.oraFine) { mostra("L'ora di inizio deve essere prima dell'ora di fine"); setVis(prossima); return; }
+    setVis(prossima);
+    esegui(async () => { await aggiornaAgendaStudio(parte); mostra('Agenda aggiornata'); });
+  };
+  return (
+    <>
+      <p className="pp-riga-meta pp-spiegazione">Un'agenda sola per Studio e Personal: queste impostazioni valgono in entrambe.</p>
+      <Sezione titolo="Etichette dell'agenda">
+        <p className="pp-riga-meta pp-spiegazione">Le trovi quando crei un impegno, con il loro colore. «Compleanni» c'è sempre.</p>
+        <Gruppo>
+          {etichette.map((e) => (
+            <div key={e.id} className="pp-voce">
+              <span><span className="pp-punto" style={{ '--c': labelColor(e.colore) }} />{e.nome}</span>
+              <span className="pp-voce-azioni">
+                <input type="color" className="pp-colore pp-colore-piccolo" value={e.colore} aria-label={`Colore di ${e.nome}`}
+                  onChange={(ev) => cambiaEtichette(etichette.map((x) => (x.id === e.id ? { ...x, colore: ev.target.value } : x)))} />
+                <button className="pp-icona-bottone pp-piccolo" aria-label={`Togli ${e.nome}`} disabled={etichette.length < 2 || e.id === 'compleanni'}
+                  onClick={() => cambiaEtichette(etichette.filter((x) => x.id !== e.id))}><IconaChiudi size={16} /></button>
+              </span>
+            </div>
+          ))}
+          <NuovaEtichetta onAggiungi={(nome, colore) => esegui(async () => { await salvaEtichette([...etichette, nuovaEtichetta(etichette, nome, colore)]); })} />
+        </Gruppo>
+      </Sezione>
+      <Sezione titolo="Visualizzazione">
+        {!collegata ? (
+          <Gruppo><div className="pp-voce pp-voce-testo"><span>Collega l'agenda dello studio (scheda Studio) per cambiare orari e giorni visibili.</span></div></Gruppo>
+        ) : !vis ? (
+          <Gruppo><div className="pp-voce"><span className="pp-riga-meta">Carico…</span></div></Gruppo>
+        ) : (
+          <div className="pp-agenda-vis">
+            <div className="pp-due">
+              <label className="pp-campo"><span>Inizio giornata</span>
+                <select className="pp-select" value={vis.oraInizio} onChange={(e) => salvaVis({ oraInizio: Number(e.target.value) })}>{ORE.map((h) => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}</select></label>
+              <label className="pp-campo"><span>Fine giornata</span>
+                <select className="pp-select" value={vis.oraFine} onChange={(e) => salvaVis({ oraFine: Number(e.target.value) })}>{ORE.map((h) => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}</select></label>
+            </div>
+            <div className="pp-due">
+              <label className="pp-campo"><span>Righe ogni</span>
+                <select className="pp-select" value={vis.slotMin} onChange={(e) => salvaVis({ slotMin: Number(e.target.value) })}>{[15, 30, 60].map((m) => <option key={m} value={m}>{m} minuti</option>)}</select></label>
+              <label className="pp-campo"><span>Durata nuovo appuntamento</span>
+                <select className="pp-select" value={vis.durataDefault} onChange={(e) => salvaVis({ durataDefault: Number(e.target.value) })}>{[15, 30, 45, 60, 90].map((m) => <option key={m} value={m}>{m} minuti</option>)}</select></label>
+            </div>
+            <label className="pp-campo"><span>Zoom della griglia</span>
+              <select className="pp-select" value={vis.zoom} onChange={(e) => salvaVis({ zoom: Number(e.target.value) })}>
+                {[[0.6, 'Compatto'], [0.8, 'Ridotto'], [1, 'Normale'], [1.3, 'Grande'], [1.6, 'Molto grande']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select></label>
+            <div className="pp-campo"><span>Giorni visibili nella settimana</span>
+              <div className="pp-giorni-visibili">
+                {[1, 2, 3, 4, 5, 6, 0].map((g) => {
+                  const nascosto = (vis.hiddenWeekdays || []).includes(g);
+                  return <button key={g} type="button" aria-pressed={!nascosto} className={nascosto ? '' : 'attivo'}
+                    onClick={() => salvaVis({ hiddenWeekdays: nascosto ? vis.hiddenWeekdays.filter((x) => x !== g) : [...(vis.hiddenWeekdays || []), g] })}>{GIORNI[g]}</button>;
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </Sezione>
+      <Sezione titolo="Tipi di appuntamento e multi-agenda">
+        <Gruppo>
+          <a className="pp-riga" href={versoStudio('agenda')}>
+            <span className="pp-riga-testo"><span className="pp-riga-titolo">Tipi di appuntamento, operatori e poltrone</span><span className="pp-riga-meta">Nella stessa pagina dello Studio, scheda Agenda</span></span>
+            <IconaFreccia size={16} />
+          </a>
+        </Gruppo>
+      </Sezione>
+    </>
+  );
+}
+
+function AreaPersonale({ ctx, email }) {
+  const { impostazioni, salvaImp, apri } = ctx;
+  const { persone, categorie, sezioni } = impostazioni;
+  return (
+    <>
       <Sezione titolo="Persone">
         <p className="pp-riga-meta pp-spiegazione">A chi appartengono i documenti personali (carta d'identità, codice fiscale, …).</p>
         <ListaModificabile
@@ -128,28 +252,8 @@ export function PaginaImpostazioni({ ctx, email }) {
           segnaposto="Es. Vendite"
         />
       </Sezione>
-      <Sezione titolo="Etichette dell'agenda">
-        <p className="pp-riga-meta pp-spiegazione">Comuni a Studio e Personal: le trovi quando crei un impegno, con il loro colore. «Compleanni» c'è sempre.</p>
-        <Gruppo>
-          {etichette.map((e) => (
-            <div key={e.id} className="pp-voce">
-              <span><span className="pp-punto" style={{ '--c': labelColor(e.colore) }} />{e.nome}</span>
-              <span className="pp-voce-azioni">
-                <input type="color" className="pp-colore pp-colore-piccolo" value={e.colore} aria-label={`Colore di ${e.nome}`}
-                  onChange={(ev) => cambiaEtichette(etichette.map((x) => (x.id === e.id ? { ...x, colore: ev.target.value } : x)))} />
-                <button className="pp-icona-bottone pp-piccolo" aria-label={`Togli ${e.nome}`} disabled={etichette.length < 2 || e.id === 'compleanni'}
-                  onClick={() => cambiaEtichette(etichette.filter((x) => x.id !== e.id))}><IconaChiudi size={16} /></button>
-              </span>
-            </div>
-          ))}
-          <NuovaEtichetta onAggiungi={(nome, colore) => cambiaEtichette([...etichette, nuovaEtichetta(etichette, nome, colore)])} />
-        </Gruppo>
-      </Sezione>
       <Sezione titolo="Notifiche sul telefono">
         <NotificheTelefono ctx={ctx} />
-      </Sezione>
-      <Sezione titolo="Agenda dello studio">
-        <StatoStudio />
       </Sezione>
       <Sezione titolo="Account">
         <Gruppo>

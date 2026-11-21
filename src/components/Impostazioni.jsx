@@ -16,6 +16,7 @@ import { setHomeWidgetConfig } from '../lib/homeWidgetRegistry.js';
 import { buildHomePermissions, createRolePresetLayout } from '../lib/homeDashboardModel.js';
 import { DEFAULT_QUICK_ACTION_IDS, filterQuickActionsCatalog, getQuickAction } from '../lib/quickActionsCatalog.js';
 import { MOBILE_DOCK_BOTTOM, MOBILE_DOCK_HEIGHT, MOBILE_DOCK_PROTECTED_GAP } from '../lib/poliedron/poliedronMobileDock.js';
+const ImpostazioniPersonali = React.lazy(() => import('./ImpostazioniPersonali.jsx'));
 
 const GIORNI_SETTIMANA = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
 
@@ -69,6 +70,11 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
   const logoInputRef = useRef(null);
   const [tipoModal, setTipoModal] = useState(null);
   const [sezione, setSezione] = useState('studio');
+  // IMPOSTAZIONI-UNICHE (PO 2026-11-21): una pagina sola. In cima l'Agenda (comune a Studio e
+  // Personal: tipi, etichette, visualizzazione), poi i tasti Studio e Personale. «?imp=» sceglie l'area.
+  const [area, setArea] = useState(() => {
+    try { const v = new URLSearchParams(window.location.search).get('imp'); return ['agenda', 'studio', 'personale'].includes(v) ? v : 'agenda'; } catch { return 'agenda'; }
+  });
   const [tipoForm, setTipoForm] = useState({ nome: '', colore: COLORI_DISPONIBILI[0], durata: '', online_abilitato: false, online_giorni: [1, 2, 3, 4, 5], online_ora_inizio: '09:00', online_ora_fine: '18:00' });
   const S = (f) => setSi((s) => ({ ...s, ...f }));
   const agSet = { ...DEF_AGENDA_SETTINGS, ...(si.agenda_settings || {}) };
@@ -417,11 +423,20 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       {/* Navigazione a sezioni: prima era tutto in un unico scroll lunghissimo,
           scomodo su mobile — ora ogni area si apre da sola, il resto resta
           fuori dal DOM (nessun costo di render nascosto). */}
-      <div className="pol-tabbar" style={{ marginBottom: 16, paddingBottom: 2 }}>
+      <div className="impostazioni-aree" role="tablist" aria-label="Impostazioni" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginBottom: 16 }}>
+        {[['agenda', 'cal', 'Agenda'], ['studio', 'brief', 'Studio'], ['personale', 'user', 'Personale']].map(([id, ic, lbl]) => (
+          <button key={id} type="button" role="tab" aria-selected={area === id} onClick={() => setArea(id)}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 46, borderRadius: 12, fontWeight: 800, fontSize: 13.5, cursor: 'pointer', border: `1.5px solid ${area === id ? C.pri : C.brd}`, background: area === id ? C.pri : C.sur, color: area === id ? '#fff' : C.txt }}>
+            <Ic n={ic} s={15} c={area === id ? '#fff' : C.txm} />{lbl}
+          </button>
+        ))}
+      </div>
+      {area === 'agenda' && <div style={{ fontSize: 12, color: C.txl, marginTop: -6, marginBottom: 6 }}>Un'agenda sola per Studio e Personal: queste impostazioni valgono in entrambe.</div>}
+
+      {area === 'studio' && <div className="pol-tabbar" style={{ marginBottom: 16, paddingBottom: 2 }}>
         {[
           ['studio', 'brief', 'Studio'],
           ['home', 'home', 'Home'],
-          ['agenda', 'cal', 'Agenda'],
           ['documenti', 'file', 'Documenti'],
           ['privacy', 'lock', 'Privacy GDPR'],
           ['prenotazione', 'link', 'Prenotazione online'],
@@ -429,7 +444,6 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           ['azioni_rapide', 'zap', 'Azioni rapide'],
           ['whatsapp', 'wa', 'WhatsApp'],
           ['team', 'users', 'Profilo e team'],
-          ['personale', 'user', 'Personale'],
         ].map(([id, ic, lbl]) => (
           <button
             key={id}
@@ -445,7 +459,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
             {lbl}
           </button>
         ))}
-      </div>
+      </div>}
 
       {/* POL-UI-036: Product Owner — "il tasto impostazioni deve essere il
           tasto setup in cui ci sarà anche personalizzazione home, così è
@@ -454,7 +468,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
           salvataggio — non vale la pena duplicarlo): questo tasto naviga a
           Home e le chiede di aprirlo, stesso principio già usato per la
           duplicazione del tasto Esci (POL-UI-031/033). */}
-      {sezione === 'home' && (
+      {area === 'studio' && sezione === 'home' && (
       <>
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Home</div>
@@ -467,7 +481,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       </>
       )}
 
-      {sezione === 'studio' && (
+      {area === 'studio' && sezione === 'studio' && (
       <>
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Impostazioni Studio</div>
@@ -774,7 +788,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       </>
       )}
 
-      {sezione === 'agenda' && (
+      {area === 'agenda' && (
       <>
       <div style={{ marginTop: 26, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Agenda</div>
@@ -793,7 +807,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       <Btn ch="+ Nuovo tipo appuntamento" v="sec" onClick={openNewTipo} full />
 
       <div style={{ marginTop: 26, marginBottom: 14 }}>
-        <div style={{ fontSize: 20, fontWeight: 800 }}>Impostazioni Agenda</div>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>Visualizzazione</div>
         <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Orari, slot e giorni visibili — valgono per tutto lo studio</div>
       </div>
       <Crd style={{ marginBottom: 14 }}>
@@ -889,7 +903,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       </>
       )}
 
-      {sezione === 'documenti' && (
+      {area === 'studio' && sezione === 'documenti' && (
       <>
       <div style={{ marginTop: 0, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Archiviazione documenti</div>
@@ -921,7 +935,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       </>
       )}
 
-      {sezione === 'privacy' && (
+      {area === 'studio' && sezione === 'privacy' && (
       <>
       <div style={{ marginTop: 0, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Modelli di consenso</div>
@@ -972,7 +986,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       </>
       )}
 
-      {sezione === 'prenotazione' && (
+      {area === 'studio' && sezione === 'prenotazione' && (
       <>
       <div style={{ marginTop: 0, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Prenotazione online</div>
@@ -1055,7 +1069,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       </>
       )}
 
-      {sezione === 'aspetto' && (
+      {area === 'studio' && sezione === 'aspetto' && (
       <>
       <div style={{ marginTop: 0, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Menu mobile</div>
@@ -1087,7 +1101,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       </>
       )}
 
-      {sezione === 'azioni_rapide' && (
+      {area === 'studio' && sezione === 'azioni_rapide' && (
       <>
       <div style={{ marginTop: 0, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>Azioni rapide</div>
@@ -1137,7 +1151,7 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       </>
       )}
 
-      {sezione === 'whatsapp' && (
+      {area === 'studio' && sezione === 'whatsapp' && (
       <>
       <div style={{ marginTop: 0, marginBottom: 14 }}>
         <div style={{ fontSize: 20, fontWeight: 800 }}>WhatsApp Business — Automazione</div>
@@ -1247,22 +1261,13 @@ export default function Impostazioni({ studioInfo, setStudioInfo, appTypes, setA
       </>
       )}
 
-      {sezione === 'personale' && (
-        <>
-          <div style={{ marginTop: 26, marginBottom: 14 }}>
-            <div style={{ fontSize: 20, fontWeight: 800 }}>Personale</div>
-            <div style={{ fontSize: 12, color: C.txl, marginTop: 2 }}>Le impostazioni sono comuni a tutto Poliedra: persone, documenti personali, sezioni, categorie di spese e incassi, notifiche</div>
-          </div>
-          <Crd style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 12.5, color: C.txm, marginBottom: 12 }}>Le etichette dell'agenda sono le stesse qui e in Personal (le trovi in Agenda). Il resto delle impostazioni della vita personale si apre in Personal.</div>
-            <a href={sectionDestination('personal', 'impostazioni')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 44, borderRadius: 10, background: C.pri, color: '#fff', fontWeight: 700, fontSize: 13, textDecoration: 'none' }}>
-              <Ic n="set" s={14} c="#fff" />Apri le impostazioni di Personal
-            </a>
-          </Crd>
-        </>
+      {area === 'personale' && (
+        <React.Suspense fallback={<Crd><div style={{ fontSize: 12.5, color: C.txm }}>Carico…</div></Crd>}>
+          <ImpostazioniPersonali setToast={setToast} />
+        </React.Suspense>
       )}
 
-      {sezione === 'team' && (
+      {area === 'studio' && sezione === 'team' && (
       <>
       <ProfiloUtente onNomeChange={onNomeChange} vertical={si.vertical} />
       <GestioneUtenti studioId={studioInfo?.studio_id} currentUserId={currentUserId} features={features} isStudioAdmin={isStudioAdmin} vertical={studioInfo?.vertical} />
