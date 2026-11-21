@@ -44,6 +44,10 @@ export function VistaDocumenti({ ctx }) {
         ))}
       </div>
       {/* DOCUMENTI-FIRMATI: sottosezione sempre a un tocco, con lo stesso nome della cartella su Drive. */}
+      {/* PERSONAL-ESPLORA-WIN11: Esplora file (le tue cartelle come in Windows 11). */}
+      <button type="button" className="pp-riga pp-riga-sola pp-firmati-porta pp-esplora-porta" onClick={() => ctx.apri({ tipo: 'esplora' })}>
+        <span>Esplora file</span><IconaFreccia size={16} />
+      </button>
       <button type="button" className="pp-riga pp-riga-sola pp-firmati-porta" onClick={() => ctx.apri({ tipo: 'firmati' })}>
         <span>Documenti firmati</span><IconaFreccia size={16} />
       </button>
