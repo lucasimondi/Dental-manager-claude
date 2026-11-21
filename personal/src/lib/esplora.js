@@ -4,8 +4,11 @@
 // «Da catalogare» (documenti in nessuna cartella mia) e «Per categoria» (un nodo per fascicolo).
 // In Esplora un documento ha UNA posizione: Sposta = tolto dalla cartella di partenza (se è una
 // cartella mia) e aggiunto a quella di arrivo, con la RPC atomica `sposta_documenti_mie` (POL-VITA-033).
+// Fase 2: subito dopo, il file si sposta anche su Drive nella cartella gemella (azioni dello script
+// `sposta_documenti` e `cartella_drive`); se Drive non risponde resta la nota '>cartella:<id>' e lo
+// script lo rifà al giro successivo.
 // Qui la logica è pura (testabile senza DOM); in fondo le letture/scritture sul database.
-import { CAMPI_DOC } from './archivio.js';
+import { CAMPI_DOC, URL_CARICAMENTO } from './archivio.js';
 import { discendenti, percorso } from './cartelleMie.js';
 import { scadenzaDaGestire, oggiRoma, limiteAvviso } from './revisioneArchivio.js';
 
@@ -381,4 +384,70 @@ export async function eseguiOperazione(db, op, api) {
     else if (c.fn === 'rinominaCartella') await api.rinominaCartella(db, c.id, c.nome);
     else if (c.fn === 'rinominaDocumento') await api.aggiornaDocumento(db, c.id, { titolo: c.nome });
   }
+}
+
+/* ---------- fase 2: Drive allineato subito ---------- */
+
+export const DA_SPOSTARE = '>';
+
+// Cosa fare su Drive dopo un'operazione riuscita nel database (puro).
+// sposta_documenti: file nella gemella della cartella d'arrivo ('radice' = Archivio personale);
+// automatico: documenti tornati fuori dalle cartelle → di nuovo nelle cartelle Categoria/anno (ordinaDrive_);
+// cartella_drive: gemella creata o allineata (nuova, rinominata, spostata). Archiviare non tocca Drive.
+export function chiamateDrive(op) {
+  if (!op) return [];
+  if (op.tipo === 'crea') return [{ azione: 'cartella_drive', id: op.id }];
+  if (op.tipo === 'rinomina') return op.cosa === 'cartella' ? [{ azione: 'cartella_drive', id: op.id }] : [];
+  if (op.tipo !== 'sposta') return [];
+  const fuori = [];
+  const perDest = new Map();
+  const tornati = [];
+  for (const m of op.mosse) {
+    if (m.tipo === 'cartella') { fuori.push({ azione: 'cartella_drive', id: m.id }); continue; }
+    if (m.da === m.a) continue;
+    if (m.a === FUORI) { tornati.push(m.id); continue; }
+    if (!perDest.has(m.a)) perDest.set(m.a, []);
+    perDest.get(m.a).push(m.id);
+  }
+  for (const [a, ids] of perDest) fuori.push({ azione: 'sposta_documenti', ids, cartella_id: a });
+  if (tornati.length) fuori.push({ azione: 'automatico', ids: tornati });
+  return fuori;
+}
+
+async function chiamaScript(corpo, fetchImpl) {
+  const r = await fetchImpl(URL_CARICAMENTO, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(corpo) });
+  let j;
+  try { j = await r.json(); } catch { throw new Error('Google Drive non raggiungibile'); }
+  if (!j.ok) throw new Error(j.errore || 'Drive non aggiornato');
+  return j;
+}
+
+/**
+ * Esegue su Drive le chiamate di un'operazione. Non lancia mai: restituisce quante cose restano
+ * da sistemare (lo script le recupera al giro successivo grazie alla nota '>cartella:<id>').
+ */
+export async function allineaDrive(db, op, { token, fetchImpl = fetch } = {}) {
+  let problemi = 0;
+  for (const c of chiamateDrive(op)) {
+    try {
+      if (c.azione === 'automatico') {
+        // Solo i file fissati da Esplora o da una cartella: tornano a essere ordinati dallo script.
+        const { error } = await db.from('documenti').update({ drive_fissa: false, drive_cartella: null }).in('id', c.ids)
+          .or('drive_cartella.like.cartella:*,drive_cartella.like.>cartella:*');
+        if (error) throw new Error(error.message);
+        continue;
+      }
+      if (!token) throw new Error('Sessione scaduta');
+      const r = await chiamaScript({ token, ...c }, fetchImpl);
+      if (c.azione === 'sposta_documenti') problemi += (r.errori || []).length;
+    } catch {
+      problemi += c.ids?.length || 1;
+      if (c.azione === 'sposta_documenti') {
+        // Nota «da spostare»: la legge recuperaSpostamenti_() dello script.
+        try { await db.from('documenti').update({ drive_fissa: true, drive_cartella: `${DA_SPOSTARE}cartella:${c.cartella_id}` }).in('id', c.ids); } catch { /* resta il giro delle cartelle */ }
+      }
+      // cartella_drive non riuscita: allineaCartelleDrive_() crea e allinea le gemelle a ogni giro.
+    }
+  }
+  return { problemi };
 }

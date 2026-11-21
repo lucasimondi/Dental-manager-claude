@@ -3,7 +3,8 @@
 // contenuto sotto. Tocco = apri; pressione prolungata = trascina (se muovi il dito) o menu (se lasci);
 // mouse: trascinamento immediato e tasto destro. Ogni spostamento/eliminazione ha «Annulla».
 // Logica pura in lib/esplora.js; spostamenti con le funzioni di lib/cartelleMie.js (RPC sposta_documenti_mie).
-// Fase 1: solo l'app. Lo spostamento del file su Drive arriva con la fase 2 (Apps Script).
+// Fase 2: dopo ogni operazione riuscita, Drive si allinea subito (allineaDrive, in coda); se Drive non
+// risponde compare «Su Drive lo sistemo al prossimo giro» e lo script recupera da solo.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { aggiornaDocumento, cestinaSuDrive, eliminaDocumenti } from '../../lib/archivio.js';
@@ -17,7 +18,7 @@ import {
   sottocartelle, padreDi, nomeNodo, percorsoNodo, antenati, categorieVisibili, documentiNelNodo, catalogati, calcolaPallini,
   etichettaPallino, testoStato, destinazioneValida, vociSpostaIn, operazioneSposta, inversa, applica, eseguiOperazione,
   taglia, incolla, nomeNuovaCartella, vociMenu, posizioneMenu, tipoFile, caricaPosizioni, caricaDaGestire, contaDaCatalogare,
-  paginaDaCatalogare, paginaCategoria,
+  paginaDaCatalogare, paginaCategoria, allineaDrive,
 } from '../../lib/esplora.js';
 import { titoloDoc, tokenSessione } from '../../ui.jsx';
 import { useTrascina } from './Trascina.jsx';
@@ -87,6 +88,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
   const timerAvviso = useRef(null);
   const cambiato = useRef(false);
   const ultimoTocco = useRef(0);
+  const codaDrive = useRef(Promise.resolve()); // le chiamate a Drive una dopo l'altra (anche con Annulla)
 
   const disp = disposizione(schermo.l, schermo.a);
   const colonne = colonneGriglia(disp);
@@ -186,9 +188,19 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
       return false;
     }
     cambiato.current = true;
-    if (messaggio) mostraAvviso(messaggio, annullabile ? () => fai(inversa(op), 'Annullato', false) : null);
+    const annulla = annullabile ? () => fai(inversa(op), 'Annullato', false) : null;
+    if (messaggio) mostraAvviso(messaggio, annulla);
+    suDrive(op, messaggio, annulla);
     return true;
-  }, [mostraAvviso]);
+  }, [mostraAvviso]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Drive allineato subito, senza far aspettare il dito; se non riesce lo dice e lo script recupera.
+  function suDrive(op, messaggio, annulla) {
+    codaDrive.current = codaDrive.current.then(async () => {
+      const { problemi } = await allineaDrive(archivioDb, op, { token: await tokenSessione().catch(() => null) });
+      if (problemi) mostraAvviso(`${messaggio ? `${messaggio} · ` : ''}Su Drive lo sistemo al prossimo giro`, annulla);
+    }).catch(() => {});
+  }
 
   const sposta = (sorgenti, dest) => {
     const op = operazioneSposta(sorgenti, dest, opz);
@@ -206,7 +218,9 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
       const op = { tipo: 'crea', id: c.id, nome: c.nome, padre };
       setDati((d) => applica(d, op));
       cambiato.current = true;
-      mostraAvviso(`Cartella «${c.nome}» creata`, () => fai(inversa(op), 'Annullato', false));
+      const annulla = () => fai(inversa(op), 'Annullato', false);
+      mostraAvviso(`Cartella «${c.nome}» creata`, annulla);
+      suDrive(op, `Cartella «${c.nome}» creata`, annulla);
     } catch (e) { mostraAvviso(`Cartella non creata: ${e.message}`); }
   };
   const iniziaNuova = (padre) => {
