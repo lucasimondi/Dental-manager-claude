@@ -19,9 +19,10 @@ export const scenario = () => ({
   chiamate: [], drive: [], driveGiu: false,
 });
 
-export const avvia = async (browser, { width, height, nome, touch, url = 'personal-esplora.html', porta = 5181, colore = 'light', attendi = '.esp-albero' }) => {
+export const avvia = async (browser, { width, height, nome, touch, url = 'personal-esplora.html', porta = 5181, colore = 'light', attendi = '.esp-albero', scala = 1, prepara = null }) => {
   const S = scenario();
-  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1, hasTouch: touch, isMobile: touch, colorScheme: colore });
+  prepara?.(S);
+  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: scala, hasTouch: touch, isMobile: touch, colorScheme: colore });
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));

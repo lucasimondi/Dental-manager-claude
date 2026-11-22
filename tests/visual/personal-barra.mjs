@@ -118,6 +118,7 @@ try {
     assert.ok(await cn.getByRole('button', { name: 'Apri documento' }).count());
     assert.ok(await cn.getByRole('button', { name: 'Segna come fatto' }).count());
     assert.ok(await page.locator('.pn-giorno.con').count() >= 1, 'giorno con scadenza nel calendario');
+    await page.waitForTimeout(350); // fine dell'animazione di entrata
     assert.ok(await dentro(page, '.pn-centro'), 'Centro notifiche dentro lo schermo');
     await page.screenshot({ path: `${out}/${nome}-centro.png` });
     await page.keyboard.press('Escape');
