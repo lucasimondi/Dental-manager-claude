@@ -10,7 +10,8 @@
 - SCRIPT: `clasp push -f` done (HEAD) and version 30 created; moving the web app deployment @29 → @30 was BLOCKED by the session's permission classifier → needs Luca's explicit OK ("Pubblica"). Until then «Carica il piano proposto» answers that the new script version must be published. Rollback: redeploy 29.
 - DB: tables created; rows NOT yet loaded (they load via the app button after publishing). DRIVE: one new private JSON file in My Drive root; no file of the archive moved or renamed.
 - VALIDATION: npm test PASS (new tests/pianoRiordino.test.mjs 9/9); build + build:personal PASS; node --check Code.gs OK; visual tests/visual/personal-riordino.mjs PASS at 375×812 light/dark (no horizontal overflow, yellow rows, rename, approve ≥ 0.85).
-- STATUS: waiting for PO decisions on the plan; phase 3 only after approval; merge only on "Mergia".
+- PHASES 1–2 MERGED: PR #339 squash 9800c32 after PO "Mergia" (all checks green, head a7c1855 unchanged).
+- STATUS: script deployment @29 → @30 still pending (needs Luca's "Pubblica"); then Luca loads and reviews the plan; phase 3 only on approved rows.
 
 # Current task — PERSONAL-ESPLORA-WIN11 (2026-11-21)
 - OWNER Claude Code; branch `ccr-37864811-5h4ztp` (from master f3d241a = PR #333 IMPOSTAZIONI-UNICHE merged; no overlap).
