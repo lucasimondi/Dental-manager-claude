@@ -3631,12 +3631,16 @@ function preparaCartelleRiordino_(scadenza) {
   const cache = {};
   for (let i = 0; i < elenco.length; i++) {
     if (Date.now() > scadenza) return false;
-    cartellaDriveDi_(cartellaPerCategoria_(elenco[i], cache));
+    // Una cartella che non si può creare non blocca le altre: la riga che la usa andrà in errore e tornerà «da decidere».
+    try { cartellaDriveDi_(cartellaPerCategoria_(elenco[i], cache)); } catch (e) { logErrore_('Riordino cartella ' + elenco[i], e); }
   }
   return true;
 }
 
 function riordinoAutomatico() {
+  try { riordinoAutomatico_(); } catch (e) { logErrore_('riordino automatico', e); }
+}
+function riordinoAutomatico_() {
   if (!riordinoAutomaticoAcceso_()) { spegniRiordino_(); return; }
   const lock = LockService.getUserLock();
   if (!lock.tryLock(1000)) return;
@@ -3670,6 +3674,7 @@ function riordinoParallelo_(k) {
   if (cache.get(chiave)) return;          // il giro precedente di questo gruppo sta ancora lavorando
   cache.put(chiave, '1', 360);
   try { eseguiLottoRiordino_({ gruppo: k, senzaLock: true, limite: 300, tempo: 300000 }); }
+  catch (e) { logErrore_('riordino parallelo ' + k, e); }
   finally { cache.remove(chiave); }
 }
 function riordinoParallelo0() { riordinoParallelo_(0); }
