@@ -187,3 +187,22 @@ Su indicazione di Luca («Fallo tu senza api») la classificazione l'ha fatta Cl
   - nomi conformi: 98,9%;
   - 347 cartelle di destinazione, al massimo 4 livelli;
   - confidenza: 1.789 righe a 0,85 o più, 4.881 fra 0,60 e 0,85.
+
+## Fase 3 — esecuzione su Drive (2026-11-22)
+- **Migrazione** `20261122200000_pol_vita_ordina_esecuzione.sql`, già applicata, additiva:
+  - `cartelle_mie.categoria_id`: le cartelle della tassonomia sono cartelle dell'app con la loro gemella su Drive, quindi lo stesso albero 1:1;
+  - `log_spostamenti`, una riga per file: cartella e nome di prima, cartelle dell'app di prima, scorciatoie create, esito;
+  - vista `v_lotti_riordino`.
+  - Sicurezza: RLS in sola lettura per il proprietario e REVOKE ad anon e PUBLIC; `get_advisors` non mostra problemi nuovi.
+- **Script** (web app @31, pubblicata su «Pubblica» di Luca; si torna indietro ripubblicando la 30):
+  - **`esegui_lotto`**: prende al massimo 100 righe `approvato` fuori da «99», in meno di 4,5 minuti.
+    1. Scrive il registro prima di toccare il file.
+    2. Sposta il file con `moveTo` nella cartella della tassonomia, che crea con i padri se manca.
+    3. Gli dà il nome nuovo.
+    4. Crea le scorciatoie Drive, mai copie.
+    5. Fissa il documento (`drive_fissa`, `drive_rinomina = false`) e lo mette nella cartella dell'app, togliendolo dalle cartelle dell'app di prima.
+    6. Segna la riga del piano `eseguito`.
+
+    Se qualcosa si interrompe a metà, il file torna dov'era. Il fascicolo `clinico_pazienti` non si tocca mai.
+  - **`annulla_lotto`**: rimette ogni file nella cartella e con il nome di prima, sposta nel Cestino solo le scorciatoie create dal lotto, ripristina documento e cartelle dell'app, e riporta la riga ad `approvato`.
+- **App:** nella schermata «Riordino», il riquadro «Spostamento su Drive» ha il tasto «Sposta i prossimi 100» e l'elenco dei lotti, ciascuno con «Annulla lotto».

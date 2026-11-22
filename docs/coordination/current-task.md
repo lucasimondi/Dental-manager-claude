@@ -13,7 +13,7 @@
 - PHASES 1–2 MERGED: PR #339 squash 9800c32 after PO "Mergia" (all checks green, head a7c1855 unchanged).
 - SCRIPT PUBLISHED 2026-11-22 on Luca's "Pubblica": online HEAD pulled and compared = master 9800c32; web app deployment AKfycbzQf7…UDw @29 → @30 (same URL). Rollback: redeploy 29.
 - PLAN LOADED (Luca tapped «Carica il piano proposto»: 7,070 rows, 520 categories). PO 2026-11-22: "É un lavoro troppo lungo da fare, ho chiesto a te di farlo apposta" → Claude Code reviewed the big folders and the doubts, corrected 1,138 rows in the DB (38 new categories), APPROVED 6,610 rows (all outside «99»); 460 left «proposto» in «99 Da verificare» (380 doubts, 60 identical copies, 20 possible clinical files). Details: pol-vita-ordina.md § Revisione.
-- NEXT: phase 3 (execution of approved rows only, batches of 100, `log_spostamenti`, «Annulla lotto»): new Code.gs action + migration + app button; needs a new script version (publish on Luca's OK).
+- PHASE 3 (built, PO "Pubblica" 2026-11-22): migration `20261122200000_pol_vita_ordina_esecuzione.sql` applied (cartelle_mie.categoria_id, log_spostamenti, v_lotti_riordino; RLS read-only owner, REVOKE anon/PUBLIC, advisors clean of new findings); Code.gs `esegui_lotto` / `annulla_lotto`; online script pulled = master before push; web app @30 → @31 (rollback: 30). App: «Spostamento su Drive» in Riordino (button + lots with «Annulla lotto»). Validation: npm test 1936/1936, build + build:personal PASS, node --check OK, visual personal-riordino PASS. No lot executed yet (the app button runs with Luca's session).
 
 # Current task — PERSONAL-ESPLORA-WIN11 (2026-11-21)
 - OWNER Claude Code; branch `ccr-37864811-5h4ztp` (from master f3d241a = PR #333 IMPOSTAZIONI-UNICHE merged; no overlap).

@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  livello, controllaNome, nomeConforme, riepilogo, filtra, raggruppa, radici, decidi, cambiaCartella, rinomina, importaPiano,
+  livello, controllaNome, nomeConforme, riepilogo, filtra, raggruppa, radici, decidi, cambiaCartella, rinomina, importaPiano, eseguiLotto, annullaLotto, daEseguire,
 } from '../personal/src/lib/pianoRiordino.js';
 
 const R = (o) => ({ id: o.id || Math.random().toString(36).slice(2), stato: 'proposto', confidenza: 0.9, nome_attuale: 'x.pdf', nome_nuovo: '2024-01-02_Fattura_Enel_Gennaio.pdf', percorso_nuovo: '10 Utenze/Luce – Enel/2024', motivo: 'utenza', ...o });
@@ -85,7 +85,40 @@ test('la schermata non sposta file e lo script importa solo dati senza sovrascri
   assert.doesNotMatch(vista, /sposta_documenti|rinomina_file|cestina/);
   for (const t of ['Approva tutto il gruppo', 'Approva tutto ≥ 0,85', 'Cambia cartella', 'Rinomina', 'Rifiuta', 'Anteprima']) assert.ok(vista.includes(t), t);
   const gs = readFileSync(new URL('../poliedron/archivio/Code.gs', import.meta.url), 'utf8');
-  const imp = gs.slice(gs.indexOf('function importaPianoRiordino_'));
+  const imp = gs.slice(gs.indexOf('function importaPianoRiordino_'), gs.indexOf('POL-VITA-ORDINA fase 3'));
   assert.match(imp, /resolution=ignore-duplicates/);
   assert.doesNotMatch(imp, /setTrashed|moveTo|setName|removeFile/);
+});
+
+test('fase 3: righe da spostare = approvate fuori da «99»', () => {
+  assert.equal(daEseguire([R({ stato: 'approvato' }), R({ stato: 'approvato', percorso_nuovo: '99 Da verificare/Dubbi' }), R({}), R({ stato: 'eseguito' })]), 1);
+});
+
+test('fase 3: esegui e annulla lotto chiamano lo script; lotto non valido rifiutato', async () => {
+  const corpi = [];
+  const finto = async (url, o) => { corpi.push(JSON.parse(o.body)); return { json: async () => ({ ok: true, eseguiti: 100, annullati: 100 }) }; };
+  await eseguiLotto({ token: 't' }, finto);
+  await annullaLotto({ token: 't', lotto: '123e4567-e89b-12d3-a456-426614174000' }, finto);
+  assert.deepEqual(corpi.map((c) => c.azione), ['esegui_lotto', 'annulla_lotto']);
+  await assert.rejects(annullaLotto({ token: 't', lotto: 'x' }, finto), /non valido/);
+  await assert.rejects(eseguiLotto({}, finto), /Sessione scaduta/);
+});
+
+test('fase 3 nello script: solo righe approvate fuori da 99, mai i clinici, registro prima di spostare, niente cancellazioni di file', () => {
+  const gs = readFileSync(new URL('../poliedron/archivio/Code.gs', import.meta.url), 'utf8');
+  const f3 = gs.slice(gs.indexOf('POL-VITA-ORDINA fase 3'));
+  const esegui = f3.slice(f3.indexOf('function eseguiLottoRiordino_'), f3.indexOf('function annullaLottoRiordino_'));
+  assert.match(esegui, /stato=eq\.approvato/);
+  assert.match(esegui, /not\.like\.' \+ enc_\('99 \*'\)/);
+  assert.match(esegui, /clinico_pazienti/);
+  assert.ok(esegui.indexOf("log_spostamenti?select=id', { method: 'post'") < esegui.indexOf('file.moveTo(dest.f)'), 'registro prima dello spostamento');
+  assert.match(esegui, /LOTTO_RIORDINO/);
+  assert.match(f3, /const LOTTO_RIORDINO = 100;/);
+  assert.doesNotMatch(esegui, /setTrashed|removeFile|makeCopy/);
+  const annulla = f3.slice(f3.indexOf('function annullaLottoRiordino_'));
+  // nel ripristino si cestinano solo le scorciatoie create dal lotto
+  assert.equal((annulla.match(/setTrashed/g) || []).length, 1);
+  assert.match(annulla, /l\.scorciatoie/);
+  assert.match(gs, /req\.azione === 'esegui_lotto'/);
+  assert.match(gs, /req\.azione === 'annulla_lotto'/);
 });

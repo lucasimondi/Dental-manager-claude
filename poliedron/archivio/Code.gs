@@ -1914,6 +1914,8 @@ function doPost(e) {
     if (req.azione === 'ripristina_file') return rispostaJson_(ripristinaFileEsplora_(req.ids));
     if (req.azione === 'ripristina_versione') return rispostaJson_(ripristinaVersioneEsplora_(req));
     if (req.azione === 'importa_piano') return rispostaJson_(importaPianoRiordino_());
+    if (req.azione === 'esegui_lotto') return rispostaJson_(eseguiLottoRiordino_());
+    if (req.azione === 'annulla_lotto') return rispostaJson_(annullaLottoRiordino_(String(req.lotto || '')));
     if (req.azione === 'contenuto') {
       const filtri = req.filtri && typeof req.filtri === 'object' ? req.filtri : {};
       return rispostaJson_({ ok: true, documenti: cercaNelContenuto_(req.testo, filtri, 20, CAMPI_APP) });
@@ -3434,4 +3436,133 @@ function importaPianoRiordino_() {
     sb_('piano_riordino?on_conflict=file_id', { method: 'post', body: righe.slice(i, i + 400), prefer: 'resolution=ignore-duplicates,return=minimal' });
   }
   return { ok: true, categorie: categorie.length, righe: righe.length };
+}
+
+/* =====================================================================
+ * POL-VITA-ORDINA fase 3 — esecuzione su Drive delle sole righe APPROVATE del piano
+ * Luca (2026-11-22): spostare e rinominare è permesso SOLO eseguendo il piano approvato; niente cancellazioni.
+ * Un lotto = al massimo 100 righe. Per ogni file: registro (log_spostamenti) con cartella e nome di prima,
+ * moveTo nella cartella della tassonomia (cartella dell'app con gemella su Drive: stesso albero, 1:1),
+ * nome nuovo, scorciatoie Drive (mai copie) nelle cartelle secondarie, documento fissato lì
+ * (drive_fissa, niente rinomina automatica). «Annulla lotto» rimette tutto com'era.
+ * Mai i clinici (clinico_pazienti): non si toccano. Nessun modello.
+ * ===================================================================*/
+const LOTTO_RIORDINO = 100;
+const LOTTO_TEMPO_MS = 270000;
+
+// Cartella dell'app (e gemella Drive) di un percorso della tassonomia: creata con i padri se manca.
+function cartellaPerCategoria_(percorso, cache) {
+  if (cache[percorso]) return cache[percorso];
+  const cat = (sb_('categorie?select=id,nome&percorso=eq.' + enc_(percorso)) || [])[0];
+  if (!cat) throw new Error('Cartella non nella tassonomia: ' + percorso);
+  let c = (sb_('cartelle_mie?select=id&archiviata_il=is.null&categoria_id=eq.' + enc_(cat.id)) || [])[0];
+  if (!c) {
+    const i = percorso.lastIndexOf('/');
+    const padre = i > 0 ? cartellaPerCategoria_(percorso.slice(0, i), cache) : null;
+    c = (sb_('cartelle_mie?select=id', { method: 'post', prefer: 'return=representation',
+      body: { nome: percorso.slice(i + 1), padre_id: padre, categoria_id: cat.id } }) || [])[0];
+  }
+  cache[percorso] = c.id;
+  return c.id;
+}
+
+function eseguiLottoRiordino_() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return { ok: false, errore: 'Un altro lotto è già in corso.' };
+  try {
+    const righe = sb_('piano_riordino?select=id,documento_id,file_id,percorso_nuovo,nome_nuovo,scorciatoie&stato=eq.approvato' +
+      '&percorso_nuovo=not.like.' + enc_('99 *') + '&order=percorso_nuovo,file_id&limit=' + LOTTO_RIORDINO) || [];
+    const lotto = Utilities.getUuid();
+    const esito = { ok: true, lotto: lotto, eseguiti: 0, errori: 0, saltati: 0 };
+    const cache = {}, cartelle = {};
+    const driveDi = function (percorso) {
+      const id = cartellaPerCategoria_(percorso, cache);
+      if (!cartelle[id]) cartelle[id] = cartellaDriveDi_(id);
+      return { id: id, f: cartelle[id] };
+    };
+    const t0 = Date.now();
+    righe.forEach(function (r) {
+      if (Date.now() - t0 > LOTTO_TEMPO_MS) return;
+      const d = r.documento_id ? (sb_('documenti?select=id,fascicolo,drive_fissa,drive_cartella,drive_rinomina&id=eq.' + r.documento_id) || [])[0] : null;
+      if (d && d.fascicolo === 'clinico_pazienti') {   // regola di Luca: il fascicolo clinico non si tocca
+        sb_('piano_riordino?id=eq.' + r.id, { method: 'patch', body: { stato: 'rifiutato', motivo: 'fascicolo clinico: non si sposta' } });
+        esito.saltati++;
+        return;
+      }
+      let file, daPadre = null, daNome = null, spostato = false;
+      const prima = d ? (sb_('cartelle_mie_documenti?select=cartella_id&documento_id=eq.' + d.id) || []).map(function (x) { return x.cartella_id; }) : [];
+      const log = (sb_('log_spostamenti?select=id', { method: 'post', prefer: 'return=representation', body: {
+        lotto: lotto, piano_id: r.id, documento_id: d ? d.id : null, file_id: r.file_id, cartelle_prima: prima,
+        drive_fissa_prima: d ? !!d.drive_fissa : null, drive_cartella_prima: d ? d.drive_cartella : null, drive_rinomina_prima: d ? !!d.drive_rinomina : null } }) || [])[0];
+      try {
+        file = DriveApp.getFileById(r.file_id);
+        const padri = file.getParents();
+        daPadre = padri.hasNext() ? padri.next().getId() : null;
+        daNome = file.getName();
+        sb_('log_spostamenti?id=eq.' + log.id, { method: 'patch', body: { da_padre_id: daPadre, da_nome: daNome } });
+        const dest = driveDi(r.percorso_nuovo);
+        file.moveTo(dest.f);
+        spostato = true;
+        const nome = pulisciNome_(r.nome_nuovo);
+        if (nome && file.getName() !== nome) file.setName(nome);
+        const scorciatoie = [], cartelleScorciatoie = [];
+        (r.scorciatoie || []).forEach(function (p) {
+          const altra = driveDi(p);
+          const sc = DriveApp.createShortcut(file.getId());
+          sc.moveTo(altra.f);
+          scorciatoie.push(sc.getId());
+          cartelleScorciatoie.push(altra.id);
+        });
+        if (d) {
+          sb_('documenti?id=eq.' + d.id, { method: 'patch', body: { drive_fissa: true, drive_rinomina: false, drive_cartella: 'cartella:' + dest.id } });
+          const vecchie = prima.filter(function (c) { return c !== dest.id; });
+          if (vecchie.length) sb_('cartelle_mie_documenti?documento_id=eq.' + d.id + '&cartella_id=in.(' + vecchie.join(',') + ')', { method: 'delete' });
+          mettiInCartella_(dest.id, d.id);
+          cartelleScorciatoie.forEach(function (c) { mettiInCartella_(c, d.id); });
+        }
+        sb_('log_spostamenti?id=eq.' + log.id, { method: 'patch', body: { esito: 'eseguito', a_padre_id: dest.f.getId(), a_nome: file.getName(), cartella_mia: dest.id, scorciatoie: scorciatoie } });
+        sb_('piano_riordino?id=eq.' + r.id, { method: 'patch', body: { stato: 'eseguito' } });
+        esito.eseguiti++;
+      } catch (e) {
+        // A metà: il file torna dov'era con il suo nome, la riga resta approvata.
+        try { if (spostato && daPadre) { file.moveTo(DriveApp.getFolderById(daPadre)); file.setName(daNome); } } catch (x) { /* resta nel registro */ }
+        sb_('log_spostamenti?id=eq.' + log.id, { method: 'patch', body: { esito: 'errore', errore: String(e.message || e).slice(0, 300) } });
+        logErrore_('Riordino ' + r.file_id, e);
+        esito.errori++;
+      }
+    });
+    return esito;
+  } finally { lock.releaseLock(); }
+}
+
+function annullaLottoRiordino_(lotto) {
+  if (!UUID_.test(lotto)) return { ok: false, errore: 'Lotto non valido' };
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return { ok: false, errore: 'Un altro lotto è in corso.' };
+  try {
+    const righe = sb_('log_spostamenti?select=*&lotto=eq.' + lotto + '&esito=eq.eseguito&order=id.desc') || [];
+    const tassonomia = (sb_('cartelle_mie?select=id&categoria_id=not.is.null') || []).map(function (c) { return c.id; });
+    const esito = { ok: true, annullati: 0, errori: 0 };
+    righe.forEach(function (l) {
+      try {
+        const file = DriveApp.getFileById(l.file_id);
+        if (l.da_padre_id) file.moveTo(DriveApp.getFolderById(l.da_padre_id));
+        if (l.da_nome && file.getName() !== l.da_nome) file.setName(l.da_nome);
+        (l.scorciatoie || []).forEach(function (s) { try { DriveApp.getFileById(s).setTrashed(true); } catch (x) { /* già via */ } });  // solo le scorciatoie create qui
+        if (l.documento_id) {
+          sb_('documenti?id=eq.' + l.documento_id, { method: 'patch', body: { drive_fissa: !!l.drive_fissa_prima, drive_cartella: l.drive_cartella_prima || null, drive_rinomina: !!l.drive_rinomina_prima } });
+          const nuove = tassonomia.filter(function (c) { return (l.cartelle_prima || []).indexOf(c) < 0; });
+          if (nuove.length) sb_('cartelle_mie_documenti?documento_id=eq.' + l.documento_id + '&cartella_id=in.(' + nuove.join(',') + ')', { method: 'delete' });
+          (l.cartelle_prima || []).forEach(function (c) { mettiInCartella_(c, l.documento_id); });
+        }
+        if (l.piano_id) sb_('piano_riordino?id=eq.' + l.piano_id, { method: 'patch', body: { stato: 'approvato' } });
+        sb_('log_spostamenti?id=eq.' + l.id, { method: 'patch', body: { esito: 'annullato', annullato_il: new Date().toISOString() } });
+        esito.annullati++;
+      } catch (e) {
+        logErrore_('Annulla riordino ' + l.file_id, e);
+        esito.errori++;
+      }
+    });
+    return esito;
+  } finally { lock.releaseLock(); }
 }
