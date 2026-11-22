@@ -4983,3 +4983,6 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Unresolved/risks: script changes not published (needs clasp push + web app version 28); «Gestisci accesso» grants real Drive permissions (only after an explicit confirmation in the app, no Drive email); Altra app… uses Capacitor FileOpener only if the app is ever wrapped with Capacitor (not today: falls back to the system share sheet); 40 px buttons on phone are below the 44 px touch guideline (PO spec); Copia keeps the file on Drive where it is (PO decision).
 - Rollback: revert the commits on the branch; script: redeploy web app version 27.
 - Next exact action: Luca says whether to publish the script now; PO tries the preview; "Mergia" for PR #337.
+
+## Note — PR #337 script published (2026-11-22, Claude Code)
+- On Luca's "Pubblica": online Code.gs pulled and compared (= master dcf9524, web app v27), then `clasp push -f` of the PR #337 Code.gs and web app deployment AKfycbzQf7…UDw moved 27 → 28 (same URL). The script is backward compatible with the production app. Rollback: redeploy version 27 (`clasp create-deployment --deploymentId <id> --versionNumber 27`).
