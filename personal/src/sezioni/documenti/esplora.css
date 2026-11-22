@@ -265,7 +265,7 @@
 @media (pointer: coarse) { .esp-dettagli-riga { min-height: 44px; } }
 /* Barra della selezione (mobile) */
 .esp-barra-selezione {
-  position: fixed; z-index: 60; left: 8px; right: 8px; bottom: calc(var(--pp-dock) + 8px + env(safe-area-inset-bottom));
+  position: fixed; z-index: 60; left: 8px; right: 8px; top: calc(8px + env(safe-area-inset-top)); /* PR #337 §6: barra azioni in alto */
   display: flex; align-items: center; gap: 4px; padding: 6px 8px; border-radius: 8px; font-family: var(--esp-font);
   background: color-mix(in srgb, var(--esp-menu) 88%, transparent); backdrop-filter: blur(30px) saturate(150%); -webkit-backdrop-filter: blur(30px) saturate(150%);
   border: 1px solid var(--esp-linea); box-shadow: 0 8px 24px rgba(0, 0, 0, .18); color: var(--esp-testo);
@@ -493,3 +493,11 @@ mark.esp-trovato { background: color-mix(in srgb, #FFC83D 60%, transparent); col
 .esp-finestra-anteprima .esp-finestra-corpo { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
 .esp-finestra-anteprima .esp-finestra-piede { padding: 8px 12px; align-items: center; justify-content: space-between; border-top: 1px solid var(--esp-linea); background: var(--esp-contenuto); }
 .esp-bottone-piccolo { min-height: 28px !important; padding: 0 10px !important; font-size: 12px; } .esp-versioni li { align-items: center; }
+
+/* ===== PR #337 §6: rettangolo di selezione, trascinamento con copia, file dal computer ===== */
+.esp-rettangolo { position: fixed; z-index: 65; pointer-events: none; background: color-mix(in srgb, var(--esp-accento) 16%, transparent); border: 1px solid var(--esp-accento); border-radius: 2px; }
+.esp-fantasma { display: inline-flex; align-items: center; gap: 6px; }
+.esp-fantasma-numero { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; display: grid; place-items: center; background: #C42B1C; color: #fff; font-size: 11px; }
+.esp-fantasma-piu { width: 18px; height: 18px; border-radius: 4px; display: grid; place-items: center; background: #fff; color: var(--esp-accento); font-weight: 700; }
+.esp-drop-file { position: fixed; inset: 0; z-index: 66; pointer-events: none; display: grid; place-items: end center; padding-bottom: calc(var(--pp-dock, 0px) + 32px); background: color-mix(in srgb, var(--esp-accento) 8%, transparent); outline: 2px dashed var(--esp-accento); outline-offset: -6px; }
+.esp-drop-file strong { padding: 8px 14px; border-radius: 6px; background: var(--esp-accento); color: #fff; font-size: 13px; box-shadow: 0 8px 24px rgba(0, 0, 0, .2); }

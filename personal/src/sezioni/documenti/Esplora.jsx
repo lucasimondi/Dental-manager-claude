@@ -123,6 +123,9 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
   const [finestra, setFinestra] = useState(null); // { doc, tipo, stato }
   const [statoZip, setStatoZip] = useState(null);
   const [lavoro, setLavoro] = useState(0);
+  const [rettangolo, setRettangolo] = useState(null); // selezione a rettangolo
+  const [ctrlGiu, setCtrlGiu] = useState(false); // Ctrl durante il trascinamento = copia
+  const [dropFile, setDropFile] = useState(null); // file trascinati dal computer: { dest }
   const alberoRef = useRef(null);
   const contenutoRef = useRef(null);
   const timerAvviso = useRef(null);
@@ -562,9 +565,18 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     attesa: PRESSIONE_MS, vibrazione: 10,
     valido: (s, b) => {
       if (b?.tipo === 'app') { const src = sorgentiPer(s.chiave); return src.length === 1 && src[0].tipo === 'doc' && accettaFile(b.id); }
+      if (b?.tipo === 'scheda') return true; // passandoci sopra la scheda si attiva; lasciando lì si sposta nella sua cartella
       const d = destDi(b); return !!d && destinazioneValida(sorgentiPer(s.chiave), d, opz);
     },
-    onLascia: (s, b) => (b.tipo === 'app' ? apriConApp(b.id, sorgentiPer(s.chiave)) : sposta(sorgentiPer(s.chiave), destDi(b))),
+    onLascia: (s, b) => {
+      const src = sorgentiPer(s.chiave);
+      if (b.tipo === 'app') { apriConApp(b.id, src); return; }
+      const dest = b.tipo === 'scheda' ? nodoScheda(tabs.schede.find((t) => t.id === b.id)) : destDi(b);
+      if (!dest || eVirtuale(dest)) return;
+      // Ctrl premuto = copia (il documento compare anche lì, decisione del PO); altrimenti sposta.
+      if (ctrlRef.current && src.every((x) => x.tipo === 'doc')) aggiungiIn(src, dest);
+      else if (destinazioneValida(src, dest, opz)) sposta(src, dest);
+    },
     onFermo: (s, punto) => {
       if (Date.now() - ultimoTocco.current > 1500) return; // pressione lunga col mouse: niente
       // Mobile: pressione prolungata = entra in selezione con l'elemento e apre il menu dal basso.
@@ -575,6 +587,23 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     scorrevoli: () => [alberoRef.current, contenutoRef.current],
   });
   const sopra = presa?.bersaglio?.chiave;
+  // Ctrl durante il trascinamento: l'operazione diventa una copia.
+  const ctrlRef = useRef(false);
+  useEffect(() => {
+    if (!presa) { ctrlRef.current = false; setCtrlGiu(false); return undefined; }
+    const k = (e) => { ctrlRef.current = e.ctrlKey || e.metaKey; setCtrlGiu(ctrlRef.current); };
+    const m = (e) => { if ((e.ctrlKey || e.metaKey) !== ctrlRef.current) k(e); };
+    window.addEventListener('keydown', k); window.addEventListener('keyup', k); document.addEventListener('mousemove', m);
+    return () => { window.removeEventListener('keydown', k); window.removeEventListener('keyup', k); document.removeEventListener('mousemove', m); };
+  }, [!!presa]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Passando sopra una scheda durante il trascinamento la scheda si attiva (dopo 600 ms), come in Windows.
+  useEffect(() => {
+    if (!sopra?.startsWith('scheda:')) return undefined;
+    const id = sopra.slice(7);
+    if (id === tabs.attiva) return undefined;
+    const t = setTimeout(() => setTabs((x) => ({ ...x, attiva: id })), 600);
+    return () => clearTimeout(t);
+  }, [sopra, tabs.attiva]);
   // L'icona della barra sotto il puntatore si accende (la barra è fuori da Esplora: classe sul nodo).
   useEffect(() => {
     document.body.classList.toggle('pb-trascina', !!presa);
@@ -638,6 +667,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     setMenu({ cosa, sorgenti, x, y, titolo: sorgenti.length > 1 ? `${sorgenti.length} selezionati` : una ? (una.tipo === 'cartella' ? nomeNodo(una.id, nomi) : titoloDi(una.id)) : null });
   }
   const vuoto = useRef({ t: null, p: null });
+  const rettangoloFatto = useRef(false);
   const gestoriVuoto = {
     onTouchStart: (e) => {
       ultimoTocco.current = Date.now();
@@ -649,7 +679,39 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     },
     onTouchMove: (e) => { const x = e.touches[0]; const p = vuoto.current.p; if (p && Math.hypot(x.clientX - p.x, x.clientY - p.y) > 10) clearTimeout(vuoto.current.t); },
     onTouchEnd: () => clearTimeout(vuoto.current.t),
-    onClick: (e) => { if (!e.target.closest('[data-elemento]') && Date.now() - ultimoTocco.current > 800) setScelti(new Set()); },
+    onClick: (e) => {
+      if (rettangoloFatto.current) { rettangoloFatto.current = false; return; }
+      if (!e.target.closest('[data-elemento]') && Date.now() - ultimoTocco.current > 800) setScelti(new Set());
+    },
+    // PR #337 §6: selezione a rettangolo trascinando nello spazio vuoto (mouse); Ctrl aggiunge alla selezione.
+    onMouseDown: (e) => {
+      if (e.button !== 0 || e.target.closest('[data-elemento], input, button, select, .esp-filtri') || Date.now() - ultimoTocco.current < 1500) return;
+      const area = contenutoRef.current;
+      const base = e.ctrlKey || e.metaKey ? new Set(scelti) : new Set();
+      const x0 = e.clientX; const y0 = e.clientY;
+      let attivo = false;
+      const muovi = (ev) => {
+        if (!attivo && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 5) return;
+        attivo = true;
+        const r = { left: Math.min(x0, ev.clientX), top: Math.min(y0, ev.clientY), right: Math.max(x0, ev.clientX), bottom: Math.max(y0, ev.clientY) };
+        setRettangolo(r);
+        const dentro = new Set(base);
+        area.querySelectorAll('[data-chiave]').forEach((el) => {
+          const b = el.getBoundingClientRect();
+          if (b.left < r.right && b.right > r.left && b.top < r.bottom && b.bottom > r.top) dentro.add(el.dataset.chiave);
+        });
+        setScelti(dentro);
+        // vicino ai bordi il contenuto scorre
+        const a = area.getBoundingClientRect();
+        if (ev.clientY > a.bottom - 24) area.scrollBy(0, 16); else if (ev.clientY < a.top + 24) area.scrollBy(0, -16);
+      };
+      const fine = () => {
+        document.removeEventListener('mousemove', muovi); document.removeEventListener('mouseup', fine);
+        if (attivo) { rettangoloFatto.current = true; setTimeout(() => { rettangoloFatto.current = false; }, 50); }
+        setRettangolo(null);
+      };
+      document.addEventListener('mousemove', muovi); document.addEventListener('mouseup', fine);
+    },
     onContextMenu: (e) => {
       if (e.target.closest('[data-elemento]')) return;
       e.preventDefault();
@@ -927,7 +989,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     const st = statoElemento(cosa, voce);
     return (
       <div key={st.k} className={`esp-tessera${st.classi}`} role="listitem">
-        <button type="button" className="esp-tessera-bottone" data-elemento data-bersaglio={st.chiave} title={st.nome} aria-label={st.cartella ? `Cartella ${st.nome}` : st.nome} aria-pressed={st.scelto} {...st.g}>
+        <button type="button" className="esp-tessera-bottone" data-elemento data-bersaglio={st.chiave} data-chiave={st.k} title={st.nome} aria-label={st.cartella ? `Cartella ${st.nome}` : st.nome} aria-pressed={st.scelto} {...st.g}>
           {casella(st)}
           <span className="esp-tessera-icona">
             {iconaDi(cosa, voce, grande ? 56 : 36, true)}
@@ -945,7 +1007,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     const riquadri = vista === 'riquadri';
     return (
       <div key={st.k} className={`esp-largo esp-largo-${vista}${st.classi}`} role="listitem">
-        <button type="button" className="esp-largo-bottone" data-elemento data-bersaglio={st.chiave} title={st.nome} aria-label={st.cartella ? `Cartella ${st.nome}` : st.nome} aria-pressed={st.scelto} {...st.g}>
+        <button type="button" className="esp-largo-bottone" data-elemento data-bersaglio={st.chiave} data-chiave={st.k} title={st.nome} aria-label={st.cartella ? `Cartella ${st.nome}` : st.nome} aria-pressed={st.scelto} {...st.g}>
           {casella(st)}
           <span className="esp-largo-icona">{iconaDi(cosa, voce, DIM_ICONA[vista], riquadri)}</span>
           {st.inRinomina ? <span className="esp-largo-testo" /> : (
@@ -964,7 +1026,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
         : [dataLeggibile(voce.creato_il).slice(0, 10), dimensioneLeggibile(voce.dimensione_byte)].filter(Boolean).join(' · ');
     return (
       <div key={st.k} className={`esp-riga${st.classi}`} role="listitem">
-        <button type="button" className="esp-riga-bottone" data-elemento data-bersaglio={st.chiave} aria-label={st.cartella ? `Cartella ${st.nome}` : st.nome} aria-pressed={st.scelto} {...st.g}>
+        <button type="button" className="esp-riga-bottone" data-elemento data-bersaglio={st.chiave} data-chiave={st.k} aria-label={st.cartella ? `Cartella ${st.nome}` : st.nome} aria-pressed={st.scelto} {...st.g}>
           {casella(st)}
           <span className="esp-riga-icona">{iconaDi(cosa, voce, 24)}</span>
           {st.inRinomina ? <span className="esp-riga-testo" /> : <span className="esp-riga-testo"><strong>{st.etichetta}</strong><small>{sotto}</small></span>}
@@ -1002,7 +1064,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
           ...g.righe.map((r) => {
             const st = statoElemento(r.cosa, r.voce);
             return (
-              <div key={st.k} role="row" className={`esp-dettagli-riga${st.classi}`} data-elemento data-bersaglio={st.chiave} tabIndex={0} aria-selected={st.scelto} aria-label={st.cartella ? `Cartella ${st.nome}` : st.nome} {...st.g}>
+              <div key={st.k} role="row" className={`esp-dettagli-riga${st.classi}`} data-elemento data-bersaglio={st.chiave} data-chiave={st.k} tabIndex={0} aria-selected={st.scelto} aria-label={st.cartella ? `Cartella ${st.nome}` : st.nome} {...st.g}>
                 {cols.map(([k]) => (k === 'nome'
                   ? <div key={k} role="gridcell" className="esp-dettagli-nome">{casella(st)}<span className="esp-riga-icona">{iconaDi(r.cosa, r.voce, 20)}</span>{st.inRinomina ? campoRinomina() : <span className="esp-dettagli-testo">{st.etichetta}</span>}{st.cartella ? <Pallino n={st.n} piccolo /> : null}</div>
                   : <div key={k} role="gridcell" className={k === 'dimensione' ? 'esp-num' : undefined}>{cella(r, k)}</div>))}
@@ -1019,7 +1081,10 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
   const briciole = percorsoNodo(nodo, nomi);
   const su = padreDi(cartelle, nodo);
   const puoNuova = !eVirtuale(nodo);
-  const tracciaSopra = presa ? (presa.bersaglio?.tipo === 'app' ? APP_PER_FILE[presa.bersaglio.id] : presa.bersaglio?.tipo === 'scheda' ? 'Apri la scheda' : presa.bersaglio ? `Sposta in «${nomeNodo(destDi(presa.bersaglio), nomi)}»` : (presa.sorgente.tipo === 'cartella' ? nomeNodo(presa.sorgente.id, nomi) : titoloDi(presa.sorgente.id))) : null;
+  const verbo = ctrlGiu && sorgentiPer(presa?.sorgente?.chiave || '').every((x) => x.tipo === 'doc') ? 'Copia in' : 'Sposta in';
+  const tracciaSopra = presa ? (presa.bersaglio?.tipo === 'app' ? APP_PER_FILE[presa.bersaglio.id]
+    : presa.bersaglio?.tipo === 'scheda' ? `${verbo} «${nomeNodo(nodoScheda(tabs.schede.find((t) => t.id === presa.bersaglio.id)), nomi)}»`
+      : presa.bersaglio ? `${verbo} «${nomeNodo(destDi(presa.bersaglio), nomi)}»` : (presa.sorgente.tipo === 'cartella' ? nomeNodo(presa.sorgente.id, nomi) : titoloDi(presa.sorgente.id))) : null;
   const struttura = strutturaMenu();
   const cercando = datiCerca(nodo);
   const vuota = !caricando && !cartelleMostrate.length && !docMostrati.length && !preferitiMostrati.length && !nuova;
@@ -1065,7 +1130,23 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
   return (
     <div className={`esp esp-${disp}${presa ? ' trascinando' : ''}${mobile ? ' esp-mobile' : ''}${lavoro ? ' lavoro' : ''}${riquadro && !mobile ? ' con-riquadro' : ''}${basso ? ' esp-basso' : ''}`} style={{ '--esp-colonne': colonne }}
       onTouchStart={(e) => { const t = e.touches[0]; swipe.inizio = { x: t.clientX, y: t.clientY }; e.currentTarget.dataset.swx = t.clientX; e.currentTarget.dataset.swy = t.clientY; }}
-      onTouchEnd={(e) => { const t = e.changedTouches[0]; const d = e.currentTarget.dataset; if (mobile && !presa && swipeApre({ x: Number(d.swx), y: Number(d.swy) }, { x: t.clientX, y: t.clientY })) setCassetto(true); }}>
+      onTouchEnd={(e) => { const t = e.changedTouches[0]; const d = e.currentTarget.dataset; if (mobile && !presa && swipeApre({ x: Number(d.swx), y: Number(d.swy) }, { x: t.clientX, y: t.clientY })) setCassetto(true); }}
+      // PR #337 §6: file trascinati dal computer dentro la finestra = caricamento su Drive (nella cartella sotto il puntatore).
+      onDragOver={(e) => {
+        if (![...(e.dataTransfer?.types || [])].includes('Files')) return;
+        e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
+        const b = document.elementFromPoint(e.clientX, e.clientY)?.closest?.('[data-bersaglio^="cartella:"]');
+        const dest = b ? (b.dataset.bersaglio.slice(9) || RADICE) : (eVirtuale(nodo) ? RADICE : nodo);
+        setDropFile((x) => (x?.dest === dest ? x : { dest }));
+      }}
+      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropFile(null); }}
+      onDrop={(e) => {
+        if (!e.dataTransfer?.files?.length) return;
+        e.preventDefault();
+        const dest = dropFile?.dest || (eVirtuale(nodo) ? RADICE : nodo);
+        setDropFile(null);
+        caricaQui([...e.dataTransfer.files], dest === 'radice' ? RADICE : dest);
+      }}>
       <TitoloSchede schede={tabs.schede} attiva={tabs.attiva} mobile={mobile} sopra={sopra} lavoro={lavoro}
         nomeDi={(t) => nomeNodo(nodoScheda(t), nomi)} onScegli={scegliScheda} onNuova={() => apriScheda(HOME)} onChiudi={chiudiLaScheda}
         onSposta={(id, a) => setTabs((x) => ({ ...x, schede: spostaScheda(x.schede, id, a) }))} />
@@ -1143,7 +1224,14 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
         </div>
       )}
 
-      {presa && <div className={`esp-fantasma${presa.bersaglio ? ' valido' : ''}`} style={{ left: presa.x, top: presa.y }} aria-hidden="true">{scelti.size > 1 && scelti.has(presa.sorgente.chiave) ? `${scelti.size} elementi · ` : ''}{tracciaSopra}</div>}
+      {presa && (
+        <div className={`esp-fantasma${presa.bersaglio ? ' valido' : ''}${ctrlGiu ? ' copia' : ''}`} style={{ left: presa.x, top: presa.y }} aria-hidden="true">
+          {scelti.size > 1 && scelti.has(presa.sorgente.chiave) && <span className="esp-fantasma-numero">{scelti.size}</span>}
+          {ctrlGiu && <span className="esp-fantasma-piu">+</span>}{tracciaSopra}
+        </div>
+      )}
+      {rettangolo && <div className="esp-rettangolo" style={{ left: rettangolo.left, top: rettangolo.top, width: rettangolo.right - rettangolo.left, height: rettangolo.bottom - rettangolo.top }} aria-hidden="true" />}
+      {dropFile && <div className="esp-drop-file" aria-hidden="true"><strong>Carica su Drive in «{nomeNodo(dropFile.dest, nomi)}»</strong></div>}
 
       {menu && struttura && <MenuContestuale menu={menu} struttura={struttura} mobile={mobile} schermo={schermo} onScegli={sceltaMenu} onChiudi={() => setMenu(null)} />}
 
