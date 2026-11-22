@@ -228,3 +228,9 @@ export async function salvaContatti(db, contatti) {
   return valore;
 }
 export const linkEmailA = (p, email) => `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(p.titolo)}&body=${encodeURIComponent(testoCondivisione(p))}`;
+
+// PERSONAL-ESPLORA-WIN11 fase 3: conteggio leggero per la barra (stessa regola di «riepilogo»).
+export async function contaDaFare(db) {
+  const righe = esito(await db.from('promemoria_azioni').select('id, priorita, rimanda_al').eq('stato', 'aperto').limit(500));
+  return riepilogo(righe);
+}

@@ -4959,3 +4959,30 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Unresolved/risks: script not published (no clasp credentials in the container) — Luca must `clasp push -f` and create a new web app version; Annulla of a move from «Da catalogare»/«Per categoria» resets drive_fissa to false (a document that was fixed elsewhere before would go back to automatic order); real Drive not exercised (vm mocks only).
 - Rollback: revert the commit; already-moved files stay in their Drive folder (drive_fissa keeps them there), nothing deleted.
 - Next exact action: Luca publishes the script (steps in the PR); "Mergia" for the phase 2 PR; then phase 3 (barra e Start).
+
+## Handoff — PERSONAL-ESPLORA-WIN11 fase 3 (2026-11-21, Claude Code)
+- Task: PERSONAL-ESPLORA-WIN11 (phase 3 of 3); previous agent: Claude Code (phase 2 merged, PR #336 → dcf9524); branch `ccr-37864811-5h4ztp` = master dcf9524 + an "ours" merge of the old remote branch (force push not allowed; no content difference).
+- Objective: Windows 11 taskbar and Start replacing the Personal dock, same destinations and saved views.
+- Completed: see current-task.md PHASE 3.
+- Files: `personal/src/Barra.jsx` (new), `personal/src/barra.css` (new), `personal/src/lib/barra.js` (new), `personal/src/IconeW11.jsx` (new), `personal/src/App.jsx`, `personal/src/lib/daFare.js`, `personal/src/sezioni/documenti/{Esplora.jsx,esplora.css,Ricerca.jsx,index.jsx}`, tests `esplora.test.mjs`, `appUnica.test.mjs`, `personalChatPagina.test.mjs`, `personaleHome.test.mjs`, visual `personal-barra.mjs` (renamed from personal-dock.mjs), `personal-scan.mjs`, coordination docs.
+- Database: none.
+- Tests: npm test 1892/1892; builds PASS; visual personal-barra, personal-esplora, personal-cartelle-mie, personal-scan, personal-personale, personal-documenti-azioni PASS.
+- Unresolved/risks: «notifiche» = open Da fare reminders (no in-app notification list exists); Studio is no longer one tap away (it is in Start); `DOCK`/`DOCK_DOPO` in sezioni/index.js are now unused (kept, still asserted by tests); `pro.css`/`personale.css` rules for `.pp-schede.pp-dock` are now dead CSS (left to keep the diff small); Esci signs out without the old confirmation pattern (two taps). Not tried on a real phone. Script of phase 2 still to be published by Luca.
+- Rollback: revert the commit (the dock comes back unchanged).
+- Next exact action: PO tries the preview on the phone; "Mergia" for the phase 3 PR; then the task is closed.
+
+## Note — PERSONAL-ESPLORA-WIN11 fase 2 script published (2026-11-21, Claude Code)
+- On Luca's explicit request ("Dami link clasp io autorizzo") clasp was authorized in this session; online script pulled and diffed (identical to master before phase 2), then `clasp push -f` and web app deployment AKfycbzQf7…UDw moved from version 26 to 27 (same URL). No secrets written to the repository. Luca can revoke the clasp grant from myaccount.google.com → Sicurezza → App di terze parti.
+
+## Handoff — PERSONAL-ESPLORA-WIN11 PR #337 follow-up (2026-11-21, Claude Code)
+- Task: PERSONAL-ESPLORA-WIN11, PR #337 (phase 3 + PO follow-up: Win11 taskbar details, views, direct open, Win11 context menu, Drive-first rules); branch `ccr-37864811-5h4ztp`.
+- Completed: see current-task.md «PR #337 FOLLOW-UP».
+- Files: `personal/src/{Barra.jsx,barra.css,lib/barra.js,lib/statoDrive.js (new),lib/esplora.js}`, `personal/src/sezioni/documenti/{Esplora.jsx,EsploraFinestre.jsx (new),esplora.css,Trascina.jsx}`, `poliedron/archivio/{Code.gs,CLAUDE.md}`, tests `esplora.test.mjs`, `esploraDrive.test.mjs`, `personaleHome.test.mjs`, visual `personal-esplora.mjs`, `personal-barra.mjs`, coordination docs.
+- Database: none (favourites in the existing `impostazioni_app` key/value table, key `esplora_preferiti`).
+- Tests: npm test 1901/1901; builds PASS; visuals PASS (see current-task).
+- Unresolved/risks: script changes not published (needs clasp push + web app version 28); «Gestisci accesso» grants real Drive permissions (only after an explicit confirmation in the app, no Drive email); Altra app… uses Capacitor FileOpener only if the app is ever wrapped with Capacitor (not today: falls back to the system share sheet); 40 px buttons on phone are below the 44 px touch guideline (PO spec); Copia keeps the file on Drive where it is (PO decision).
+- Rollback: revert the commits on the branch; script: redeploy web app version 27.
+- Next exact action: Luca says whether to publish the script now; PO tries the preview; "Mergia" for PR #337.
+
+## Note — PR #337 script published (2026-11-22, Claude Code)
+- On Luca's "Pubblica": online Code.gs pulled and compared (= master dcf9524, web app v27), then `clasp push -f` of the PR #337 Code.gs and web app deployment AKfycbzQf7…UDw moved 27 → 28 (same URL). The script is backward compatible with the production app. Rollback: redeploy version 27 (`clasp create-deployment --deploymentId <id> --versionNumber 27`).

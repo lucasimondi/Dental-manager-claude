@@ -4,12 +4,10 @@ import { startAndroidAgendaWidget } from './lib/androidAgendaWidget.js';
 import { studioDb, sessioneStudio, studioDellaSessione, appuntamentoPerId, impegnoPerId } from './lib/studio.js';
 import { useImpostazioniComuni } from './lib/etichetteComuni.js';
 import { avviaAzioneWidget } from './lib/widgetAzioni.js';
-// DOCK-UGUALE: stesse icone e stessa gemma del dock di Studio.
-import { IconaDock as Ic } from './IconeDock.jsx';
-import gemmaPoliedron from '../../src/assets/icon-poliedra-gem.png';
-const ICONE_DOCK = { agenda: 'cal', documenti: 'folder' };
+// PERSONAL-ESPLORA-WIN11 fase 3: barra delle applicazioni e Start stile Windows 11 (al posto del dock).
+import { BarraApplicazioni, useConteggiBarra } from './Barra.jsx';
 import { Pagina } from './Pagina.jsx';
-import { readAgendaLocation, readSectionLocation, sectionDestination } from '../../shared/agenda/navigation.js';
+import { readAgendaLocation, readSectionLocation } from '../../shared/agenda/navigation.js';
 // POL-VITA-003/006 — Poliedron Personal: app per telefono dell'archivio personale.
 // Dock: Oggi · Agenda · Documenti · Assistente · Altro. Ogni dettaglio si apre come pagina sopra la
 // sezione, con "Indietro" in alto, il tasto di chiusura in basso a portata di pollice e il dock
@@ -29,7 +27,7 @@ const Scan = differito(() => import('./scan/Scan.jsx'), 'Scan'); // SCAN-HOME: l
 import { eScan } from './lib/scan.js';
 import { INGRESSI, PAGINE_AGGIUNGI, LIVELLI_AGGIUNGI, voceDaIndirizzo } from './lib/ingressi.js';
 import { Accesso, NuovaPassword } from './Accesso.jsx';
-import { DOCK, DOCK_DOPO, sezione, pagina, titoloPagina, eModulo } from './sezioni/index.js';
+import { sezione, pagina, titoloPagina, eModulo } from './sezioni/index.js';
 import { IconaPiu, IconaImpostazioni } from './Icone.jsx';
 
 impostaToken(tokenSessione);
@@ -70,6 +68,7 @@ function Archivio({ email }) {
     timerToast.current = setTimeout(() => setToast(null), azione ? 7000 : 2600);
   }, []);
   useEffect(() => { conteggiFascicoli(archivioDb).then(setFascicoli).catch(() => {}); }, [versione]);
+  const conteggi = useConteggiBarra(versione); // pallini della barra e di Start
   const salvaEtichette = useImpostazioniComuni(setImpostazioni, setErrore); // AGENDA-ETICHETTE: etichette comuni con lo studio
 
   const salvaImp = useCallback(async (nuove) => {
@@ -131,8 +130,6 @@ function Archivio({ email }) {
   const { Vista, AzioniTestata } = attuale;
   const VistaDiario = sezione('diario').Vista;
   const sopra = pagine.length > 0;
-  const altraSezione = ![...DOCK, ...DOCK_DOPO].some((s) => s.id === vista) && vista !== 'poliedron';
-  const classeScheda = (id) => `${vista === id && !sopra ? ' attiva' : ''}${vista === id && sopra ? ' sotto' : ''}`;
 
   return (
     <div className={`pp-app pp-vista-${vista}`}>
@@ -156,15 +153,10 @@ function Archivio({ email }) {
           {pagina(p.tipo)?.render(p, { ctx, chiudi: indietro, sostituisci, email }) ?? null}
         </Pagina>
       ))}
-      {/* DOCK-UGUALE (PO 2026-11-16): lo stesso dock della Home di Poliedron (Studio): pillola sospesa,
-          sole icone (Agenda · Documenti · Poliedron · Studio · Personale), gemma di Poliedron al centro. */}
-      <nav className="pp-schede pp-dock" aria-label="Sezioni">
-        {[...DOCK, 'poliedron', ...DOCK_DOPO].map((s) => s === 'poliedron'
-          ? <button key="poliedron" className={`pp-scheda pp-scheda-poliedron${classeScheda('poliedron')}`} onClick={() => vai('poliedron')} aria-label="Apri Poliedron" aria-current={vista === 'poliedron' ? 'page' : undefined}><img className="pp-dock-gemma" src={gemmaPoliedron} alt="" draggable={false} /><span className="pp-dock-nome">Poliedron</span></button>
-          : <button key={s.id} className={`pp-scheda${classeScheda(s.id)}`} onClick={() => vai(s.id)} aria-label={s.nome} aria-current={vista === s.id ? 'page' : undefined}><Ic n={ICONE_DOCK[s.id]} s={22} /><span className="pp-dock-nome">{s.nome}</span></button>)}
-        <a className="pp-scheda" href={sectionDestination('studio', 'studio')} aria-label="Studio"><Ic n="brief" s={22} /><span className="pp-dock-nome">Studio</span></a>
-        <button className={`pp-scheda${altraSezione ? ' attiva' : ''}`} onClick={() => vai('altro')} aria-label="Personale" aria-current={altraSezione ? 'page' : undefined}><Ic n="user" s={22} /><span className="pp-dock-nome">Personale</span></button>
-      </nav>
+      {/* PERSONAL-ESPLORA-WIN11 fase 3: barra stile Windows 11 (Start · Oggi · Agenda · Esplora file · Assistente ·
+          Personale, a destra ora, data e notifiche). Stesse viste e stessi percorsi del dock di prima. */}
+      <BarraApplicazioni vista={vista} pagine={pagine} conteggi={conteggi} email={email} vai={vai} apri={apri}
+        onEsci={() => archivioDb.auth.signOut()} />
       {!sopra && !attuale.senzaPiu && <TastoAcquisisci className="pp-acquisisci" onClick={() => apri({ tipo: 'scansione', opzioni: { destinazione: true } })} />}
       {!sopra && !attuale.senzaPiu && <button className="pp-fab" onClick={() => setFoglio(true)} aria-label="Aggiungi"><IconaPiu size={26} /></button>}
       {foglio && <FoglioAggiungi iniziale={typeof foglio === 'string' ? foglio : null} onScegli={aggiungi} onChiudi={() => setFoglio(false)} />}

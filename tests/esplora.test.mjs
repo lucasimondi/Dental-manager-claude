@@ -5,7 +5,7 @@ import {
   RADICE, DA_CATALOGARE, CATEGORIE, FUORI, nodoCategoria, eVirtuale, disposizione, colonneGriglia, altezzaAlbero,
   sottocartelle, padreDi, percorsoNodo, documentiDaGestire, calcolaPallini, etichettaPallino, testoStato,
   motivoNonValido, destinazioneValida, vociSpostaIn, operazioneSposta, inversa, applica, chiamate, eseguiOperazione,
-  taglia, incolla, nomeNuovaCartella, vociMenu, posizioneMenu, tipoFile, paginaDaCatalogare, documentiNelNodo,
+  taglia, incolla, nomeNuovaCartella, vociMenu, posizioneMenu, tipoFile, paginaDaCatalogare, documentiNelNodo, menuContestuale,
 } from '../personal/src/lib/esplora.js';
 import { avvisoCartella, scadenzaDaGestire } from '../personal/src/lib/revisioneArchivio.js';
 
@@ -173,18 +173,34 @@ test('Taglia / Incolla', () => {
   assert.equal(incolla(null, 'auto', opz), null);
   assert.equal(taglia([]), null);
   const menu = vociMenu('vuoto', { nodo: 'auto', appunti: app, opz });
-  assert.deepEqual(menu.map((v) => [v.nome, v.attiva]), [['Nuova cartella', true], ['Incolla «Contratto»', true], ['Aggiorna', true]]);
+  assert.deepEqual(menu.map((v) => [v.nome, v.attiva]), [['Nuova cartella', true], ['Incolla «Contratto»', true], ['Visualizza', true], ['Aggiorna', true], ['Seleziona tutto', true]]);
   assert.equal(vociMenu('vuoto', { nodo: 'casa', appunti: app, opz })[1].attiva, false);
   assert.equal(vociMenu('vuoto', { nodo: DA_CATALOGARE, appunti: app, opz })[0].attiva, false);
 });
 
-test('menu: voci non applicabili disattivate per Personale e virtuali; clinici non si eliminano', () => {
+test('menu Win11: riga rapida, sottomenu, scorciatoie; voci non applicabili disattivate; pazienti non si eliminano', () => {
   const att = (cosa, o) => Object.fromEntries(vociMenu(cosa, o).map((v) => [v.id, v.attiva]));
-  assert.deepEqual(att('cartella', { nodo: 'casa' }), { apri: true, nuova: true, taglia: true, sposta: true, rinomina: true, elimina: true });
-  assert.deepEqual(att('cartella', { nodo: RADICE }), { apri: true, nuova: true, taglia: false, sposta: false, rinomina: false, elimina: false });
-  assert.deepEqual(att('cartella', { nodo: DA_CATALOGARE }), { apri: true, nuova: false, taglia: false, sposta: false, rinomina: false, elimina: false });
+  const c = att('cartella', { nodo: 'casa' });
+  for (const k of ['apri', 'nuova', 'taglia', 'sposta', 'rinomina', 'elimina', 'proprieta', 'zip', 'preferito']) assert.equal(c[k], true, k);
+  const r = att('cartella', { nodo: RADICE });
+  assert.deepEqual([r.apri, r.nuova, r.taglia, r.sposta, r.rinomina, r.elimina, r.preferito], [true, true, false, false, false, false, true]);
+  const v = att('cartella', { nodo: DA_CATALOGARE });
+  assert.deepEqual([v.apri, v.nuova, v.taglia, v.rinomina, v.elimina], [true, false, false, false, false]);
   assert.equal(att('file', { clinico: true }).elimina, false);
-  assert.deepEqual(vociMenu('file', {}).map((v) => v.nome), ['Apri', 'Taglia', 'Sposta in…', 'Rinomina', 'Elimina']);
+  const m = menuContestuale('file', { selezione: [{ tipo: 'doc', id: 'd1', da: 'casa' }], ambiente: 'condividi', convertibile: true });
+  assert.deepEqual(m.rapide.map((x) => x.nome), ['Taglia', 'Copia', 'Rinomina', 'Condividi', 'Elimina']);
+  assert.deepEqual(m.voci.filter((x) => !x.separatore).map((x) => x.nome), ['Apri', 'Apri con', 'Condividi', 'Taglia', 'Copia', 'Duplica in…', 'Rinomina', 'Sposta in…', 'Aggiungi ad Accesso rapido', 'Comprimi in ZIP', 'Scarica', 'Proprietà', 'Elimina']);
+  assert.deepEqual(m.voci.find((x) => x.id === 'apri-con').sotto.map((x) => x.nome), ['Anteprima Poliedra', 'Google Drive (visualizzatore)', 'Google Documenti / Fogli', 'Nuova scheda del browser', 'Scarica', 'Altra app… (condividi)']);
+  assert.deepEqual(m.voci.find((x) => x.id === 'condividi').sotto.map((x) => x.nome), ['Condivisione di sistema', 'Copia link Drive', 'Email', 'WhatsApp', 'Gestisci accesso Drive']);
+  assert.equal(m.voci.find((x) => x.id === 'rinomina').tasto, 'F2');
+  assert.equal(m.voci.find((x) => x.id === 'elimina').tasto, 'Canc');
+  assert.ok(m.voci.some((x) => x.separatore));
+  // più elementi: niente Rinomina, Apri, Proprietà; cartelle: niente Copia
+  const piu = menuContestuale('file', { selezione: [{ tipo: 'doc', id: 'a' }, { tipo: 'doc', id: 'b' }] });
+  assert.deepEqual(['apri', 'rinomina', 'proprieta'].map((k) => piu.voci.find((x) => x.id === k).attiva), [false, false, false]);
+  assert.equal(menuContestuale('cartella', { selezione: [{ tipo: 'cartella', id: 'casa' }] }).rapide.find((x) => x.id === 'copia').attiva, false);
+  // Altra app: senza condivisione né Capacitor è disattivata
+  assert.equal(menuContestuale('file', { selezione: [{ tipo: 'doc', id: 'd1' }], ambiente: 'scarica' }).voci.find((x) => x.id === 'apri-con').sotto.at(-1).attiva, false);
 });
 
 test('nuova cartella, menu dentro lo schermo, tipo di file', () => {
@@ -225,7 +241,11 @@ test('Da catalogare: pagine che saltano i documenti già in una cartella', async
 });
 
 /* ---------- fase 2: Drive allineato subito ---------- */
-import { chiamateDrive, allineaDrive } from '../personal/src/lib/esplora.js';
+import {
+  chiamateDrive, eseguiCompleto, copia, operazioneAggiungi, leggiViste, salvaVista, vistaDi, righeDettagli, ordinaRighe, ordinaSuColonna,
+  tipoLeggibile, dimensioneLeggibile, dataLeggibile, comeAprire, linkDocs, linkDrive, linkEmail, linkWhatsApp, ambienteApertura, seleziona,
+  cambiaPreferito, ePreferito, ACCESSO_RAPIDO,
+} from '../personal/src/lib/esplora.js';
 
 test('Drive: chiamate per sposta, crea, rinomina; archiviare non tocca Drive', () => {
   const op = operazioneSposta([
@@ -260,23 +280,161 @@ const dbFinto = () => {
   return { db, scritture };
 };
 
-test('Drive: chiama lo script; se non risponde lascia la nota «da spostare» e conta il problema', async () => {
-  const op = operazioneSposta([{ tipo: 'doc', id: 'd3', da: 'casa' }, { tipo: 'cartella', id: 'auto', da: RADICE }], 'casa' === 'x' ? 'x' : 'luce', opz);
-  const inviati = [];
-  const ok = async (url, o) => { inviati.push(JSON.parse(o.body)); return { json: async () => ({ ok: true, spostati: ['d3'], errori: [] }) }; };
-  const a = dbFinto();
-  assert.deepEqual(await allineaDrive(a.db, op, { token: 't', fetchImpl: ok }), { problemi: 0 });
-  assert.deepEqual(inviati, [{ token: 't', azione: 'cartella_drive', id: 'auto' }, { token: 't', azione: 'sposta_documenti', ids: ['d3'], cartella_id: 'luce' }]);
-  assert.deepEqual(a.scritture, []);
-  const b = dbFinto();
-  const giu = async () => { throw new Error('offline'); };
-  assert.deepEqual(await allineaDrive(b.db, op, { token: 't', fetchImpl: giu }), { problemi: 2 });
-  assert.deepEqual(b.scritture, [{ t: 'documenti', corpo: { drive_fissa: true, drive_cartella: '>cartella:luce' }, filtri: [['in', 'id', ['d3']]] }]);
-  // errori di singoli file riportati dallo script
-  const parziale = async () => ({ json: async () => ({ ok: true, spostati: [], errori: [{ id: 'd3' }] }) });
-  assert.equal((await allineaDrive(dbFinto().db, { tipo: 'sposta', mosse: [{ tipo: 'doc', id: 'd3', da: 'casa', a: 'luce' }] }, { token: 't', fetchImpl: parziale })).problemi, 1);
-  // ritorno all'ordine automatico: solo database, solo file fissati da cartelle
-  const c = dbFinto();
-  await allineaDrive(c.db, { tipo: 'sposta', mosse: [{ tipo: 'doc', id: 'd7', da: 'auto', a: FUORI }] }, { token: 't', fetchImpl: giu });
-  assert.deepEqual(c.scritture, [{ t: 'documenti', corpo: { drive_fissa: false, drive_cartella: null }, filtri: [['in', 'id', ['d7']], ['or', 'drive_cartella.like.cartella:*,drive_cartella.like.>cartella:*']] }]);
+const api = (rifiuta = null) => {
+  const log = [];
+  const a = new Proxy({}, { get: (_, fn) => async (...x) => { log.push([fn, ...x.slice(1)]); if (rifiuta === fn) throw new Error('rifiutato'); } });
+  return { a, log };
+};
+const fetchCon = (risposta, inviati = []) => async (url, o) => { const b = JSON.parse(o.body); inviati.push(b); const r = typeof risposta === 'function' ? risposta(b) : risposta; if (r instanceof Error) throw r; return { json: async () => r }; };
+
+test('PR #337: Drive prima del database; l’interfaccia cambia solo per ciò che è riuscito', async () => {
+  const op = operazioneSposta([{ tipo: 'doc', id: 'd3', da: 'casa' }, { tipo: 'doc', id: 'd4', da: 'auto' }, { tipo: 'cartella', id: 'auto', da: RADICE }], 'luce', opz);
+  const inviati = []; const { a, log } = api();
+  const r = await eseguiCompleto(dbFinto().db, op, { token: 't', api: a, fetchImpl: fetchCon((b) => (b.azione === 'sposta_documenti' ? { ok: true, spostati: ['d3'], errori: [{ id: 'd4' }] } : { ok: true }), inviati) });
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.nonRiusciti, ['d4']);
+  assert.match(r.errore, /1 elemento non spostato/);
+  assert.deepEqual(r.op.mosse.map((m) => m.id), ['auto', 'd3']);
+  // la cartella: database e poi la gemella; i documenti: prima Drive, poi il database solo per d3
+  assert.deepEqual(log, [['spostaCartelle', ['auto'], 'luce'], ['spostaDocumenti', ['d3'], 'casa', 'luce']]);
+  assert.deepEqual(inviati.map((b) => b.azione), ['cartella_drive', 'sposta_documenti']);
+  // Drive giù: niente cambia nel database, la cartella torna indietro
+  const giu = api();
+  const r2 = await eseguiCompleto(dbFinto().db, op, { token: 't', api: giu.a, fetchImpl: fetchCon(new Error('offline')) });
+  assert.equal(r2.ok, false); assert.equal(r2.op, null);
+  assert.deepEqual(giu.log, [['spostaCartelle', ['auto'], 'luce'], ['spostaCartelle', ['auto'], null]]);
+  // il database rifiuta dopo Drive: i file tornano indietro su Drive
+  const rif = api('spostaDocumenti'); const inv3 = [];
+  const r3 = await eseguiCompleto(dbFinto().db, { tipo: 'sposta', mosse: [{ tipo: 'doc', id: 'd3', da: 'casa', a: 'luce' }] }, { token: 't', api: rif.a, fetchImpl: fetchCon({ ok: true, spostati: ['d3'], errori: [] }, inv3) });
+  assert.equal(r3.ok, false);
+  assert.deepEqual(inv3.map((b) => [b.azione, b.cartella_id]), [['sposta_documenti', 'luce'], ['sposta_documenti', 'casa']]);
+});
+
+test('PR #337: rinomina documento = prima Drive; cartella nuova creata anche su Drive o archiviata; copia senza Drive', async () => {
+  const inviati = []; const { a, log } = api();
+  const ok = await eseguiCompleto(dbFinto().db, { tipo: 'rinomina', cosa: 'doc', id: 'd1', da: 'A', a: 'B' }, { token: 't', api: a, fetchImpl: fetchCon({ ok: true, nome: 'B.pdf' }, inviati) });
+  assert.equal(ok.ok, true);
+  assert.deepEqual(inviati, [{ token: 't', azione: 'rinomina_file', id: 'd1', nome: 'B' }]);
+  assert.deepEqual(log, [['aggiornaDocumento', 'd1', { titolo: 'B' }]]);
+  const no = api();
+  const ko = await eseguiCompleto(dbFinto().db, { tipo: 'rinomina', cosa: 'doc', id: 'd1', da: 'A', a: 'B' }, { token: 't', api: no.a, fetchImpl: fetchCon({ ok: false, errore: 'Drive giù' }) });
+  assert.deepEqual([ko.ok, ko.errore, no.log.length], [false, 'Drive giù', 0]);
+  const cr = api();
+  const nuova = await eseguiCompleto(dbFinto().db, { tipo: 'crea', nome: 'Mutuo', padre: 'casa' }, { token: 't', api: cr.a, creaCartella: async () => ({ id: 'n1', nome: 'Mutuo' }), fetchImpl: fetchCon(new Error('offline')) });
+  assert.equal(nuova.ok, false);
+  assert.deepEqual(cr.log, [['archiviaCartelle', ['n1'], true]]);
+  const cp = api(); const inv = [];
+  const opC = incolla(copia([{ tipo: 'doc', id: 'd3', da: 'casa' }, { tipo: 'cartella', id: 'auto' }], 'Contratto'), 'auto', opz);
+  assert.deepEqual(opC, { tipo: 'aggiungi', ids: ['d3'], a: 'auto' });
+  assert.equal((await eseguiCompleto(dbFinto().db, opC, { token: 't', api: cp.a, fetchImpl: fetchCon({ ok: true }, inv) })).ok, true);
+  assert.deepEqual([cp.log, inv], [[['aggiungiDocumenti', 'auto', ['d3']]], []]);
+  assert.deepEqual(inversa(opC), { tipo: 'togli', ids: ['d3'], da: 'auto' });
+  assert.deepEqual(documentiNelNodo(applica({ cartelle, posizioni }, opC).posizioni, 'auto').sort(), ['d1', 'd3', 'd4']);
+  assert.equal(operazioneAggiungi([{ tipo: 'doc', id: 'd1' }], 'auto', opz), null); // c'è già
+  assert.equal(operazioneAggiungi([{ tipo: 'doc', id: 'd1' }], DA_CATALOGARE, opz), null);
+});
+
+test('viste per cartella (con memoria che può mancare), Dettagli ordinabili con cartelle prima', () => {
+  const mem = new Map(); const storage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, v) };
+  assert.equal(vistaDi(leggiViste(storage), 'casa'), 'grandi');
+  salvaVista('casa', 'dettagli', storage); salvaVista('auto', 'elenco', storage);
+  assert.deepEqual([vistaDi(leggiViste(storage), 'casa'), vistaDi(leggiViste(storage), 'auto'), vistaDi(leggiViste(storage), 'luce', 'medie')], ['dettagli', 'elenco', 'medie']);
+  const rotto = { getItem: () => { throw new Error('no'); }, setItem: () => { throw new Error('no'); } };
+  assert.deepEqual(leggiViste(rotto), {}); assert.doesNotThrow(() => salvaVista('x', 'elenco', rotto));
+  const righe = righeDettagli([{ id: 'c', nome: 'Zeta', modificato_il: '2026-01-01T00:00:00Z' }], [
+    { id: 'a', titolo: 'Bolletta 10', creato_il: '2026-03-01T10:00:00Z', mime_type: 'application/pdf', dimensione_byte: 2048 },
+    { id: 'b', titolo: 'Bolletta 9', creato_il: '2026-02-01T10:00:00Z', mime_type: 'image/jpeg', dimensione_byte: 5 * 1024 * 1024 },
+  ], { a: 'Bolletta 10' });
+  assert.deepEqual(ordinaRighe(righe).map((r) => r.id), ['c', 'b', 'a']); // ordine naturale: 9 prima di 10
+  assert.deepEqual(ordinaRighe(righe, { chiave: 'dimensione', verso: 'giu' }).map((r) => r.id), ['c', 'b', 'a']);
+  assert.deepEqual(ordinaRighe(righe, { chiave: 'data', verso: 'giu' }).map((r) => r.id), ['c', 'a', 'b']);
+  assert.deepEqual(ordinaSuColonna({ chiave: 'nome', verso: 'su' }, 'nome'), { chiave: 'nome', verso: 'giu' });
+  assert.deepEqual(ordinaSuColonna({ chiave: 'nome', verso: 'giu' }, 'data'), { chiave: 'data', verso: 'su' });
+  assert.deepEqual(righe.map((r) => r.tipo), ['Cartella di file', 'Documento PDF', 'Immagine JPEG']);
+  assert.equal(tipoLeggibile({ mime_type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'Foglio Excel');
+  assert.equal(tipoLeggibile({ nome_file_originale: 'x.dwg' }), 'File DWG');
+  assert.deepEqual([dimensioneLeggibile(500), dimensioneLeggibile(2048), dimensioneLeggibile(5.5 * 1024 * 1024), dimensioneLeggibile(null)], ['500 byte', '2 KB', '5,5 MB', '']);
+  assert.equal(dataLeggibile('2026-11-21T13:05:00Z'), '21/11/2026 14:05');
+});
+
+test('apertura con l’app predefinita, Apri con, Condividi, Altra app', () => {
+  assert.deepEqual(comeAprire({ drive_file_id: 'f', mime_type: 'application/pdf' }), { modo: 'anteprima', tipo: 'pdf' });
+  assert.deepEqual(comeAprire({ drive_file_id: 'f', mime_type: 'image/png' }), { modo: 'anteprima', tipo: 'immagine' });
+  assert.deepEqual(comeAprire({ drive_file_id: 'f', mime_type: 'video/mp4' }), { modo: 'anteprima', tipo: 'video' });
+  assert.deepEqual(comeAprire({ drive_file_id: 'f', mime_type: 'audio/mpeg' }), { modo: 'anteprima', tipo: 'audio' });
+  assert.deepEqual(comeAprire({ drive_file_id: 'f', mime_type: 'application/msword', drive_url: 'https://drive/x' }), { modo: 'link', url: 'https://drive/x' });
+  assert.deepEqual(comeAprire({ drive_file_id: 'f', mime_type: 'application/zip' }), { modo: 'scarica' });
+  assert.deepEqual(comeAprire({ mime_type: 'message/rfc822', drive_url: 'https://mail/x' }), { modo: 'link', url: 'https://mail/x' });
+  assert.equal(linkDocs({ drive_file_id: 'F1', mime_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), 'https://docs.google.com/document/d/F1/edit');
+  assert.equal(linkDocs({ drive_file_id: 'F1', mime_type: 'application/pdf' }), null);
+  assert.equal(linkDrive({ drive_file_id: 'F1' }), 'https://drive.google.com/file/d/F1/view');
+  assert.equal(linkEmail('Bolletta luce', 'https://d/x'), 'mailto:?subject=Bolletta%20luce&body=https%3A%2F%2Fd%2Fx');
+  assert.equal(linkWhatsApp('IMU', 'https://d/x'), 'https://wa.me/?text=IMU%20https%3A%2F%2Fd%2Fx');
+  assert.equal(ambienteApertura({ Capacitor: { isNativePlatform: () => true, Plugins: { FileOpener: {} } }, navigator: { share() {} } }), 'capacitor');
+  assert.equal(ambienteApertura({ Capacitor: { isNativePlatform: () => true, Plugins: {} }, navigator: { share() {} } }), 'condividi');
+  assert.equal(ambienteApertura({ navigator: {} }), 'scarica');
+});
+
+test('selezione: clic semplice, Ctrl, Maiusc, caselle; Accesso rapido', () => {
+  const ordine = ['a', 'b', 'c', 'd'];
+  let r = seleziona(new Set(), 'b', ordine);
+  assert.deepEqual([...r.scelti], ['b']);
+  r = seleziona(r.scelti, 'd', ordine, { shift: true, ancora: r.ancora });
+  assert.deepEqual([...r.scelti], ['b', 'c', 'd']);
+  r = seleziona(r.scelti, 'c', ordine, { ctrl: true, ancora: r.ancora });
+  assert.deepEqual([...r.scelti], ['b', 'd']);
+  r = seleziona(r.scelti, 'a', ordine, { casella: true });
+  assert.deepEqual([...r.scelti].sort(), ['a', 'b', 'd']);
+  let pref = cambiaPreferito([], 'cartella', 'casa');
+  assert.equal(ePreferito(pref, 'cartella', 'casa'), true);
+  pref = cambiaPreferito(pref, 'cartella', 'casa');
+  assert.deepEqual(pref, []);
+  assert.ok(eVirtuale(ACCESSO_RAPIDO));
+});
+
+/* ---------- fase 3: barra e Start ---------- */
+import { VOCI_BARRA, voceAttiva, vociAperte, badgeBarra, vociStart, numeroNotifiche, oraData, nomeUtente, consigliati, etichettaNumero } from '../personal/src/lib/barra.js';
+import { statoDrive, inizioDrive, fineDrive, attesaDrive, testoStatoDrive } from '../personal/src/lib/statoDrive.js';
+
+test('barra: Start · Oggi · Agenda · Esplora file · Assistente · Personale; stesse viste di prima', () => {
+  assert.deepEqual(VOCI_BARRA.map((v) => v.nome), ['Start', 'Oggi', 'Agenda', 'Esplora file', 'Assistente', 'Personale']);
+  assert.deepEqual(VOCI_BARRA.filter((v) => v.vista).map((v) => v.vista), ['oggi', 'agenda', 'poliedron', 'altro']);
+  assert.equal(voceAttiva({ vista: 'agenda' }), 'agenda');
+  assert.equal(voceAttiva({ vista: 'poliedron' }), 'poliedron');
+  assert.equal(voceAttiva({ vista: 'conti' }), 'altro'); // come prima: le altre sezioni accendono Personale
+  assert.equal(voceAttiva({ vista: 'agenda', pagine: [{ tipo: 'documento' }, { tipo: 'esplora' }] }), 'esplora');
+  assert.equal(voceAttiva({ vista: 'agenda', pagine: [{ tipo: 'esplora' }, { tipo: 'documento' }] }), 'agenda');
+  assert.equal(voceAttiva({ vista: 'agenda', start: true }), 'start');
+});
+
+test('Start: aggiunte con pallini dai conteggi esistenti, notifiche = Da fare aperti, ora e data, nome, consigliati', () => {
+  const v = vociStart({ esplora: 7, dafare: 3, urgenti: 1, documenti: 12 });
+  const n = Object.fromEntries(v.map((x) => [x.id, x.n]));
+  assert.deepEqual([n.oggi, n.documenti, n.esplora, n.dafare, n.conti], [1, 12, 7, 3, 0]);
+  for (const id of ['oggi', 'agenda', 'documenti', 'esplora', 'conti', 'legal', 'pratiche', 'personali', 'diario', 'studio', 'impostazioni']) assert.ok(v.some((x) => x.id === id), id);
+  assert.deepEqual(v.find((x) => x.id === 'esplora').azione, { apri: { tipo: 'esplora' } });
+  assert.equal(numeroNotifiche({ dafare: 4 }), 4);
+  assert.equal(numeroNotifiche({}), 0);
+  assert.deepEqual(oraData(new Date('2026-11-21T13:05:00Z')), { ora: '14:05', data: '21/11/2026', breve: '21/11' });
+  assert.equal(nomeUtente('luca.simondi@gmail.com'), 'Luca');
+  assert.equal(nomeUtente(''), 'Account');
+  const c = consigliati([{ id: 'r1', nome: 'scan.pdf', data: 5, tipo: 'application/pdf' }], [{ id: 'd1', titolo: 'Bolletta', creato_il: '2026-11-01T00:00:00Z' }, { id: 'd2', titolo: 'IMU' }], 2);
+  assert.deepEqual(c.map((x) => [x.tipo, x.id]), [['recente', 'r1'], ['documento', 'd1']]);
+  assert.equal(etichettaNumero(0), null);
+  assert.equal(etichettaNumero(150), '99+');
+});
+
+test('barra PR #337: trattino 16 px attiva / 6 px aperta non in primo piano, badge, stato di Drive', () => {
+  assert.deepEqual([...vociAperte({ vista: 'agenda', pagine: [] })], []);
+  assert.deepEqual([...vociAperte({ vista: 'agenda', pagine: [{ tipo: 'esplora' }] })], ['agenda']);
+  assert.deepEqual([...vociAperte({ vista: 'agenda', pagine: [{ tipo: 'esplora' }, { tipo: 'documento' }] })], ['esplora']); // il documento è aperto sopra l'agenda: Esplora resta aperto dietro
+  assert.deepEqual([...vociAperte({ vista: 'conti', pagine: [{ tipo: 'documento' }] })], []); // Conti accende già «Personale» (attiva)
+  assert.deepEqual([badgeBarra('oggi', { urgenti: 2, esplora: 7 }), badgeBarra('esplora', { esplora: 7 }), badgeBarra('agenda', { esplora: 7 })], [2, 7, 0]);
+  assert.equal(etichettaNumero(250), '99+');
+  assert.equal(statoDrive().stato, 'ok');
+  inizioDrive(); assert.equal(statoDrive().stato, 'sync'); assert.equal(testoStatoDrive(), 'Drive: sincronizzo…');
+  fineDrive('Drive non ha risposto'); assert.equal(statoDrive().stato, 'errore');
+  inizioDrive(); fineDrive(); assert.equal(statoDrive().stato, 'ok');
+  attesaDrive(3); assert.equal(statoDrive().stato, 'sync'); assert.match(testoStatoDrive(), /3 file al prossimo giro/);
+  attesaDrive(0); assert.equal(testoStatoDrive(), 'Drive sincronizzato');
 });

@@ -46,7 +46,7 @@ export const documenti = {
     'senza-cartella': { render: (p, { ctx }) => <PaginaRicerca carica={caricaSenzaCartella} ctx={ctx} /> },
     pratica: { titolo: 'Pratica', render: (p, { ctx }) => <PaginaPratica p={p.p} ctx={ctx} /> },
     elenco: { render: (p, { ctx }) => <PaginaRicerca carica={p.carica} ctx={ctx} /> },
-    ricerca: { render: (p, { ctx }) => <PaginaRicerca filtri={p.filtri} sezione={p.sezione} ctx={ctx} /> },
+    ricerca: { render: (p, { ctx }) => <PaginaRicerca filtri={p.filtri} sezione={p.sezione} testoIniziale={p.testo} ctx={ctx} /> },
     salute: { titolo: 'La mia salute ed esami', render: (p, { ctx }) => <PaginaSalute ctx={ctx} /> },
     'modifica-immagine': { titolo: 'Ritaglia e converti', modulo: true, render: (p, { ctx, sostituisci }) => <PaginaModificaImmagine id={p.id} pdf={!!p.pdf} ctx={ctx} sostituisci={sostituisci} /> },
     carica: { titolo: 'Archivia un documento', modulo: true, render: (p, { ctx, sostituisci }) => <PaginaCarica opzioni={p.opzioni || {}} file={p.file} ctx={ctx} sostituisci={sostituisci} /> },

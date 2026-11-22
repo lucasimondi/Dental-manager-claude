@@ -49,7 +49,8 @@ test('chat: Poliedron è una scheda a pagina intera con la graffetta', () => {
   const documento = leggi('sezioni/documenti/Documento.jsx');
   const css = readFileSync(new URL('../personal/src/personal.css', import.meta.url), 'utf8');
   for (const src of [app, sezione, vista, documento]) assert.doesNotMatch(src, /PaginaChat|tipo: 'chat'/, 'non più una pagina sovrapposta');
-  assert.match(app, /onClick=\{\(\) => vai\('poliedron'\)\} aria-label="Apri Poliedron"/);
+  // PERSONAL-ESPLORA-WIN11 fase 3: nella barra Poliedron è «Assistente» e apre la stessa vista.
+  assert.match(readFileSync(new URL('../personal/src/lib/barra.js', import.meta.url), 'utf8'), /\{ id: 'poliedron', nome: 'Assistente', vista: 'poliedron' \}/);
   assert.match(sezione, /id: 'poliedron', nome: 'Poliedron', Icona: IconaChat, Vista: VistaPoliedron/);
   assert.match(app, /<Vista\b[^>]*ctx=\{ctx\}[^>]*\/>/);
   assert.match(app, /apriChat, chat, setChat,/);

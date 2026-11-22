@@ -1366,26 +1366,126 @@ function spostaDocumentiDrive_(req) {
   const esito = { ok: true, spostati: [], senza_file: [], non_trovati: [], errori: [] };
   if (!ids.length) return esito;
   const segno = 'cartella:' + dest;
-  const docs = sb_('documenti?select=id,drive_file_id,mime_type&id=in.(' + ids.join(',') + ')') || [];
+  // Prima la cartella su Drive: se non c'è, niente cambia (l'app non sposta e propone «Riprova»).
+  let cartella;
+  try { cartella = cartellaEsplora_(dest); }
+  catch (e) { logErrore_('Esplora cartella ' + dest, e); return { ok: false, errore: 'Cartella su Drive non disponibile' }; }
+  const docs = sb_('documenti?select=id,drive_file_id,mime_type,drive_fissa,drive_cartella&id=in.(' + ids.join(',') + ')') || [];
   const trovati = {};
   docs.forEach(function (d) { trovati[d.id] = true; });
   esito.non_trovati = ids.filter(function (x) { return !trovati[x]; });
-  if (!docs.length) return esito;
-  // Prima la nota «da spostare»: se qualcosa si interrompe, il giro successivo lo rifà.
-  sb_('documenti?id=in.(' + docs.map(function (d) { return d.id; }).join(',') + ')', { method: 'patch', body: { drive_fissa: true, drive_cartella: DA_SPOSTARE_ + segno } });
-  let cartella;
-  try { cartella = cartellaEsplora_(dest); }
-  catch (e) { logErrore_('Esplora cartella ' + dest, e); return { ok: false, errore: 'Cartella su Drive non pronta: la sistemo al prossimo giro' }; }
   docs.forEach(function (d) {
     if (senzaFileDrive_(d)) {
       esito.senza_file.push(d.id);
-    } else {
-      try { DriveApp.getFileById(d.drive_file_id).moveTo(cartella); esito.spostati.push(d.id); }
-      catch (e) { esito.errori.push({ id: d.id, errore: String(e.message || e).slice(0, 200) }); logErrore_('Esplora Drive ' + d.id, e); return; }
+      sb_('documenti?id=eq.' + d.id, { method: 'patch', body: { drive_fissa: true, drive_cartella: segno } });
+      return;
     }
-    sb_('documenti?id=eq.' + d.id, { method: 'patch', body: { drive_cartella: segno } });
+    // La nota «da spostare» copre solo un'interruzione a metà (la rifà recuperaSpostamenti_).
+    sb_('documenti?id=eq.' + d.id, { method: 'patch', body: { drive_fissa: true, drive_cartella: DA_SPOSTARE_ + segno } });
+    try {
+      DriveApp.getFileById(d.drive_file_id).moveTo(cartella);
+      esito.spostati.push(d.id);
+      sb_('documenti?id=eq.' + d.id, { method: 'patch', body: { drive_cartella: segno } });
+    } catch (e) {
+      // Non spostato: torna com'era, così l'app non lo sposta e propone «Riprova».
+      sb_('documenti?id=eq.' + d.id, { method: 'patch', body: { drive_fissa: !!d.drive_fissa, drive_cartella: d.drive_cartella || null } });
+      esito.errori.push({ id: d.id, errore: String(e.message || e).slice(0, 200) });
+      logErrore_('Esplora Drive ' + d.id, e);
+    }
   });
   return esito;
+}
+
+/* ---- Esplora file, menu contestuale (2026-11-21, PR #337): rinomina, proprietà, accesso ---- */
+function documentoEsplora_(id) {
+  if (!UUID_.test(String(id || ''))) throw new Error('Documento non valido');
+  const d = (sb_('documenti?select=id,titolo,drive_file_id,mime_type,fascicolo,nome_file_originale,dimensione_byte,creato_il&id=eq.' + id) || [])[0];
+  if (!d) throw new Error('Documento non trovato');
+  return d;
+}
+
+// Rinomina il file su Drive (stessa estensione). L'app cambia il titolo solo se qui riesce.
+function rinominaFileEsplora_(req) {
+  const d = documentoEsplora_(req.id);
+  const nome = pulisciNome_(String(req.nome || ''));
+  if (!nome) return { ok: false, errore: 'Scrivi un nome' };
+  if (senzaFileDrive_(d)) return { ok: true, nome: nome, senza_file: true };
+  const f = DriveApp.getFileById(d.drive_file_id);
+  const ext = (String(f.getName()).match(/\.[A-Za-z0-9]{1,6}$/) || [''])[0];
+  const finale = ext && !nome.toLowerCase().endsWith(ext.toLowerCase()) ? nome + ext : nome;
+  f.setName(finale);
+  sb_('documenti?id=eq.' + d.id, { method: 'patch', body: { drive_rinomina: false } }); // il nome scelto resta
+  return { ok: true, nome: finale };
+}
+
+function percorsoCartellaDrive_(cartella) {
+  const nomi = [];
+  let c = cartella;
+  for (let i = 0; c && i < 15; i++) {
+    nomi.unshift(c.getName());
+    const p = c.getParents();
+    c = p.hasNext() ? p.next() : null;
+  }
+  return nomi.join(' / ');
+}
+
+// Proprietà: dimensione, date, percorso su Drive, proprietario, versioni (servizio avanzato Drive v3).
+function proprietaEsplora_(req) {
+  if (req.cartella) {
+    const c = (sb_('cartelle_mie?select=id,nome,drive_cartella_id,creato_il,modificato_il&id=eq.' + enc_(String(req.id || ''))) || [])[0];
+    if (!c || !UUID_.test(c.id)) return { ok: false, errore: 'Cartella non trovata' };
+    const f = cartellaDriveDi_(c.id);
+    return { ok: true, nome: f.getName(), percorso: percorsoCartellaDrive_(f), creato: f.getDateCreated().toISOString(), modificato: f.getLastUpdated().toISOString(),
+      proprietario: f.getOwner() ? f.getOwner().getEmail() : null, link: f.getUrl() };
+  }
+  const d = documentoEsplora_(req.id);
+  if (senzaFileDrive_(d)) return { ok: true, nome: d.titolo, senza_file: true, creato: d.creato_il, dimensione: d.dimensione_byte || null };
+  const f = DriveApp.getFileById(d.drive_file_id);
+  const padri = f.getParents();
+  const out = { ok: true, nome: f.getName(), dimensione: f.getSize(), mime: f.getMimeType(), creato: f.getDateCreated().toISOString(),
+    modificato: f.getLastUpdated().toISOString(), proprietario: f.getOwner() ? f.getOwner().getEmail() : null, link: f.getUrl(),
+    percorso: padri.hasNext() ? percorsoCartellaDrive_(padri.next()) : null, versioni: [] };
+  try {
+    const r = Drive.Revisions.list(d.drive_file_id, { fields: 'revisions(id,modifiedTime,size,lastModifyingUser(displayName))' });
+    out.versioni = (r.revisions || []).slice(-20).reverse().map(function (v) {
+      return { id: v.id, quando: v.modifiedTime, dimensione: v.size ? Number(v.size) : null, chi: v.lastModifyingUser ? v.lastModifyingUser.displayName : null };
+    });
+  } catch (e) { out.versioni = null; }
+  return out;
+}
+
+// Gestisci accesso: legge e cambia i permessi del file su Drive, solo su azione di Luca nell'app.
+// Nessuna email di notifica parte da qui; il link pubblico non si attiva mai sui documenti dei pazienti.
+function accessoEsplora_(req) {
+  const d = documentoEsplora_(req.id);
+  if (senzaFileDrive_(d)) return { ok: false, errore: 'Questo documento non ha un file su Drive' };
+  const fid = d.drive_file_id;
+  const azione = String(req.operazione || 'leggi'); // `azione` è già 'accesso_file'
+  if (azione === 'link') {
+    const attuali = (Drive.Permissions.list(fid, { fields: 'permissions(id,type)' }).permissions || []).filter(function (p) { return p.type === 'anyone'; });
+    if (req.attivo) {
+      if (d.fascicolo === 'clinico_pazienti') return { ok: false, errore: 'Per i documenti dei pazienti il link pubblico non si attiva' };
+      if (!attuali.length) Drive.Permissions.create({ type: 'anyone', role: 'reader' }, fid);
+    } else {
+      attuali.forEach(function (p) { Drive.Permissions.remove(fid, p.id); });
+    }
+  } else if (azione === 'aggiungi') {
+    const email = String(req.email || '').trim().toLowerCase();
+    const ruolo = req.ruolo === 'writer' ? 'writer' : 'reader';
+    if (!EMAIL_VALIDA_.test(email) /* definita più sotto per le bozze */) return { ok: false, errore: 'Indirizzo email non valido' };
+    Drive.Permissions.create({ type: 'user', role: ruolo, emailAddress: email }, fid, { sendNotificationEmail: false });
+  } else if (azione === 'togli') {
+    const p = (Drive.Permissions.list(fid, { fields: 'permissions(id,role)' }).permissions || []).filter(function (x) { return x.id === String(req.permesso || ''); })[0];
+    if (!p) return { ok: false, errore: 'Permesso non trovato' };
+    if (p.role === 'owner') return { ok: false, errore: 'Il proprietario non si toglie' };
+    Drive.Permissions.remove(fid, p.id);
+  } else if (azione !== 'leggi') {
+    return { ok: false, errore: 'Azione non valida' };
+  }
+  const permessi = (Drive.Permissions.list(fid, { fields: 'permissions(id,type,role,emailAddress,displayName)' }).permissions || []).map(function (p) {
+    return { id: p.id, tipo: p.type, ruolo: p.role, email: p.emailAddress || null, nome: p.displayName || null };
+  });
+  return { ok: true, permessi: permessi, link: DriveApp.getFileById(fid).getUrl(), clinico: d.fascicolo === 'clinico_pazienti' };
 }
 
 // I '>cartella:…' rimasti (Drive non raggiungibile al momento dello spostamento): rifatti a ogni giro.
@@ -1713,6 +1813,9 @@ function doPost(e) {
     // PERSONAL-ESPLORA-WIN11 fase 2: Esplora file allinea subito Drive (gemelle e file spostati).
     if (req.azione === 'cartella_drive') return rispostaJson_(allineaCartella_(String(req.id || '')));
     if (req.azione === 'sposta_documenti') return rispostaJson_(spostaDocumentiDrive_(req));
+    if (req.azione === 'rinomina_file') return rispostaJson_(rinominaFileEsplora_(req));
+    if (req.azione === 'proprieta_file') return rispostaJson_(proprietaEsplora_(req));
+    if (req.azione === 'accesso_file') return rispostaJson_(accessoEsplora_(req));
     if (req.azione === 'contenuto') {
       const filtri = req.filtri && typeof req.filtri === 'object' ? req.filtri : {};
       return rispostaJson_({ ok: true, documenti: cercaNelContenuto_(req.testo, filtri, 20, CAMPI_APP) });

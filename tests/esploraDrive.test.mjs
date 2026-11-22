@@ -9,8 +9,8 @@ import vm from 'node:vm';
 const codice = readFileSync('poliedron/archivio/Code.gs', 'utf8');
 const U = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
-function scriptFinto({ docs = [], cartelle = [], driveGiu = false } = {}) {
-  const patch = []; const mosse = []; const create = []; const rinomine = [];
+function scriptFinto({ docs = [], cartelle = [], driveGiu = false, permessi = [] } = {}) {
+  const patch = []; const mosse = []; const create = []; const rinomine = []; const permChiamate = [];
   const cartelleDrive = { 'radice-drive': { nome: 'Archivio personale', padre: null } };
   const cartella = (id) => ({
     getId: () => id, getName: () => cartelleDrive[id].nome, isTrashed: () => false,
@@ -28,10 +28,15 @@ function scriptFinto({ docs = [], cartelle = [], driveGiu = false } = {}) {
       getFileById: (id) => {
         if (driveGiu) throw new Error('Servizio Drive non disponibile');
         if (id === 'sparito') throw new Error('File non trovato');
-        return { moveTo: (c) => mosse.push(['file', id, c.getId()]) };
+        return { moveTo: (c) => mosse.push(['file', id, c.getId()]), getName: () => 'vecchio nome.pdf', setName: (n) => rinomine.push([id, n]), getUrl: () => `https://drive/${id}` };
       },
       createFolder: () => { throw new Error('la radice esiste'); },
     },
+    Drive: { Permissions: {
+      list: () => ({ permissions: permessi.slice() }),
+      create: (r, fid, o) => { permChiamate.push(['crea', r, fid, o || null]); permessi.push({ id: `p${permessi.length}`, type: r.type, role: r.role, emailAddress: r.emailAddress }); },
+      remove: (fid, id) => { permChiamate.push(['togli', id]); permessi.splice(permessi.findIndex((p) => p.id === id), 1); },
+    } },
   };
   vm.createContext(ctx);
   vm.runInContext(codice, ctx);
@@ -55,12 +60,14 @@ function scriptFinto({ docs = [], cartelle = [], driveGiu = false } = {}) {
     }
     if (percorso.startsWith('documenti?')) {
       const inn = percorso.match(/id=in\.\(([^)]*)\)/);
-      if (inn) return docs.filter((d) => inn[1].split(',').includes(d.id));
+      if (inn) return docs.filter((d) => inn[1].split(',').includes(d.id)).map((d) => ({ ...d })); // copie, come la rete
       if (percorso.includes('drive_cartella=like.')) return docs.filter((d) => String(d.drive_cartella || '').startsWith('>cartella:'));
+      const uno = percorso.match(/&id=eq\.([^&]+)$/);
+      if (uno) return docs.filter((d) => d.id === uno[1]);
     }
     return [];
   };
-  return { ctx, patch, mosse, create, rinomine, cartelleDrive };
+  return { ctx, patch, mosse, create, rinomine, cartelleDrive, permChiamate };
 }
 
 test('sposta_documenti: file nella gemella, fissati lì; email senza file; non trovati; id non validi scartati', () => {
@@ -76,20 +83,26 @@ test('sposta_documenti: file nella gemella, fissati lì; email senza file; non t
   assert.deepEqual(s.mosse, [['file', 'f10', 'drv-Casa']]);
   assert.deepEqual(docs.map((d) => [d.drive_fissa, d.drive_cartella]), [[true, `cartella:${U(1)}`], [true, `cartella:${U(1)}`]]);
   // prima la nota «da spostare», poi la posizione definitiva
-  assert.deepEqual(JSON.parse(JSON.stringify(s.patch[0][1])), { drive_fissa: true, drive_cartella: `>cartella:${U(1)}` });
+  const primaSuDoc = s.patch.find(([p]) => p === `documenti?id=eq.${U(11)}` || p === `documenti?id=eq.${U(10)}`);
+  assert.deepEqual(JSON.parse(JSON.stringify(s.patch.filter(([p]) => p === `documenti?id=eq.${U(10)}`)[0][1])), { drive_fissa: true, drive_cartella: `>cartella:${U(1)}` });
+  assert.ok(primaSuDoc);
   assert.deepEqual(JSON.parse(JSON.stringify(s.ctx.spostaDocumentiDrive_({ ids: [U(10)], cartella_id: '../x' }))), { ok: false, errore: 'Cartella non valida' });
 });
 
-test('Personale = Archivio personale; Drive giù: resta «da spostare» e il giro dopo lo rifà', () => {
-  const docs = [{ id: U(20), drive_file_id: 'f20', mime_type: 'image/jpeg' }, { id: U(21), drive_file_id: 'sparito', mime_type: 'application/pdf' }];
+test('Personale = Archivio personale; Drive giù: niente resta a metà, il documento torna com\'era', () => {
+  const docs = [{ id: U(20), drive_file_id: 'f20', mime_type: 'image/jpeg', drive_fissa: false, drive_cartella: 'Utenze/2026' }];
   const giu = scriptFinto({ docs, driveGiu: true });
-  const r = giu.ctx.spostaDocumentiDrive_({ ids: [U(20), U(21)], cartella_id: 'radice' });
-  assert.equal(r.errori.length, 2);
-  assert.deepEqual(docs.map((d) => d.drive_cartella), ['>cartella:radice', '>cartella:radice']);
+  const r = giu.ctx.spostaDocumentiDrive_({ ids: [U(20)], cartella_id: 'radice' });
+  assert.equal(r.errori.length, 1);
+  assert.deepEqual([docs[0].drive_fissa, docs[0].drive_cartella], [false, 'Utenze/2026']);
+});
+
+test('recupero al giro: una nota «da spostare» rimasta da un\'interruzione si rifà; file sparito non si riprova', () => {
+  const docs = [{ id: U(20), drive_file_id: 'f20', mime_type: 'image/jpeg', drive_cartella: '>cartella:radice' }, { id: U(21), drive_file_id: 'sparito', mime_type: 'application/pdf', drive_cartella: '>cartella:radice' }];
   const su = scriptFinto({ docs });
   assert.equal(su.ctx.recuperaSpostamenti_(Date.now() + 60000), false);
   assert.deepEqual(su.mosse, [['file', 'f20', 'radice-drive']]);
-  assert.deepEqual(docs.map((d) => d.drive_cartella), ['cartella:radice', '!cartella:radice']); // il file sparito non si riprova
+  assert.deepEqual(docs.map((d) => d.drive_cartella), ['cartella:radice', '!cartella:radice']);
 });
 
 test('cartella_drive: crea la gemella dentro quella del padre, poi segue nome e padre', () => {
@@ -118,4 +131,39 @@ test('doPost espone cartella_drive e sposta_documenti dopo il controllo del prop
   const corpo = codice.slice(i, codice.indexOf('\n}\n', i));
   const controllo = corpo.indexOf('Accesso non autorizzato');
   assert.ok(controllo > 0 && corpo.indexOf("'cartella_drive'") > controllo && corpo.indexOf("'sposta_documenti'") > controllo);
+});
+
+test('rinomina_file: stesso file su Drive, estensione mantenuta, il nome scelto resta', () => {
+  const docs = [{ id: U(30), drive_file_id: 'f30', mime_type: 'application/pdf', titolo: 'Vecchio' }, { id: U(31), drive_file_id: null, mime_type: 'message/rfc822', titolo: 'Email' }];
+  const s = scriptFinto({ docs });
+  assert.deepEqual(JSON.parse(JSON.stringify(s.ctx.rinominaFileEsplora_({ id: U(30), nome: 'Contratto / luce' }))), { ok: true, nome: 'Contratto - luce.pdf' });
+  assert.deepEqual(s.rinomine, [['f30', 'Contratto - luce.pdf']]);
+  assert.equal(docs[0].drive_rinomina, false);
+  assert.equal(s.ctx.rinominaFileEsplora_({ id: U(31), nome: 'X' }).senza_file, true);
+  assert.equal(s.ctx.rinominaFileEsplora_({ id: U(30), nome: '  ' }).ok, false);
+  assert.throws(() => s.ctx.rinominaFileEsplora_({ id: 'x', nome: 'a' }));
+});
+
+test('accesso_file: persone senza email di notifica, link pubblico mai per i pazienti, il proprietario non si toglie', () => {
+  const docs = [{ id: U(40), drive_file_id: 'f40', mime_type: 'application/pdf', fascicolo: 'utenze' }, { id: U(41), drive_file_id: 'f41', mime_type: 'application/pdf', fascicolo: 'clinico_pazienti' }];
+  const permessi = [{ id: 'own', type: 'user', role: 'owner', emailAddress: 'io@example.com' }];
+  const s = scriptFinto({ docs, permessi });
+  let r = s.ctx.accessoEsplora_({ id: U(40), operazione: 'aggiungi', email: 'Anna@Example.com', ruolo: 'writer' });
+  assert.equal(r.ok, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(s.permChiamate[0])), ['crea', { type: 'user', role: 'writer', emailAddress: 'anna@example.com' }, 'f40', { sendNotificationEmail: false }]);
+  assert.equal(s.ctx.accessoEsplora_({ id: U(40), operazione: 'aggiungi', email: 'non valida' }).ok, false);
+  r = s.ctx.accessoEsplora_({ id: U(40), operazione: 'link', attivo: true });
+  assert.ok(r.permessi.some((p) => p.tipo === 'anyone' && p.ruolo === 'reader'));
+  r = s.ctx.accessoEsplora_({ id: U(40), operazione: 'link', attivo: false });
+  assert.ok(!r.permessi.some((p) => p.tipo === 'anyone'));
+  assert.match(s.ctx.accessoEsplora_({ id: U(41), operazione: 'link', attivo: true }).errore, /pazienti/);
+  assert.equal(s.ctx.accessoEsplora_({ id: U(40), operazione: 'togli', permesso: 'own' }).ok, false);
+  assert.equal(s.ctx.accessoEsplora_({ id: U(40), operazione: 'boh' }).ok, false);
+});
+
+test('doPost: le nuove azioni del menu dopo il controllo del proprietario', () => {
+  const i = codice.indexOf('function doPost(');
+  const corpo = codice.slice(i, codice.indexOf('\n}\n', i));
+  const controllo = corpo.indexOf('Accesso non autorizzato');
+  for (const a of ['rinomina_file', 'proprieta_file', 'accesso_file']) assert.ok(corpo.indexOf(`'${a}'`) > controllo, a);
 });
