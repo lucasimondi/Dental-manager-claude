@@ -22,13 +22,14 @@ import { foto } from './foto/index.jsx';
 import { poliedron } from './poliedron/index.jsx';
 import { impostazioni } from './impostazioni/index.jsx';
 import { dafare } from './dafare/index.jsx';
+import { riordino } from './riordino/index.jsx';
 
-export const SEZIONI = [altro, dafare, oggi, note, password, documenti, agenda, conti, personali, foto, legal, concordato, diario, didattica, poliedron, impostazioni];
+export const SEZIONI = [altro, dafare, oggi, note, password, documenti, agenda, conti, personali, foto, legal, concordato, diario, didattica, poliedron, impostazioni, riordino];
 // DOCK-PER-TE (PO 2026-11-08): Agenda · Documenti · Poliedron · Studio · Per te.
 // App aggiunge Poliedron al centro, Studio (la pagina Studio dell'app) e Per te (sezione «altro»).
 export const DOCK = [agenda, documenti];
 export const DOCK_DOPO = [];
-export const VISTE = [dafare, oggi, agenda, note, password, documenti, poliedron, altro, foto, conti, legal, concordato, personali, diario, didattica];
+export const VISTE = [dafare, oggi, agenda, note, password, documenti, poliedron, altro, foto, conti, legal, concordato, personali, diario, didattica, riordino];
 
 export const sezione = (id) => VISTE.find((s) => s.id === id);
 

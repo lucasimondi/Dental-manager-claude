@@ -112,3 +112,62 @@ Prezzi Claude Haiku 5.5 (listino Anthropic al 2026-11-03): $0,10 per milione di 
 - **Fase 2:** tassonomia (`TASSONOMIA.md` + tabella `categorie`), elenco di persone, immobili, veicoli, banche e pratiche estratti dai documenti, da confermare. Poi classificazione in `piano_riordino` e schermata «Piano di riordino» su telefono. Stop per l'approvazione.
 - **Fase 3:** esecuzione delle sole righe approvate, a lotti di 100, con `log_spostamenti` e «Annulla lotto».
 - **Fase 4:** ordine automatico dei nuovi arrivi, `correzioni_classificazione`, controllo settimanale.
+
+## Fase 2 — tassonomia, piano e schermata (2026-11-22)
+
+Su indicazione di Luca («Fallo tu senza api») la classificazione l'ha fatta Claude Code in sessione: regole scritte leggendo titoli, enti e testo già estratto (500 caratteri a file), più una tabella di assegnazioni fatte a mano per gli enti ricorrenti. Nessuna chiamata a modelli, **costo 0 €**. I clinici (`clinico_pazienti`) sono esclusi.
+
+- **Classificatore:** `poliedron/archivio/riordino/classifica.py`. Riproducibile, legge gli export in sola lettura e scrive il piano.
+- **Tassonomia:** `poliedron/archivio/TASSONOMIA.md`, con gli elenchi di persone, immobili, banche, veicoli e pratiche da confermare. Tabella `categorie`: 520 cartelle, comprese quelle intermedie.
+- **Piano:** tabella `piano_riordino` (migrazione `20261122150000_pol_vita_ordina_piano.sql`, già applicata). Contiene 7.070 righe con stato `proposto`. Il piano preparato sta su Drive di Luca come `poliedra-piano-riordino.json`, file privato nel Drive principale, fuori dall'Archivio. Lo copia in tabella l'azione `importa_piano` dello script, che scrive solo dati, non sposta niente e non sovrascrive mai le righe già decise.
+- **Schermata:** Personale → «Riordino», oppure `?sezione=riordino`.
+  - Le righe sono raggruppate per cartella di destinazione.
+  - Toccando una riga si vedono il motivo e l'anteprima, con i tasti Approva / Cambia cartella (solo cartelle della tassonomia) / Rinomina (1–90 caratteri, senza caratteri vietati) / Rifiuta.
+  - In blocco: «Approva tutto il gruppo» e «Approva tutto ≥ 0,85».
+  - In giallo le righe con confidenza fra 0,60 e 0,85.
+  - Ogni decisione ha «Annulla». **Approvare non sposta nulla.**
+
+### Risultato del piano
+
+| Cartella | File |
+|---|---|
+| 01 Identità e documenti | 69 |
+| 02 Casa e catasto | 286 |
+| 03 Successione | 11 |
+| 04 Banche e conti | 121 |
+| 05 Fisco e tasse | 583 |
+| 06 Auto e veicoli | 192 |
+| 07 Salute | 90 |
+| 08 Famiglia e scuola | 437 |
+| 09 Assicurazioni | 124 |
+| 10 Utenze | 152 |
+| 11 Legale e pratiche | 574 |
+| 12 Lavoro e professione | 3.196 |
+| 13 Acquisti e garanzie | 552 |
+| 99 Da verificare | 683 (623 dubbi + 60 copie identiche) |
+
+- **Confidenza:** 1.560 file a 0,85 o più; 4.887 fra 0,60 e 0,85; 623 sotto 0,60, che vanno in «99 Da verificare/Dubbi».
+- **Cartelle di destinazione:** 358, con profondità massima di 4 livelli.
+- **Scorciatoie:** 28, per esempio una polizza auto che compare anche nella cartella del veicolo.
+
+### Criteri di accettazione (stato in fase 2)
+
+| Criterio | Obiettivo | Stato |
+|---|---|---|
+| File non clinici nella tassonomia | 100% | 100% (7.070 su 7.070) |
+| File in «99 Da verificare» | ≤ 5% | **9,7%, NON raggiunto** (8,8% dubbi + 0,8% copie). Scende con le decisioni di Luca e con le correzioni della fase 4 |
+| Nomi conformi | ≥ 95% | 98,9% (i file Google senza estensione contano come conformi) |
+| Corretti su un campione di 50 | ≥ 90% | da misurare: lo decide Luca dalla schermata. Dai campioni letti in sessione la stima è di circa l'80–85%, perché «12 Studio Cuneo» raccoglie ancora file di altre materie |
+| Cancellazioni | 0; ogni lotto annullabile | 0 cancellazioni; nessuno spostamento in fase 2 |
+| Albero Drive = albero app | 0 differenze | non applicabile finché non si esegue (fase 3) |
+| Costo | — | 0 € (nessuna API) |
+
+### Decisioni per Luca
+1. **Cartelle nuove proposte**, non previste nell'elenco iniziale:
+   - «12 Lavoro e professione/Società e progetti/…»: One Apple, Mall-e, Immobiliare La – L'Arabi, Centraline idroelettriche, Ridentemente, LL Medical, Tamponi e screening COVID, Storie per tessere, Fit and Go, Investimenti e cripto;
+   - «06/Noleggi e car sharing», «06/Barca Sealine F37» e «06/Telepass»;
+   - case non di proprietà in «02»: Milano via Boccaccio 14, Finale via Santuario 41, Cervasca San Defendente, Golfo Aranci, «Ricerca e progetti di case»;
+   - sottocartelle per anno sotto «12/Studio Cuneo».
+2. **Elenchi da confermare** in `TASSONOMIA.md`: persone dubbie, immobili dubbi e centraline.
+3. **229 file dell'archivio fuori da «Archivio personale»:** non sono nel piano. Decidere se includerli.
+4. **Documenti «Storie per tessere»:** sono documenti d'identità di persone accolte e restano in una cartella a sé.

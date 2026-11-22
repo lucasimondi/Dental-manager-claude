@@ -1913,6 +1913,7 @@ function doPost(e) {
     if (req.azione === 'duplica_file') return rispostaJson_(duplicaFileEsplora_(req));
     if (req.azione === 'ripristina_file') return rispostaJson_(ripristinaFileEsplora_(req.ids));
     if (req.azione === 'ripristina_versione') return rispostaJson_(ripristinaVersioneEsplora_(req));
+    if (req.azione === 'importa_piano') return rispostaJson_(importaPianoRiordino_());
     if (req.azione === 'contenuto') {
       const filtri = req.filtri && typeof req.filtri === 'object' ? req.filtri : {};
       return rispostaJson_({ ok: true, documenti: cercaNelContenuto_(req.testo, filtri, 20, CAMPI_APP) });
@@ -3396,4 +3397,41 @@ function accodaRilettura_() {
     }
     sp.setProperty('RILETTURA_CURSORE', d.id);
   });
+}
+
+/* =====================================================================
+ * POL-VITA-ORDINA — import del piano di riordino proposto
+ * Legge «poliedra-piano-riordino.json» (preparato da Claude Code, nessuna API) dal Drive di Luca e lo
+ * copia in categorie e piano_riordino. Solo dati: nessun file viene spostato o rinominato qui.
+ * Le righe già presenti (anche già decise da Luca) non vengono mai sovrascritte.
+ * ===================================================================*/
+const PIANO_FILE_NOME = 'poliedra-piano-riordino.json';
+const PIANO_CAMPI = ['documento_id', 'file_id', 'percorso_attuale', 'nome_attuale', 'percorso_nuovo', 'nome_nuovo', 'categoria_id', 'tipo',
+  'soggetto', 'data_documento', 'dettaglio', 'confidenza', 'motivo', 'scorciatoie', 'duplicato_di'];
+function importaPianoRiordino_() {
+  const it = DriveApp.getFilesByName(PIANO_FILE_NOME);
+  if (!it.hasNext()) return { ok: false, errore: 'Piano non trovato su Drive (' + PIANO_FILE_NOME + ').' };
+  const file = it.next();
+  if (file.getOwner() && String(file.getOwner().getEmail()).toLowerCase() !== PROPRIETARIO) return { ok: false, errore: 'Il file del piano non è di Luca.' };
+  const piano = JSON.parse(file.getBlob().getDataAsString('UTF-8'));
+  if (!piano || !Array.isArray(piano.categorie) || !Array.isArray(piano.righe)) return { ok: false, errore: 'Piano non valido.' };
+  const categorie = piano.categorie.map(function (c) {
+    return { id: String(c.id), percorso: String(c.percorso), nome: String(c.nome), parent_id: c.parent_id ? String(c.parent_id) : null, ordine: Number(c.ordine) || 0 };
+  });
+  // Dai livelli alti ai bassi: il genitore esiste sempre prima del figlio.
+  categorie.sort(function (a, b) { return a.percorso.split('/').length - b.percorso.split('/').length; });
+  for (let i = 0; i < categorie.length; i += 200) {
+    sb_('categorie?on_conflict=id', { method: 'post', body: categorie.slice(i, i + 200), prefer: 'resolution=merge-duplicates,return=minimal' });
+  }
+  const righe = piano.righe.map(function (r) {
+    const o = {};
+    PIANO_CAMPI.forEach(function (k) { o[k] = r[k] === undefined ? null : r[k]; });
+    o.scorciatoie = Array.isArray(r.scorciatoie) ? r.scorciatoie.map(String) : [];
+    o.autore = 'claude-code';
+    return o;
+  }).filter(function (o) { return o.file_id && o.percorso_nuovo && o.nome_nuovo; });
+  for (let i = 0; i < righe.length; i += 400) {
+    sb_('piano_riordino?on_conflict=file_id', { method: 'post', body: righe.slice(i, i + 400), prefer: 'resolution=ignore-duplicates,return=minimal' });
+  }
+  return { ok: true, categorie: categorie.length, righe: righe.length };
 }
