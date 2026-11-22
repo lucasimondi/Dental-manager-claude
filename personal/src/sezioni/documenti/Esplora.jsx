@@ -25,7 +25,7 @@ import {
   VISTE_ESPLORA, leggiViste, salvaVista, vistaDi, vistaConRotella, COLONNE_DETTAGLI, cambiaColonna, GRUPPI, raggruppa, leggiCartelle, salvaCartella, impostazioniDi, conMiniatura, righeDettagli, ordinaRighe, ordinaSuColonna, dimensioneLeggibile, dataLeggibile, tipoLeggibile,
   comeAprire, linkDrive, linkDocs, linkEmail, linkWhatsApp, ambienteApertura, seleziona, caricaPreferiti, salvaPreferiti, cambiaPreferito,
   HOME, PREFERITI, RECENTI, CESTINO, nodoCerca, datiCerca, FUORI,
-  creaFileDrive, ripristinaFileDrive, segnaCestino, conCestino, nelCestino, documentiNelCestino, eZip,
+  creaFileDrive, duplicaFileDrive, ripristinaFileDrive, segnaCestino, conCestino, nelCestino, documentiNelCestino, eZip,
 } from '../../lib/esplora.js';
 import { eseguiInCoda } from '../../lib/trasferimenti.js';
 import { SceltaAppPredefinite } from '../../AppPredefinite.jsx';
@@ -450,6 +450,24 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
       await caricaQui(files, dest, `Estrai «${titoloDi(d.id)}» in «${nomeNodo(dest, nomi)}»`);
     } catch (e) { mostraAvviso(`Non estratto: ${e.message}`, { tipo: 'errore', azione: { nome: 'Riprova', fai: () => estrai(d, sorg) } }); }
   };
+  // Duplica: copia vera di ogni file su Drive (prima Drive, poi l'interfaccia), nella cartella dove sta il file.
+  const duplica = async (sorgenti) => {
+    const docs = sorgenti.map((x) => ({ x, d: cache.get(x.id) })).filter(({ d }) => d?.drive_file_id && !/rfc822/.test(String(d.mime_type || '')));
+    if (!docs.length) { mostraAvviso('Niente da duplicare: questi documenti non hanno un file su Drive'); return; }
+    const token = await tokenSessione().catch(() => null);
+    setLavoro((n) => n + 1); inizioDrive();
+    const r = await eseguiInCoda(`Duplica ${docs.length === 1 ? `«${titoloDi(docs[0].d.id)}»` : `${docs.length} file`}`, docs, async ({ x, d }) => {
+      const dove = x.da && x.da !== FUORI && !eVirtuale(x.da) ? x.da : null;
+      const c = await duplicaFileDrive({ token, id: d.id, cartella: dove === RADICE ? 'radice' : dove });
+      if (dove === RADICE) await aggiungiAScrivania(archivioDb, [c.id]);
+      return c;
+    }, { nomeDi: ({ d }) => titoloDi(d.id) });
+    setLavoro((n) => n - 1); fineDrive(r.errori.length && !r.fatti.length ? r.errori[0] : null);
+    if (r.fatti.length) { cambiato.current = true; visitate.current.clear(); setRinfresca((n) => n + 1); }
+    if (r.errori.length) mostraAvviso(`Non duplicato: ${r.errori[0]}`, { tipo: 'errore', azione: { nome: 'Riprova', fai: () => duplica(sorgenti) } });
+    else mostraAvviso(r.fatti.length === 1 ? `Copia creata: «${r.fatti[0].titolo}»` : `${r.fatti.length} copie create`);
+  };
+
   // Nuovo ▸ Documento Google / Foglio Google: creato su Drive nella cartella, poi aperto in una nuova scheda.
   const creaGoogle = async (tipo) => {
     const dest = eVirtuale(nodo) ? RADICE : nodo;
@@ -850,8 +868,10 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
       case 'apri': apriElemento(chiaveDi(una.tipo, una.id)); break;
       case 'taglia': setAppunti(taglia(sorgenti, nomeSel)); mostraAvviso(`«${nomeSel}» tagliato: Incolla nella cartella di arrivo (Ctrl+V)`); break;
       case 'copia': { const a = copia(sorgenti, nomeSel); if (a) { setAppunti(a); mostraAvviso(`«${nomeSel}» copiato: Incolla per metterlo anche in un'altra cartella`); } break; }
-      // Duplica e Copia in… (decisione del PO): il documento compare anche nell'altra cartella, stesso file su Drive.
-      case 'duplica': case 'copia-in': setFoglio({ tipo: 'duplica', sorgenti }); break;
+      // Duplica (decisione del PO del 2026-11-22) = vera copia del file su Drive nella stessa cartella.
+      // Copia in… = il documento compare anche nell'altra cartella, stesso file su Drive.
+      case 'duplica': duplica(sorgenti.filter((x) => x.tipo === 'doc')); break;
+      case 'copia-in': setFoglio({ tipo: 'duplica', sorgenti }); break;
       case 'con:predefinita': if (d) setFoglio({ tipo: 'app', doc: d }); break;
       case 'mostra-cartella': {
         const dove = una.tipo === 'cartella' ? padreDi(cartelle, una.id) : una.da;

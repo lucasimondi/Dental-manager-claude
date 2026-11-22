@@ -558,6 +558,8 @@ async function chiamaScriptNuovo(corpo, fetchImpl) {
   }
 }
 export const creaFileDrive = ({ token, tipo, nome, cartella }, fetchImpl = fetch) => chiamaScriptNuovo({ token, azione: 'crea_file', tipo, nome, cartella: cartella && cartella !== RADICE ? cartella : null }, fetchImpl);
+// Duplica = vera copia del file su Drive (decisione del PO del 2026-11-22), registrata come documento nuovo.
+export const duplicaFileDrive = ({ token, id, cartella }, fetchImpl = fetch) => chiamaScriptNuovo({ token, azione: 'duplica_file', id, cartella: cartella || null }, fetchImpl);
 export const ripristinaFileDrive = ({ token, ids }, fetchImpl = fetch) => chiamaScriptNuovo({ token, azione: 'ripristina_file', ids }, fetchImpl);
 export const ripristinaVersioneDrive = ({ token, id, versione }, fetchImpl = fetch) => chiamaScriptNuovo({ token, azione: 'ripristina_versione', id, versione }, fetchImpl);
 

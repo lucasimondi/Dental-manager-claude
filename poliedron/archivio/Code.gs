@@ -1516,6 +1516,42 @@ function creaFileEsplora_(req) {
   return { ok: true, id: idDoc, drive_file_id: id, url: f.getUrl(), titolo: nome };
 }
 
+// Duplica (decisione di Luca del 2026-11-22: «Duplica crea una vera copia del file»): copia del file su Drive
+// nella stessa cartella (o in quella scelta), nome «… - Copia», registrata come documento nuovo con lo stesso
+// catalogo (fascicolo, tipo, ente, persona, categoria, tag). Nessun modello: niente esce dallo script.
+function duplicaFileEsplora_(req) {
+  const d = documentoEsplora_(req.id);
+  if (senzaFileDrive_(d)) return { ok: false, errore: 'Questo documento non ha un file su Drive da copiare' };
+  const o = (sb_('documenti?select=fascicolo,tipo_documento,titolo,riassunto,data_documento,importo,tag,ente,persona,categoria,rilevanza,mime_type,dimensione_byte,nome_file_originale,dati_estratti&id=eq.' + d.id) || [])[0] || {};
+  const idCartella = UUID_.test(String(req.cartella || '')) ? String(req.cartella) : null;
+  const originale = DriveApp.getFileById(d.drive_file_id);
+  const padri = originale.getParents();
+  const dove = idCartella ? cartellaDriveDi_(idCartella) : (req.cartella === 'radice' ? cartellaRadice_() : (padri.hasNext() ? padri.next() : cartellaRadice_()));
+  const nomeFile = String(originale.getName());
+  const ext = (nomeFile.match(/\.[A-Za-z0-9]{1,6}$/) || [''])[0];
+  const titolo = (String(o.titolo || d.titolo || nomeFile.replace(/\.[^.]+$/, '')) + ' - Copia').slice(0, 200);
+  const copia = originale.makeCopy(pulisciNome_(titolo) + ext, dove);
+  const ora = new Date();
+  let esito;
+  try {
+    esito = sb_('rpc/registra_documento', { method: 'post', body: { p: {
+      hash_sha256: 'copia:' + copia.getId(), gmail_message_id: 'copia:' + Utilities.getUuid(), gmail_thread_id: null,
+      email_oggetto: null, email_mittente: 'Copia in Esplora file', email_data: ora.toISOString(),
+      nome_file_originale: o.nome_file_originale || nomeFile, mime_type: o.mime_type || d.mime_type, dimensione_byte: o.dimensione_byte || null,
+      drive_file_id: copia.getId(), drive_url: copia.getUrl(), fascicolo: o.fascicolo || 'altro', tipo_documento: o.tipo_documento || null,
+      titolo: titolo, riassunto: o.riassunto || null, data_documento: o.data_documento || null, importo: o.importo ?? null,
+      tag: (o.tag || []).filter(function (t) { return t !== 'cestino'; }), azione_richiesta: false, azione_descrizione: null, urgenza: null,
+      analisi_contenuto: false, dati_estratti: o.dati_estratti || {}, soggetti: [], scadenze: [], pratica: {},
+    } } });
+  } catch (e) { try { copia.setTrashed(true); } catch (x) {} throw e; }
+  const idDoc = esito && esito.documento_id;
+  if (!idDoc) { try { copia.setTrashed(true); } catch (x) {} throw new Error('Registrazione della copia non riuscita'); }
+  sb_('documenti?id=eq.' + idDoc, { method: 'patch', body: { drive_fissa: true, drive_rinomina: false, ente: o.ente || null, persona: o.persona || null, categoria: o.categoria || null, rilevanza: o.rilevanza || 'normale',
+    drive_cartella: idCartella ? 'cartella:' + idCartella : null } });
+  if (idCartella) mettiInCartella_(idCartella, idDoc);
+  return { ok: true, id: idDoc, drive_file_id: copia.getId(), titolo: titolo };
+}
+
 // Cestino dell'app: «Ripristina» toglie dal Cestino di Drive i file registrati in archivio (mai altri file).
 function ripristinaFileEsplora_(ids) {
   const richiesti = (Array.isArray(ids) ? ids : []).map(String).filter(function (id) { return /^[\w-]{10,}$/.test(id); }).slice(0, CESTINA_MAX);
@@ -1874,6 +1910,7 @@ function doPost(e) {
     if (req.azione === 'proprieta_file') return rispostaJson_(proprietaEsplora_(req));
     if (req.azione === 'accesso_file') return rispostaJson_(accessoEsplora_(req));
     if (req.azione === 'crea_file') return rispostaJson_(creaFileEsplora_(req));
+    if (req.azione === 'duplica_file') return rispostaJson_(duplicaFileEsplora_(req));
     if (req.azione === 'ripristina_file') return rispostaJson_(ripristinaFileEsplora_(req.ids));
     if (req.azione === 'ripristina_versione') return rispostaJson_(ripristinaVersioneEsplora_(req));
     if (req.azione === 'contenuto') {
