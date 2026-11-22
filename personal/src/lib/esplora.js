@@ -19,8 +19,22 @@ export const FUORI = 'fuori'; // un documento che non sta in nessuna cartella mi
 export const CLINICO = 'clinico_pazienti';
 export const nodoCategoria = (codice) => `categoria:${codice}`;
 export const codiceCategoria = (nodo) => (String(nodo).startsWith('categoria:') ? String(nodo).slice(10) : null);
-export const eVirtuale = (nodo) => nodo === DA_CATALOGARE || nodo === CATEGORIE || nodo === 'accesso-rapido' || !!codiceCategoria(nodo);
+// PR #337 §2: nodi del pannello di navigazione (Home, Preferiti, Recenti, Cestino) e risultati di ricerca.
+export const HOME = 'home';
+export const PREFERITI = 'preferiti';
+export const RECENTI = 'recenti';
+export const CESTINO = 'cestino';
+const SEP_CERCA = '\u0001';
+export const nodoCerca = (base, testo) => `cerca:${base}${SEP_CERCA}${testo}`;
+export const datiCerca = (nodo) => {
+  if (!String(nodo).startsWith('cerca:')) return null;
+  const [base, ...t] = String(nodo).slice(6).split(SEP_CERCA);
+  return { base: base || HOME, testo: t.join(SEP_CERCA) };
+};
+const SPECIALI = new Set([DA_CATALOGARE, CATEGORIE, 'accesso-rapido', HOME, PREFERITI, RECENTI, CESTINO]);
+export const eVirtuale = (nodo) => SPECIALI.has(nodo) || !!codiceCategoria(nodo) || !!datiCerca(nodo);
 export const NOME_RADICE = 'Personale';
+const NOMI_SPECIALI = { [HOME]: 'Home', [PREFERITI]: 'Preferiti', [RECENTI]: 'Recenti', [CESTINO]: 'Cestino' };
 
 /* ---------- disposizione ---------- */
 
@@ -48,7 +62,10 @@ export function sottocartelle(cartelle, nodo) {
 }
 
 export function padreDi(cartelle, nodo) {
-  if (nodo === RADICE || nodo === DA_CATALOGARE || nodo === CATEGORIE || nodo === 'accesso-rapido') return null;
+  if (nodo === HOME) return null;
+  if (nodo === RADICE || SPECIALI.has(nodo)) return HOME;
+  const cerca = datiCerca(nodo);
+  if (cerca) return cerca.base;
   if (codiceCategoria(nodo)) return CATEGORIE;
   const c = cartellaDi(cartelle, nodo);
   return c ? (c.padre_id || RADICE) : null;
@@ -61,6 +78,9 @@ export function nomeNodo(nodo, { cartelle = [], fascicoli = [] } = {}) {
   if (nodo === DA_CATALOGARE) return 'Da catalogare';
   if (nodo === CATEGORIE) return 'Per categoria';
   if (nodo === 'accesso-rapido') return 'Accesso rapido';
+  if (NOMI_SPECIALI[nodo]) return NOMI_SPECIALI[nodo];
+  const cerca = datiCerca(nodo);
+  if (cerca) return `Risultati per «${cerca.testo}»`;
   const f = codiceCategoria(nodo);
   if (f) return nomeCategoria(fascicoli, f);
   return cartellaDi(cartelle, nodo)?.nome || 'Cartella';
@@ -69,7 +89,9 @@ export function nomeNodo(nodo, { cartelle = [], fascicoli = [] } = {}) {
 // Dalla cima al nodo: [{id, nome}], per il percorso cliccabile.
 export function percorsoNodo(nodo, { cartelle = [], fascicoli = [] } = {}) {
   if (nodo === RADICE) return [{ id: RADICE, nome: NOME_RADICE }];
-  if (nodo === DA_CATALOGARE || nodo === CATEGORIE || nodo === 'accesso-rapido') return [{ id: nodo, nome: nomeNodo(nodo) }];
+  if (nodo === DA_CATALOGARE || nodo === CATEGORIE || nodo === 'accesso-rapido' || NOMI_SPECIALI[nodo]) return [{ id: nodo, nome: nomeNodo(nodo) }];
+  const cerca = datiCerca(nodo);
+  if (cerca) return [...(cerca.base === HOME ? [] : percorsoNodo(cerca.base, { cartelle, fascicoli })), { id: nodo, nome: nomeNodo(nodo) }];
   const f = codiceCategoria(nodo);
   if (f) return [{ id: CATEGORIE, nome: 'Per categoria' }, { id: nodo, nome: nomeCategoria(fascicoli, f) }];
   return [{ id: RADICE, nome: NOME_RADICE }, ...percorso(vive(cartelle), nodo)];
@@ -350,7 +372,7 @@ export function menuContestuale(cosa, { nodo, appunti = null, opz = {}, selezion
     sep,
     { id: 'rinomina', nome: 'Rinomina', tasto: 'F2', attiva: !piu },
     { id: 'sposta', nome: 'Sposta in…', attiva: true },
-    { id: 'preferito', nome: ePreferito(preferiti, 'doc', una.id) ? 'Togli da Accesso rapido' : 'Aggiungi ad Accesso rapido', attiva: !piu },
+    { id: 'preferito', nome: ePreferito(preferiti, 'doc', una.id) ? 'Togli dai Preferiti' : 'Aggiungi ai Preferiti', attiva: !piu },
     sep,
     { id: 'zip', nome: 'Comprimi in ZIP', attiva: true },
     { id: 'scarica', nome: 'Scarica', attiva: !piu && conFile },

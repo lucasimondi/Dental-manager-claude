@@ -18,6 +18,12 @@ const D = {
   elimina: 'M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 9h5.6l.7-9', nuova: 'M2.5 5h4l1.5 1.5h5.5v7h-11zM8 8.5v3M6.5 10h3', aggiorna: 'M12.5 8a4.5 4.5 0 1 1-1.3-3.2M12.5 3v2.5H10',
   vista: 'M3 3h4v4H3zM9 3h4v4H9zM3 9h4v4H3zM9 9h4v4H9z', 'seleziona-tutto': 'M3 3h10v10H3zM5.5 8l1.8 1.8L10.5 6.5',
   'condividi-sistema': 'M8 2v8M5 5l3-3 3 3M3 9v4h10V9',
+  ordina: 'M4.5 3v10M2.5 11l2 2 2-2M11.5 13V3M9.5 5l2-2 2 2', altro: 'M3.5 8h.01M8 8h.01M12.5 8h.01', ripristina: 'M3.5 8a4.5 4.5 0 1 0 1.3-3.2M3.5 3v2.5H6',
+  carica: 'M8 11V3M5 6l3-3 3 3M3 13h10', doc: 'M4 2h5.5L12 4.5V14H4zM6 7h4M6 9.5h4M6 12h2.5', foglio: 'M3 3h10v10H3zM3 6.5h10M3 10h10M6.5 3v10',
+  riquadro: 'M2.5 3h11v10h-11zM9.5 3v10', pannello: 'M2.5 3h11v10h-11zM6 3v10', deseleziona: 'M3 3h10v10H3z', inverti: 'M3 3h10v10H3zM3 13 13 3',
+  'scheda-nuova': 'M2.5 4.5h6v-2h5v11h-11zM8 7.5v3M6.5 9h3', 'copia-percorso': 'M5 5h8v8H5zM3 11V3h8M7 9h4', 'proprieta-cartella': 'M3 3h10v10H3zM5.5 6h5M5.5 8.5h5M5.5 11h3',
+  'mostra-cartella': 'M2.5 5h4l1.5 1.5h5.5v7h-11zM7 10h4M9.5 8.5 11 10l-1.5 1.5', 'copia-in': 'M5 5h8v8H5zM3 11V3h8M8 9h3M10 7.5 11.5 9 10 10.5',
+  estrai: 'M4 2h6l3 3v9H4zM8 7v5M6 10l2 2 2-2', 'elimina-definitivo': 'M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 9h5.6l.7-9M6.5 7l3 4M9.5 7l-3 4',
 };
 export const IcoMenu = ({ id, size = 16 }) => <svg viewBox="0 0 16 16" width={size} height={size} aria-hidden="true"><path d={D[id] || D[String(id).split(':')[0]] || D.apri} fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 

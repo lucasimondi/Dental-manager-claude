@@ -106,7 +106,7 @@ const avvia = async (browser, { width, height, nome, touch }) => {
     return route.fulfill({ json: [] });
   });
   await page.goto(`http://127.0.0.1:${PORTA}/tests/visual/personal-esplora.html`);
-  await page.locator('.esp-albero').waitFor();
+  await page.locator('.esp-contenuto').waitFor();
   await page.waitForTimeout(300);
   return { S, page, context, errors, cdp: touch ? await context.newCDPSession(page) : null, nome, width, height };
 };
@@ -117,7 +117,7 @@ const premi = async ({ cdp, page }, loc, verso = null, foto = null) => {
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [a] });
   await page.waitForTimeout(650);
   if (!verso) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await page.waitForTimeout(250); return; }
-  const b = await centro(verso);
+  const b = typeof verso.x === 'number' ? verso : await centro(verso);
   for (let i = 1; i <= 12; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: a.x + ((b.x - a.x) * i) / 12, y: a.y + ((b.y - a.y) * i) / 12 }] });
   await page.waitForTimeout(100);
   if (foto) await page.screenshot({ path: `${out}/${foto}.png` });
@@ -126,6 +126,31 @@ const premi = async ({ cdp, page }, loc, verso = null, foto = null) => {
 };
 const tessera = (page, nome) => page.locator(`.esp-contenuto [data-elemento][aria-label="${nome}"]`);
 const ramo = (page, nome) => page.locator('.esp-albero-nome', { hasText: new RegExp(`^${nome}`) }).first();
+// PR #337 §2: su mobile il pannello di navigazione è un cassetto (hamburger o swipe da sinistra).
+const vaiRamo = async (page, nome) => {
+  if (await page.locator('.esp-mobile').count() && !(await page.locator('.esp-cassetto').count())) {
+    await page.getByRole('button', { name: 'Pannello di navigazione' }).tap();
+    await page.locator('.esp-cassetto').waitFor();
+  }
+  await ramo(page, nome).tap();
+  await page.locator('.esp-cassetto').waitFor({ state: 'detached' }).catch(() => {});
+};
+// Trascinamento col dito per tappe: verso il bordo sinistro (si apre il cassetto), poi sulla cartella.
+const trascinaVia = async ({ cdp, page }, loc, tappe, foto = null) => {
+  let a = await centro(loc);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [a] });
+  await page.waitForTimeout(650);
+  for (const t of tappe) {
+    if (typeof t === 'number') { await page.waitForTimeout(t); continue; }
+    const b = typeof t.x === 'number' ? t : await centro(typeof t === 'function' ? t() : t);
+    for (let i = 1; i <= 10; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: a.x + ((b.x - a.x) * i) / 10, y: a.y + ((b.y - a.y) * i) / 10 }] });
+    a = b;
+  }
+  await page.waitForTimeout(150);
+  if (foto) await page.screenshot({ path: `${out}/${foto}.png` });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await page.waitForTimeout(400);
+};
 const dentroSchermo = async (page, sel) => page.evaluate((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return !!r && r.left >= -0.5 && r.top >= -0.5 && r.right <= innerWidth + 0.5 && r.bottom <= innerHeight + 0.5; }, sel);
 const senzaSforamento = async (page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1 && document.querySelector('.esp').scrollWidth <= document.querySelector('.esp').clientWidth + 1);
 const aspetta = async (cond, ms = 4000) => { for (let i = 0; i < ms / 50; i++) { if (await cond()) return true; await new Promise((r) => setTimeout(r, 50)); } return false; };
@@ -146,7 +171,7 @@ try {
     // tocco su cartella = apre; tocco su immagine = anteprima nella finestra Win11
     await tessera(page, 'Cartella Casa').tap();
     await tessera(page, 'Rogito casa').waitFor();
-    await ramo(page, 'Personale').tap();
+    await vaiRamo(page, 'Personale');
     await tessera(page, 'Polizza auto').tap();
     const fin = page.getByRole('dialog', { name: 'Polizza auto' });
     await fin.waitFor();
@@ -162,7 +187,7 @@ try {
     await tessera(page, 'Cartella Casa').tap();
     await tessera(page, 'Rogito casa').waitFor();
     const d0 = S.drive.length;
-    await premi(T, tessera(page, 'Rogito casa'), ramo(page, 'Auto'), 'telefono-trascina');
+    await trascinaVia(T, tessera(page, 'Rogito casa'), [{ x: 6, y: 420 }, 700, () => ramo(page, 'Auto')], 'telefono-trascina');
     await page.locator('.esp-avviso', { hasText: 'Spostato in «Auto»' }).waitFor();
     assert.deepEqual(S.drive.slice(d0).map((b) => [b.azione, b.cartella_id, b.ids]), [['sposta_documenti', 'auto', ['rogito']]]);
     assert.deepEqual(S.chiamate.at(-1), ['sposta', { p_documenti: ['rogito'], p_da: 'casa', p_a: 'auto' }]);
@@ -175,7 +200,7 @@ try {
     // Drive giù: niente cambia nell'app, avviso con «Riprova»
     S.driveGiu = true;
     const c0 = S.chiamate.length;
-    await premi(T, tessera(page, 'Rogito casa'), ramo(page, 'Auto'));
+    await trascinaVia(T, tessera(page, 'Rogito casa'), [{ x: 6, y: 420 }, 700, () => ramo(page, 'Auto')]);
     await page.locator('.esp-avviso.errore', { hasText: 'Non riuscito' }).waitFor();
     assert.equal(S.chiamate.length, c0, 'nessuna scrittura nel database se Drive non risponde');
     assert.equal(await tessera(page, 'Rogito casa').count(), 1, 'il documento resta dov’era');
@@ -207,7 +232,7 @@ try {
     assert.equal(await page.locator('.esp-barra-selezione').count(), 0, 'selezione chiusa dopo l’azione');
 
     // Visualizza (in «Personale»): Dettagli ordinabile, salvato per cartella; Elenco con righe da 48 px
-    await ramo(page, 'Personale').tap();
+    await vaiRamo(page, 'Personale');
     await tessera(page, 'Polizza auto').waitFor();
     await page.getByRole('button', { name: /^Visualizza/ }).tap();
     await sceltaMenu(page, 'Dettagli');
@@ -218,9 +243,9 @@ try {
     assert.deepEqual(await nomi(), ['Casa', 'Auto', 'Polizza auto']); // cartelle sempre prima
     assert.equal(await page.getByRole('columnheader').first().getAttribute('aria-sort'), 'descending');
     await page.screenshot({ path: `${out}/telefono-dettagli.png` });
-    await ramo(page, 'Casa').tap();
+    await vaiRamo(page, 'Casa');
     await page.locator('.esp-griglia').waitFor();
-    await ramo(page, 'Personale').tap();
+    await vaiRamo(page, 'Personale');
     await page.locator('.esp-dettagli').waitFor(); // la vista di «Personale» è rimasta Dettagli
     await page.getByRole('button', { name: /^Visualizza/ }).tap();
     await page.locator('.esp-foglio-menu').waitFor();
@@ -244,7 +269,7 @@ try {
     assert.equal(S.drive.at(-1).azione, 'cartella_drive');
 
     // rinomina un documento: prima Drive (rinomina_file), poi il titolo
-    await ramo(page, 'Casa').tap();
+    await vaiRamo(page, 'Casa');
     await tessera(page, 'Cartella Utenze').tap();
     await tessera(page, 'Contratto gas').waitFor();
     await premi(T, tessera(page, 'Contratto gas'));
@@ -262,7 +287,7 @@ try {
     await page.locator('.esp-menu-rapida[aria-label="Copia"]').waitFor(); await page.waitForTimeout(500);
     await page.locator('.esp-menu-rapida[aria-label="Copia"]').tap();
     await page.locator('.esp-barra-selezione button', { hasText: 'Fine' }).tap();
-    await ramo(page, 'Auto').tap();
+    await vaiRamo(page, 'Auto');
     await tessera(page, 'Rogito casa').waitFor();
     const nDrive = S.drive.length;
     await page.locator('.esp-avviso').waitFor({ state: 'detached', timeout: 8000 });
@@ -275,9 +300,9 @@ try {
     assert.ok(S.LINK.utenze.includes('gas'), 'resta anche in Utenze');
 
     // Da catalogare → Personale: prima Drive (radice), poi la scrivania
-    await ramo(page, 'Da catalogare').tap();
+    await vaiRamo(page, 'Da catalogare');
     await tessera(page, 'Ricevuta nuova').waitFor();
-    await premi(T, tessera(page, 'Ricevuta nuova'), ramo(page, 'Personale'));
+    await trascinaVia(T, tessera(page, 'Ricevuta nuova'), [{ x: 6, y: 420 }, 700, () => ramo(page, 'Personale')]);
     await page.locator('.esp-avviso', { hasText: 'Spostato in «Personale»' }).waitFor();
     assert.deepEqual([S.drive.at(-1).azione, S.drive.at(-1).cartella_id], ['sposta_documenti', 'radice']);
     assert.ok(S.chiamate.some((c) => c[0] === 'scrivania+' && c[1].join() === 'n1'));
@@ -300,10 +325,10 @@ try {
     await tessera(page, 'Rogito casa').waitFor();
     // Ctrl e Maiusc
     await tessera(page, 'Cartella Utenze').click();
-    await tessera(page, 'IMU 2026').click({ modifiers: ['Shift'] });
-    assert.match(await page.locator('.esp-stato').textContent(), /3 selezionati/);
-    await tessera(page, 'Rogito casa').click({ modifiers: ['Control'] });
-    assert.match(await page.locator('.esp-stato').textContent(), /2 selezionati/);
+    await tessera(page, 'Rogito casa').click({ modifiers: ['Shift'] }); // ordine per nome, cartelle prima
+    assert.match(await page.locator('.esp-stato').textContent(), /3 elementi selezionati/);
+    await tessera(page, 'IMU 2026').click({ modifiers: ['Control'] });
+    assert.match(await page.locator('.esp-stato').textContent(), /2 elementi selezionati/);
     // tasto destro su un file = menu Win11: riga rapida, scorciatoie, sottomenu dentro lo schermo
     await tessera(page, 'Rogito casa').click();
     await tessera(page, 'Rogito casa').click({ button: 'right' });
@@ -389,7 +414,7 @@ try {
     await page.locator('.esp-dettagli-riga', { hasText: 'Utenze' }).click({ button: 'right' });
     await page.waitForTimeout(500);
     await voceMenu(page, 'Aggiungi ad Accesso rapido').click();
-    await page.locator('.esp-avviso', { hasText: 'Aggiunto ad Accesso rapido' }).waitFor();
+    await page.locator('.esp-avviso', { hasText: 'Aggiunta ad Accesso rapido' }).waitFor();
     assert.deepEqual(S.PREFERITI, [{ tipo: 'cartella', id: 'utenze' }]);
     assert.ok(await page.locator('.esp-albero li[aria-expanded] ul .esp-albero-nome', { hasText: 'Utenze' }).count() >= 1);
     assert.ok(await senzaSforamento(page), 'nessuno sforamento orizzontale (desktop)');
@@ -403,8 +428,13 @@ try {
     const { page } = T;
     await tessera(page, 'Cartella Casa').waitFor();
     assert.ok(await page.locator('.esp-orizzontale').count());
-    const albero = await page.locator('.esp-albero').boundingBox();
-    assert.ok(Math.abs(albero.width - 200) < 2);
+    // PR #337 §2: su un telefono anche in orizzontale il pannello è un cassetto (hamburger)
+    assert.equal(await page.locator('.esp-albero').count(), 0);
+    await page.getByRole('button', { name: 'Pannello di navigazione' }).tap();
+    await page.locator('.esp-cassetto').waitFor(); await page.waitForTimeout(350);
+    assert.ok(await dentroSchermo(page, '.esp-cassetto'));
+    await page.locator('.esp-velo-cassetto').tap({ position: { x: 820, y: 200 } });
+    await page.locator('.esp-cassetto').waitFor({ state: 'detached' });
     await page.screenshot({ path: `${out}/orizzontale.png` });
     await premi(T, tessera(page, 'Cartella Auto'));
     await page.locator('.esp-foglio-menu').waitFor(); await page.waitForTimeout(300);

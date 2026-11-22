@@ -189,7 +189,7 @@ test('menu Win11: riga rapida, sottomenu, scorciatoie; voci non applicabili disa
   assert.equal(att('file', { clinico: true }).elimina, false);
   const m = menuContestuale('file', { selezione: [{ tipo: 'doc', id: 'd1', da: 'casa' }], ambiente: 'condividi', convertibile: true });
   assert.deepEqual(m.rapide.map((x) => x.nome), ['Taglia', 'Copia', 'Rinomina', 'Condividi', 'Elimina']);
-  assert.deepEqual(m.voci.filter((x) => !x.separatore).map((x) => x.nome), ['Apri', 'Apri con', 'Condividi', 'Taglia', 'Copia', 'Duplica in…', 'Rinomina', 'Sposta in…', 'Aggiungi ad Accesso rapido', 'Comprimi in ZIP', 'Scarica', 'Proprietà', 'Elimina']);
+  assert.deepEqual(m.voci.filter((x) => !x.separatore).map((x) => x.nome), ['Apri', 'Apri con', 'Condividi', 'Taglia', 'Copia', 'Duplica in…', 'Rinomina', 'Sposta in…', 'Aggiungi ai Preferiti', 'Comprimi in ZIP', 'Scarica', 'Proprietà', 'Elimina']);
   assert.deepEqual(m.voci.find((x) => x.id === 'apri-con').sotto.map((x) => x.nome), ['Anteprima Poliedra', 'Google Drive (visualizzatore)', 'Google Documenti / Fogli', 'Nuova scheda del browser', 'Scarica', 'Altra app… (condividi)']);
   assert.deepEqual(m.voci.find((x) => x.id === 'condividi').sotto.map((x) => x.nome), ['Condivisione di sistema', 'Copia link Drive', 'Email', 'WhatsApp', 'Gestisci accesso Drive']);
   assert.equal(m.voci.find((x) => x.id === 'rinomina').tasto, 'F2');

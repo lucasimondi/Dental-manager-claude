@@ -10,7 +10,7 @@
 // Copia / Duplica (decisione del PO): il documento compare anche nell'altra cartella, nessun file nuovo su Drive.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { aggiornaDocumento, cestinaSuDrive, eliminaDocumenti } from '../../lib/archivio.js';
+import { aggiornaDocumento, cestinaSuDrive, eliminaDocumenti, cercaDocumenti, scadenzeDelDocumento } from '../../lib/archivio.js';
 import { eliminaConDrive } from '../../lib/eliminazioneSwipe.js';
 import {
   caricaCartelleMie, creaCartella, rinominaCartella, spostaCartelle, archiviaCartelle,
@@ -24,7 +24,14 @@ import {
   paginaDaCatalogare, paginaCategoria, eseguiCompleto, documentiCartellaEsplora, documentiPerId,
   VISTE_ESPLORA, leggiViste, salvaVista, vistaDi, righeDettagli, ordinaRighe, ordinaSuColonna, dimensioneLeggibile, dataLeggibile,
   comeAprire, linkDrive, linkDocs, linkEmail, linkWhatsApp, ambienteApertura, seleziona, caricaPreferiti, salvaPreferiti, cambiaPreferito,
+  HOME, PREFERITI, RECENTI, CESTINO, nodoCerca, datiCerca,
 } from '../../lib/esplora.js';
+import {
+  nuovaScheda as creaScheda, nodoScheda, vaiInScheda, sostituisciInScheda, indietroScheda, avantiScheda, puoIndietro, puoAvanti, chiudiScheda, spostaScheda,
+  nodoDaTesto, documentiNelSottoalbero, cartelleNelSottoalbero, filtraRisultati, cartelleTrovate, nelNome, evidenzia,
+  leggiRecenti, ricordaRecente, leggiPannello, salvaPannello, larghezzaPannello, swipeApre, testoSelezione, nodoValido,
+} from '../../lib/esploraNav.js';
+import { TitoloSchede, BarraIndirizzi, CampoCerca, FiltriRicerca, BarraComandi, BarraStato, Riquadro } from './EsploraBarre.jsx';
 import { inizioDrive, fineDrive } from '../../lib/statoDrive.js';
 import { accettaFile, APP_PER_FILE } from '../../lib/barra.js';
 import { preparaFile, comeFile, condividi, scaricaDocumento } from '../../lib/condividi.js';
@@ -58,8 +65,23 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
   const [dati, setDati] = useState(null); // { cartelle, posizioni, titoli }
   const [daGestire, setDaGestire] = useState(new Map());
   const [nDaCatalogare, setNDaCatalogare] = useState(0);
-  const [nodo, setNodo] = useState(iniziale);
+  // PR #337 §2: schede, ognuna con la sua cronologia (Indietro / Avanti).
+  const [tabs, setTabs] = useState(() => { const t = creaScheda(iniziale); return { schede: [t], attiva: t.id }; });
+  const scheda = tabs.schede.find((t) => t.id === tabs.attiva) || tabs.schede[0];
+  const nodo = nodoScheda(scheda);
+  const cambiaScheda = (f) => setTabs((t) => ({ ...t, schede: t.schede.map((x) => (x.id === t.attiva ? f(x) : x)) }));
+  const setNodo = (n) => cambiaScheda((x) => sostituisciInScheda(x, n));
   const [aperti, setAperti] = useState(() => new Set([RADICE, ACCESSO_RAPIDO])); // come in Windows: Accesso rapido aperto
+  const [pannello, setPannello] = useState(() => leggiPannello());
+  const [cassetto, setCassetto] = useState(false); // pannello di navigazione su mobile
+  const [riquadro, setRiquadro] = useState(null); // null | 'anteprima' | 'dettagli'
+  const [scadenzeSel, setScadenzeSel] = useState(null);
+  const [recenti, setRecenti] = useState(() => leggiRecenti());
+  const [cestino, setCestino] = useState({ cartelle: [] });
+  const [testoCerca, setTestoCerca] = useState('');
+  const [filtri, setFiltri] = useState({ tipo: '', data: '', categoria: '' });
+  const campoCerca = useRef(null);
+  const timerCerca = useRef(null);
   const [cache, setCache] = useState(() => new Map()); // id documento → documento
   const [lista, setLista] = useState(null); // cartelle virtuali: { nodo, documenti, prossimo, finito }
   const [caricando, setCaricando] = useState(false);
@@ -92,6 +114,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
 
   const disp = disposizione(schermo.l, schermo.a);
   const mobile = tocco() || schermo.l < 600;
+  const basso = schermo.a < 520; // telefono in orizzontale: barre compatte
   const colonne = colonneGriglia(disp);
   const cartelle = dati?.cartelle || [];
   const posizioni = dati?.posizioni || [];
@@ -148,9 +171,17 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
         } else if (codiceCategoria(nodo)) {
           const r = await paginaCategoria(archivioDb, codiceCategoria(nodo));
           if (vivo) { metti(r.documenti); setLista({ nodo, documenti: r.documenti.map((d) => d.id), prossimo: r.prossimo, finito: r.finito }); }
-        } else if (nodo === ACCESSO_RAPIDO) {
-          const docs = await documentiPerId(archivioDb, preferiti.filter((p) => p.tipo === 'doc').map((p) => p.id));
+        } else if (nodo === ACCESSO_RAPIDO || nodo === PREFERITI || nodo === RECENTI || nodo === HOME) {
+          const ids = [...(nodo === RECENTI || nodo === HOME ? recenti.map((r) => r.id) : []), ...(nodo !== RECENTI ? preferiti.filter((p) => p.tipo === 'doc').map((p) => p.id) : [])];
+          const docs = ids.length ? await documentiPerId(archivioDb, [...new Set(ids)]) : [];
           if (vivo) metti(docs);
+        } else if (nodo === CESTINO) {
+          const tutte = await caricaCartelleMie(archivioDb, { ancheArchiviate: true });
+          if (vivo) setCestino({ cartelle: tutte.filter((c) => c.archiviata_il) });
+        } else if (datiCerca(nodo)) {
+          const { testo } = datiCerca(nodo);
+          const trovati = (await cercaDocumenti(archivioDb, testo, null, 200)) || [];
+          if (vivo) { metti(trovati); setLista({ nodo, documenti: trovati.map((d) => d.id), finito: true }); }
         } else if (nodo !== CATEGORIE) {
           const docs = await documentiCartellaEsplora(archivioDb, nodo);
           if (vivo) metti(docs);
@@ -158,7 +189,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
       } catch (e) { if (vivo) mostraAvviso(`Non riesco ad aprire la cartella: ${e.message}`, { tipo: 'errore', azione: { nome: 'Riprova', fai: () => setRinfresca((n) => n + 1) } }); }
     })();
     return () => { vivo = false; };
-  }, [nodo, !!dati, rinfresca, nodo === ACCESSO_RAPIDO ? preferiti : null]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [nodo, !!dati, rinfresca, [ACCESSO_RAPIDO, PREFERITI, HOME].includes(nodo) ? preferiti : null, nodo === RECENTI || nodo === HOME ? recenti : null]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const altri = async () => {
     if (!lista || lista.finito) return;
@@ -169,16 +200,40 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     setLista((l) => ({ ...l, documenti: [...l.documenti, ...r.documenti.map((d) => d.id).filter((id) => !l.documenti.includes(id))], prossimo: r.prossimo, finito: r.finito }));
   };
 
+  const pulisci = () => { setMenu(null); setNuova(null); setRinomina(null); setScelti(new Set()); setModoSelezione(false); setCassetto(false); };
   const vai = (n) => {
-    setMenu(null); setNuova(null); setRinomina(null); setScelti(new Set()); setModoSelezione(false);
-    setNodo(n);
+    pulisci();
+    cambiaScheda((x) => vaiInScheda(x, n));
+    if (!datiCerca(n)) setTestoCerca('');
     setAperti((a) => new Set([...a, ...antenati(n, nomi)]));
     contenutoRef.current?.scrollTo?.(0, 0);
   };
   useEffect(() => {
-    if (!dati || nodo === RADICE || eVirtuale(nodo)) return;
-    if (!cartelle.some((c) => c.id === nodo && !c.archiviata_il)) setNodo(RADICE);
-  }, [dati, cartelle, nodo]);
+    if (!dati || nodoValido(nodo, cartelle)) return;
+    setNodo(RADICE);
+  }, [dati, cartelle, nodo]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ---------- schede e cronologia ---------- */
+  const vaiStoria = (f) => { pulisci(); cambiaScheda(f); };
+  const apriScheda = (n = HOME) => { pulisci(); const t = creaScheda(n); setTabs((x) => ({ schede: [...x.schede, t], attiva: t.id })); };
+  const scegliScheda = (id) => { if (id === tabs.attiva) return; pulisci(); setTabs((x) => ({ ...x, attiva: id })); };
+  const chiudiLaScheda = (id) => { pulisci(); setTabs((x) => chiudiScheda(x.schede, x.attiva, id)); };
+  useEffect(() => { const d = datiCerca(nodo); setTestoCerca(d ? d.testo : ''); }, [tabs.attiva]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ---------- ricerca: nella cartella corrente e nelle sottocartelle, per nome e contenuto ---------- */
+  const baseRicerca = datiCerca(nodo)?.base ?? (nodo === CATEGORIE || codiceCategoria(nodo) || nodo === CESTINO ? HOME : nodo);
+  const cerca = (testo, { subito = true } = {}) => {
+    clearTimeout(timerCerca.current);
+    const t = String(testo || '').trim();
+    const fai2 = () => {
+      if (!t) { if (datiCerca(nodo)) vaiStoria((x) => sostituisciInScheda(x, baseRicerca)); return; }
+      setFiltri({ tipo: '', data: '', categoria: '' });
+      const n = nodoCerca(baseRicerca, t);
+      if (datiCerca(nodo)) vaiStoria((x) => sostituisciInScheda(x, n)); else vai(n);
+    };
+    if (subito) fai2(); else timerCerca.current = setTimeout(fai2, 450);
+  };
+  useEffect(() => () => clearTimeout(timerCerca.current), []);
 
   /* ---------- operazioni: Drive prima, interfaccia solo a successo ---------- */
   const fai = useCallback(async (op, messaggio, { annullabile = true } = {}) => {
@@ -276,33 +331,51 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     if (nodo === DA_CATALOGARE) { const dentro = catalogati(posizioni); ids = (lista?.nodo === nodo ? lista.documenti : []).filter((id) => !dentro.has(id)); }
     else if (codiceCategoria(nodo)) ids = lista?.nodo === nodo ? lista.documenti : [];
     else if (nodo === CATEGORIE) ids = [];
-    else if (nodo === ACCESSO_RAPIDO) ids = preferiti.filter((p) => p.tipo === 'doc').map((p) => p.id);
+    else if (nodo === ACCESSO_RAPIDO) ids = [];
+    else if (nodo === PREFERITI) ids = preferiti.filter((p) => p.tipo === 'doc').map((p) => p.id);
+    else if (nodo === RECENTI || nodo === HOME) ids = recenti.map((r) => r.id);
+    else if (nodo === CESTINO) ids = [];
+    else if (datiCerca(nodo)) ids = lista?.nodo === nodo ? lista.documenti : [];
     else ids = documentiNelNodo(posizioni, nodo);
-    return ids.filter((id) => cache.has(id) && !nascosti.has(id)).map((id) => cache.get(id));
+    const docs = ids.filter((id) => cache.has(id) && !nascosti.has(id)).map((id) => cache.get(id));
+    if (datiCerca(nodo)) return filtraRisultati(docs, { ...filtri, dentro: documentiNelSottoalbero(datiCerca(nodo).base, opz) });
+    return docs;
   })();
+  const preferitiMostrati = nodo === HOME ? preferiti.filter((p) => p.tipo === 'doc').map((p) => cache.get(p.id)).filter((d) => d && !nascosti.has(d.id)) : [];
+  const fissate = () => {
+    const l = preferiti.filter((p) => p.tipo === 'cartella').map((p) => (p.id === RADICE ? { id: RADICE, nome: 'Personale', collegamento: true } : cartelle.find((c) => c.id === p.id && !c.archiviata_il) && { ...cartelle.find((c) => c.id === p.id), collegamento: true })).filter(Boolean);
+    return l;
+  };
   const cartelleMostrate = nodo === CATEGORIE
     ? categorieVisibili(fascicoli).map((f) => ({ id: nodoCategoria(f.codice), nome: f.nome, virtuale: true }))
-    : nodo === ACCESSO_RAPIDO ? preferiti.filter((p) => p.tipo === 'cartella').map((p) => (p.id === RADICE ? { id: RADICE, nome: 'Personale', collegamento: true } : cartelle.find((c) => c.id === p.id && !c.archiviata_il) && { ...cartelle.find((c) => c.id === p.id), collegamento: true })).filter(Boolean)
-      : eVirtuale(nodo) ? [] : sottocartelle(cartelle, nodo);
+    : nodo === ACCESSO_RAPIDO ? fissate()
+      : nodo === HOME ? (fissate().length ? fissate() : [{ id: RADICE, nome: 'Personale', collegamento: true }, ...sottocartelle(cartelle, RADICE).slice(0, 7).map((c) => ({ ...c, collegamento: true }))])
+        : nodo === CESTINO ? cestino.cartelle.map((c) => ({ ...c, nelCestino: true, virtuale: true }))
+          : datiCerca(nodo) ? cartelleTrovate(cartelleNelSottoalbero(datiCerca(nodo).base, cartelle), datiCerca(nodo).testo)
+            : eVirtuale(nodo) ? [] : sottocartelle(cartelle, nodo);
   const righe = useMemo(() => ordinaRighe(righeDettagli(cartelleMostrate, docMostrati, dati?.titoli || {}), ordine), [cartelleMostrate, docMostrati, dati, ordine]); // eslint-disable-line react-hooks/exhaustive-deps
-  const elementi = vista === 'dettagli' ? righe.map((r) => chiaveDi(r.cosa, r.id)) : [...cartelleMostrate.map((c) => chiaveDi('cartella', c.id)), ...docMostrati.map((d) => chiaveDi('doc', d.id))];
-  const nElementi = nodo === DA_CATALOGARE ? nDaCatalogare : cartelleMostrate.length + docMostrati.length;
+  const elementi = nodo === HOME
+    ? [...cartelleMostrate.map((c) => chiaveDi('cartella', c.id)), ...preferitiMostrati.map((d) => chiaveDi('doc', d.id)), ...docMostrati.map((d) => chiaveDi('doc', d.id))]
+    : righe.map((r) => chiaveDi(r.cosa, r.id));
+  const nElementi = nodo === DA_CATALOGARE ? nDaCatalogare : cartelleMostrate.length + docMostrati.length + preferitiMostrati.length;
   const nDaGestireQui = nodo === DA_CATALOGARE ? [...daGestire.keys()].filter((id) => !catalogati(posizioni).has(id)).length : (pallini.get(nodo) || 0);
 
   // Sorgente per menu, trascinamento e azioni: { tipo, id, da, clinico }.
   const sorgenteDi = (k) => {
     const [tipo, ...r] = k.split(':'); const id = r.join(':');
     if (tipo === 'cartella') return { tipo, id, da: padreDi(cartelle, id) };
-    return { tipo: 'doc', id, da: nodo === ACCESSO_RAPIDO ? (documentiNelNodo(posizioni, RADICE).includes(id) ? RADICE : posizioni.find((p) => p.doc === id)?.nodo || DA_CATALOGARE) : nodo, clinico: cache.get(id)?.fascicolo === CLINICO };
+    const altrove = [ACCESSO_RAPIDO, HOME, PREFERITI, RECENTI].includes(nodo) || !!datiCerca(nodo);
+    return { tipo: 'doc', id, da: altrove ? (documentiNelNodo(posizioni, RADICE).includes(id) ? RADICE : posizioni.find((p) => p.doc === id)?.nodo || DA_CATALOGARE) : nodo, clinico: cache.get(id)?.fascicolo === CLINICO };
   };
   const sorgentiPer = (k) => (scelti.has(k) && scelti.size > 1 ? [...scelti].map(sorgenteDi) : [sorgenteDi(k)]);
 
   /* ---------- apertura ---------- */
   const apriElemento = (k) => {
     const s = sorgenteDi(k);
-    if (s.tipo === 'cartella') { vai(s.id); return; }
+    if (s.tipo === 'cartella') { if (nodo !== CESTINO) vai(s.id); return; }
     const d = cache.get(s.id);
     if (!d) return;
+    setRecenti(ricordaRecente(d.id));
     const come = comeAprire(d);
     if (come.modo === 'anteprima') setFinestra({ doc: d, tipo: come.tipo, stato: 'normale' });
     else if (come.modo === 'link') window.open(come.url, '_blank', 'noopener');
@@ -384,6 +457,14 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     return () => { el?.classList.remove('pb-sopra'); };
   }, [!!presa, sopra]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => document.body.classList.remove('pb-trascina'), []);
+  // Mobile: trascinando verso il bordo sinistro si apre il pannello di navigazione (le cartelle diventano bersagli).
+  const vicinoBordo = !!presa && mobile && presa.x <= 24;
+  useEffect(() => {
+    if (!vicinoBordo || cassetto) return undefined;
+    const t = setTimeout(() => setCassetto(true), 450);
+    return () => clearTimeout(t);
+  }, [vicinoBordo, cassetto]);
+  useEffect(() => { if (!presa && mobile) setCassetto(false); }, [!!presa]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Gestori comuni di un elemento (albero, griglia, elenco, dettagli).
   const gestoriElemento = (k, { trascinabile = true, soloApri = false } = {}) => {
@@ -411,6 +492,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
         selezionaClic(k, e);
       },
       onDoubleClick: () => { if (Date.now() - ultimoTocco.current > 800) apriElemento(k); },
+      onAuxClick: (e) => { if (e.button === 1 && s.tipo === 'cartella' && nodo !== CESTINO) { e.preventDefault(); apriScheda(s.id); } },
       onContextMenu: (e) => {
         e.preventDefault(); e.stopPropagation();
         if (Date.now() - ultimoTocco.current < 1500) return; // sul tocco ci pensa la pressione prolungata
@@ -451,7 +533,34 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
   };
   const strutturaMenu = () => {
     if (!menu) return null;
-    if (menu.cosa === 'visualizza') return { rapide: [], voci: VISTE_ESPLORA.map(([k, n]) => ({ id: `vista:${k}`, nome: `${vista === k ? '✓ ' : ''}${n}`, attiva: true })) };
+    const segno = (si, nome) => `${si ? '✓ ' : ''}${nome}`;
+    const sep = { separatore: true };
+    if (menu.cosa === 'visualizza') return { rapide: [], voci: [
+      ...VISTE_ESPLORA.map(([k, n]) => ({ id: `vista:${k}`, nome: segno(vista === k, n), attiva: true })),
+      sep,
+      { id: 'riquadro:anteprima', nome: segno(riquadro === 'anteprima', 'Riquadro di anteprima'), tasto: 'Alt+P', attiva: true },
+      { id: 'riquadro:dettagli', nome: segno(riquadro === 'dettagli', 'Riquadro dei dettagli'), tasto: 'Alt+Maiusc+P', attiva: true },
+      { id: 'pannello', nome: segno(mobile ? cassetto : !pannello.chiuso, 'Pannello di navigazione'), attiva: true },
+    ] };
+    if (menu.cosa === 'ordina') return { rapide: [], voci: [
+      ...[['nome', 'Nome'], ['data', 'Data modifica'], ['tipo', 'Tipo'], ['dimensione', 'Dimensione'], ['categoria', 'Categoria']].map(([k, n]) => ({ id: `ordina:${k}`, nome: segno(ordine.chiave === k, n), attiva: true })),
+      sep,
+      { id: 'verso:su', nome: segno(ordine.verso === 'su', 'Crescente'), attiva: true },
+      { id: 'verso:giu', nome: segno(ordine.verso === 'giu', 'Decrescente'), attiva: true },
+    ] };
+    if (menu.cosa === 'nuovo') return { rapide: [], voci: [
+      { id: 'nuova', nome: 'Cartella', tasto: 'Ctrl+Maiusc+N', attiva: !eVirtuale(nodo) },
+    ] };
+    if (menu.cosa === 'altro') return { rapide: [], voci: [
+      { id: 'seleziona-tutto', nome: 'Seleziona tutto', tasto: 'Ctrl+A', attiva: true },
+      { id: 'deseleziona', nome: 'Deseleziona tutto', attiva: scelti.size > 0 },
+      { id: 'inverti', nome: 'Inverti selezione', attiva: true },
+      sep,
+      { id: 'scheda-nuova', nome: 'Apri in una nuova scheda', tasto: 'Ctrl+T', attiva: true },
+      { id: 'copia-percorso', nome: 'Copia percorso', attiva: true },
+      { id: 'proprieta-cartella', nome: 'Proprietà della cartella', attiva: !eVirtuale(nodo) && nodo !== RADICE },
+    ] };
+    if (nodo === CESTINO && menu.cosa === 'cartella') return { rapide: [], voci: [{ id: 'ripristina', nome: 'Ripristina', attiva: true }] };
     const una = menu.sorgenti[0];
     const d = una?.tipo === 'doc' ? cache.get(una.id) : null;
     return menuContestuale(menu.cosa, {
@@ -466,6 +575,17 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     const nomeDi = (s) => (s.tipo === 'cartella' ? nomeNodo(s.id, nomi) : titoloDi(s.id));
     const nomeSel = sorgenti.length === 1 ? nomeDi(una) : `${sorgenti.length} elementi`;
     switch (id) {
+      case 'ripristina': fai({ tipo: 'ripristina', ids: sorgenti.map((x) => x.id) }, sorgenti.length === 1 ? 'Cartella ripristinata' : `${sorgenti.length} cartelle ripristinate`).then(() => setRinfresca((n) => n + 1)); break;
+      case 'deseleziona': setScelti(new Set()); break;
+      case 'inverti': setScelti(new Set(elementi.filter((k) => !scelti.has(k)))); break;
+      case 'scheda-nuova': apriScheda(una?.tipo === 'cartella' ? una.id : nodo); break;
+      case 'copia-percorso': {
+        const t = (una?.tipo === 'doc' ? [...percorsoNodo(una.da, nomi).map((p) => p.nome), titoloDi(una.id)] : percorsoNodo(una?.id || nodo, nomi).map((p) => p.nome)).join(' › ');
+        navigator.clipboard?.writeText(t).then(() => mostraAvviso(`Percorso copiato: ${t}`), () => mostraAvviso(t, { durata: 8000 }));
+        break;
+      }
+      case 'proprieta-cartella': setFoglio({ tipo: 'proprieta', sorgente: { tipo: 'cartella', id: nodo } }); break;
+      case 'pannello': if (mobile) setCassetto((c) => !c); else setPannello((p) => salvaPannello({ ...p, chiuso: !p.chiuso })); break;
       case 'nuova': iniziaNuova(una && una.tipo === 'cartella' ? una.id : nodo); break;
       case 'incolla': { const op = incolla(appunti, nodo, opz); if (op) { const tagliati = appunti.modo !== 'copia'; if (tagliati) setAppunti(null); if (op.tipo === 'aggiungi') fai(op, `Incollato in «${nomeNodo(nodo, nomi)}»`); else fai(op, `Spostato in «${nomeNodo(nodo, nomi)}»`); } break; }
       case 'incolla-qui': { const op = incolla(appunti, una.id, opz); if (op) { if (appunti.modo !== 'copia') setAppunti(null); fai(op, `Incollato in «${nomeNodo(una.id, nomi)}»`); } break; }
@@ -477,7 +597,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
       case 'duplica': setFoglio({ tipo: 'duplica', sorgenti }); break;
       case 'sposta': setFoglio({ tipo: 'sposta', sorgenti }); break;
       case 'rinomina': if (una.tipo === 'cartella') { setAperti((a) => new Set([...a, ...antenati(una.id, nomi)])); setRinomina({ cosa: 'cartella', id: una.id, nome: nomeNodo(una.id, nomi) }); } else setRinomina({ cosa: 'doc', id: una.id, nome: titoloDi(una.id) }); break;
-      case 'preferito': { const nuovi = cambiaPreferito(preferiti, una.tipo === 'cartella' ? 'cartella' : 'doc', una.id); setPreferiti(nuovi); salvaPreferiti(archivioDb, nuovi).then(() => mostraAvviso(nuovi.length > preferiti.length ? 'Aggiunto ad Accesso rapido' : 'Tolto da Accesso rapido')).catch((e) => { setPreferiti(preferiti); mostraAvviso(`Non salvato: ${e.message}`, { tipo: 'errore' }); }); break; }
+      case 'preferito': { const nuovi = cambiaPreferito(preferiti, una.tipo === 'cartella' ? 'cartella' : 'doc', una.id); setPreferiti(nuovi); salvaPreferiti(archivioDb, nuovi).then(() => mostraAvviso(una.tipo === 'cartella' ? (nuovi.length > preferiti.length ? 'Aggiunta ad Accesso rapido' : 'Tolta da Accesso rapido') : (nuovi.length > preferiti.length ? 'Aggiunto ai Preferiti' : 'Tolto dai Preferiti'))).catch((e) => { setPreferiti(preferiti); mostraAvviso(`Non salvato: ${e.message}`, { tipo: 'errore' }); }); break; }
       case 'zip': setStatoZip(null); setFoglio({ tipo: 'zip', cartelleScelte: sorgenti.filter((s) => s.tipo === 'cartella').map((s) => s.id), documentiScelti: sorgenti.filter((s) => s.tipo === 'doc').map((s) => cache.get(s.id)).filter(Boolean), nome: nomeSel }); break;
       case 'scarica': case 'con:scarica': if (d) scarica(d); break;
       case 'proprieta': setFoglio({ tipo: 'proprieta', sorgente: una }); break;
@@ -494,25 +614,46 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
       case 'cond:accesso': if (d) setFoglio({ tipo: 'accesso', doc: d }); break;
       default:
         if (id.startsWith('vista:')) { const v = id.slice(6); setViste(salvaVista(nodo, v)); }
+        else if (id.startsWith('riquadro:')) { const r = id.slice(9); setRiquadro((x) => (x === r ? null : r)); }
+        else if (id.startsWith('ordina:')) setOrdine((o) => ({ ...o, chiave: id.slice(7) }));
+        else if (id.startsWith('verso:')) setOrdine((o) => ({ ...o, verso: id.slice(6) }));
     }
   };
   const sceltaMenu = (id) => { const m = menu; setMenu(null); if (m) azione(id, m.sorgenti); };
+
+  // Riquadro destro: scadenze collegate al file selezionato.
+  const docRiquadro = riquadro && scelti.size ? (() => { const k = ancora && scelti.has(ancora) ? ancora : [...scelti][0]; return k?.startsWith('doc:') ? k.slice(4) : null; })() : null;
+  useEffect(() => {
+    if (!docRiquadro) { setScadenzeSel(null); return undefined; }
+    let vivo = true;
+    setScadenzeSel(null);
+    scadenzeDelDocumento(archivioDb, docRiquadro).then((l) => vivo && setScadenzeSel(l || [])).catch(() => vivo && setScadenzeSel([]));
+    return () => { vivo = false; };
+  }, [docRiquadro]);
 
   /* ---------- tastiera (desktop) ---------- */
   useEffect(() => {
     const tasto = (e) => {
       if (menu || foglio || finestra?.stato === 'normale' || finestra?.stato === 'ingrandita') return;
-      if (e.target.closest?.('input, textarea, select, [contenteditable="true"]')) return;
-      const sel = [...scelti].map(sorgenteDi);
       const ctrl = e.ctrlKey || e.metaKey;
       const k = e.key.toLowerCase();
+      // Navigazione e finestra (valgono anche fuori dagli elementi).
+      if (ctrl && (k === 'f' || k === 'e')) { e.preventDefault(); campoCerca.current?.focus(); campoCerca.current?.select(); return; }
+      if (e.target.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+      if (ctrl && k === 't') { e.preventDefault(); apriScheda(HOME); return; }
+      if (ctrl && k === 'w') { e.preventDefault(); chiudiLaScheda(tabs.attiva); return; }
+      if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); vaiStoria(indietroScheda); return; }
+      if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); vaiStoria(avantiScheda); return; }
+      if (e.altKey && k === 'p') { e.preventDefault(); const r = e.shiftKey ? 'dettagli' : 'anteprima'; setRiquadro((x) => (x === r ? null : r)); return; }
+      const sel = [...scelti].map(sorgenteDi);
       if (ctrl && k === 'z') { if (annullaRef.current && Date.now() < annullaRef.current.fino) { e.preventDefault(); annullaRef.current.fai(); } return; }
       if (ctrl && k === 'a') { e.preventDefault(); tuttoSelezionato(); return; }
       if (ctrl && e.shiftKey && k === 'n') { e.preventDefault(); if (!eVirtuale(nodo)) iniziaNuova(nodo); return; }
       if (ctrl && k === 'v') { if (appunti) { e.preventDefault(); azione('incolla', []); } return; }
       if (e.key === 'F5') { e.preventDefault(); setRinfresca((n) => n + 1); return; }
       if (e.key === 'Escape') { setScelti(new Set()); setModoSelezione(false); return; }
-      if ((e.key === 'Backspace' || (e.altKey && e.key === 'ArrowUp')) && padreDi(cartelle, nodo)) { e.preventDefault(); vai(padreDi(cartelle, nodo)); return; }
+      if (e.altKey && e.key === 'ArrowUp') { e.preventDefault(); if (padreDi(cartelle, nodo)) vai(padreDi(cartelle, nodo)); return; }
+      if (e.key === 'Backspace' && padreDi(cartelle, nodo)) { e.preventDefault(); vai(padreDi(cartelle, nodo)); return; }
       if (!sel.length) return;
       const una = sel[0];
       const tutteMie = sel.every((s) => s.tipo === 'doc' || (s.id !== RADICE && !eVirtuale(s.id)));
@@ -563,13 +704,20 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
   };
   const ramo = (padre, livello) => sottocartelle(cartelle, padre).map((c) => rigaAlbero({ id: c.id, nome: c.nome, livello, figli: sottocartelle(cartelle, c.id).length ? ramo(c.id, livello + 1) : null, trascinabile: true, bersaglio: true }));
   const prefCartelle = preferiti.filter((p) => p.tipo === 'cartella');
+  const IcoNav = ({ d, colore = 'currentColor' }) => <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path d={d} fill="none" stroke={colore} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>;
   const albero = (
-    <ul className="esp-albero-lista" role="tree" aria-label="Cartelle">
+    <ul className="esp-albero-lista" role="tree" aria-label="Pannello di navigazione">
+      {rigaAlbero({ id: HOME, nome: 'Home', livello: 0, figli: null, icona: <IcoNav d="M2.5 7.5 8 3l5.5 4.5M4 6.5V13h3V9.5h2V13h3V6.5" colore="#0F6CBD" /> })}
       {rigaAlbero({ id: ACCESSO_RAPIDO, nome: 'Accesso rapido', livello: 0, icona: <IcoStella />,
         figli: prefCartelle.length ? prefCartelle.map((p) => rigaAlbero({ id: `${p.id}`, nome: p.id === RADICE ? 'Personale' : nomeNodo(p.id, nomi), livello: 1, figli: null, bersaglio: p.id === RADICE || !!cartelle.find((c) => c.id === p.id) })).filter(Boolean) : null })}
+      {rigaAlbero({ id: PREFERITI, nome: 'Preferiti', livello: 0, figli: null, icona: <IcoNav d="M8 13.5S2.5 10.3 2.5 6.4A2.9 2.9 0 0 1 8 5a2.9 2.9 0 0 1 5.5 1.4C13.5 10.3 8 13.5 8 13.5Z" colore="#C42B1C" /> })}
+      {rigaAlbero({ id: RECENTI, nome: 'Recenti', livello: 0, figli: null, icona: <IcoNav d="M8 2.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11ZM8 5v3.2l2.2 1.4" colore="#0F6CBD" /> })}
+      <li role="none" className="esp-albero-sep" aria-hidden="true" />
       {rigaAlbero({ id: RADICE, nome: 'Personale', livello: 0, figli: sottocartelle(cartelle, RADICE).length ? ramo(RADICE, 1) : null, bersaglio: true })}
       {rigaAlbero({ id: DA_CATALOGARE, nome: 'Da catalogare', livello: 0, figli: null })}
       {rigaAlbero({ id: CATEGORIE, nome: 'Per categoria', livello: 0, figli: categorieVisibili(fascicoli).map((f) => rigaAlbero({ id: nodoCategoria(f.codice), nome: f.nome, livello: 1, figli: null })) })}
+      <li role="none" className="esp-albero-sep" aria-hidden="true" />
+      {rigaAlbero({ id: CESTINO, nome: 'Cestino', livello: 0, figli: null, icona: <IcoNav d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 9h5.6l.7-9" /> })}
     </ul>
   );
 
@@ -586,6 +734,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     return {
       k, id, cartella, chiave,
       nome: cartella ? voce.nome : titoloDi(id),
+      etichetta: segnaRicerca(cartella ? voce.nome : titoloDi(id)),
       n: cartella ? pallini.get(id) : (daGestire.has(id) ? 1 : 0),
       scelto: scelti.has(k),
       inRinomina: !!rinomina && rinomina.id === id && rinomina.cosa === (cartella ? 'cartella' : 'doc'),
@@ -593,6 +742,13 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
       g: gestoriElemento(k, { trascinabile: !voce.virtuale && !voce.collegamento }),
     };
   };
+  // Nei risultati di ricerca le parole trovate sono evidenziate.
+  const testoTrovato = datiCerca(nodo)?.testo;
+  function segnaRicerca(nome) {
+    if (!testoTrovato) return nome;
+    return evidenzia(nome, testoTrovato).map((p, i) => (p.m ? <mark key={i} className="esp-trovato">{p.t}</mark> : <span key={i}>{p.t}</span>));
+  }
+  const doveSta = (d) => { const x = sorgenteDi(chiaveDi('doc', d.id)); return nomeNodo(x.da, nomi); };
   const casella = (st) => (modoSelezione ? <span className={`esp-casella${st.scelto ? ' attiva' : ''}`} aria-hidden="true">{st.scelto ? '✓' : ''}</span> : null);
   const iconaDi = (cosa, voce, size) => (cosa === 'cartella' ? <IconaCartellaW11 size={size} /> : <IconaFileW11 tipo={tipoFile(voce)} size={Math.round(size * 0.93)} />);
   const tessera = (cosa, voce, grande) => {
@@ -605,7 +761,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
             {iconaDi(cosa, voce, grande ? 56 : 36)}
             {st.cartella ? <Pallino n={st.n} /> : (st.n ? <span className="esp-pallino esp-pallino-punto" aria-label="Da gestire">!</span> : null)}
           </span>
-          {!st.inRinomina && <span className="esp-tessera-nome">{st.nome}</span>}
+          {!st.inRinomina && <span className="esp-tessera-nome">{st.etichetta}</span>}
         </button>
         {st.inRinomina && campoRinomina()}
       </div>
@@ -613,13 +769,15 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
   };
   const rigaElenco = (cosa, voce) => {
     const st = statoElemento(cosa, voce);
-    const sotto = cosa === 'cartella' ? (voce.virtuale ? 'Categoria' : 'Cartella') : [dataLeggibile(voce.creato_il).slice(0, 10), dimensioneLeggibile(voce.dimensione_byte)].filter(Boolean).join(' · ');
+    const sotto = cosa === 'cartella' ? (voce.nelCestino ? 'Cartella eliminata' : voce.virtuale ? 'Categoria' : 'Cartella')
+      : testoTrovato ? [nelNome(titoloDi(voce.id), testoTrovato) ? null : 'Trovato nel contenuto', `in ${doveSta(voce)}`].filter(Boolean).join(' · ')
+        : [dataLeggibile(voce.creato_il).slice(0, 10), dimensioneLeggibile(voce.dimensione_byte)].filter(Boolean).join(' · ');
     return (
       <div key={st.k} className={`esp-riga${st.classi}`} role="listitem">
         <button type="button" className="esp-riga-bottone" data-elemento data-bersaglio={st.chiave} aria-label={st.cartella ? `Cartella ${st.nome}` : st.nome} aria-pressed={st.scelto} {...st.g}>
           {casella(st)}
           <span className="esp-riga-icona">{iconaDi(cosa, voce, 24)}</span>
-          {st.inRinomina ? <span className="esp-riga-testo" /> : <span className="esp-riga-testo"><strong>{st.nome}</strong><small>{sotto}</small></span>}
+          {st.inRinomina ? <span className="esp-riga-testo" /> : <span className="esp-riga-testo"><strong>{st.etichetta}</strong><small>{sotto}</small></span>}
           {st.cartella ? <Pallino n={st.n} piccolo /> : (st.n ? <span className="esp-pallino piccolo">!</span> : null)}
         </button>
         {st.inRinomina && campoRinomina()}
@@ -650,7 +808,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
           const st = statoElemento(r.cosa, r.voce);
           return (
             <div key={st.k} role="row" className={`esp-dettagli-riga${st.classi}`} data-elemento data-bersaglio={st.chiave} tabIndex={0} aria-selected={st.scelto} aria-label={st.cartella ? `Cartella ${st.nome}` : st.nome} {...st.g}>
-              <div role="cell" className="esp-dettagli-nome">{casella(st)}<span className="esp-riga-icona">{iconaDi(r.cosa, r.voce, 20)}</span>{st.inRinomina ? campoRinomina() : <span className="esp-dettagli-testo">{st.nome}</span>}{st.cartella ? <Pallino n={st.n} piccolo /> : null}</div>
+              <div role="cell" className="esp-dettagli-nome">{casella(st)}<span className="esp-riga-icona">{iconaDi(r.cosa, r.voce, 20)}</span>{st.inRinomina ? campoRinomina() : <span className="esp-dettagli-testo">{st.etichetta}</span>}{st.cartella ? <Pallino n={st.n} piccolo /> : null}</div>
               {!mobile && <div role="cell">{dataLeggibile(r.data)}</div>}
               {!mobile && <div role="cell">{r.tipo}</div>}
               <div role="cell" className="esp-num">{dimensioneLeggibile(r.dimensione)}</div>
@@ -666,51 +824,114 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
   const briciole = percorsoNodo(nodo, nomi);
   const su = padreDi(cartelle, nodo);
   const puoNuova = !eVirtuale(nodo);
-  const tracciaSopra = presa ? (presa.bersaglio?.tipo === 'app' ? APP_PER_FILE[presa.bersaglio.id] : presa.bersaglio ? `Sposta in «${nomeNodo(destDi(presa.bersaglio), nomi)}»` : (presa.sorgente.tipo === 'cartella' ? nomeNodo(presa.sorgente.id, nomi) : titoloDi(presa.sorgente.id))) : null;
+  const tracciaSopra = presa ? (presa.bersaglio?.tipo === 'app' ? APP_PER_FILE[presa.bersaglio.id] : presa.bersaglio?.tipo === 'scheda' ? 'Apri la scheda' : presa.bersaglio ? `Sposta in «${nomeNodo(destDi(presa.bersaglio), nomi)}»` : (presa.sorgente.tipo === 'cartella' ? nomeNodo(presa.sorgente.id, nomi) : titoloDi(presa.sorgente.id))) : null;
   const struttura = strutturaMenu();
-  const vuota = !caricando && !cartelleMostrate.length && !docMostrati.length && !nuova;
+  const cercando = datiCerca(nodo);
+  const vuota = !caricando && !cartelleMostrate.length && !docMostrati.length && !preferitiMostrati.length && !nuova;
   const scelteSorgenti = [...scelti].map(sorgenteDi);
+  const byteScelti = scelteSorgenti.reduce((t, x) => t + (x.tipo === 'doc' ? Number(cache.get(x.id)?.dimensione_byte) || 0 : 0), 0);
+  const selRiquadro = (() => {
+    const k = ancora && scelti.has(ancora) ? ancora : [...scelti][0];
+    if (!k) return null;
+    const x = sorgenteDi(k);
+    return x.tipo === 'cartella' ? { cosa: 'cartella', voce: cartelle.find((c) => c.id === x.id) || { id: x.id, nome: nomeNodo(x.id, nomi) }, x } : cache.get(x.id) ? { cosa: 'file', voce: cache.get(x.id), x } : null;
+  })();
+  const dove = nomeNodo(baseRicerca, nomi);
+  const campo = <CampoCerca inputRef={campoCerca} valore={testoCerca} mobile={mobile} dove={dove} onCambia={(t) => { setTestoCerca(t); cerca(t, { subito: false }); }} onCerca={(t) => cerca(t)} />;
+  const selezioneMia = scelteSorgenti.length > 0 && scelteSorgenti.every((x) => x.tipo === 'doc' || (x.id !== RADICE && !eVirtuale(x.id)));
+  const comandi = [
+    { id: 'nuovo', nome: 'Nuovo', icona: 'nuova', testo: true, menu: 'nuovo' },
+    '|',
+    { id: 'taglia', nome: 'Taglia', titolo: 'Taglia (Ctrl+X)', disattivo: !selezioneMia, fai: () => azione('taglia', scelteSorgenti) },
+    { id: 'copia', nome: 'Copia', titolo: 'Copia (Ctrl+C)', disattivo: !scelteSorgenti.some((x) => x.tipo === 'doc'), fai: () => azione('copia', scelteSorgenti) },
+    { id: 'incolla', nome: 'Incolla', titolo: 'Incolla (Ctrl+V)', disattivo: !incolla(appunti, nodo, opz), fai: () => azione('incolla', []) },
+    { id: 'rinomina', nome: 'Rinomina', titolo: 'Rinomina (F2)', disattivo: scelteSorgenti.length !== 1 || !selezioneMia, fai: () => azione('rinomina', scelteSorgenti) },
+    { id: 'condividi', nome: 'Condividi', icona: 'condividi-sistema', disattivo: scelteSorgenti.length !== 1 || scelteSorgenti[0].tipo !== 'doc', fai: () => azione('cond:sistema', scelteSorgenti) },
+    { id: 'elimina', nome: 'Elimina', titolo: 'Elimina (Canc)', disattivo: !selezioneMia || scelteSorgenti.some((x) => x.clinico), fai: () => azione('elimina', scelteSorgenti) },
+    '|',
+    { id: 'ordina', nome: 'Ordina', testo: true, menu: 'ordina' },
+    { id: 'vista', nome: 'Visualizza', testo: true, menu: 'visualizza' },
+    '|',
+    { id: 'altro', nome: 'Altre azioni', menu: 'altro' },
+  ];
+  const ridimensionaPannello = (e) => { const x0 = e.clientX; const w0 = pannello.larghezza; trascina(e, (ev) => setPannello((p) => ({ ...p, larghezza: larghezzaPannello(w0 + ev.clientX - x0) }))); const su2 = () => { setPannello((p) => salvaPannello(p)); window.removeEventListener('pointerup', su2); }; window.addEventListener('pointerup', su2); };
+  const swipe = { inizio: null };
+  const sezioneElementi = (titolo, cartelleB, docsB, chiave) => (cartelleB.length || docsB.length ? (
+    <div key={chiave} className="esp-blocco">
+      {titolo && <h3 className="esp-blocco-titolo">{titolo}</h3>}
+      {vista === 'elenco' ? (
+        <div className="esp-elenco" role="list">{cartelleB.map((c) => rigaElenco('cartella', c))}{docsB.map((d) => rigaElenco('file', d))}</div>
+      ) : (
+        <div className={`esp-griglia esp-griglia-${vista === 'dettagli' ? 'medie' : vista}`} role="list">{cartelleB.map((c) => tessera('cartella', c, vista === 'grandi'))}{docsB.map((d) => tessera('file', d, vista === 'grandi'))}</div>
+      )}
+    </div>
+  ) : null);
 
   return (
-    <div className={`esp esp-${disp}${presa ? ' trascinando' : ''}${mobile ? ' esp-mobile' : ''}${lavoro ? ' lavoro' : ''}`} style={{ '--esp-colonne': colonne, '--esp-albero-h': `${altezzaAlbero(altezza, schermo.a)}px` }}>
-      <div className="esp-titolo"><IconaCartellaW11 size={16} /><span>Esplora file</span>{lavoro > 0 && <span className="esp-titolo-sync">Sincronizzo con Drive…</span>}</div>
-      <div className="esp-comandi" role="toolbar" aria-label="Comandi">
-        <button type="button" className="esp-cmd" onClick={() => su && vai(su)} disabled={!su} aria-label="Cartella superiore" title="Cartella superiore (Alt+↑)" data-bersaglio={su && !eVirtuale(su) ? `cartella:${su}` : undefined}>
-          <IcoLinea d="M10 15V5M5 10l5-5 5 5" />
-        </button>
-        <nav className="esp-percorso" aria-label="Percorso">
-          {briciole.map((b, i) => (
-            <span key={b.id} className="esp-percorso-pezzo">
-              {i > 0 && <span className="esp-percorso-sep" aria-hidden="true">›</span>}
-              <button type="button" onClick={() => vai(b.id)} aria-current={i === briciole.length - 1 ? 'page' : undefined}
-                data-bersaglio={i < briciole.length - 1 && !eVirtuale(b.id) ? `cartella:${b.id}` : undefined} className={sopra === `cartella:${b.id}` ? 'sopra' : ''}>{b.nome}</button>
-            </span>
-          ))}
-        </nav>
-        <button type="button" className="esp-cmd esp-cmd-testo" onClick={() => iniziaNuova(nodo)} disabled={!puoNuova} aria-label="Nuova cartella" title="Nuova cartella (Ctrl+Maiusc+N)">
-          <IcoMenu id="nuova" size={18} /><span>Nuova cartella</span>
-        </button>
-        <button type="button" className="esp-cmd esp-cmd-testo" aria-haspopup="menu" aria-label={`Visualizza: ${VISTE_ESPLORA.find(([k]) => k === vista)[1]}`} title="Visualizza"
-          onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); setMenu({ cosa: 'visualizza', sorgenti: [], x: r.left, y: r.bottom + 4, titolo: 'Visualizza' }); }}>
-          <IcoMenu id="vista" size={18} /><span>Visualizza</span><span aria-hidden="true">▾</span>
-        </button>
-      </div>
+    <div className={`esp esp-${disp}${presa ? ' trascinando' : ''}${mobile ? ' esp-mobile' : ''}${lavoro ? ' lavoro' : ''}${riquadro && !mobile ? ' con-riquadro' : ''}${basso ? ' esp-basso' : ''}`} style={{ '--esp-colonne': colonne }}
+      onTouchStart={(e) => { const t = e.touches[0]; swipe.inizio = { x: t.clientX, y: t.clientY }; e.currentTarget.dataset.swx = t.clientX; e.currentTarget.dataset.swy = t.clientY; }}
+      onTouchEnd={(e) => { const t = e.changedTouches[0]; const d = e.currentTarget.dataset; if (mobile && !presa && swipeApre({ x: Number(d.swx), y: Number(d.swy) }, { x: t.clientX, y: t.clientY })) setCassetto(true); }}>
+      <TitoloSchede schede={tabs.schede} attiva={tabs.attiva} mobile={mobile} sopra={sopra} lavoro={lavoro}
+        nomeDi={(t) => nomeNodo(nodoScheda(t), nomi)} onScegli={scegliScheda} onNuova={() => apriScheda(HOME)} onChiudi={chiudiLaScheda}
+        onSposta={(id, a) => setTabs((x) => ({ ...x, schede: spostaScheda(x.schede, id, a) }))} />
+      <BarraIndirizzi briciole={briciole} nomi={nomi} cartelle={cartelle} nodo={nodo} sopra={sopra} mobile={mobile} cerca={!mobile || basso ? campo : null}
+        puo={{ indietro: puoIndietro(scheda), avanti: puoAvanti(scheda), su }}
+        onVai={vai} onIndietro={() => vaiStoria(indietroScheda)} onAvanti={() => vaiStoria(avantiScheda)} onSu={() => su && vai(su)} onAggiorna={() => setRinfresca((n) => n + 1)}
+        onApriPannello={() => setCassetto(true)}
+        onPercorso={(t) => { const n = nodoDaTesto(t, cartelle); if (!n) { mostraAvviso(`Percorso non trovato: ${t}`, { tipo: 'errore' }); return false; } vai(n); return true; }} />
+      {mobile && !basso && <div className="esp-cerca-riga">{campo}</div>}
+      <BarraComandi comandi={mobile ? comandi.filter((c) => c === '|' || ['nuovo', 'ordina', 'vista', 'altro'].includes(c.id) || (c.id === 'incolla' && appunti)).filter((c, i, l) => !(c === '|' && (i === 0 || l[i - 1] === '|'))) : comandi} mobile={mobile} onMenu={(cosa, x, y) => setMenu({ cosa, sorgenti: cosa === 'altro' ? scelteSorgenti : [], x, y, titolo: { nuovo: 'Nuovo', ordina: 'Ordina per', visualizza: 'Visualizza', altro: 'Altre azioni' }[cosa] })} />
       <div className="esp-corpo">
-        <aside className="esp-albero" ref={alberoRef} aria-label="Elenco cartelle">{albero}</aside>
-        {disp === 'verticale' && <div className="esp-divisorio" role="separator" aria-orientation="horizontal" aria-label="Cambia l’altezza dell’elenco cartelle" onPointerDown={trascinaDivisorio}><span /></div>}
+        {!mobile && !pannello.chiuso && (
+          <>
+            <aside className="esp-albero" ref={alberoRef} aria-label="Pannello di navigazione" style={{ width: pannello.larghezza }}>{albero}</aside>
+            <div className="esp-maniglia-pannello" role="separator" aria-orientation="vertical" aria-label="Larghezza del pannello di navigazione" aria-valuenow={pannello.larghezza} aria-valuemin={160} aria-valuemax={420} tabIndex={0}
+              onPointerDown={ridimensionaPannello} onDoubleClick={() => setPannello((p) => salvaPannello({ ...p, chiuso: true }))}
+              onKeyDown={(e) => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); setPannello((p) => salvaPannello({ ...p, larghezza: larghezzaPannello(p.larghezza + (e.key === 'ArrowLeft' ? -16 : 16)) })); } }} />
+          </>
+        )}
+        {mobile && cassetto && (
+          <div className="esp-velo esp-velo-cassetto" onClick={() => setCassetto(false)}>
+            <aside className="esp-cassetto" ref={alberoRef} aria-label="Pannello di navigazione" onClick={(e) => e.stopPropagation()}>
+              <div className="esp-cassetto-testa"><strong>Esplora file</strong><button type="button" className="esp-cmd" onClick={() => setCassetto(false)} aria-label="Chiudi il pannello">✕</button></div>
+              {albero}
+            </aside>
+          </div>
+        )}
         <section className={`esp-contenuto esp-vista-${vista}`} ref={contenutoRef} aria-label={nomeNodo(nodo, nomi)} {...gestoriVuoto}>
-          {disp === 'verticale' && <header className="esp-intestazione"><strong>{nomeNodo(nodo, nomi)}</strong><span>{nElementi} {nElementi === 1 ? 'elemento' : 'elementi'}</span></header>}
-          {eVirtuale(nodo) && nodo !== CATEGORIE && nodo !== ACCESSO_RAPIDO && <p className="esp-nota">Sola lettura: trascina i file in una tua cartella.</p>}
-          {vista === 'dettagli' ? dettagli() : vista === 'elenco' ? (
-            <div className="esp-elenco" role="list">{nuovaInline('esp-riga esp-riga-nuova')}{cartelleMostrate.map((c) => rigaElenco('cartella', c))}{docMostrati.map((d) => rigaElenco('file', d))}</div>
+          {mobile && !basso && <header className="esp-intestazione"><strong>{nomeNodo(nodo, nomi)}</strong><span>{nElementi} {nElementi === 1 ? 'elemento' : 'elementi'}</span></header>}
+          {cercando && <FiltriRicerca filtri={filtri} fascicoli={fascicoli} onFiltri={setFiltri} n={cartelleMostrate.length + docMostrati.length} testo={cercando.testo} base={nomeNodo(cercando.base, nomi)} />}
+          {(nodo === DA_CATALOGARE || codiceCategoria(nodo)) && <p className="esp-nota">Sola lettura: trascina i file in una tua cartella.</p>}
+          {nodo === CESTINO && <p className="esp-nota">Le cartelle eliminate restano qui: tasto destro (o tieni premuto) → Ripristina.</p>}
+          {nodo === HOME ? (
+            <div className="esp-home">
+              {sezioneElementi('Accesso rapido', cartelleMostrate, [], 'rapido')}
+              {sezioneElementi('Preferiti', [], preferitiMostrati, 'preferiti')}
+              {sezioneElementi('Recenti', [], docMostrati, 'recenti')}
+            </div>
+          ) : vista === 'dettagli' ? dettagli() : vista === 'elenco' ? (
+            <div className="esp-elenco" role="list">{nuovaInline('esp-riga esp-riga-nuova')}{righe.map((r) => rigaElenco(r.cosa, r.voce))}</div>
           ) : (
-            <div className={`esp-griglia esp-griglia-${vista}`} role="list">{nuovaInline('esp-tessera esp-tessera-nuova')}{cartelleMostrate.map((c) => tessera('cartella', c, vista === 'grandi'))}{docMostrati.map((d) => tessera('file', d, vista === 'grandi'))}</div>
+            <div className={`esp-griglia esp-griglia-${vista}`} role="list">{nuovaInline('esp-tessera esp-tessera-nuova')}{righe.map((r) => tessera(r.cosa, r.voce, vista === 'grandi'))}</div>
           )}
-          {vuota && <p className="esp-vuota">{nodo === ACCESSO_RAPIDO ? 'Niente in Accesso rapido: dal menu di una cartella o di un file scegli «Aggiungi ad Accesso rapido».' : eVirtuale(nodo) ? 'Niente qui.' : 'Cartella vuota. Tieni premuto (o tasto destro) per creare una nuova cartella.'}</p>}
+          {vuota && <p className="esp-vuota">{cercando ? 'Nessun risultato. Prova con altre parole o togli i filtri.' : nodo === ACCESSO_RAPIDO ? 'Niente in Accesso rapido: dal menu di una cartella scegli «Aggiungi ad Accesso rapido».' : nodo === PREFERITI ? 'Nessun preferito: dal menu di un file scegli «Aggiungi ai Preferiti».' : nodo === RECENTI ? 'Nessun file aperto di recente.' : nodo === CESTINO ? 'Il Cestino è vuoto.' : eVirtuale(nodo) ? 'Niente qui.' : 'Cartella vuota. Tieni premuto (o tasto destro) per creare una nuova cartella.'}</p>}
           {lista?.nodo === nodo && !lista.finito && <button type="button" className="esp-altri" onClick={altri}>Mostra altri</button>}
         </section>
+        {riquadro && !mobile && (
+          <Riquadro modo={riquadro} voce={selRiquadro?.voce} cosa={selRiquadro?.cosa} titolo={selRiquadro ? (selRiquadro.cosa === 'cartella' ? selRiquadro.voce.nome : titoloDi(selRiquadro.voce.id)) : ''}
+            categoria={fascicoli.find((f) => f.codice === selRiquadro?.voce?.fascicolo)?.nome} scadenze={scadenzeSel}
+            percorso={selRiquadro ? percorsoNodo(selRiquadro.cosa === 'cartella' ? selRiquadro.voce.id : selRiquadro.x.da, nomi).map((p) => p.nome).join(' › ') : ''}
+            onModo={setRiquadro} onChiudi={() => setRiquadro(null)} onApri={() => selRiquadro && apriElemento(chiaveDi(selRiquadro.cosa === 'cartella' ? 'cartella' : 'doc', selRiquadro.voce.id))} />
+        )}
       </div>
-      <footer className="esp-stato">{testoStato(nElementi, nDaGestireQui)}{scelti.size ? ` · ${scelti.size} ${scelti.size === 1 ? 'selezionato' : 'selezionati'}` : ''}{appunti ? ` · ${appunti.modo === 'copia' ? 'copiato' : 'tagliato'}: ${appunti.nome}` : ''}</footer>
+      {riquadro && mobile && selRiquadro && (
+        <Riquadro mobile modo={riquadro} voce={selRiquadro.voce} cosa={selRiquadro.cosa} titolo={selRiquadro.cosa === 'cartella' ? selRiquadro.voce.nome : titoloDi(selRiquadro.voce.id)}
+          categoria={fascicoli.find((f) => f.codice === selRiquadro.voce.fascicolo)?.nome} scadenze={scadenzeSel}
+          percorso={percorsoNodo(selRiquadro.cosa === 'cartella' ? selRiquadro.voce.id : selRiquadro.x.da, nomi).map((p) => p.nome).join(' › ')}
+          onModo={setRiquadro} onChiudi={() => setRiquadro(null)} onApri={() => apriElemento(chiaveDi(selRiquadro.cosa === 'cartella' ? 'cartella' : 'doc', selRiquadro.voce.id))} />
+      )}
+      <BarraStato testo={testoStato(nElementi, nDaGestireQui)} selezione={[testoSelezione(scelti.size, byteScelti), appunti ? `${appunti.modo === 'copia' ? 'copiato' : 'tagliato'}: ${appunti.nome}` : ''].filter(Boolean).join(' · ')}
+        vista={vista} onVista={(v) => setViste(salvaVista(nodo, v))} />
 
       {mobile && modoSelezione && (
         <div className="esp-barra-selezione" role="toolbar" aria-label="Elementi selezionati">
