@@ -25,7 +25,13 @@ const D = {
   'mostra-cartella': 'M2.5 5h4l1.5 1.5h5.5v7h-11zM7 10h4M9.5 8.5 11 10l-1.5 1.5', 'copia-in': 'M5 5h8v8H5zM3 11V3h8M8 9h3M10 7.5 11.5 9 10 10.5',
   estrai: 'M4 2h6l3 3v9H4zM8 7v5M6 10l2 2 2-2', 'elimina-definitivo': 'M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 9h5.6l.7-9M6.5 7l3 4M9.5 7l-3 4',
 };
-export const IcoMenu = ({ id, size = 16 }) => <svg viewBox="0 0 16 16" width={size} height={size} aria-hidden="true"><path d={D[id] || D[String(id).split(':')[0]] || D.apri} fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+D.con = D['apri-con']; D.cond = D.condividi; D.nuovo = D.nuova;
+// Voci senza icona (scelte con ✓, colonne, gruppi): spazio vuoto, così i testi restano allineati.
+export const IcoMenu = ({ id, size = 16 }) => {
+  const d = D[id] || D[String(id).split(':')[0]];
+  if (!d) return <span className="esp-ico-vuota" style={{ width: size, height: size, display: 'inline-block', flexShrink: 0 }} aria-hidden="true" />;
+  return <svg viewBox="0 0 16 16" width={size} height={size} aria-hidden="true"><path d={d} fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+};
 
 /* ---------- menu contestuale ---------- */
 export function MenuContestuale({ menu, struttura, mobile, schermo, onScegli, onChiudi }) {

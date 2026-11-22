@@ -615,7 +615,14 @@ export const proprietaDrive = ({ token, id, cartella = false }, fetchImpl = fetc
 export const accessoDrive = ({ token, ...corpo }, fetchImpl = fetch) => chiamaScript({ token, azione: 'accesso_file', ...corpo }, fetchImpl);
 
 /* ---------- viste: Icone grandi, Icone medie, Elenco, Dettagli (salvate per cartella) ---------- */
-export const VISTE_ESPLORA = [['grandi', 'Icone grandi'], ['medie', 'Icone medie'], ['elenco', 'Elenco'], ['dettagli', 'Dettagli']];
+// PR #337 §3: le sei viste di Windows 11. L'ordine è anche quello di Ctrl+rotella (dalla più grande).
+export const VISTE_ESPLORA = [['grandi', 'Icone grandi'], ['medie', 'Icone medie'], ['piccole', 'Icone piccole'], ['elenco', 'Elenco'], ['dettagli', 'Dettagli'], ['riquadri', 'Riquadri']];
+// Ctrl+rotella: verso < 0 (rotella su) = più grande, > 0 = più piccola; ai bordi si resta fermi.
+export function vistaConRotella(vista, verso) {
+  const ordine = VISTE_ESPLORA.map(([k]) => k);
+  const i = Math.max(0, ordine.indexOf(vista));
+  return ordine[Math.max(0, Math.min(ordine.length - 1, i + (verso > 0 ? 1 : -1)))];
+}
 const CHIAVE_VISTE = 'poliedron-esplora-viste';
 export function leggiViste(storage = globalThis.localStorage) {
   try { const v = JSON.parse(storage?.getItem(CHIAVE_VISTE) || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; }
@@ -654,12 +661,72 @@ export function dataLeggibile(iso, fuso = 'Europe/Rome') {
   return new Intl.DateTimeFormat('it-IT', { timeZone: fuso, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(t)).replace(',', '');
 }
 // Righe della vista Dettagli: cartelle prima, poi file (come in Windows), ordinate per la colonna scelta.
-export function righeDettagli(cartelle = [], documenti = [], titoli = {}) {
+export function righeDettagli(cartelle = [], documenti = [], titoli = {}, fascicoli = []) {
+  const categoria = (d) => fascicoli.find((f) => f.codice === d.fascicolo)?.nome || d.fascicolo || '';
   return [
-    ...cartelle.map((c) => ({ id: c.id, cosa: 'cartella', nome: c.nome, data: c.modificato_il || c.creato_il || null, tipo: 'Cartella di file', dimensione: null, voce: c })),
-    ...documenti.map((d) => ({ id: d.id, cosa: 'file', nome: titoli[d.id] ?? (d.titolo || d.nome_file_originale || 'Documento'), data: d.creato_il || null, tipo: tipoLeggibile(d), dimensione: d.dimensione_byte ?? null, voce: d })),
+    ...cartelle.map((c) => ({ id: c.id, cosa: 'cartella', nome: c.nome, data: c.modificato_il || c.creato_il || null, tipo: 'Cartella di file', dimensione: null, categoria: '', voce: c })),
+    ...documenti.map((d) => ({ id: d.id, cosa: 'file', nome: titoli[d.id] ?? (d.titolo || d.nome_file_originale || 'Documento'), data: d.creato_il || null, tipo: tipoLeggibile(d), dimensione: d.dimensione_byte ?? null, categoria: categoria(d), voce: d })),
   ];
 }
+
+/* ---------- PR #337 §3: colonne, raggruppamento, impostazioni per cartella ---------- */
+export const COLONNE_DETTAGLI = [['nome', 'Nome', 280], ['data', 'Data modifica', 150], ['tipo', 'Tipo', 150], ['dimensione', 'Dimensione', 96], ['categoria', 'Categoria', 150]];
+export const COLONNE_PREDEFINITE = ['nome', 'data', 'tipo', 'dimensione', 'categoria'];
+// Il Nome resta sempre; le altre si accendono e si spengono dal menu dell'intestazione.
+export const cambiaColonna = (visibili, chiave) => (chiave === 'nome' ? visibili : visibili.includes(chiave) ? visibili.filter((k) => k !== chiave) : COLONNE_DETTAGLI.map(([k]) => k).filter((k) => k === chiave || visibili.includes(k)));
+
+export const GRUPPI = [['', 'Nessuno'], ['nome', 'Nome'], ['data', 'Data modifica'], ['tipo', 'Tipo'], ['categoria', 'Categoria']];
+const giornoRoma = (t) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Rome' }).format(new Date(t));
+// Gruppi come in Windows: Nome per intervalli di lettere, Data per periodo, Tipo e Categoria per valore.
+export function gruppoDi(riga, chiave, adesso = Date.now()) {
+  if (chiave === 'nome') {
+    const c = String(riga.nome || '').trim().charAt(0).toLocaleUpperCase('it');
+    if (/[0-9]/.test(c)) return '0 – 9';
+    if (c >= 'A' && c <= 'H') return 'A – H';
+    if (c >= 'I' && c <= 'P') return 'I – P';
+    if (c >= 'Q' && c <= 'Z') return 'Q – Z';
+    return 'Altro';
+  }
+  if (chiave === 'data') {
+    const t = Date.parse(riga.data || '');
+    if (!Number.isFinite(t)) return 'Senza data';
+    const g = Math.round((Date.parse(`${giornoRoma(adesso)}T12:00:00Z`) - Date.parse(`${giornoRoma(t)}T12:00:00Z`)) / 86400000);
+    if (g <= 0) return 'Oggi';
+    if (g === 1) return 'Ieri';
+    if (g < 7) return 'Questa settimana';
+    if (g < 31) return 'Questo mese';
+    if (g < 366) return 'Quest’anno';
+    return 'Tempo fa';
+  }
+  if (chiave === 'tipo') return riga.tipo || 'File';
+  if (chiave === 'categoria') return riga.cosa === 'cartella' ? 'Cartelle' : riga.categoria || 'Senza categoria';
+  return '';
+}
+const ORDINE_DATE = ['Oggi', 'Ieri', 'Questa settimana', 'Questo mese', 'Quest’anno', 'Tempo fa', 'Senza data'];
+// [{ titolo, righe }] mantenendo l'ordine delle righe dentro ogni gruppo; senza chiave un solo gruppo.
+export function raggruppa(righe, chiave, adesso = Date.now()) {
+  if (!chiave) return [{ titolo: '', righe }];
+  const m = new Map();
+  for (const r of righe) { const g = gruppoDi(r, chiave, adesso); if (!m.has(g)) m.set(g, []); m.get(g).push(r); }
+  const gruppi = [...m.entries()].map(([titolo, rr]) => ({ titolo, righe: rr }));
+  if (chiave === 'data') return gruppi.sort((a, b) => ORDINE_DATE.indexOf(a.titolo) - ORDINE_DATE.indexOf(b.titolo));
+  return gruppi.sort((a, b) => (a.titolo === 'Cartelle' ? -1 : b.titolo === 'Cartelle' ? 1 : a.titolo.localeCompare(b.titolo, 'it')));
+}
+
+// Ordinamento e raggruppamento salvati per cartella (la vista resta in CHIAVE_VISTE, come prima).
+const CHIAVE_CARTELLE = 'poliedron-esplora-cartelle';
+export function leggiCartelle(storage = globalThis.localStorage) {
+  try { const v = JSON.parse(storage?.getItem(CHIAVE_CARTELLE) || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; }
+}
+export function salvaCartella(nodo, parte, storage = globalThis.localStorage) {
+  const tutte = leggiCartelle(storage);
+  tutte[nodo] = { ...(tutte[nodo] || {}), ...parte };
+  try { storage?.setItem(CHIAVE_CARTELLE, JSON.stringify(tutte)); } catch { /* memoria non disponibile */ }
+  return tutte;
+}
+export const impostazioniDi = (tutte, nodo) => ({ ordine: tutte?.[nodo]?.ordine || { chiave: 'nome', verso: 'su' }, gruppo: tutte?.[nodo]?.gruppo || '', colonne: tutte?.['*']?.colonne || COLONNE_PREDEFINITE });
+// Miniature reali solo per immagini e PDF con un file su Drive (lo script non le dà mai per i pazienti).
+export const conMiniatura = (d = {}) => !!d.drive_file_id && d.fascicolo !== CLINICO && ['immagine', 'pdf'].includes(tipoFile(d));
 export function ordinaRighe(righe, { chiave = 'nome', verso = 'su' } = {}) {
   const k = verso === 'giu' ? -1 : 1;
   const conf = (a, b) => {

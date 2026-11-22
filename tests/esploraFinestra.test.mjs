@@ -101,3 +101,55 @@ test('Recenti e pannello: localStorage dentro try/catch, limiti', () => {
   assert.equal(testoSelezione(2, 2_400_000), '2 elementi selezionati, 2,3 MB');
   assert.equal(testoSelezione(1, 0), '1 elemento selezionato');
 });
+
+/* ---------- §3 viste ---------- */
+import { VISTE_ESPLORA, vistaConRotella, righeDettagli, ordinaRighe, COLONNE_DETTAGLI, cambiaColonna, raggruppa, gruppoDi, leggiCartelle, salvaCartella, impostazioniDi, conMiniatura, salvaVista, leggiViste, vistaDi } from '../personal/src/lib/esplora.js';
+
+test('viste: sei viste Win11, Ctrl+rotella dalla più grande alla più piccola, ai bordi ferma', () => {
+  assert.deepEqual(VISTE_ESPLORA.map(([, n]) => n), ['Icone grandi', 'Icone medie', 'Icone piccole', 'Elenco', 'Dettagli', 'Riquadri']);
+  assert.equal(vistaConRotella('grandi', 100), 'medie');
+  assert.equal(vistaConRotella('medie', -100), 'grandi');
+  assert.equal(vistaConRotella('grandi', -100), 'grandi');
+  assert.equal(vistaConRotella('riquadri', 100), 'riquadri');
+  const m = memoria();
+  salvaVista('casa', 'piccole', m);
+  assert.equal(vistaDi(leggiViste(m), 'casa'), 'piccole');
+  assert.equal(vistaDi(leggiViste(m), 'altra'), 'grandi');
+});
+
+test('Dettagli: colonna Categoria, scelta colonne (Nome resta), ordinamento con cartelle prima', () => {
+  assert.deepEqual(COLONNE_DETTAGLI.map(([k]) => k), ['nome', 'data', 'tipo', 'dimensione', 'categoria']);
+  const r = righeDettagli([{ id: 'c', nome: 'Zeta' }], [{ id: 'a', titolo: 'Bolletta', fascicolo: 'utenze', mime_type: 'application/pdf', creato_il: '2026-11-01' }, { id: 'b', titolo: 'Auto', fascicolo: 'veicoli', mime_type: 'image/png', creato_il: '2026-10-01' }], {}, [{ codice: 'utenze', nome: 'Utenze' }]);
+  assert.deepEqual(r.map((x) => x.categoria), ['', 'Utenze', 'veicoli']);
+  assert.deepEqual(ordinaRighe(r, { chiave: 'categoria', verso: 'su' }).map((x) => x.id), ['c', 'a', 'b']);
+  assert.deepEqual(ordinaRighe(r, { chiave: 'nome', verso: 'giu' }).map((x) => x.id), ['c', 'a', 'b']);
+  assert.deepEqual(cambiaColonna(['nome', 'data', 'tipo'], 'nome'), ['nome', 'data', 'tipo']);
+  assert.deepEqual(cambiaColonna(['nome', 'data', 'tipo'], 'data'), ['nome', 'tipo']);
+  assert.deepEqual(cambiaColonna(['nome', 'tipo'], 'data'), ['nome', 'data', 'tipo'], 'torna al suo posto');
+});
+
+test('Raggruppa per nome / data / tipo / categoria; impostazioni salvate per cartella', () => {
+  const adesso = Date.parse('2026-11-22T10:00:00Z');
+  const righe = [
+    { cosa: 'cartella', nome: 'Auto', data: '2026-11-22T08:00:00Z', tipo: 'Cartella di file', categoria: '' },
+    { cosa: 'file', nome: 'Bolletta', data: '2026-11-21T08:00:00Z', tipo: 'Documento PDF', categoria: 'Utenze' },
+    { cosa: 'file', nome: 'rogito', data: '2025-01-01T08:00:00Z', tipo: 'Documento PDF', categoria: 'Immobili' },
+    { cosa: 'file', nome: '730', data: null, tipo: 'Foglio Excel', categoria: '' },
+  ];
+  assert.deepEqual(raggruppa(righe, 'nome', adesso).map((g) => g.titolo), ['0 – 9', 'A – H', 'Q – Z']);
+  assert.deepEqual(raggruppa(righe, 'data', adesso).map((g) => [g.titolo, g.righe.length]), [['Oggi', 1], ['Ieri', 1], ['Tempo fa', 1], ['Senza data', 1]]);
+  assert.deepEqual(raggruppa(righe, 'categoria', adesso).map((g) => g.titolo), ['Cartelle', 'Immobili', 'Senza categoria', 'Utenze']);
+  assert.deepEqual(raggruppa(righe, '', adesso), [{ titolo: '', righe }]);
+  assert.equal(gruppoDi(righe[1], 'tipo'), 'Documento PDF');
+  const m = memoria();
+  salvaCartella('casa', { ordine: { chiave: 'data', verso: 'giu' } }, m);
+  salvaCartella('casa', { gruppo: 'tipo' }, m);
+  salvaCartella('*', { colonne: ['nome', 'tipo'] }, m);
+  assert.deepEqual(impostazioniDi(leggiCartelle(m), 'casa'), { ordine: { chiave: 'data', verso: 'giu' }, gruppo: 'tipo', colonne: ['nome', 'tipo'] });
+  assert.deepEqual(impostazioniDi(leggiCartelle(m), 'altra').ordine, { chiave: 'nome', verso: 'su' });
+  assert.deepEqual(leggiCartelle({ getItem: () => '{rotto' }), {});
+  assert.ok(conMiniatura({ drive_file_id: 'x', mime_type: 'image/jpeg' }));
+  assert.ok(conMiniatura({ drive_file_id: 'x', mime_type: 'application/pdf' }));
+  assert.ok(!conMiniatura({ drive_file_id: 'x', mime_type: 'application/pdf', fascicolo: 'clinico_pazienti' }), 'mai miniature dei pazienti');
+  assert.ok(!conMiniatura({ mime_type: 'image/jpeg' }));
+});
