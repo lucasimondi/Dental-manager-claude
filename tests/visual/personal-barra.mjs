@@ -73,7 +73,7 @@ try {
     assert.equal(await page.locator('.pb-voce.attiva').getAttribute('aria-label'), 'Oggi, 1 urgenti');
     // Esplora file dalla barra
     await barra.getByRole('button', { name: /^Esplora file/ }).click();
-    await page.locator('.esp-albero').waitFor();
+    await page.locator('.esp-contenuto').waitFor();
     await page.waitForTimeout(350); // fine dell'animazione d'ingresso della pagina
     assert.equal(await page.locator('.pb-voce.attiva').getAttribute('aria-label'), 'Esplora file, 2 da gestire');
     // Oggi resta aperta sotto Esplora: trattino corto da 6 px

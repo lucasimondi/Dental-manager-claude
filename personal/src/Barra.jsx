@@ -7,15 +7,20 @@
 // con Indietro (Android / browser), con Esc o toccando di nuovo il logo.
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { archivioDb } from './lib/supabasePersonal.js';
-import { documentiRecenti, documentiDaGestire } from './lib/archivio.js';
+import { documentiRecenti, documentiDaGestire, cercaDocumenti, scadenzeAperte } from './lib/archivio.js';
 import { caricaDaGestire } from './lib/esplora.js';
 import { contaDaFare } from './lib/daFare.js';
 import { elencoRecenti, fileRecente } from './lib/recenti.js';
 import { scaricaDocumento } from './lib/condividi.js';
-import { VOCI_BARRA, voceAttiva, vociAperte, badgeBarra, vociStart, numeroNotifiche, oraData, nomeUtente, consigliati, etichettaNumero, accettaFile, APP_PER_FILE } from './lib/barra.js';
+import {
+  voceAttiva, vociAperte, badgeBarra, vociStart, numeroNotifiche, oraData, nomeUtente, consigliati, etichettaNumero, accettaFile, APP_PER_FILE,
+  AGGIUNTE, normalizzaStart, spostaAggiunta, togliAggiunta, cambiaDock, nelDock, vociBarra, appTrovate, scadenzeImminenti,
+} from './lib/barra.js';
+import { caricaPreferiti } from './lib/esplora.js';
 import { statoDrive, ascoltaStatoDrive, attesaDrive, testoStatoDrive } from './lib/statoDrive.js';
 import { sectionDestination } from '../../shared/agenda/navigation.js';
 import { IconaCartellaW11, IconaFileW11 } from './IconeW11.jsx';
+import { titoloDoc } from './ui.jsx';
 import { IconaDock } from './IconeDock.jsx';
 import {
   IconaOggi, IconaChat, IconaPerTe, IconaCerca, IconaDocumenti, IconaEuro, IconaPratiche, IconaPortafoglio, IconaNote,
@@ -77,15 +82,31 @@ function IconaVoce({ id }) {
   if (id === 'agenda') return <IconaDock n="cal" s={24} />;
   if (id === 'esplora') return <IconaCartellaW11 size={24} />;
   if (id === 'poliedron') return <IconaChat size={24} />;
-  return <IconaPerTe size={24} />;
+  if (id === 'altro') return <IconaPerTe size={24} />;
+  const Icona = ICONE_START[id];
+  return Icona ? <Icona size={24} /> : <IconaPerTe size={24} />;
 }
 
 export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, apri, onEsci, onCentro, centroAperto = false }) {
   const [start, setStart] = useState(false); // false | 'start' | 'cerca'
+  const [impStart, setImpStart] = useState(() => normalizzaStart());
+  useEffect(() => {
+    let vivo = true;
+    archivioDb.from('impostazioni_app').select('valore').eq('chiave', 'start_personal').maybeSingle()
+      .then(({ data }) => { if (vivo && data?.valore) setImpStart(normalizzaStart(data.valore)); }, () => {});
+    return () => { vivo = false; };
+  }, []);
+  const salvaStart = useCallback((nuove) => {
+    const prima = impStart;
+    setImpStart(nuove);
+    archivioDb.from('impostazioni_app').upsert({ chiave: 'start_personal', valore: nuove, aggiornato_il: new Date().toISOString() }, { onConflict: 'chiave' })
+      .then(({ error }) => { if (error) setImpStart(prima); }, () => setImpStart(prima));
+  }, [impStart]);
+  const voci = vociBarra(impStart.dock);
   const [adesso, setAdesso] = useState(() => new Date());
   useEffect(() => { const t = setInterval(() => setAdesso(new Date()), 20000); return () => clearInterval(t); }, []);
-  const attiva = voceAttiva({ vista, pagine, start });
-  const aperte = vociAperte({ vista, pagine, start });
+  const attiva = voceAttiva({ vista, pagine, start, dock: impStart.dock });
+  const aperte = vociAperte({ vista, pagine, start, dock: impStart.dock });
   const drive = useSyncExternalStore(ascoltaStatoDrive, statoDrive);
   const { ora, data } = oraData(adesso);
   const notifiche = numeroNotifiche(conteggi);
@@ -99,6 +120,18 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
     if (!window.history.state?.pbStart) window.history.pushState({ ...(window.history.state || {}), pbStart: true }, '');
     setStart(modo);
   };
+  // Tasto Win (premuto e lasciato da solo) o Ctrl+Esc: apre e chiude Start.
+  useEffect(() => {
+    let soloWin = false;
+    const giu = (e) => {
+      if (e.key === 'Meta' || e.key === 'OS') { soloWin = true; return; }
+      soloWin = false;
+      if (e.ctrlKey && e.key === 'Escape') { e.preventDefault(); if (start) chiudi(); else apriStart('start'); }
+    };
+    const su = (e) => { if ((e.key === 'Meta' || e.key === 'OS') && soloWin) { soloWin = false; if (start) chiudi(); else apriStart('start'); } };
+    window.addEventListener('keydown', giu); window.addEventListener('keyup', su);
+    return () => { window.removeEventListener('keydown', giu); window.removeEventListener('keyup', su); };
+  });
   useEffect(() => {
     if (!start) return undefined;
     const indietro = () => setStart(false);
@@ -111,6 +144,7 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
   const tocca = (v) => {
     if (v.id === 'start' || v.id === 'cerca') { if (start === v.id) chiudi(); else apriStart(v.id); return; }
     if (start) chiudi();
+    if (v.azione) { esegui(v.azione); return; }
     if (v.pagina) apri({ tipo: v.pagina }); else vai(v.vista);
   };
   const apriCentro = () => { if (start) chiudi(); if (onCentro) onCentro(); else vai('dafare'); };
@@ -123,11 +157,11 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
 
   return (
     <>
-      {start && <Start modo={start} conteggi={conteggi} email={email} onAzione={esegui} onChiudi={chiudi} apri={apri} onEsci={onEsci} />}
+      {start && <Start modo={start} conteggi={conteggi} email={email} onAzione={esegui} onChiudi={chiudi} apri={apri} onEsci={onEsci} imp={impStart} onImp={salvaStart} />}
       <nav className="pb-barra" aria-label="Barra delle applicazioni">
         <span className="pb-lato" aria-hidden="true" />
         <div className="pb-icone">
-          {VOCI_BARRA.map((v) => {
+          {voci.map((v) => {
             const n = badgeBarra(v.id, conteggi);
             const etichetta = n ? `${v.nome}, ${n} ${v.id === 'oggi' ? 'urgenti' : 'da gestire'}` : v.nome;
             return (
@@ -159,17 +193,44 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
   );
 }
 
-function Start({ modo = 'start', conteggi, email, onAzione, onChiudi, apri, onEsci }) {
+function Start({ modo = 'start', conteggi, email, onAzione, onChiudi, apri, onEsci, imp, onImp }) {
   const [testo, setTesto] = useState('');
   const [suggeriti, setSuggeriti] = useState(null);
+  const [trovati, setTrovati] = useState(null); // documenti trovati mentre si scrive
+  const [cartelle, setCartelle] = useState([]); // cartelle di Accesso rapido (Esplora)
+  const [menuApp, setMenuApp] = useState(null); // { voce, i, x, y }
+  const [presa, setPresa] = useState(null); // riordino: { da, a }
   const [conferma, setConferma] = useState(false);
   const campo = useRef(null);
+  const griglia = useRef(null);
+  const tocco = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
   useEffect(() => {
     let vivo = true;
-    Promise.all([elencoRecenti().catch(() => []), documentiRecenti(archivioDb, 6).catch(() => [])])
-      .then(([r, d]) => { if (vivo) setSuggeriti(consigliati(r, d)); });
+    Promise.all([elencoRecenti().catch(() => []), documentiRecenti(archivioDb, 6).catch(() => []), scadenzeAperte(archivioDb, 14).catch(() => []), caricaPreferiti(archivioDb).catch(() => [])])
+      .then(([r, d, sc, pref]) => {
+        if (!vivo) return;
+        setSuggeriti([...scadenzeImminenti(sc).slice(0, 4), ...consigliati(r, d, 6)].slice(0, 8));
+        setCartelle(pref.filter((p) => p.tipo === 'cartella'));
+      });
     return () => { vivo = false; };
   }, []);
+  // Scrivere appena Start è aperto = cercare (anche senza toccare il campo).
+  useEffect(() => {
+    const k = (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1 || document.activeElement === campo.current) return;
+      if (e.target.closest?.('input, textarea, select')) return;
+      e.preventDefault(); campo.current?.focus(); setTesto((t) => t + e.key);
+    };
+    window.addEventListener('keydown', k);
+    return () => window.removeEventListener('keydown', k);
+  }, []);
+  useEffect(() => {
+    const q = testo.trim();
+    if (q.length < 2) { setTrovati(null); return undefined; }
+    let vivo = true;
+    const t = setTimeout(() => { cercaDocumenti(archivioDb, q, null, 8).then((l) => vivo && setTrovati((l || []).filter((d) => d.fascicolo !== 'clinico_pazienti'))).catch(() => vivo && setTrovati([])); }, 300);
+    return () => { vivo = false; clearTimeout(t); };
+  }, [testo]);
   const cerca = (e) => {
     e.preventDefault();
     onChiudi();
@@ -178,51 +239,146 @@ function Start({ modo = 'start', conteggi, email, onAzione, onChiudi, apri, onEs
   const apriSuggerito = async (s) => {
     onChiudi();
     if (s.tipo === 'documento') { apri({ tipo: 'documento', id: s.id }); return; }
+    if (s.tipo === 'scadenza') { if (s.documento_id) apri({ tipo: 'documento', id: s.documento_id }); else onAzione({ vai: 'dafare' }); return; }
     try {
       const file = await fileRecente(s.id);
       if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) apri({ tipo: 'pdf', file }); else scaricaDocumento(file);
     } catch { /* il file non c'è più sul telefono */ }
   };
   const tipo = (s) => (/pdf/i.test(s.mime || '') || /\.pdf$/i.test(s.nome) ? 'pdf' : /^image\//.test(s.mime || '') ? 'immagine' : /word|sheet|excel|presentation/i.test(s.mime || '') ? 'office' : 'altro');
+  // «Aggiunte»: app e cartelle fissate, con i pallini e nell'ordine scelto da Luca.
+  const n = Object.fromEntries(vociStart(conteggi).map((v) => [v.id, v.n]));
+  const fissateCartelle = cartelle.filter((c) => !imp.aggiunte.some((x) => x.tipo === 'cartella' && x.id === c.id));
+  const aggiunte = [...imp.aggiunte, ...fissateCartelle.map((c) => ({ tipo: 'cartella', id: c.id }))];
+  const voceDi = (x) => (x.tipo === 'app' ? { ...AGGIUNTE.find((a) => a.id === x.id), n: n[x.id] || 0 } : { id: x.id, nome: x.nome || (x.id === 'radice' ? 'Personale' : 'Cartella'), azione: { apri: { tipo: 'esplora', nodo: x.id } }, cartella: true });
+  const nomiCartelle = useNomiCartelle(aggiunte.filter((x) => x.tipo === 'cartella').map((x) => x.id));
+  const apriVoce = (v) => onAzione(v.azione);
+  // Riordino col mouse: trascina un'icona sopra un'altra posizione.
+  const premiApp = (e, i) => {
+    if (e.button !== 0 || e.pointerType === 'touch') return;
+    const x0 = e.clientX; const y0 = e.clientY; let mosso = false;
+    const posizioni = () => [...griglia.current.querySelectorAll('[data-i]')].map((el) => ({ i: Number(el.dataset.i), r: el.getBoundingClientRect() }));
+    const muovi = (ev) => {
+      if (!mosso && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return;
+      mosso = true;
+      const sopra = posizioni().find((p) => ev.clientX >= p.r.left && ev.clientX <= p.r.right && ev.clientY >= p.r.top && ev.clientY <= p.r.bottom);
+      setPresa({ da: i, a: sopra ? sopra.i : i });
+    };
+    const fine = () => {
+      window.removeEventListener('pointermove', muovi); window.removeEventListener('pointerup', fine);
+      setPresa((p) => { if (p && p.a !== p.da) onImp({ ...imp, aggiunte: spostaAggiunta(aggiunte, p.da, p.a) }); return null; });
+      if (mosso) { const blocca = (ev) => { ev.stopPropagation(); ev.preventDefault(); window.removeEventListener('click', blocca, true); }; window.addEventListener('click', blocca, true); setTimeout(() => window.removeEventListener('click', blocca, true), 50); }
+    };
+    window.addEventListener('pointermove', muovi); window.addEventListener('pointerup', fine);
+  };
+  const lungo = useRef(null);
+  // Start ha un transform: il menu si posiziona rispetto al pannello.
+  const menuSu = (e, x, i) => { e.preventDefault(); const r = e.currentTarget.getBoundingClientRect(); const p = e.currentTarget.closest('.pb-start').getBoundingClientRect(); setMenuApp({ voce: x, i, x: r.left - p.left + r.width / 2, y: r.top - p.top }); };
+  const ordine = presa ? spostaAggiunta(aggiunte, presa.da, presa.a) : aggiunte;
+  const appQui = appTrovate(testo);
   return (
     <div className="pb-velo" onClick={onChiudi}>
-      <section className="pb-start" role="dialog" aria-label="Start" onClick={(e) => e.stopPropagation()}>
+      <section className="pb-start" role="dialog" aria-label="Start" onClick={(e) => { e.stopPropagation(); if (menuApp) setMenuApp(null); }}>
         <form className="pb-cerca" onSubmit={cerca} role="search">
           <IconaCerca size={18} />
-          <input ref={campo} autoFocus={modo === 'cerca'} value={testo} onChange={(e) => setTesto(e.target.value)} placeholder="Cerca nel tuo archivio" aria-label="Cerca nel tuo archivio" enterKeyHint="search" />
+          <input ref={campo} autoFocus={modo === 'cerca' || !tocco} value={testo} onChange={(e) => setTesto(e.target.value)} placeholder="Cerca app, impostazioni e documenti" aria-label="Cerca nel tuo archivio" enterKeyHint="search"
+            onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); if (testo) setTesto(''); else onChiudi(); } }} />
         </form>
         <div className="pb-start-corpo">
-          <h2>Aggiunte</h2>
-          <div className="pb-aggiunte">
-            {vociStart(conteggi).map((v) => {
-              const Icona = ICONE_START[v.id];
-              return (
-                <button key={v.id} type="button" className="pb-app" onClick={() => onAzione(v.azione)} aria-label={v.n ? `${v.nome}, ${v.n}` : v.nome}>
-                  <span className="pb-app-icona">{v.id === 'esplora' ? <IconaCartellaW11 size={32} /> : <Icona size={26} />}<Numero n={v.n} /></span>
-                  <span className="pb-app-nome">{v.nome}</span>
-                </button>
-              );
-            })}
-          </div>
-          <h2>Consigliati</h2>
-          <div className="pb-consigliati">
-            {suggeriti === null && <p className="pb-nota">Carico…</p>}
-            {suggeriti?.length === 0 && <p className="pb-nota">Niente di recente.</p>}
-            {suggeriti?.map((s) => (
-              <button key={s.chiave} type="button" className="pb-consigliato" onClick={() => apriSuggerito(s)}>
-                <IconaFileW11 tipo={tipo(s)} size={30} />
-                <span><strong>{s.nome}</strong><small>{s.tipo === 'recente' ? 'Su questo telefono' : 'Nell’archivio'}{s.quando ? ` · ${new Date(s.quando).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}` : ''}</small></span>
-              </button>
-            ))}
-          </div>
+          {trovati !== null || appQui.length ? (
+            <>
+              <h2>Migliori risultati</h2>
+              <div className="pb-consigliati pb-risultati">
+                {appQui.map((a) => (
+                  <button key={`a:${a.id}`} type="button" className="pb-consigliato" onClick={() => apriVoce(a)}>
+                    <span className="pb-app-icona pb-icona-piccola">{(() => { const I = ICONE_START[a.id]; return a.id === 'esplora' ? <IconaCartellaW11 size={26} /> : I ? <I size={22} /> : null; })()}</span>
+                    <span><strong>{a.nome}</strong><small>App</small></span>
+                  </button>
+                ))}
+                {trovati === null && testo.trim().length >= 2 && <p className="pb-nota">Cerco…</p>}
+                {trovati?.map((d) => (
+                  <button key={d.id} type="button" className="pb-consigliato" onClick={() => { onChiudi(); apri({ tipo: 'documento', id: d.id }); }}>
+                    <IconaFileW11 tipo={tipo({ mime: d.mime_type, nome: d.nome_file_originale || '' })} size={30} />
+                    <span><strong>{titoloDoc(d)}</strong><small>{[d.ente, d.data_documento ? new Date(`${d.data_documento}T12:00:00`).toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' }) : null].filter(Boolean).join(' · ') || 'Documento'}</small></span>
+                  </button>
+                ))}
+                {trovati?.length === 0 && !appQui.length && <p className="pb-nota">Nessun risultato per «{testo.trim()}».</p>}
+              </div>
+              <button type="button" className="pb-tutti" onClick={cerca}>Cerca «{testo.trim()}» in tutto l’archivio ›</button>
+            </>
+          ) : (
+            <>
+              <h2>Aggiunte</h2>
+              <div className="pb-aggiunte" ref={griglia} role="list" aria-label="App e cartelle aggiunte (trascina per riordinare)">
+                {ordine.map((x, i) => {
+                  const v = voceDi(x);
+                  if (!v?.nome) return null;
+                  const Icona = ICONE_START[v.id];
+                  const nome = x.tipo === 'cartella' ? (nomiCartelle[x.id] || v.nome) : v.nome;
+                  return (
+                    <button key={`${x.tipo}:${x.id}`} type="button" role="listitem" data-i={i} className={`pb-app${presa && presa.a === i ? ' presa' : ''}`}
+                      onClick={() => apriVoce(v)} onPointerDown={(e) => premiApp(e, aggiunte.findIndex((y) => y.tipo === x.tipo && y.id === x.id))}
+                      onContextMenu={(e) => menuSu(e, x, i)}
+                      onTouchStart={(e) => { const t = e.currentTarget; clearTimeout(lungo.current); lungo.current = setTimeout(() => { navigator.vibrate?.(10); menuSu({ preventDefault() {}, currentTarget: t }, x, i); }, 500); }}
+                      onTouchMove={() => clearTimeout(lungo.current)} onTouchEnd={() => clearTimeout(lungo.current)}
+                      aria-label={v.n ? `${nome}, ${v.n}` : nome}>
+                      <span className="pb-app-icona">{v.cartella || v.id === 'esplora' ? <IconaCartellaW11 size={32} /> : Icona ? <Icona size={26} /> : null}<Numero n={v.n} /></span>
+                      <span className="pb-app-nome">{nome}</span>
+                      {nelDock(imp.dock, x.id) && x.tipo === 'app' && <span className="pb-app-dock" aria-hidden="true" />}
+                    </button>
+                  );
+                })}
+              </div>
+              <h2>Consigliati</h2>
+              <div className="pb-consigliati">
+                {suggeriti === null && <p className="pb-nota">Carico…</p>}
+                {suggeriti?.length === 0 && <p className="pb-nota">Niente di recente.</p>}
+                {suggeriti?.map((s) => (
+                  <button key={s.chiave} type="button" className={`pb-consigliato${s.tipo === 'scadenza' ? ' pb-scadenza' : ''}${s.scaduta ? ' scaduta' : ''}`} onClick={() => apriSuggerito(s)}>
+                    {s.tipo === 'scadenza' ? <span className="pb-calendario" aria-hidden="true"><small>{new Date(s.quando).toLocaleDateString('it-IT', { month: 'short' })}</small><b>{new Date(s.quando).getUTCDate()}</b></span> : <IconaFileW11 tipo={tipo(s)} size={30} />}
+                    <span><strong>{s.nome}</strong><small>{s.tipo === 'scadenza' ? `${s.scaduta ? 'Scaduta' : 'Scadenza'}${s.importo ? ` · ${Number(s.importo).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' })}` : ''}` : s.tipo === 'recente' ? 'Su questo telefono' : 'Nell’archivio'}{s.tipo !== 'scadenza' && s.quando ? ` · ${new Date(s.quando).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}` : ''}</small></span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
         <footer className="pb-start-piede">
           <span className="pb-utente"><span className="pb-avatar" aria-hidden="true">{nomeUtente(email).charAt(0)}</span>{nomeUtente(email)}</span>
-          <button type="button" className={`pb-esci${conferma ? ' conferma' : ''}`} onClick={() => (conferma ? onEsci() : setConferma(true))}>
-            <IconaEsci size={18} /><span>{conferma ? 'Tocca di nuovo per uscire' : 'Esci'}</span>
-          </button>
+          <span className="pb-piede-azioni">
+            <button type="button" className={`pb-esci${conferma ? ' conferma' : ''}`} onClick={() => (conferma ? onEsci() : setConferma(true))} aria-label={conferma ? 'Tocca di nuovo per uscire' : 'Esci'} title="Esci">
+              <IconaEsci size={18} />{conferma && <span>Tocca di nuovo per uscire</span>}
+            </button>
+            <button type="button" className="pb-esci" onClick={() => { onChiudi(); apri({ tipo: 'impostazioni' }); }} aria-label="Impostazioni" title="Impostazioni"><IconaImpostazioni size={20} /></button>
+          </span>
         </footer>
+        {menuApp && (
+          <div className="pb-menu-app" role="menu" aria-label={voceDi(menuApp.voce)?.nome} style={{ left: menuApp.x, top: menuApp.y }} onClick={(e) => e.stopPropagation()}>
+            {menuApp.voce.tipo === 'app' && (
+              <button type="button" role="menuitem" onClick={() => { onImp({ ...imp, dock: cambiaDock(imp.dock, menuApp.voce.id) }); setMenuApp(null); }}>
+                {nelDock(imp.dock, menuApp.voce.id) ? 'Togli dal dock' : 'Aggiungi al dock'}
+              </button>
+            )}
+            <button type="button" role="menuitem" disabled={menuApp.i === 0} onClick={() => { onImp({ ...imp, aggiunte: spostaAggiunta(aggiunte, menuApp.i, menuApp.i - 1) }); setMenuApp(null); }}>Sposta prima</button>
+            <button type="button" role="menuitem" disabled={menuApp.i >= aggiunte.length - 1} onClick={() => { onImp({ ...imp, aggiunte: spostaAggiunta(aggiunte, menuApp.i, menuApp.i + 1) }); setMenuApp(null); }}>Sposta dopo</button>
+            <button type="button" role="menuitem" onClick={() => { onImp({ ...imp, aggiunte: togliAggiunta(aggiunte, menuApp.voce) }); setMenuApp(null); }}>Rimuovi da Start</button>
+          </div>
+        )}
       </section>
     </div>
   );
+}
+
+// Nomi delle cartelle fissate (lette una volta da Esplora).
+function useNomiCartelle(ids) {
+  const [nomi, setNomi] = useState({});
+  const chiave = ids.join(',');
+  useEffect(() => {
+    const veri = ids.filter((id) => id !== 'radice');
+    if (!veri.length) return undefined;
+    let vivo = true;
+    archivioDb.from('cartelle_mie').select('id, nome').in('id', veri).then(({ data }) => { if (vivo && data) setNomi(Object.fromEntries(data.map((c) => [c.id, c.nome]))); }, () => {});
+    return () => { vivo = false; };
+  }, [chiave]); // eslint-disable-line react-hooks/exhaustive-deps
+  return { radice: 'Personale', ...nomi };
 }

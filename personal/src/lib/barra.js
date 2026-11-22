@@ -19,10 +19,11 @@ const VISTE_BARRA = new Set(VOCI_BARRA.filter((v) => v.vista).map((v) => v.id));
  * Quale icona è attiva. Start aperto vince; poi Esplora se è la pagina in cima; poi la vista.
  * Le viste che non sono nella barra (Documenti, Conti, Legal…) accendono «Personale», come prima.
  */
-export function voceAttiva({ vista, pagine = [], start = false }) {
+export function voceAttiva({ vista, pagine = [], start = false, dock = null }) {
   if (start) return start === 'cerca' ? 'cerca' : 'start';
   if (pagine.length && pagine[pagine.length - 1]?.tipo === 'esplora') return 'esplora';
   if (VISTE_BARRA.has(vista)) return vista;
+  if (dock?.includes(vista)) return vista; // PR #337 §7: un'app fissata nel dock si accende lei
   return 'altro';
 }
 
@@ -30,10 +31,10 @@ export function voceAttiva({ vista, pagine = [], start = false }) {
  * PR #337: app «aperte ma non in primo piano» (trattino corto da 6 px): la vista sotto una pagina aperta
  * e Esplora file quando è aperto sotto un'altra pagina.
  */
-export function vociAperte({ vista, pagine = [], start = false }) {
+export function vociAperte({ vista, pagine = [], start = false, dock = null }) {
   const fuori = new Set();
-  const attiva = voceAttiva({ vista, pagine, start });
-  if (pagine.length) fuori.add(VISTE_BARRA.has(vista) ? vista : 'altro');
+  const attiva = voceAttiva({ vista, pagine, start, dock });
+  if (pagine.length) fuori.add(VISTE_BARRA.has(vista) || dock?.includes(vista) ? vista : 'altro');
   if (pagine.some((p) => p.tipo === 'esplora')) fuori.add('esplora');
   fuori.delete(attiva);
   return fuori;
@@ -100,3 +101,52 @@ export const APP_PER_FILE = {
   agenda: 'Crea un impegno con il file',
 };
 export const accettaFile = (id) => Object.prototype.hasOwnProperty.call(APP_PER_FILE, id);
+
+/* ---------- PR #337 §7: Start personalizzabile e app nel dock ---------- */
+// «Aggiunte»: app (dalle AGGIUNTE) e cartelle fissate di Esplora, nell'ordine scelto da Luca.
+// Dock: dopo Start e Cerca, le app fissate (predefinite quelle di sempre). Tutto in impostazioni_app
+// (chiave `start_personal`), uguale su ogni dispositivo.
+export const DOCK_PREDEFINITO = ['oggi', 'agenda', 'esplora', 'poliedron', 'altro'];
+const APP_DOCK = { oggi: VOCI_BARRA[2], agenda: VOCI_BARRA[3], esplora: VOCI_BARRA[4], poliedron: VOCI_BARRA[5], altro: VOCI_BARRA[6] };
+const chiaveAggiunta = (x) => `${x.tipo}:${x.id}`;
+
+export function normalizzaStart(v = {}) {
+  const app = new Set(AGGIUNTE.map((a) => a.id));
+  const aggiunte = Array.isArray(v?.aggiunte)
+    ? v.aggiunte.filter((x) => x && ((x.tipo === 'app' && app.has(x.id)) || (x.tipo === 'cartella' && x.id)))
+    : AGGIUNTE.map((a) => ({ tipo: 'app', id: a.id }));
+  const visti = new Set();
+  const uniche = aggiunte.filter((x) => { const k = chiaveAggiunta(x); if (visti.has(k)) return false; visti.add(k); return true; });
+  const dock = Array.isArray(v?.dock) ? v.dock.filter((id) => app.has(id) || APP_DOCK[id]).filter((id, i, l) => l.indexOf(id) === i).slice(0, 10) : DOCK_PREDEFINITO;
+  return { aggiunte: uniche, dock };
+}
+export function spostaAggiunta(lista, da, a) {
+  if (da === a || da < 0 || da >= lista.length) return lista;
+  const n = [...lista];
+  const [x] = n.splice(da, 1);
+  n.splice(Math.max(0, Math.min(a, n.length)), 0, x);
+  return n;
+}
+export const togliAggiunta = (lista, x) => lista.filter((y) => chiaveAggiunta(y) !== chiaveAggiunta(x));
+export const aggiungiAggiunta = (lista, x) => (lista.some((y) => chiaveAggiunta(y) === chiaveAggiunta(x)) ? lista : [...lista, x]);
+export const nelDock = (dock, id) => dock.includes(id);
+export const cambiaDock = (dock, id) => (dock.includes(id) ? dock.filter((x) => x !== id) : [...dock, id]);
+
+// Le icone della barra: Start, Cerca, poi le app fissate nel dock (anche quelle prese da Start).
+export function vociBarra(dock = DOCK_PREDEFINITO) {
+  return [VOCI_BARRA[0], VOCI_BARRA[1], ...dock.map((id) => APP_DOCK[id] || (() => { const a = AGGIUNTE.find((x) => x.id === id); return a ? { id: a.id, nome: a.nome, azione: a.azione } : null; })()).filter(Boolean)];
+}
+
+// Ricerca mentre si scrive in Start: prima le app con quel nome, poi i documenti (dal catalogo).
+export const appTrovate = (testo) => {
+  const q = String(testo || '').trim().toLocaleLowerCase('it');
+  return q ? AGGIUNTE.filter((a) => a.nome.toLocaleLowerCase('it').includes(q)) : [];
+};
+// «Consigliati»: scadenze imminenti (entro `giorni`, scadute comprese) dal catalogo, poi i file recenti.
+export function scadenzeImminenti(scadenze = [], oggi = new Date().toISOString().slice(0, 10), giorni = 14) {
+  const limite = new Date(Date.parse(`${oggi}T12:00:00Z`) + giorni * 86400000).toISOString().slice(0, 10);
+  return scadenze
+    .filter((s) => s && !s.completata && !s.storica && s.data && s.data <= limite && s.documento?.fascicolo !== 'clinico_pazienti')
+    .sort((a, b) => a.data.localeCompare(b.data))
+    .map((s) => ({ chiave: `s:${s.id}`, tipo: 'scadenza', id: s.id, documento_id: s.documento_id, nome: s.descrizione || s.documento?.titolo || 'Scadenza', quando: Date.parse(`${s.data}T12:00:00Z`), scaduta: s.data < oggi, importo: s.importo ?? null }));
+}

@@ -140,3 +140,24 @@ body.pb-trascina .pb-voce:not([data-bersaglio]) { opacity: .45; }
   .pb-consigliati { grid-template-columns: minmax(0, 1fr); }
   .pb-start-piede { padding: 8px 12px; }
 }
+
+/* ===== PR #337 §7: Start ===== */
+.pb-app { position: relative; touch-action: manipulation; }
+.pb-app.presa { background: var(--pb-hover); outline: 1.5px dashed var(--pb-accento); }
+.pb-app-dock { position: absolute; bottom: 4px; left: 50%; width: 6px; height: 3px; border-radius: 2px; background: var(--pb-accento); transform: translateX(-50%); }
+.pb-icona-piccola { width: 30px; height: 30px; }
+.pb-tutti { display: block; margin: 8px 8px 0; min-height: 36px; padding: 0 10px; border-radius: 6px; font-size: 13px; color: var(--pb-accento); }
+.pb-tutti:hover { background: var(--pb-hover); }
+.pb-calendario { flex-shrink: 0; width: 30px; height: 32px; border-radius: 5px; overflow: hidden; display: flex; flex-direction: column; align-items: center; background: var(--pb-campo); border: 1px solid var(--pb-linea); line-height: 1; }
+.pb-calendario small { width: 100%; text-align: center; font-size: 8px; padding: 2px 0; background: #C42B1C; color: #fff; text-transform: uppercase; }
+.pb-calendario b { font-size: 14px; padding-top: 3px; }
+.pb-scadenza.scaduta small { color: #C42B1C; }
+.pb-piede-azioni { display: flex; align-items: center; gap: 4px; }
+.pb-menu-app {
+  position: absolute; z-index: 50; transform: translate(-50%, calc(-100% - 6px)); min-width: 180px; padding: 4px; border-radius: 8px;
+  background: var(--pb-pannello); border: 1px solid var(--pb-linea); box-shadow: 0 8px 24px rgba(0, 0, 0, .2);
+  backdrop-filter: blur(30px) saturate(150%); -webkit-backdrop-filter: blur(30px) saturate(150%); display: flex; flex-direction: column;
+}
+.pb-menu-app button { min-height: 36px; padding: 0 12px; border-radius: 4px; text-align: left; font-size: 13px; color: var(--pb-testo); }
+.pb-menu-app button:hover:not(:disabled) { background: var(--pb-hover); }
+.pb-menu-app button:disabled { opacity: .4; }

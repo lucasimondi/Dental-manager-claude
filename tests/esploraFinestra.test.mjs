@@ -210,3 +210,39 @@ test('trasferimenti: uno alla volta con avanzamento, errori per file, Annulla fe
   assert.equal(trasferimenti().find((x) => x.id === r2.id).stato, 'annullato');
   assert.equal(testoAvanzamento({ stato: 'in_corso', fatti: 3, totale: 10, errori: [] }), '3 di 10 · 30%');
 });
+
+/* ---------- §7 Start ---------- */
+import { normalizzaStart, spostaAggiunta, togliAggiunta, cambiaDock, vociBarra, appTrovate, scadenzeImminenti, voceAttiva as attivaBarra, DOCK_PREDEFINITO } from '../personal/src/lib/barra.js';
+
+test('Start: aggiunte riordinabili, Rimuovi, Aggiungi al dock; dock di sempre come predefinito', () => {
+  const v = normalizzaStart();
+  assert.deepEqual(v.dock, DOCK_PREDEFINITO);
+  assert.ok(v.aggiunte.length > 10 && v.aggiunte.every((x) => x.tipo === 'app'));
+  assert.deepEqual(normalizzaStart({ aggiunte: [{ tipo: 'app', id: 'conti' }, { tipo: 'app', id: 'conti' }, { tipo: 'app', id: 'inventata' }, { tipo: 'cartella', id: 'casa' }], dock: ['agenda', 'conti', 'agenda', 'boh'] }),
+    { aggiunte: [{ tipo: 'app', id: 'conti' }, { tipo: 'cartella', id: 'casa' }], dock: ['agenda', 'conti'] });
+  const l = [{ tipo: 'app', id: 'a' }, { tipo: 'app', id: 'b' }, { tipo: 'app', id: 'c' }];
+  assert.deepEqual(spostaAggiunta(l, 0, 2).map((x) => x.id), ['b', 'c', 'a']);
+  assert.deepEqual(spostaAggiunta(l, 2, 0).map((x) => x.id), ['c', 'a', 'b']);
+  assert.deepEqual(togliAggiunta(l, { tipo: 'app', id: 'b' }).map((x) => x.id), ['a', 'c']);
+  assert.deepEqual(cambiaDock(['oggi'], 'conti'), ['oggi', 'conti']);
+  assert.deepEqual(cambiaDock(['oggi', 'conti'], 'conti'), ['oggi']);
+  assert.deepEqual(vociBarra(['agenda', 'conti']).map((x) => x.nome), ['Start', 'Cerca', 'Agenda', 'Conti']);
+  assert.deepEqual(vociBarra(['conti'])[2].azione, { vai: 'conti' });
+  assert.equal(attivaBarra({ vista: 'conti', dock: ['conti'] }), 'conti');
+  assert.equal(attivaBarra({ vista: 'conti' }), 'altro', 'come prima se non è nel dock');
+  assert.deepEqual(appTrovate('cont').map((a) => a.id), ['conti']);
+  assert.deepEqual(appTrovate(''), []);
+});
+
+test('Start: Consigliati con le scadenze imminenti dal catalogo (scadute prima), mai i pazienti', () => {
+  const sc = [
+    { id: 1, data: '2026-11-30', descrizione: 'IMU', importo: 100, documento_id: 'd1' },
+    { id: 2, data: '2026-11-20', descrizione: 'Bollo', documento_id: 'd2' },
+    { id: 3, data: '2027-01-30', descrizione: 'Lontana' },
+    { id: 4, data: '2026-11-25', descrizione: 'Paziente', documento: { fascicolo: 'clinico_pazienti' } },
+    { id: 5, data: '2026-11-24', descrizione: 'Fatta', completata: true },
+  ];
+  const r = scadenzeImminenti(sc, '2026-11-22', 14);
+  assert.deepEqual(r.map((x) => [x.nome, x.scaduta]), [['Bollo', true], ['IMU', false]]);
+  assert.equal(r[1].documento_id, 'd1'); assert.equal(r[1].importo, 100);
+});
