@@ -8,11 +8,53 @@ import { Vuoto, Chips, Conferma, tokenSessione } from '../../ui.jsx';
 import {
   caricaPiano, caricaCategorie, approva, rifiuta, riproponi, rinomina, cambiaCartella, importaPiano,
   riepilogo, filtra, raggruppa, radici, livello, confidenzaTesto, controllaNome, FILTRI, SOGLIA_ALTA,
+  eseguiLotto, annullaLotto, caricaLotti, daEseguire,
 } from '../../lib/pianoRiordino.js';
 import './riordino.css';
 
 const STATI = { proposto: 'Da decidere', approvato: 'Approvato', rifiutato: 'Rifiutato', eseguito: 'Eseguito' };
 const MAX_GRUPPI = 60;
+const quando = (t) => new Date(t).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+// Fase 3: sposta su Drive a lotti di 100 le righe approvate; ogni lotto si può annullare.
+function Esecuzione({ righe, db, mostra, ricarica }) {
+  const [lotti, setLotti] = useState([]);
+  const [lavoro, setLavoro] = useState(null);
+  const [errore, setErrore] = useState(null);
+  const aggiornaLotti = useCallback(() => caricaLotti(db).then(setLotti).catch(() => {}), [db]);
+  useEffect(() => { aggiornaLotti(); }, [aggiornaLotti]);
+  const n = daEseguire(righe);
+  const fai = async (chi, f) => {
+    setLavoro(chi); setErrore(null);
+    try { await f(); await ricarica(); await aggiornaLotti(); } catch (e) { setErrore(e.message); } finally { setLavoro(null); }
+  };
+  const esegui = () => fai('esegui', async () => {
+    const r = await eseguiLotto({ token: await tokenSessione() });
+    mostra(`Spostati su Drive ${r.eseguiti} file${r.errori ? `, ${r.errori} non riusciti (restano approvati)` : ''}`);
+  });
+  const annulla = (l) => fai(l.lotto, async () => {
+    const r = await annullaLotto({ token: await tokenSessione(), lotto: l.lotto });
+    mostra(`Lotto annullato: ${r.annullati} file tornati dov'erano`);
+  });
+  return (
+    <section className="rr-carta" aria-label="Esecuzione su Drive">
+      <h2>Spostamento su Drive</h2>
+      <p>{n ? `${n} file approvati da spostare. Si fa a lotti di 100: ogni lotto si può annullare.` : 'Nessun file approvato da spostare.'}</p>
+      {errore && <p className="rr-errore" role="alert">{errore}</p>}
+      {n > 0 && <button type="button" className="pp-bottone" disabled={Boolean(lavoro)} onClick={esegui}>{lavoro === 'esegui' ? 'Sposto…' : `Sposta i prossimi ${Math.min(100, n)}`}</button>}
+      {lotti.length > 0 && (
+        <ul className="rr-lotti">
+          {lotti.map((l) => (
+            <li key={l.lotto}>
+              <span>{quando(l.iniziato_il)} · {l.eseguiti} spostati{l.errori ? ` · ${l.errori} errori` : ''}{l.annullati ? ` · ${l.annullati} annullati` : ''}</span>
+              {l.eseguiti > 0 && <button type="button" className="pp-bottone pp-bottone-chiaro" disabled={Boolean(lavoro)} onClick={() => annulla(l)}>{lavoro === l.lotto ? 'Annullo…' : 'Annulla lotto'}</button>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
 
 function Riga({ x, aperta, onTocca, onAzione, categorie, ctx }) {
   const [modo, setModo] = useState(null); // 'cartella' | 'nome'
@@ -56,7 +98,7 @@ function Riga({ x, aperta, onTocca, onAzione, categorie, ctx }) {
               </span>
             </div>
           )}
-          {!modo && (
+          {!modo && x.stato !== 'eseguito' && (
             <span className="rr-tasti">
               {x.stato !== 'approvato' && <button type="button" className="pp-bottone" onClick={() => onAzione('approva')}>Approva</button>}
               <button type="button" className="pp-bottone pp-bottone-chiaro" onClick={() => { setValore(''); setModo('cartella'); }}>Cambia cartella</button>
@@ -170,6 +212,7 @@ export function VistaRiordino({ ctx, db = archivioDb }) {
         {chiedi && <Conferma testo={chiedi.testo} etichetta="Approva" onSi={() => { chiedi.fai(); setChiedi(null); }} onNo={() => setChiedi(null)} />}
       </section>
 
+      <Esecuzione righe={righe} db={db} mostra={mostra} ricarica={async () => setRighe(await caricaPiano(db))} />
       <Chips voci={FILTRI.map((f) => [f.id, f.nome])} attiva={filtro} onScegli={(f) => { setFiltro(f); setQuanti(MAX_GRUPPI); }} />
       <input className="rr-cerca" type="search" placeholder="Cerca nome, cartella o motivo" value={testo} onChange={(e) => { setTesto(e.target.value); setQuanti(MAX_GRUPPI); }} aria-label="Cerca nel piano" />
       <div className="rr-indice" role="tablist" aria-label="Cartelle principali">

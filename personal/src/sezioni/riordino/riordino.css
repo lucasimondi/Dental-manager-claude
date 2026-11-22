@@ -43,3 +43,6 @@
 .rr-modifica label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--pp-grigio); }
 .rr-modifica input { padding: 12px; border-radius: 10px; border: 1px solid var(--pp-linea); background: var(--pp-sfondo); color: var(--pp-inchiostro); font-size: 16px; }
 .rr-altri { align-self: center; }
+.rr-lotti { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.rr-lotti li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; color: var(--pp-grigio); }
+.rr-lotti .pp-bottone { padding: 8px 12px; min-height: 44px; }

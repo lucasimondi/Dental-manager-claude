@@ -171,3 +171,38 @@ Su indicazione di Luca («Fallo tu senza api») la classificazione l'ha fatta Cl
 2. **Elenchi da confermare** in `TASSONOMIA.md`: persone dubbie, immobili dubbi e centraline.
 3. **229 file dell'archivio fuori da «Archivio personale»:** non sono nel piano. Decidere se includerli.
 4. **Documenti «Storie per tessere»:** sono documenti d'identità di persone accolte e restano in una cartella a sé.
+
+### Revisione fatta da Claude Code (2026-11-22, Luca: «É un lavoro troppo lungo da fare, ho chiesto a te di farlo apposta»)
+- Rilette a mano le cartelle grandi («12/Studio Cuneo», «05/…/Dichiarazioni», «08/Famiglia/Attività», «13 Acquisti», «11/Altre questioni legali», «12/Seminari e Docenza») e i 606 dubbi. Le correzioni ricorrenti sono regole nel classificatore (`CORREZIONI`, `DA_DUBBI`).
+  - Cosa è stato spostato: assicurazioni, pignoramenti, causa Primo, multe, barca, studi universitari, passatempi, acquisti, One Apple, MOBE-E.
+  - Le cartelle delle polizze sono una per compagnia, non una per polizza.
+- 1.138 righe del piano sono state aggiornate nel database: 38 cartelle nuove e 1.078 destinazioni corrette. Dopo l'aggiornamento il conteggio per cartella coincide con il classificatore.
+- **Approvate da Claude Code su delega di Luca:** 6.610 righe, cioè tutte quelle fuori da «99».
+- **Restano da decidere:** 460 righe in «99 Da verificare».
+  - 380 dubbi veri: titoli vuoti, allegati illeggibili e alcuni messaggi spam.
+  - 60 copie identiche.
+  - 20 «Possibili documenti clinici» (panoramiche, file STL, elenchi di pazienti): non si spostano, vanno nel fascicolo clinico per decisione di Luca.
+- **Indicatori dopo la revisione:**
+  - «99» = 6,5%, di cui 5,7% senza contare le copie identiche;
+  - nomi conformi: 98,9%;
+  - 347 cartelle di destinazione, al massimo 4 livelli;
+  - confidenza: 1.789 righe a 0,85 o più, 4.881 fra 0,60 e 0,85.
+
+## Fase 3 — esecuzione su Drive (2026-11-22)
+- **Migrazione** `20261122200000_pol_vita_ordina_esecuzione.sql`, già applicata, additiva:
+  - `cartelle_mie.categoria_id`: le cartelle della tassonomia sono cartelle dell'app con la loro gemella su Drive, quindi lo stesso albero 1:1;
+  - `log_spostamenti`, una riga per file: cartella e nome di prima, cartelle dell'app di prima, scorciatoie create, esito;
+  - vista `v_lotti_riordino`.
+  - Sicurezza: RLS in sola lettura per il proprietario e REVOKE ad anon e PUBLIC; `get_advisors` non mostra problemi nuovi.
+- **Script** (web app @31, pubblicata su «Pubblica» di Luca; si torna indietro ripubblicando la 30):
+  - **`esegui_lotto`**: prende al massimo 100 righe `approvato` fuori da «99», in meno di 4,5 minuti.
+    1. Scrive il registro prima di toccare il file.
+    2. Sposta il file con `moveTo` nella cartella della tassonomia, che crea con i padri se manca.
+    3. Gli dà il nome nuovo.
+    4. Crea le scorciatoie Drive, mai copie.
+    5. Fissa il documento (`drive_fissa`, `drive_rinomina = false`) e lo mette nella cartella dell'app, togliendolo dalle cartelle dell'app di prima.
+    6. Segna la riga del piano `eseguito`.
+
+    Se qualcosa si interrompe a metà, il file torna dov'era. Il fascicolo `clinico_pazienti` non si tocca mai.
+  - **`annulla_lotto`**: rimette ogni file nella cartella e con il nome di prima, sposta nel Cestino solo le scorciatoie create dal lotto, ripristina documento e cartelle dell'app, e riporta la riga ad `approvato`.
+- **App:** nella schermata «Riordino», il riquadro «Spostamento su Drive» ha il tasto «Sposta i prossimi 100» e l'elenco dei lotti, ciascuno con «Annulla lotto».

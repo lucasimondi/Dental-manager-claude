@@ -134,3 +134,31 @@ export async function importaPiano({ token }, fetchImpl = fetch) {
   if (!r.ok) throw new Error(r.errore === 'File mancante' ? 'Lo script pubblicato non sa ancora caricare il piano: va pubblicata la versione nuova.' : r.errore || 'Caricamento non riuscito.');
   return r;
 }
+
+// ---------------------------------------------------------------- fase 3: esecuzione su Drive a lotti
+async function chiamaScriptPiano(corpo, fetchImpl) {
+  if (!corpo.token) throw new Error('Sessione scaduta: esci e rientra.');
+  const res = await fetchImpl(URL_CARICAMENTO, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(corpo) });
+  let r;
+  try { r = await res.json(); } catch { throw new Error('Lo script non ha risposto.'); }
+  if (!r.ok) throw new Error(r.errore === 'File mancante' ? 'Lo script pubblicato non sa ancora spostare i file: va pubblicata la versione nuova.' : r.errore || 'Operazione non riuscita.');
+  return r;
+}
+
+/** Sposta su Drive il prossimo lotto (al massimo 100 righe approvate). Mai le righe in «99». */
+export const eseguiLotto = ({ token }, fetchImpl = fetch) => chiamaScriptPiano({ token, azione: 'esegui_lotto' }, fetchImpl);
+
+/** Rimette i file del lotto dov'erano, con il nome di prima. */
+export function annullaLotto({ token, lotto }, fetchImpl = fetch) {
+  if (!/^[0-9a-f-]{36}$/i.test(String(lotto || ''))) return Promise.reject(new Error('Lotto non valido.'));
+  return chiamaScriptPiano({ token, azione: 'annulla_lotto', lotto }, fetchImpl);
+}
+
+export async function caricaLotti(db) {
+  const { data, error } = await db.from('v_lotti_riordino').select('*').order('iniziato_il', { ascending: false }).limit(20);
+  if (error) throw error;
+  return data || [];
+}
+
+/** Quante righe approvate restano da spostare (escluse quelle in «99»). */
+export const daEseguire = (righe) => righe.filter((x) => x.stato === 'approvato' && !String(x.percorso_nuovo).startsWith('99 ')).length;
