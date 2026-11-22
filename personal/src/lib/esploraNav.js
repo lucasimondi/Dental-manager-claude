@@ -165,3 +165,31 @@ function dimensione(b) {
 
 // Esiste ancora? (per le schede che puntano a una cartella archiviata o eliminata)
 export const nodoValido = (nodo, cartelle) => nodo === RADICE || eVirtuale(nodo) || !!cartellaDi(cartelle, nodo);
+
+/* ---------- PR #337 §9: virtualizzazione sopra i 200 elementi ---------- */
+export const SOGLIA_VIRTUALE = 200;
+// Quali elementi disegnare: righe visibili (± margine) di una griglia a `colonne` colonne con righe alte
+// `altezza` px che inizia a `inizio` px dentro un contenitore scorrevole. Risultato in indici di elemento,
+// più lo spazio vuoto sopra e sotto (px) che tiene la barra di scorrimento giusta.
+export function finestraVirtuale({ n, colonne = 1, altezza, scrollTop = 0, viewport = 800, inizio = 0, margine = 6 }) {
+  const c = Math.max(1, colonne | 0);
+  const h = Math.max(1, altezza || 1);
+  const righe = Math.ceil(n / c);
+  const prima = Math.max(0, Math.floor((scrollTop - inizio) / h) - margine);
+  const ultima = Math.min(righe, Math.ceil((scrollTop - inizio + viewport) / h) + margine);
+  return { da: prima * c, a: Math.min(n, Math.max(prima, ultima) * c), sopra: prima * h, sotto: Math.max(0, righe - Math.max(prima, ultima)) * h };
+}
+
+/* ---------- PR #337 §9: tastiera (frecce) ---------- */
+// Indice di arrivo con le frecce: ←/→ ±1 (solo nelle griglie), ↑/↓ ± colonne, Home/Fine, PagSu/PagGiù ± 10 righe.
+export function indiceConTasto(i, tasto, { n, colonne = 1 }) {
+  if (!n) return -1;
+  const c = Math.max(1, colonne | 0);
+  const da = i < 0 ? -1 : i;
+  const passi = { ArrowRight: c > 1 ? 1 : 0, ArrowLeft: c > 1 ? -1 : 0, ArrowDown: c, ArrowUp: -c, PageDown: c * 10, PageUp: -c * 10 };
+  if (tasto === 'Home') return 0;
+  if (tasto === 'End') return n - 1;
+  if (!(tasto in passi)) return da;
+  if (da < 0) return 0;
+  return Math.max(0, Math.min(n - 1, da + passi[tasto]));
+}

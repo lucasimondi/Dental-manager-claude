@@ -8,7 +8,7 @@
 // Regola: ogni azione passa PRIMA da Drive e l'interfaccia cambia solo a successo (lib/esplora.js
 // eseguiCompleto); se non riesce, avviso con «Riprova». «Annulla» per 5 s (e Ctrl+Z) dopo spostamenti ed eliminazioni.
 // Copia / Duplica (decisione del PO): il documento compare anche nell'altra cartella, nessun file nuovo su Drive.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { aggiornaDocumento, cestinaSuDrive, eliminaDocumenti, cercaDocumenti, scadenzeDelDocumento, caricaDocumento } from '../../lib/archivio.js';
 import { eliminaConDrive } from '../../lib/eliminazioneSwipe.js';
@@ -33,6 +33,7 @@ import {
   nuovaScheda as creaScheda, nodoScheda, vaiInScheda, sostituisciInScheda, indietroScheda, avantiScheda, puoIndietro, puoAvanti, chiudiScheda, spostaScheda,
   nodoDaTesto, documentiNelSottoalbero, cartelleNelSottoalbero, filtraRisultati, cartelleTrovate, nelNome, evidenzia,
   leggiRecenti, ricordaRecente, leggiPannello, salvaPannello, larghezzaPannello, swipeApre, testoSelezione, nodoValido,
+  SOGLIA_VIRTUALE, finestraVirtuale, indiceConTasto,
 } from '../../lib/esploraNav.js';
 import { TitoloSchede, BarraIndirizzi, CampoCerca, FiltriRicerca, BarraComandi, BarraStato, Riquadro } from './EsploraBarre.jsx';
 import { inizioDrive, fineDrive } from '../../lib/statoDrive.js';
@@ -100,6 +101,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
   const [testoCerca, setTestoCerca] = useState('');
   const [filtri, setFiltri] = useState({ tipo: '', data: '', categoria: '' });
   const campoCerca = useRef(null);
+  const visitate = useRef(new Map()); // cartella → { t, giro } (cache delle cartelle visitate)
   const timerCerca = useRef(null);
   const [cache, setCache] = useState(() => new Map()); // id documento → documento
   const [lista, setLista] = useState(null); // cartelle virtuali: { nodo, documenti, prossimo, finito }
@@ -132,7 +134,22 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
   const timerAvviso = useRef(null);
   const cambiato = useRef(false);
   const ultimoTocco = useRef(0);
-  const annullaRef = useRef(null); // { fai, fino } per Ctrl+Z
+  // PR #337 §9: pila di Annulla (Ctrl+Z annulla l'ultima azione, anche dopo che l'avviso è sparito; l'avviso
+  // «Annulla» resta 5 s). Le eliminazioni definitive si annullano solo nei 5 s prima di partire.
+  const pila = useRef([]);
+  const registraAnnulla = (fn, { fino = null } = {}) => {
+    const v = { fn, fino, usata: false };
+    pila.current = [...pila.current.slice(-19), v];
+    return () => { if (v.usata) return; v.usata = true; pila.current = pila.current.filter((x) => x !== v); fn(); };
+  };
+  const annullaUltimo = () => {
+    while (pila.current.length) {
+      const v = pila.current.pop();
+      if (v.usata || (v.fino && Date.now() > v.fino)) continue;
+      v.usata = true; v.fn(); return true;
+    }
+    return false;
+  };
 
   const disp = disposizione(schermo.l, schermo.a);
   const mobile = tocco() || schermo.l < 600;
@@ -212,8 +229,11 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
           const trovati = (await cercaDocumenti(archivioDb, testo, null, 200)) || [];
           if (vivo) { metti(trovati); setLista({ nodo, documenti: trovati.map((d) => d.id), finito: true }); }
         } else if (nodo !== CATEGORIE) {
+          // PR #337 §9: cache delle cartelle visitate (un minuto; Aggiorna / F5 rilegge sempre).
+          const v = visitate.current.get(nodo);
+          if (v && v.giro === rinfresca && Date.now() - v.t < 60000) return;
           const docs = await documentiCartellaEsplora(archivioDb, nodo);
-          if (vivo) metti(docs);
+          if (vivo) { metti(docs); visitate.current.set(nodo, { t: Date.now(), giro: rinfresca }); }
         }
       } catch (e) { if (vivo) mostraAvviso(`Non riesco ad aprire la cartella: ${e.message}`, { tipo: 'errore', azione: { nome: 'Riprova', fai: () => setRinfresca((n) => n + 1) } }); }
     })();
@@ -278,8 +298,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
       return r.op;
     }
     if (messaggio) {
-      const annulla = annullabile && inversa(r.op) ? () => { annullaRef.current = null; fai(inversa(r.op), 'Annullato', { annullabile: false }); } : null;
-      annullaRef.current = annulla ? { fai: annulla, fino: Date.now() + DURATA_ANNULLA } : null;
+      const annulla = annullabile && inversa(r.op) ? registraAnnulla(() => fai(inversa(r.op), 'Annullato', { annullabile: false })) : null;
       mostraAvviso(messaggio, { azione: annulla ? { nome: 'Annulla', fai: annulla } : null });
     }
     return r.op;
@@ -347,8 +366,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
       }
     };
     const timer = setTimeout(esegui, DURATA_ANNULLA);
-    const annulla = () => { annullato = true; clearTimeout(timer); annullaRef.current = null; mostra(); mostraAvviso('Annullato'); };
-    annullaRef.current = { fai: annulla, fino: Date.now() + DURATA_ANNULLA };
+    const annulla = registraAnnulla(() => { annullato = true; clearTimeout(timer); mostra(); mostraAvviso('Annullato'); }, { fino: Date.now() + DURATA_ANNULLA });
     mostraAvviso(`${docs.length === 1 ? `«${titoloDi(docs[0].id)}» eliminato` : `${docs.length} documenti eliminati`}: i file vanno nel Cestino di Drive`, { azione: { nome: 'Annulla', fai: annulla } });
   };
 
@@ -369,8 +387,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
       fineDrive();
       metti(docs.map((d) => ({ ...d, tag: conCestino(d.tag, true) })));
       cambiato.current = true;
-      const annulla = () => { annullaRef.current = null; ripristinaDocs(docs, 'Annullato'); };
-      annullaRef.current = { fai: annulla, fino: Date.now() + DURATA_ANNULLA };
+      const annulla = registraAnnulla(() => ripristinaDocs(docs, 'Annullato'));
       mostraAvviso(`${docs.length === 1 ? `«${titoloDi(docs[0].id)}»` : `${docs.length} documenti`} nel Cestino`, { azione: { nome: 'Annulla', fai: annulla } });
     } catch (e) {
       fineDrive(e.message);
@@ -482,7 +499,36 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
           : datiCerca(nodo) ? cartelleTrovate(cartelleNelSottoalbero(datiCerca(nodo).base, cartelle), datiCerca(nodo).testo)
             : eVirtuale(nodo) ? [] : sottocartelle(cartelle, nodo);
   const righe = useMemo(() => ordinaRighe(righeDettagli(cartelleMostrate, docMostrati, dati?.titoli || {}, fascicoli), ordine), [cartelleMostrate, docMostrati, dati, ordine, fascicoli]);
-  const gruppi = useMemo(() => raggruppa(righe, gruppo), [righe, gruppo]); // eslint-disable-line react-hooks/exhaustive-deps
+  const gruppi = useMemo(() => raggruppa(righe, gruppo), [righe, gruppo]);
+  // PR #337 §9: sopra i 200 elementi (senza gruppi) si disegnano solo le righe visibili.
+  const virtuale = !gruppo && nodo !== HOME && righe.length > SOGLIA_VIRTUALE;
+  const [scorri, setScorri] = useState({ top: 0, h: 800 });
+  const [misure, setMisure] = useState(null); // { colonne, altezza, inizio }
+  useEffect(() => {
+    const el = contenutoRef.current;
+    if (!el || !virtuale) return undefined;
+    let raf = 0;
+    const su = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => setScorri({ top: el.scrollTop, h: el.clientHeight })); };
+    su();
+    el.addEventListener('scroll', su, { passive: true }); window.addEventListener('resize', su);
+    return () => { cancelAnimationFrame(raf); el.removeEventListener('scroll', su); window.removeEventListener('resize', su); };
+  }, [virtuale, vista, nodo]);
+  useLayoutEffect(() => {
+    if (!virtuale) { setMisure(null); return; }
+    const c = contenutoRef.current;
+    const contenitore = c?.querySelector('.esp-griglia, .esp-elenco, .esp-dettagli');
+    const primo = contenitore?.querySelector('[data-chiave]');
+    if (!contenitore || !primo) return;
+    const riga = primo.closest('.esp-tessera, .esp-largo, .esp-riga, .esp-dettagli-riga') || primo;
+    const gap = parseFloat(getComputedStyle(contenitore).rowGap) || 0;
+    const colonne = contenitore.classList.contains('esp-griglia') ? getComputedStyle(contenitore).gridTemplateColumns.split(' ').length : 1;
+    const testa = contenitore.querySelector('.esp-dettagli-testa')?.offsetHeight || 0;
+    const nuove = { colonne, altezza: riga.getBoundingClientRect().height + gap, inizio: contenitore.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop + testa };
+    setMisure((m) => (m && m.colonne === nuove.colonne && Math.abs(m.altezza - nuove.altezza) < 0.5 && Math.abs(m.inizio - nuove.inizio) < 1 ? m : nuove));
+  });
+  const finestraV = virtuale && misure ? finestraVirtuale({ n: righe.length, colonne: misure.colonne, altezza: misure.altezza, scrollTop: scorri.top, viewport: scorri.h, inizio: misure.inizio }) : null;
+  const pezzo = (lista) => (finestraV ? lista.slice(finestraV.da, finestraV.a) : virtuale ? lista.slice(0, 60) : lista);
+  const spazio = (px, chiave, griglia = false) => (finestraV && px > 0 ? <div key={chiave} aria-hidden="true" className="esp-spazio" style={{ height: px, ...(griglia ? { gridColumn: '1 / -1' } : {}) }} /> : null); // eslint-disable-line react-hooks/exhaustive-deps
   const elementi = nodo === HOME
     ? [...cartelleMostrate.map((c) => chiaveDi('cartella', c.id)), ...preferitiMostrati.map((d) => chiaveDi('doc', d.id)), ...docMostrati.map((d) => chiaveDi('doc', d.id))]
     : gruppi.flatMap((g) => g.righe).map((r) => chiaveDi(r.cosa, r.id));
@@ -671,6 +717,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
   }
   const vuoto = useRef({ t: null, p: null });
   const rettangoloFatto = useRef(false);
+  const fuoco = useRef(null); // elemento col fuoco della tastiera
   const gestoriVuoto = {
     onTouchStart: (e) => {
       ultimoTocco.current = Date.now();
@@ -870,7 +917,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
       if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); vaiStoria(avantiScheda); return; }
       if (e.altKey && k === 'p') { e.preventDefault(); const r = e.shiftKey ? 'dettagli' : 'anteprima'; setRiquadro((x) => (x === r ? null : r)); return; }
       const sel = [...scelti].map(sorgenteDi);
-      if (ctrl && k === 'z') { if (annullaRef.current && Date.now() < annullaRef.current.fino) { e.preventDefault(); annullaRef.current.fai(); } return; }
+      if (ctrl && k === 'z') { e.preventDefault(); if (!annullaUltimo()) mostraAvviso('Niente da annullare'); return; }
       if (ctrl && k === 'a') { e.preventDefault(); tuttoSelezionato(); return; }
       if (ctrl && e.shiftKey && k === 'n') { e.preventDefault(); if (!eVirtuale(nodo)) iniziaNuova(nodo); return; }
       if (ctrl && k === 'v') { if (appunti) { e.preventDefault(); azione('incolla', []); } return; }
@@ -878,6 +925,33 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
       if (e.key === 'Escape') { setScelti(new Set()); setModoSelezione(false); return; }
       if (e.altKey && e.key === 'ArrowUp') { e.preventDefault(); if (padreDi(cartelle, nodo)) vai(padreDi(cartelle, nodo)); return; }
       if (e.key === 'Backspace' && padreDi(cartelle, nodo)) { e.preventDefault(); vai(padreDi(cartelle, nodo)); return; }
+      // Frecce: si sposta la selezione (Maiusc estende); Shift+F10 o tasto Menu = menu contestuale.
+      if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End', 'PageDown', 'PageUp'].includes(e.key) && !e.altKey
+        && !e.target.closest?.('.esp-albero, .esp-cassetto, [role="tablist"], [role="menu"], .pb-barra, .pb-start, .pn-centro')) {
+        if (!elementi.length) return;
+        e.preventDefault();
+        const griglia = contenutoRef.current?.querySelector('.esp-griglia');
+        const col = vista === 'dettagli' || vista === 'elenco' || !griglia ? 1 : getComputedStyle(griglia).gridTemplateColumns.split(' ').length;
+        const da = elementi.indexOf(fuoco.current && elementi.includes(fuoco.current) ? fuoco.current : ancora);
+        const i = indiceConTasto(da, e.key, { n: elementi.length, colonne: col });
+        const k = elementi[i];
+        if (!k) return;
+        if (e.shiftKey && ancora) { const r = seleziona(scelti, k, elementi, { shift: true, ancora }); setScelti(r.scelti); }
+        else if (!ctrl) { setScelti(new Set([k])); setAncora(k); }
+        fuoco.current = k;
+        const el = contenutoRef.current?.querySelector(`[data-chiave="${CSS.escape(k)}"]`);
+        el?.focus({ preventScroll: true }); el?.scrollIntoView({ block: 'nearest' });
+        return;
+      }
+      if ((e.key === 'F10' && e.shiftKey) || e.key === 'ContextMenu') {
+        e.preventDefault();
+        const k = fuoco.current && scelti.has(fuoco.current) ? fuoco.current : [...scelti][0];
+        const el = k && contenutoRef.current?.querySelector(`[data-chiave="${CSS.escape(k)}"]`);
+        const r = (el || contenutoRef.current).getBoundingClientRect();
+        if (!sel.length) apriMenu('vuoto', [], r.left + 24, r.top + 24);
+        else apriMenu(sel[0].tipo === 'cartella' ? 'cartella' : 'file', sel, r.left + Math.min(r.width / 2, 120), r.top + Math.min(r.height / 2, 40));
+        return;
+      }
       if (!sel.length) return;
       const una = sel[0];
       const tutteMie = sel.every((s) => s.tipo === 'doc' || (s.id !== RADICE && !eVirtuale(s.id)));
@@ -938,9 +1012,27 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
   };
   const ramo = (padre, livello) => sottocartelle(cartelle, padre).map((c) => rigaAlbero({ id: c.id, nome: c.nome, livello, figli: sottocartelle(cartelle, c.id).length ? ramo(c.id, livello + 1) : null, trascinabile: true, bersaglio: true }));
   const prefCartelle = preferiti.filter((p) => p.tipo === 'cartella');
+  // Albero da tastiera: ↑/↓ tra le voci visibili, → apre, ← chiude o sale al padre, Home/Fine.
+  const tastieraAlbero = (e) => {
+    const voci = [...e.currentTarget.querySelectorAll('.esp-albero-nome')];
+    const i = voci.indexOf(document.activeElement);
+    if (i < 0) return;
+    const li = voci[i].closest('[role="treeitem"]');
+    const vai2 = (j) => { e.preventDefault(); voci[Math.max(0, Math.min(voci.length - 1, j))]?.focus(); };
+    if (e.key === 'ArrowDown') vai2(i + 1);
+    else if (e.key === 'ArrowUp') vai2(i - 1);
+    else if (e.key === 'Home') vai2(0);
+    else if (e.key === 'End') vai2(voci.length - 1);
+    else if (e.key === 'ArrowRight' && li?.getAttribute('aria-expanded') === 'false') { e.preventDefault(); li.querySelector('.esp-albero-freccia')?.click(); }
+    else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      if (li?.getAttribute('aria-expanded') === 'true') li.querySelector('.esp-albero-freccia')?.click();
+      else li?.parentElement?.closest('[role="treeitem"]')?.querySelector('.esp-albero-nome')?.focus();
+    }
+  };
   const IcoNav = ({ d, colore = 'currentColor' }) => <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path d={d} fill="none" stroke={colore} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>;
   const albero = (
-    <ul className="esp-albero-lista" role="tree" aria-label="Pannello di navigazione">
+    <ul className="esp-albero-lista" role="tree" aria-label="Pannello di navigazione" onKeyDown={tastieraAlbero}>
       {rigaAlbero({ id: HOME, nome: 'Home', livello: 0, figli: null, icona: <IcoNav d="M2.5 7.5 8 3l5.5 4.5M4 6.5V13h3V9.5h2V13h3V6.5" colore="#0F6CBD" /> })}
       {rigaAlbero({ id: ACCESSO_RAPIDO, nome: 'Accesso rapido', livello: 0, icona: <IcoStella />,
         figli: prefCartelle.length ? prefCartelle.map((p) => rigaAlbero({ id: `${p.id}`, nome: p.id === RADICE ? 'Personale' : nomeNodo(p.id, nomi), livello: 1, figli: null, bersaglio: p.id === RADICE || !!cartelle.find((c) => c.id === p.id) })).filter(Boolean) : null })}
@@ -1052,7 +1144,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     const modello = cols.map(([k]) => (k === 'nome' ? `minmax(${Math.min(larghezze.nome, 160)}px, ${larghezze.nome}fr)` : `${larghezze[k]}px`)).join(' ');
     const cella = (r, k) => (k === 'data' ? dataLeggibile(r.data) : k === 'tipo' ? r.tipo : k === 'dimensione' ? dimensioneLeggibile(r.dimensione) : k === 'categoria' ? r.categoria : '');
     return (
-      <div className="esp-dettagli" role="grid" aria-label="Dettagli" aria-rowcount={righe.length + 1} style={{ '--esp-colonne-dettagli': mobile ? 'minmax(0,1fr) 92px' : modello }}>
+      <div className="esp-dettagli" role="grid" aria-label="Dettagli" aria-rowcount={righe.length + 1} aria-multiselectable="true" style={{ '--esp-colonne-dettagli': mobile ? 'minmax(0,1fr) 92px' : modello }}>
         <div className="esp-dettagli-testa" role="row" onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setMenu({ cosa: 'colonne', sorgenti: [], x: e.clientX, y: e.clientY, titolo: 'Colonne' }); }}>
           {cols.map(([k, nome]) => (
             <div key={k} role="columnheader" aria-sort={ordine.chiave === k ? (ordine.verso === 'su' ? 'ascending' : 'descending') : 'none'} className="esp-dettagli-col">
@@ -1062,9 +1154,10 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
           ))}
         </div>
         {nuova && nuova.padre === nodo && <div className="esp-dettagli-riga esp-dettagli-nuova" role="row">{nuovaInline('esp-dettagli-cella-nuova')}</div>}
+        {spazio(finestraV?.sopra, 'su')}
         {gruppi.map((g) => [
           g.titolo ? <div key={`g:${g.titolo}`} role="row" className="esp-gruppo-riga"><div role="gridcell" className="esp-gruppo-titolo">{g.titolo} <span>({g.righe.length})</span></div></div> : null,
-          ...g.righe.map((r) => {
+          ...pezzo(g.righe).map((r) => {
             const st = statoElemento(r.cosa, r.voce);
             return (
               <div key={st.k} role="row" className={`esp-dettagli-riga${st.classi}`} data-elemento data-bersaglio={st.chiave} data-chiave={st.k} tabIndex={0} aria-selected={st.scelto} aria-label={st.cartella ? `Cartella ${st.nome}` : st.nome} {...st.g}>
@@ -1075,6 +1168,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
             );
           }),
         ])}
+        {spazio(finestraV?.sotto, 'giu')}
       </div>
     );
   };
@@ -1192,9 +1286,9 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
             <div key={`g:${g.titolo}`} className="esp-blocco">
               {g.titolo && <h3 className="esp-blocco-titolo">{g.titolo} <span>({g.righe.length})</span></h3>}
               {vista === 'elenco' ? (
-                <div className="esp-elenco" role="list">{gi === 0 && nuovaInline('esp-riga esp-riga-nuova')}{g.righe.map((r) => rigaElenco(r.cosa, r.voce))}</div>
+                <div className="esp-elenco" role="list" aria-multiselectable="true">{gi === 0 && nuovaInline('esp-riga esp-riga-nuova')}{spazio(finestraV?.sopra, 'su')}{pezzo(g.righe).map((r) => rigaElenco(r.cosa, r.voce))}{spazio(finestraV?.sotto, 'giu')}</div>
               ) : (
-                <div className={`esp-griglia esp-griglia-${vista}`} role="list">{gi === 0 && nuovaInline('esp-tessera esp-tessera-nuova')}{g.righe.map((r) => tessera(r.cosa, r.voce, vista === 'grandi'))}</div>
+                <div className={`esp-griglia esp-griglia-${vista}`} role="list" aria-multiselectable="true">{gi === 0 && nuovaInline('esp-tessera esp-tessera-nuova')}{spazio(finestraV?.sopra, 'su', true)}{pezzo(g.righe).map((r) => tessera(r.cosa, r.voce, vista === 'grandi'))}{spazio(finestraV?.sotto, 'giu', true)}</div>
               )}
             </div>
           ))}

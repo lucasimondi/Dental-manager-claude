@@ -18,6 +18,7 @@ import {
 import { caricaPreferiti } from './lib/esplora.js';
 import { statoCentro, ascoltaCentro, aggiornaCentro, conteggiCentro, leggiPosticipate, notificheDa, nuoveDaAvvisare, leggiViste, salvaViste } from './lib/centroNotifiche.js';
 import { CentroNotifiche, ToastNotifiche } from './CentroNotifiche.jsx';
+import { PannelloTrasferimenti } from './PannelloTrasferimenti.jsx';
 import { statoDrive, ascoltaStatoDrive, attesaDrive, testoStatoDrive } from './lib/statoDrive.js';
 import { sectionDestination } from '../../shared/agenda/navigation.js';
 import { IconaCartellaW11, IconaFileW11 } from './IconeW11.jsx';
@@ -178,6 +179,7 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
 
   return (
     <>
+      <PannelloTrasferimenti />
       {centro && <CentroNotifiche mobile={mobile} apri={apri} onChiudi={() => setCentro(false)} />}
       <ToastNotifiche toast={toast} onChiudi={(k) => setToast((t) => t.filter((x) => x.chiave !== k))}
         onApri={(n) => (n.documento_id ? apri({ tipo: 'documento', id: n.documento_id }) : n.pratica ? apri({ tipo: 'pratica', p: n.pratica }) : null)} />

@@ -287,3 +287,28 @@ test('Centro notifiche: toast solo per le novità (mai la prima volta), calendar
   impostaCentro({ scadenze: [], azioni: [], pratiche: [], nuovi: [] });
   assert.ok(statoCentro().pronto);
 });
+
+/* ---------- §9 regole generali ---------- */
+import { finestraVirtuale, indiceConTasto, SOGLIA_VIRTUALE } from '../personal/src/lib/esploraNav.js';
+
+test('virtualizzazione sopra i 200 elementi: solo le righe visibili ± margine, spazi sopra e sotto', () => {
+  assert.equal(SOGLIA_VIRTUALE, 200);
+  const v = finestraVirtuale({ n: 1000, colonne: 1, altezza: 32, scrollTop: 3200, viewport: 640, inizio: 0, margine: 5 });
+  assert.deepEqual(v, { da: 95, a: 125, sopra: 95 * 32, sotto: (1000 - 125) * 32 });
+  const g = finestraVirtuale({ n: 301, colonne: 6, altezza: 100, scrollTop: 0, viewport: 500, inizio: 40, margine: 2 });
+  assert.equal(g.da, 0); assert.equal(g.a, 6 * 7); assert.equal(g.sopra, 0); assert.equal(g.sotto, (51 - 7) * 100);
+  const fine = finestraVirtuale({ n: 250, colonne: 1, altezza: 48, scrollTop: 250 * 48, viewport: 600, margine: 3 });
+  assert.equal(fine.a, 250); assert.equal(fine.sotto, 0);
+});
+
+test('tastiera: frecce nelle griglie e negli elenchi, Home/Fine, bordi', () => {
+  assert.equal(indiceConTasto(-1, 'ArrowDown', { n: 10, colonne: 4 }), 0);
+  assert.equal(indiceConTasto(1, 'ArrowRight', { n: 10, colonne: 4 }), 2);
+  assert.equal(indiceConTasto(1, 'ArrowDown', { n: 10, colonne: 4 }), 5);
+  assert.equal(indiceConTasto(8, 'ArrowDown', { n: 10, colonne: 4 }), 9);
+  assert.equal(indiceConTasto(2, 'ArrowUp', { n: 10, colonne: 4 }), 0);
+  assert.equal(indiceConTasto(3, 'ArrowRight', { n: 10, colonne: 1 }), 3, 'negli elenchi ← → non spostano');
+  assert.equal(indiceConTasto(3, 'Home', { n: 10 }), 0); assert.equal(indiceConTasto(3, 'End', { n: 10 }), 9);
+  assert.equal(indiceConTasto(0, 'PageDown', { n: 30, colonne: 1 }), 10);
+  assert.equal(indiceConTasto(0, 'ArrowDown', { n: 0 }), -1);
+});
