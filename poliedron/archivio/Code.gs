@@ -1917,7 +1917,7 @@ function doPost(e) {
     if (req.azione === 'ripristina_file') return rispostaJson_(ripristinaFileEsplora_(req.ids));
     if (req.azione === 'ripristina_versione') return rispostaJson_(ripristinaVersioneEsplora_(req));
     if (req.azione === 'importa_piano') return rispostaJson_(importaPianoRiordino_());
-    if (req.azione === 'esegui_lotto') return rispostaJson_(eseguiLottoRiordino_());
+    if (req.azione === 'esegui_lotto') return rispostaJson_(riordinoAutomaticoAcceso_() ? { ok: false, errore: 'Lo spostamento automatico è in corso: i lotti partono da soli.' } : eseguiLottoRiordino_());
     if (req.azione === 'annulla_lotto') return rispostaJson_(annullaLottoRiordino_(String(req.lotto || '')));
     if (req.azione === 'contenuto') {
       const filtri = req.filtri && typeof req.filtri === 'object' ? req.filtri : {};
@@ -3462,19 +3462,26 @@ function cartellaPerCategoria_(percorso, cache) {
   if (!c) {
     const i = percorso.lastIndexOf('/');
     const padre = i > 0 ? cartellaPerCategoria_(percorso.slice(0, i), cache) : null;
-    c = (sb_('cartelle_mie?select=id', { method: 'post', prefer: 'return=representation',
-      body: { nome: percorso.slice(i + 1), padre_id: padre, categoria_id: cat.id } }) || [])[0];
+    try {
+      c = (sb_('cartelle_mie?select=id', { method: 'post', prefer: 'return=representation',
+        body: { nome: percorso.slice(i + 1), padre_id: padre, categoria_id: cat.id } }) || [])[0];
+    } catch (e) {   // creata nel frattempo da un altro giro (indice unico su categoria_id)
+      c = (sb_('cartelle_mie?select=id&archiviata_il=is.null&categoria_id=eq.' + enc_(cat.id)) || [])[0];
+      if (!c) throw e;
+    }
   }
   cache[percorso] = c.id;
   return c.id;
 }
 
-function eseguiLottoRiordino_() {
-  const lock = LockService.getUserLock();   // separato dal lock di elabora: i lotti non aspettano il giro
-  if (!lock.tryLock(5000)) return { ok: false, errore: 'Un altro lotto è già in corso.' };
+function eseguiLottoRiordino_(opt) {
+  opt = opt || {};
+  const lock = opt.senzaLock ? null : LockService.getUserLock();   // separato dal lock di elabora
+  if (lock && !lock.tryLock(5000)) return { ok: false, errore: 'Un altro lotto è già in corso.' };
   try {
+    const filtro = opt.gruppo != null ? '&or=(' + GRUPPI_RIORDINO[opt.gruppo].split('').map(function (c) { return 'file_id.like.1' + c + '*'; }).join(',') + ')' : '';
     const righe = sb_('piano_riordino?select=id,documento_id,file_id,percorso_nuovo,nome_nuovo,scorciatoie&stato=eq.approvato' +
-      '&percorso_nuovo=not.like.' + enc_('99 *') + '&order=percorso_nuovo,file_id&limit=' + LOTTO_RIORDINO) || [];
+      '&percorso_nuovo=not.like.' + enc_('99 *') + filtro + '&order=percorso_nuovo,file_id&limit=' + (opt.limite || LOTTO_RIORDINO)) || [];
     const lotto = Utilities.getUuid();
     const esito = { ok: true, lotto: lotto, eseguiti: 0, errori: 0, saltati: 0 };
     const cache = {}, cartelle = {};
@@ -3485,7 +3492,7 @@ function eseguiLottoRiordino_() {
     };
     const t0 = Date.now();
     righe.forEach(function (r) {
-      if (Date.now() - t0 > LOTTO_TEMPO_MS) return;
+      if (Date.now() - t0 > (opt.tempo || LOTTO_TEMPO_MS)) return;
       const d = r.documento_id ? (sb_('documenti?select=id,fascicolo,drive_fissa,drive_cartella,drive_rinomina&id=eq.' + r.documento_id) || [])[0] : null;
       if (d && d.fascicolo === 'clinico_pazienti') {   // regola di Luca: il fascicolo clinico non si tocca
         sb_('piano_riordino?id=eq.' + r.id, { method: 'patch', body: { stato: 'rifiutato', motivo: 'fascicolo clinico: non si sposta' } });
@@ -3536,7 +3543,7 @@ function eseguiLottoRiordino_() {
       }
     });
     return esito;
-  } finally { lock.releaseLock(); }
+  } finally { if (lock) lock.releaseLock(); }
 }
 
 function annullaLottoRiordino_(lotto) {
@@ -3584,19 +3591,88 @@ function triggerRiordino_() {
   return ScriptApp.getProjectTriggers().filter(function (t) { return t.getHandlerFunction() === 'riordinoAutomatico'; });
 }
 
+// Quattro processi in parallelo, ognuno sui file il cui id inizia con «1» + uno dei suoi caratteri.
+// I file con altri id (o «_», jolly in LIKE) li fa il coordinatore alla fine, da solo.
+const GRUPPI_RIORDINO = ['ABCDEFGHIJKLMNOP', 'QRSTUVWXYZabcdef', 'ghijklmnopqrstuv', 'wxyz0123456789-'];
+const RIORDINO_PARALLELI = ['riordinoParallelo0', 'riordinoParallelo1', 'riordinoParallelo2', 'riordinoParallelo3'];
+
+function triggerDi_(nomi) {
+  return ScriptApp.getProjectTriggers().filter(function (t) { return nomi.indexOf(t.getHandlerFunction()) >= 0; });
+}
+
 function allineaRiordinoAutomatico_() {
   const acceso = riordinoAutomaticoAcceso_();
-  const t = triggerRiordino_();
-  if (acceso && !t.length) ScriptApp.newTrigger('riordinoAutomatico').timeBased().everyMinutes(5).create();
-  if (!acceso) t.forEach(function (x) { ScriptApp.deleteTrigger(x); });
+  if (acceso && !triggerRiordino_().length) ScriptApp.newTrigger('riordinoAutomatico').timeBased().everyMinutes(5).create();
+  if (!acceso) spegniRiordino_();
+}
+
+function spegniRiordino_() {
+  triggerDi_(['riordinoAutomatico'].concat(RIORDINO_PARALLELI)).forEach(function (x) { ScriptApp.deleteTrigger(x); });
+  PropertiesService.getScriptProperties().deleteProperty('RIORDINO_CARTELLE_PRONTE');
+}
+
+// Prima di partire in parallelo: tutte le cartelle (app + gemella Drive) create da un solo processo,
+// così due processi non creano mai la stessa cartella due volte.
+function preparaCartelleRiordino_(scadenza) {
+  const percorsi = {};
+  for (let da = 0; ; da += 1000) {
+    const r = sb_('piano_riordino?select=percorso_nuovo,scorciatoie&stato=eq.approvato&percorso_nuovo=not.like.' + enc_('99 *') + '&order=id&offset=' + da + '&limit=1000') || [];
+    r.forEach(function (x) { percorsi[x.percorso_nuovo] = 1; (x.scorciatoie || []).forEach(function (p) { percorsi[p] = 1; }); });
+    if (r.length < 1000) break;
+  }
+  // Già pronte (cartella dell'app con gemella su Drive): saltate, così il lavoro riprende dove era rimasto.
+  const idCat = {};
+  (sb_('categorie?select=id,percorso&limit=5000') || []).forEach(function (c) { idCat[c.percorso] = c.id; });
+  const pronte = {};
+  (sb_('cartelle_mie?select=categoria_id&categoria_id=not.is.null&drive_cartella_id=not.is.null&archiviata_il=is.null&limit=5000') || [])
+    .forEach(function (c) { pronte[c.categoria_id] = 1; });
+  const elenco = Object.keys(percorsi).filter(function (p) { return !pronte[idCat[p]]; })
+    .sort(function (a, b) { return a.split('/').length - b.split('/').length || a.localeCompare(b); });
+  const cache = {};
+  for (let i = 0; i < elenco.length; i++) {
+    if (Date.now() > scadenza) return false;
+    cartellaDriveDi_(cartellaPerCategoria_(elenco[i], cache));
+  }
+  return true;
 }
 
 function riordinoAutomatico() {
-  if (!riordinoAutomaticoAcceso_()) { triggerRiordino_().forEach(function (x) { ScriptApp.deleteTrigger(x); }); return; }
-  const esito = eseguiLottoRiordino_();
-  if (esito.ok && !esito.eseguiti && !esito.errori && !esito.saltati) {
-    sb_('impostazioni_app?on_conflict=chiave', { method: 'post', prefer: 'resolution=merge-duplicates,return=minimal',
-      body: { chiave: 'riordino_automatico', valore: false } });
-    triggerRiordino_().forEach(function (x) { ScriptApp.deleteTrigger(x); });
-  }
+  if (!riordinoAutomaticoAcceso_()) { spegniRiordino_(); return; }
+  const lock = LockService.getUserLock();
+  if (!lock.tryLock(1000)) return;
+  try {
+    const sp = PropertiesService.getScriptProperties();
+    if (!sp.getProperty('RIORDINO_CARTELLE_PRONTE')) {
+      if (preparaCartelleRiordino_(Date.now() + 280000)) sp.setProperty('RIORDINO_CARTELLE_PRONTE', '1');
+      return;
+    }
+    RIORDINO_PARALLELI.forEach(function (n) { if (!triggerDi_([n]).length) ScriptApp.newTrigger(n).timeBased().everyMinutes(1).create(); });
+    // Quando i quattro gruppi sono finiti restano solo i file con id fuori dai gruppi: li fa il coordinatore.
+    const inGruppi = GRUPPI_RIORDINO.some(function (g, k) {
+      const filtro = '&or=(' + g.split('').map(function (c) { return 'file_id.like.1' + c + '*'; }).join(',') + ')';
+      return (sb_('piano_riordino?select=id&stato=eq.approvato&percorso_nuovo=not.like.' + enc_('99 *') + filtro + '&limit=1') || []).length > 0;
+    });
+    if (inGruppi) return;
+    triggerDi_(RIORDINO_PARALLELI).forEach(function (x) { ScriptApp.deleteTrigger(x); });
+    const esito = eseguiLottoRiordino_({ senzaLock: true, limite: 300, tempo: 280000 });
+    if (esito.ok && !esito.eseguiti && !esito.errori && !esito.saltati) {
+      sb_('impostazioni_app?on_conflict=chiave', { method: 'post', prefer: 'resolution=merge-duplicates,return=minimal',
+        body: { chiave: 'riordino_automatico', valore: false } });
+      spegniRiordino_();
+    }
+  } finally { lock.releaseLock(); }
 }
+
+function riordinoParallelo_(k) {
+  if (!riordinoAutomaticoAcceso_() || !PropertiesService.getScriptProperties().getProperty('RIORDINO_CARTELLE_PRONTE')) return;
+  const cache = CacheService.getScriptCache();
+  const chiave = 'riordino_gruppo_' + k;
+  if (cache.get(chiave)) return;          // il giro precedente di questo gruppo sta ancora lavorando
+  cache.put(chiave, '1', 360);
+  try { eseguiLottoRiordino_({ gruppo: k, senzaLock: true, limite: 300, tempo: 300000 }); }
+  finally { cache.remove(chiave); }
+}
+function riordinoParallelo0() { riordinoParallelo_(0); }
+function riordinoParallelo1() { riordinoParallelo_(1); }
+function riordinoParallelo2() { riordinoParallelo_(2); }
+function riordinoParallelo3() { riordinoParallelo_(3); }
