@@ -1,3 +1,12 @@
+# Current task — POL-VITA-ORDINA (2026-11-22)
+- OWNER Claude Code; branch `ccr-1043796f-p8idej` (from master 6d74f59 = PR #338 merged; no overlap with PERSONAL-ESPLORA-WIN11, which is closed).
+- REQUEST PO 2026-11-22: archive on Drive split into the taxonomy of 00–13 + 99 folders, names `AAAA-MM-GG_Tipo_Soggetto_Dettaglio`, precise categories; phases 1 diagnosis → 2 taxonomy + classification plan («Piano di riordino», stop for approval) → 3 execution of approved rows only (batches of 100, `log_spostamenti`, «Annulla lotto») → 4 automatic order. "Fallo tu leggi e cataloga bene tutto". Spec and diagnosis: `docs/architecture/pol-vita-ordina.md`.
+- PO EXCEPTION (explicit): moves/renames on Drive allowed ONLY executing a plan Luca approved; never delete, never empty the trash; `clinico_pazienti` untouched (no move, rename, AI).
+- PREREQUISITE POL-VITA-RICERCA phase 1: no task of that name exists; its content (full text `documenti_testo` POL-VITA-034, semantic index POL-VITA-035) is in master, text read for 95% of non-clinical files → considered met.
+- PHASE 1 (diagnosis, read-only, done): Drive API v3 metadata listing (clasp grant, drive.metadata.readonly) + read-only SQL. 7,070 non-clinical files on Drive in 397 folders (depth ≤ 2); «Altro» 3,494 (49%); 3,861 documents catalogued by rules only; 386 without text; 60 certain duplicate copies (md5), 341 probable (same text); 79 empty folders; 17 names already in the target format, 518 over 90 characters; 48 Drive files not in the archive, 229 archive files outside «Archivio personale». Cost estimate phase 2: Haiku 5.5 Batch ≈ 1.2 € one-off, ≈ 0.10 €/month (Anthropic credit of the script exhausted) or classification by Claude Code in session.
+- DB / DRIVE: nothing changed.
+- STATUS: phase 1 reported to the PO; waiting for the go-ahead on phase 2 (who classifies: Claude Code in session or Haiku Batch).
+
 # Current task — PERSONAL-ESPLORA-WIN11 (2026-11-21)
 - OWNER Claude Code; branch `ccr-37864811-5h4ztp` (from master f3d241a = PR #333 IMPOSTAZIONI-UNICHE merged; no overlap).
 - REQUEST PO 2026-11-21: Esplora file stile Windows 11 in Personal (apri, sposta trascinando file e cartelle, nuova cartella con pressione prolungata, albero di fianco/sopra) e barra in basso stile Windows 11. Spec: `docs/architecture/personal-esplora-win11.md`.
