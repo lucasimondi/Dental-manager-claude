@@ -393,11 +393,14 @@ test('selezione: clic semplice, Ctrl, Maiusc, caselle; Accesso rapido', () => {
 });
 
 /* ---------- fase 3: barra e Start ---------- */
-import { VOCI_BARRA, voceAttiva, vociAperte, badgeBarra, vociStart, numeroNotifiche, oraData, nomeUtente, consigliati, etichettaNumero } from '../personal/src/lib/barra.js';
+import { VOCI_BARRA, voceAttiva, vociAperte, badgeBarra, vociStart, numeroNotifiche, oraData, nomeUtente, consigliati, etichettaNumero, accettaFile } from '../personal/src/lib/barra.js';
 import { statoDrive, inizioDrive, fineDrive, attesaDrive, testoStatoDrive } from '../personal/src/lib/statoDrive.js';
 
-test('barra: Start · Oggi · Agenda · Esplora file · Assistente · Personale; stesse viste di prima', () => {
-  assert.deepEqual(VOCI_BARRA.map((v) => v.nome), ['Start', 'Oggi', 'Agenda', 'Esplora file', 'Assistente', 'Personale']);
+test('barra: Start · Cerca · Oggi · Agenda · Esplora file · Assistente · Personale; stesse viste di prima', () => {
+  assert.deepEqual(VOCI_BARRA.map((v) => v.nome), ['Start', 'Cerca', 'Oggi', 'Agenda', 'Esplora file', 'Assistente', 'Personale']);
+  assert.equal(voceAttiva({ vista: 'agenda', start: 'cerca' }), 'cerca');
+  // trascinare un file sulla barra: solo le app che sanno aprirlo
+  assert.deepEqual(VOCI_BARRA.filter((v) => accettaFile(v.id)).map((v) => v.id), ['agenda', 'esplora', 'poliedron']);
   assert.deepEqual(VOCI_BARRA.filter((v) => v.vista).map((v) => v.vista), ['oggi', 'agenda', 'poliedron', 'altro']);
   assert.equal(voceAttiva({ vista: 'agenda' }), 'agenda');
   assert.equal(voceAttiva({ vista: 'poliedron' }), 'poliedron');

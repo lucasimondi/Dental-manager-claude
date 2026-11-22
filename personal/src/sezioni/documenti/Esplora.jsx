@@ -26,6 +26,7 @@ import {
   comeAprire, linkDrive, linkDocs, linkEmail, linkWhatsApp, ambienteApertura, seleziona, caricaPreferiti, salvaPreferiti, cambiaPreferito,
 } from '../../lib/esplora.js';
 import { inizioDrive, fineDrive } from '../../lib/statoDrive.js';
+import { accettaFile, APP_PER_FILE } from '../../lib/barra.js';
 import { preparaFile, comeFile, condividi, scaricaDocumento } from '../../lib/condividi.js';
 import { preparaVoci, scaricaFile, creaZip, MAX_FILE_ZIP } from '../../lib/pacchetto.js';
 import { titoloDoc, tokenSessione } from '../../ui.jsx';
@@ -351,10 +352,20 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
 
   /* ---------- trascinamento ---------- */
   const destDi = (b) => (b?.tipo === 'cartella' ? (b.id ?? RADICE) : null);
+  // Trascinato su un'icona della barra: il file si apre con quell'app (Esplora = anteprima, Assistente, Agenda).
+  const apriConApp = (app, sorgenti) => {
+    const d = cache.get(sorgenti[0]?.id);
+    if (!d) return;
+    if (app === 'esplora') { apriElemento(chiaveDi('doc', d.id)); return; }
+    window.dispatchEvent(new CustomEvent('poliedra:apri-con', { detail: { app, documento: { ...d, titolo: titoloDi(d.id) }, link: linkDrive(d) } }));
+  };
   const { presa, gestori, eraTrascinamento } = useTrascina({
     attesa: PRESSIONE_MS, vibrazione: 10,
-    valido: (s, b) => { const d = destDi(b); return !!d && destinazioneValida(sorgentiPer(s.chiave), d, opz); },
-    onLascia: (s, b) => sposta(sorgentiPer(s.chiave), destDi(b)),
+    valido: (s, b) => {
+      if (b?.tipo === 'app') { const src = sorgentiPer(s.chiave); return src.length === 1 && src[0].tipo === 'doc' && accettaFile(b.id); }
+      const d = destDi(b); return !!d && destinazioneValida(sorgentiPer(s.chiave), d, opz);
+    },
+    onLascia: (s, b) => (b.tipo === 'app' ? apriConApp(b.id, sorgentiPer(s.chiave)) : sposta(sorgentiPer(s.chiave), destDi(b))),
     onFermo: (s, punto) => {
       if (Date.now() - ultimoTocco.current > 1500) return; // pressione lunga col mouse: niente
       // Mobile: pressione prolungata = entra in selezione con l'elemento e apre il menu dal basso.
@@ -365,6 +376,14 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     scorrevoli: () => [alberoRef.current, contenutoRef.current],
   });
   const sopra = presa?.bersaglio?.chiave;
+  // L'icona della barra sotto il puntatore si accende (la barra è fuori da Esplora: classe sul nodo).
+  useEffect(() => {
+    document.body.classList.toggle('pb-trascina', !!presa);
+    const el = sopra?.startsWith('app:') ? document.querySelector(`[data-bersaglio="${sopra}"]`) : null;
+    el?.classList.add('pb-sopra');
+    return () => { el?.classList.remove('pb-sopra'); };
+  }, [!!presa, sopra]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => document.body.classList.remove('pb-trascina'), []);
 
   // Gestori comuni di un elemento (albero, griglia, elenco, dettagli).
   const gestoriElemento = (k, { trascinabile = true, soloApri = false } = {}) => {
@@ -647,7 +666,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
   const briciole = percorsoNodo(nodo, nomi);
   const su = padreDi(cartelle, nodo);
   const puoNuova = !eVirtuale(nodo);
-  const tracciaSopra = presa ? (presa.bersaglio ? `Sposta in «${nomeNodo(destDi(presa.bersaglio), nomi)}»` : (presa.sorgente.tipo === 'cartella' ? nomeNodo(presa.sorgente.id, nomi) : titoloDi(presa.sorgente.id))) : null;
+  const tracciaSopra = presa ? (presa.bersaglio?.tipo === 'app' ? APP_PER_FILE[presa.bersaglio.id] : presa.bersaglio ? `Sposta in «${nomeNodo(destDi(presa.bersaglio), nomi)}»` : (presa.sorgente.tipo === 'cartella' ? nomeNodo(presa.sorgente.id, nomi) : titoloDi(presa.sorgente.id))) : null;
   const struttura = strutturaMenu();
   const vuota = !caricando && !cartelleMostrate.length && !docMostrati.length && !nuova;
   const scelteSorgenti = [...scelti].map(sorgenteDi);

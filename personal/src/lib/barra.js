@@ -3,9 +3,10 @@
 // (Poliedron) e Personale («altro») restano le stesse viste; Documenti, Studio e le altre sezioni
 // sono in Start. Esplora file è una pagina (tipo 'esplora').
 
-// Icone centrate: Start · Oggi · Agenda · Esplora file · Assistente · Personale.
+// Icone centrate: Start · Cerca · Oggi · Agenda · Esplora file · Assistente · Personale.
 export const VOCI_BARRA = [
   { id: 'start', nome: 'Start' },
+  { id: 'cerca', nome: 'Cerca' },
   { id: 'oggi', nome: 'Oggi', vista: 'oggi' },
   { id: 'agenda', nome: 'Agenda', vista: 'agenda' },
   { id: 'esplora', nome: 'Esplora file', pagina: 'esplora' },
@@ -19,7 +20,7 @@ const VISTE_BARRA = new Set(VOCI_BARRA.filter((v) => v.vista).map((v) => v.id));
  * Le viste che non sono nella barra (Documenti, Conti, Legal…) accendono «Personale», come prima.
  */
 export function voceAttiva({ vista, pagine = [], start = false }) {
-  if (start) return 'start';
+  if (start) return start === 'cerca' ? 'cerca' : 'start';
   if (pagine.length && pagine[pagine.length - 1]?.tipo === 'esplora') return 'esplora';
   if (VISTE_BARRA.has(vista)) return vista;
   return 'altro';
@@ -90,3 +91,12 @@ export function consigliati(recenti = [], documenti = [], max = 6) {
 }
 
 export const etichettaNumero = (n) => (!n || n < 1 ? null : n > 99 ? '99+' : String(n));
+
+// PR #337 (dock): trascinando un file su un'icona della barra il file si apre con quell'app.
+// Solo le app che sanno cosa farne accendono l'icona durante il trascinamento.
+export const APP_PER_FILE = {
+  esplora: 'Apri in anteprima',
+  poliedron: 'Chiedi all\u2019assistente',
+  agenda: 'Crea un impegno con il file',
+};
+export const accettaFile = (id) => Object.prototype.hasOwnProperty.call(APP_PER_FILE, id);

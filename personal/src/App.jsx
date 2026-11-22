@@ -5,7 +5,7 @@ import { studioDb, sessioneStudio, studioDellaSessione, appuntamentoPerId, impeg
 import { useImpostazioniComuni } from './lib/etichetteComuni.js';
 import { avviaAzioneWidget } from './lib/widgetAzioni.js';
 // PERSONAL-ESPLORA-WIN11 fase 3: barra delle applicazioni e Start stile Windows 11 (al posto del dock).
-import { BarraApplicazioni, useConteggiBarra } from './Barra.jsx';
+import { BarraApplicazioni, useConteggiBarra, useApriCon } from './Barra.jsx';
 import { Pagina } from './Pagina.jsx';
 import { readAgendaLocation, readSectionLocation } from '../../shared/agenda/navigation.js';
 // POL-VITA-003/006 — Poliedron Personal: app per telefono dell'archivio personale.
@@ -110,6 +110,8 @@ function Archivio({ email }) {
     if (documento) setChat((c) => ({ ...c, documento }));
     vai('poliedron');
   }, [vai]);
+
+  useApriCon(apri, apriChat); // PR #337: file trascinato da Esplora su un'icona della barra
 
   const ctx = {
     esegui, aggiorna, mostra, versione, impostazioni, salvaImp, salvaEtichette, fascicoli, apri, vai, aggiungi, sotto, apriChat, chat, setChat, indietro,

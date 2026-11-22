@@ -12,7 +12,7 @@ import { caricaDaGestire } from './lib/esplora.js';
 import { contaDaFare } from './lib/daFare.js';
 import { elencoRecenti, fileRecente } from './lib/recenti.js';
 import { scaricaDocumento } from './lib/condividi.js';
-import { VOCI_BARRA, voceAttiva, vociAperte, badgeBarra, vociStart, numeroNotifiche, oraData, nomeUtente, consigliati, etichettaNumero } from './lib/barra.js';
+import { VOCI_BARRA, voceAttiva, vociAperte, badgeBarra, vociStart, numeroNotifiche, oraData, nomeUtente, consigliati, etichettaNumero, accettaFile, APP_PER_FILE } from './lib/barra.js';
 import { statoDrive, ascoltaStatoDrive, attesaDrive, testoStatoDrive } from './lib/statoDrive.js';
 import { sectionDestination } from '../../shared/agenda/navigation.js';
 import { IconaCartellaW11, IconaFileW11 } from './IconeW11.jsx';
@@ -51,11 +51,28 @@ export function useConteggiBarra(versione) {
   return conteggi;
 }
 
+// PR #337: un file trascinato da Esplora su un'icona della barra si apre con quell'app
+// (Assistente = chat sul documento, Agenda = nuovo impegno con il link; Esplora apre l'anteprima da sé).
+export function useApriCon(apri, apriChat) {
+  useEffect(() => {
+    const apriCon = (e) => {
+      const { app, documento, link } = e.detail || {};
+      if (!documento) return;
+      if (app === 'poliedron') apriChat(documento);
+      else if (app === 'agenda') apri({ tipo: 'evento', evento: { titolo: documento.titolo || 'Documento', note: link ? `Documento: ${link}` : '' } });
+    };
+    window.addEventListener('poliedra:apri-con', apriCon);
+    return () => window.removeEventListener('poliedra:apri-con', apriCon);
+  }, [apri, apriChat]);
+}
+
 function IconaVoce({ id }) {
   if (id === 'start') return <img className="pb-logo" src={gemmaPoliedron} alt="" draggable={false} />;
   if (id === 'drive-ok') return <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M6 15.5h8.5a3.2 3.2 0 0 0 .4-6.4A4.8 4.8 0 0 0 5.6 8 3.8 3.8 0 0 0 6 15.5Z" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="m8 11.5 1.6 1.6L12.5 10" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>;
   if (id === 'drive-sync') return <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" className="pb-gira"><path d="M15 8.5A5.2 5.2 0 0 0 5.3 7M5 11.5a5.2 5.2 0 0 0 9.7 1.5M5.3 4.5V7H8M14.7 15.5V13H12" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>;
   if (id === 'drive-errore') return <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M6 15.5h8.5a3.2 3.2 0 0 0 .4-6.4A4.8 4.8 0 0 0 5.6 8 3.8 3.8 0 0 0 6 15.5Z" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="M10 9v2.6M10 13.3v.1" stroke="#C42B1C" strokeWidth="1.6" strokeLinecap="round" /></svg>;
+  if (id === 'cerca') return <IconaCerca size={24} />;
+  if (id === 'campanella') return <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M10 3a4.5 4.5 0 0 0-4.5 4.5v3L4 13.5h12l-1.5-3v-3A4.5 4.5 0 0 0 10 3ZM8.2 15.5a1.9 1.9 0 0 0 3.6 0" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" strokeLinecap="round" /></svg>;
   if (id === 'oggi') return <IconaOggi size={24} />;
   if (id === 'agenda') return <IconaDock n="cal" s={24} />;
   if (id === 'esplora') return <IconaCartellaW11 size={24} />;
@@ -63,14 +80,14 @@ function IconaVoce({ id }) {
   return <IconaPerTe size={24} />;
 }
 
-export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, apri, onEsci }) {
-  const [start, setStart] = useState(false);
+export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, apri, onEsci, onCentro, centroAperto = false }) {
+  const [start, setStart] = useState(false); // false | 'start' | 'cerca'
   const [adesso, setAdesso] = useState(() => new Date());
   useEffect(() => { const t = setInterval(() => setAdesso(new Date()), 20000); return () => clearInterval(t); }, []);
   const attiva = voceAttiva({ vista, pagine, start });
   const aperte = vociAperte({ vista, pagine, start });
   const drive = useSyncExternalStore(ascoltaStatoDrive, statoDrive);
-  const { ora, data, breve } = oraData(adesso);
+  const { ora, data } = oraData(adesso);
   const notifiche = numeroNotifiche(conteggi);
 
   // Indietro chiude Start: una voce nella cronologia finché Start è aperto.
@@ -78,7 +95,10 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
     setStart(false);
     if (window.history.state?.pbStart) window.history.back();
   }, []);
-  const apriStart = () => { window.history.pushState({ ...(window.history.state || {}), pbStart: true }, ''); setStart(true); };
+  const apriStart = (modo = 'start') => {
+    if (!window.history.state?.pbStart) window.history.pushState({ ...(window.history.state || {}), pbStart: true }, '');
+    setStart(modo);
+  };
   useEffect(() => {
     if (!start) return undefined;
     const indietro = () => setStart(false);
@@ -89,10 +109,11 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
   }, [start, chiudi]);
 
   const tocca = (v) => {
-    if (v.id === 'start') { if (start) chiudi(); else apriStart(); return; }
+    if (v.id === 'start' || v.id === 'cerca') { if (start === v.id) chiudi(); else apriStart(v.id); return; }
     if (start) chiudi();
     if (v.pagina) apri({ tipo: v.pagina }); else vai(v.vista);
   };
+  const apriCentro = () => { if (start) chiudi(); if (onCentro) onCentro(); else vai('dafare'); };
   const esegui = (azione) => {
     chiudi();
     if (azione.vai) vai(azione.vai);
@@ -102,7 +123,7 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
 
   return (
     <>
-      {start && <Start conteggi={conteggi} email={email} onAzione={esegui} onChiudi={chiudi} apri={apri} onEsci={onEsci} />}
+      {start && <Start modo={start} conteggi={conteggi} email={email} onAzione={esegui} onChiudi={chiudi} apri={apri} onEsci={onEsci} />}
       <nav className="pb-barra" aria-label="Barra delle applicazioni">
         <span className="pb-lato" aria-hidden="true" />
         <div className="pb-icone">
@@ -111,8 +132,10 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
             const etichetta = n ? `${v.nome}, ${n} ${v.id === 'oggi' ? 'urgenti' : 'da gestire'}` : v.nome;
             return (
               <button key={v.id} type="button" className={`pb-voce${attiva === v.id ? ' attiva' : ''}${aperte.has(v.id) ? ' aperta' : ''}`} onClick={() => tocca(v)}
-                aria-label={etichetta} title={v.nome} aria-current={attiva === v.id && v.id !== 'start' ? 'page' : undefined}
-                aria-expanded={v.id === 'start' ? start : undefined}>
+                aria-label={etichetta} title={accettaFile(v.id) ? `${v.nome} · trascina qui un file: ${APP_PER_FILE[v.id].toLowerCase()}` : v.nome}
+                aria-current={attiva === v.id && v.id !== 'start' && v.id !== 'cerca' ? 'page' : undefined}
+                aria-expanded={v.id === 'start' || v.id === 'cerca' ? start === v.id : undefined}
+                data-bersaglio={accettaFile(v.id) ? `app:${v.id}` : undefined}>
                 <IconaVoce id={v.id} />
                 <Numero n={n} />
               </button>
@@ -123,9 +146,11 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
           <span className={`pb-drive pb-drive-${drive.stato}`} role="status" title={testoStatoDrive(drive)} aria-label={testoStatoDrive(drive)}>
             <IconaVoce id={`drive-${drive.stato === 'ok' ? 'ok' : drive.stato === 'errore' ? 'errore' : 'sync'}`} />
           </span>
-          <button type="button" className="pb-area" onClick={() => { if (start) chiudi(); vai('dafare'); }}
-            aria-label={`${ora}, ${data}. ${notifiche ? `${notifiche} notifiche` : 'Nessuna notifica'}: apri Da fare`}>
-            <span className="pb-ora"><span>{ora}</span><span className="pb-data">{data}</span><span className="pb-data-breve">{breve}</span></span>
+          {/* Clic su ora e data (o sulla campanella su mobile) → Centro notifiche. */}
+          <button type="button" className={`pb-area${centroAperto ? ' attiva' : ''}`} onClick={apriCentro} aria-expanded={centroAperto} aria-haspopup="dialog"
+            aria-label={`${ora}, ${data}. ${notifiche ? `${notifiche} notifiche` : 'Nessuna notifica'}: apri il Centro notifiche`}>
+            <span className="pb-ora"><span>{ora}</span><span className="pb-data">{data}</span></span>
+            <span className="pb-campanella"><IconaVoce id="campanella" /><Numero n={notifiche} /></span>
             {notifiche > 0 && <span className="pb-notifiche">{etichettaNumero(notifiche)}</span>}
           </button>
         </div>
@@ -134,7 +159,7 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
   );
 }
 
-function Start({ conteggi, email, onAzione, onChiudi, apri, onEsci }) {
+function Start({ modo = 'start', conteggi, email, onAzione, onChiudi, apri, onEsci }) {
   const [testo, setTesto] = useState('');
   const [suggeriti, setSuggeriti] = useState(null);
   const [conferma, setConferma] = useState(false);
@@ -164,7 +189,7 @@ function Start({ conteggi, email, onAzione, onChiudi, apri, onEsci }) {
       <section className="pb-start" role="dialog" aria-label="Start" onClick={(e) => e.stopPropagation()}>
         <form className="pb-cerca" onSubmit={cerca} role="search">
           <IconaCerca size={18} />
-          <input ref={campo} value={testo} onChange={(e) => setTesto(e.target.value)} placeholder="Cerca nel tuo archivio" aria-label="Cerca nel tuo archivio" enterKeyHint="search" />
+          <input ref={campo} autoFocus={modo === 'cerca'} value={testo} onChange={(e) => setTesto(e.target.value)} placeholder="Cerca nel tuo archivio" aria-label="Cerca nel tuo archivio" enterKeyHint="search" />
         </form>
         <div className="pb-start-corpo">
           <h2>Aggiunte</h2>

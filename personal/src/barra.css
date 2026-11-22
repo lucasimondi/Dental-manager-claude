@@ -15,6 +15,7 @@
   --pb-attiva: rgba(255, 255, 255, .7);
   --pb-hover: rgba(0, 0, 0, .05);
   --pb-linea: rgba(0, 0, 0, .08);
+  --pb-bordo: rgba(255, 255, 255, .08); /* spec PO: bordo superiore 1px rgba(255,255,255,.08) */
   --pb-pallino: #C42B1C;
   --pb-campo: #FFFFFF;
 }
@@ -40,7 +41,7 @@ body.pp-tastiera .pb-barra { display: none; }
   position: fixed; z-index: 45; left: 0; right: 0; bottom: 0;
   height: calc(var(--pp-dock) + env(safe-area-inset-bottom)); padding: 0 8px env(safe-area-inset-bottom);
   display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center;
-  background: var(--pb-sfondo); border-top: 1px solid var(--pb-linea); box-shadow: 0 -2px 12px rgba(0, 0, 0, .06);
+  background: var(--pb-sfondo); border-top: 1px solid var(--pb-bordo); box-shadow: 0 -1px 0 var(--pb-linea), 0 -2px 12px rgba(0, 0, 0, .06);
   backdrop-filter: blur(30px) saturate(150%); -webkit-backdrop-filter: blur(30px) saturate(150%);
   font-family: var(--pb-font); color: var(--pb-testo);
 }
@@ -52,6 +53,10 @@ body.pp-tastiera .pb-barra { display: none; }
 .pb-voce svg, .pb-voce img { width: 24px; height: 24px; }
 .pb-voce:hover { background: var(--pb-hover); }
 .pb-voce:active { transform: scale(.92); }
+/* Trascinamento di un file da Esplora: le app che lo accettano si vedono, quella sotto il puntatore si accende. */
+body.pb-trascina .pb-voce[data-bersaglio] { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pb-accento) 45%, transparent); }
+body.pb-trascina .pb-voce:not([data-bersaglio]) { opacity: .45; }
+.pb-voce.pb-sopra, body.pb-trascina .pb-voce.pb-sopra { background: color-mix(in srgb, var(--pb-accento) 22%, transparent); box-shadow: inset 0 0 0 2px var(--pb-accento); transform: scale(1.08); }
 .pb-voce.attiva { background: var(--pb-attiva); box-shadow: 0 1px 2px rgba(0, 0, 0, .06); }
 .pb-voce.attiva::after, .pb-voce.aperta::after {
   content: ''; position: absolute; bottom: 1px; left: 50%; height: 3px; border-radius: 2px; background: var(--pb-accento); transform: translateX(-50%); transition: width .12s;
@@ -81,14 +86,19 @@ body.pp-tastiera .pb-barra { display: none; }
 }
 .pb-area:hover { background: var(--pb-hover); }
 .pb-ora { display: flex; flex-direction: column; align-items: flex-end; white-space: nowrap; }
-.pb-data-breve { display: none; }
+.pb-campanella { display: none; position: relative; width: 24px; height: 24px; place-items: center; }
+.pb-area.attiva { background: var(--pb-attiva); }
 .pb-notifiche { min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 10px; display: grid; place-items: center; background: var(--pb-accento); color: #fff; font-size: 11px; font-weight: 700; }
 @media (prefers-color-scheme: dark) { .pb-notifiche { color: #00243a; } }
-/* Su mobile l'area di sistema si nasconde e la barra resta centrata. */
+/* Su mobile l'area di sistema si riduce alla campanella con il pallino; le icone restano al centro. */
 @media (pointer: coarse), (max-width: 767px) {
-  .pb-barra { grid-template-columns: 1fr; padding: 0 4px env(safe-area-inset-bottom); }
-  .pb-lato, .pb-sistema { display: none; }
+  .pb-barra { grid-template-columns: minmax(0, 1fr) auto minmax(40px, 1fr); padding: 0 2px env(safe-area-inset-bottom); }
+  .pb-drive, .pb-ora, .pb-notifiche { display: none; }
+  .pb-area { width: 40px; min-height: 40px; padding: 0; justify-content: center; }
+  .pb-campanella { display: grid; }
+  .pb-campanella .pb-pallino { top: -6px; right: -8px; }
 }
+@media (max-width: 380px) { .pb-icone { gap: 2px; } }
 
 /* Start */
 .pb-velo { position: fixed; inset: 0; z-index: 44; background: transparent; }

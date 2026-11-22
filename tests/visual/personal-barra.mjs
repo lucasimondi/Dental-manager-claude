@@ -48,10 +48,13 @@ try {
     assert.equal(g.w, g.vw);
     assert.equal(g.filtro, 'blur(30px) saturate(1.5)');
     assert.equal(g.gap, '4px');
-    assert.deepEqual(g.voci.map((v) => v.label), ['Start', 'Oggi, 1 urgenti', 'Agenda', 'Esplora file, 2 da gestire', 'Assistente', 'Personale']);
+    assert.deepEqual(g.voci.map((v) => v.label), ['Start', 'Cerca', 'Oggi, 1 urgenti', 'Agenda', 'Esplora file, 2 da gestire', 'Assistente', 'Personale']);
     for (const v of g.voci) { assert.equal(v.w, 40); assert.equal(v.h, 40); assert.equal(v.raggio, '6px'); }
     assert.ok(Math.abs(g.centro - g.vw / 2) < 2, `icone centrate (${g.centro} su ${g.vw})`);
-    assert.equal(g.sisVisibile, desktop, desktop ? 'area di sistema su desktop' : 'area di sistema nascosta su mobile');
+    assert.equal(g.sisVisibile, true, 'area di sistema (su mobile solo la campanella)');
+    assert.equal(await page.locator('.pb-campanella').isVisible(), !desktop, 'campanella solo su mobile');
+    assert.equal(await page.locator('.pb-ora').isVisible(), desktop, 'ora e data solo su desktop');
+    assert.ok(g.icDestra <= g.sisSinistra, 'l’area di sistema non copre le icone');
     if (desktop) {
       assert.ok(g.icDestra <= g.sisSinistra, 'l’area di sistema non copre le icone');
       assert.equal(await page.locator('.pb-ora').evaluate((e) => getComputedStyle(e).fontSize), '12px');
