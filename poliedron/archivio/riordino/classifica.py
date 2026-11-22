@@ -386,9 +386,9 @@ def _categoria(d, pratiche):
                 tg = re.search(r'\b([A-Z]{2}\d{3}[A-Z]{2})\b', ' '.join(str(d.get(k) or '') for k in ('t', 'o', 'x')))
                 if tg and tg.group(1) in VEICOLI:
                     sc = [f'06 Auto e veicoli/{VEICOLI[tg.group(1)]}/Proprietà e libretto']
-            return (f'09 Assicurazioni/{ramo}/{token(nome, 3, 40)}', comp[0], conf, f'polizza {ramo.lower()} {comp[0]}', sc)
+            return (f'09 Assicurazioni/{ramo}/{comp[0]}', comp[0], conf, f'polizza {ramo.lower()} {comp[0]}' + (f' n. {num.group(2)}' if num else ''), sc)
         if ramo:
-            return (f'09 Assicurazioni/{ramo}/{token(d.get("e") or "Compagnia", 3, 40)}', d.get('e') or 'Assicurazione', min(conf, 0.75), f'assicurazione {ramo.lower()}, compagnia non riconosciuta', [])
+            return (f'09 Assicurazioni/{ramo}/Altre compagnie', d.get('e') or 'Assicurazione', min(conf, 0.75), f'assicurazione {ramo.lower()}, compagnia non riconosciuta', [])
         return ('99 Da verificare/Dubbi', d.get('e') or 'Assicurazione', 0.55, 'assicurazione: ramo non riconosciuto', [])
 
     if fa in ('utenze', 'riscaldamento'):
@@ -507,6 +507,89 @@ def nome_file(d, tipo, soggetto, ext):
     return base + ext
 
 # ---------------------------------------------------------------- piano
+
+# ---------------------------------------------------------------- correzioni dopo la rilettura (Claude Code, 2026-11-22)
+# Lette a mano le cartelle grandi (Studio Cuneo, Dichiarazioni, Famiglia, Acquisti): errori ricorrenti corretti qui.
+# (regex sul titolo, percorso, confidenza, motivo). Vince la prima. {an} = anno del documento.
+PRIMO = '11 Legale e pratiche/Centri Dentistici Primo – opposizioni ai D.I. (g'
+CORREZIONI = [
+    (r'modello\s+consenso\s+informato|modulo\s+.\s*raccolta\s+anamnesi', '12 Lavoro e professione/Studio Cuneo/Modulistica', 0.85, 'moduli in bianco dello studio (non clinici)'),
+    (r'(stl|anatomy).*giulia\s+simondi|giulia\s+simondi.*(stl|anatomy)', '07 Salute/Giulia Simondi/Referti', 0.8, 'scansioni dentali di Giulia'),
+    (r'(stl|anatomy).*martina\s+simondi|martina\s+simondi.*(stl|anatomy)', '07 Salute/Martina Simondi/Referti', 0.8, 'scansioni dentali di Martina'),
+    (r'ucsf|glioblastom', '07 Salute/Roberto Simondi/Referti', 0.85, 'cure di Roberto Simondi'),
+    (r'bergese', '07 Salute/Isa Bergese/Referti', 0.7, 'salute di Isa Bergese (persona da confermare)'),
+    (r'\bfile\s+stl\b.*pazient|paziente\s+\w|panoramiche|relazione\s+clinica|file\s+protesico|anagrafica\s+pazienti|^pazienti\s|x\s*dent\s+pazienti|_consenso_\d|scansioni\s+\d|maxillary|mandibular', '99 Da verificare/Possibili documenti clinici', 0.5,
+     'possibile documento clinico di un paziente: va nel fascicolo clinico, non lo sposto'),
+    (r'pignorament|543\s*c\.?p\.?c|atti\s+del\s+pignoramento', '11 Legale e pratiche/Pignoramenti presso terzi sui conti di Luca (202/Atti', 0.8, 'pignoramento presso terzi'),
+    (r'simondi\s*(\+\s*1\s*)?/\s*primo|primo\s*/\s*simondi|risposta\s+contestazioni\s+primo|manleva.*primo', PRIMO + '/Atti', 0.8, 'causa con Centri Dentistici Primo'),
+    (r'american\s+express', '04 Banche e conti/American Express/Contratti', 0.85, 'carta American Express'),
+    (r'vivid\s+money|rendiconto\s+cripto', '12 Lavoro e professione/Società e progetti/Investimenti e cripto', 0.8, 'investimenti e cripto'),
+    (r'assimedici', '09 Assicurazioni/RC professionale/Assimedici', 0.85, 'polizza RC professionale Assimedici'),
+    (r'club\s+medici|amtrust', '09 Assicurazioni/RC professionale/AmTrust', 0.85, 'polizza RC professionale AmTrust'),
+    (r'odontoflex', '09 Assicurazioni/RC professionale/Odontoflex', 0.8, 'polizza RC professionale Odontoflex'),
+    (r'avviso\s+di\s+addebito\s+inps|provvedimento\s+di\s+rateazione|regolamento\s+rateazioni|rateizzazione\s+(irpef|cartella)|avviso\s+di\s+intimazione', '05 Fisco e tasse/{an}/Avvisi e cartelle', 0.85, 'avviso o rateazione fiscale'),
+    (r"carta\s+d.identit.\s+–\s+luca|estratto\s+di\s+nascita", '01 Identità e documenti/Luca Simondi', 0.85, 'documento di identità di Luca'),
+    (r'appunti\s+(di\s+)?(anatomia|studio|protesi)|domande\s+di\s+anatomia|tesi\s+di\s+laurea|indice\s+tesi|riassunto\s+tesi|bibliografia\s+tesi|conferma\s+titolo\s+di\s+studio|dichiarazione\s+validit.\s+corsi|tesionline|piano\s+di\s+studi|esame\s+di\s+stato|convalida\s+esami|congedo\s+in\s+arrivo|trasferimento\s+chieti|universit.\s+degli\s+studi\s+di\s+pavia', '12 Lavoro e professione/Docenza e candidature', 0.85, 'studi universitari di Luca'),
+    (r'articolo\s+scientifico.*(ortodont|impiant)|corrosione\s+dei\s+metalli', '12 Lavoro e professione/Seminari', 0.8, 'articolo scientifico di odontoiatria'),
+    (r'eicosanoidi|cancer\s+convention|oncologia\s+complementare|onkologie', '07 Salute/Roberto Simondi/Referti', 0.7, 'ricerche sulle cure di Roberto Simondi'),
+    (r'relata\s+verbale|multa\s+francia|sanzioni\s+prese\s+con\s+la\s+fiat', '06 Auto e veicoli/Noleggi e car sharing/Multe', 0.8, 'multa su un veicolo'),
+    (r'patente\s+nautica|solaris\s+one|cantiere\s+serigi|jeanneau|sun\s+odissey|scheda\s+barche|imbarcazione|sarda\s+cantieri|^alice\.it\s+–\s+(cabina|carteggio|in\s+secca|motore|barca|cucina)', '06 Auto e veicoli/Barca Sealine F37/Proprietà e libretto', 0.8, 'barca, cantieri e patente nautica'),
+    (r'eurodecor|gaia\s+service|amianto|serramenti|punto\s+infissi|tende\s+miste|telerie\s+e\s+tendaggi|tendenze\s+per\s+la\s+casa|detrazione\s+(55|36)', '02 Casa e catasto/Ricerca e progetti di case/Lavori e preventivi', 0.75, 'lavori e arredi di casa'),
+    (r'golfo\s+aranci', '02 Casa e catasto/Golfo Aranci/Condominio', 0.8, 'casa a Golfo Aranci'),
+    (r'scheda\s+personaggio|d&d|heroclix|munchkin|carta\s+fantasy|magic\s+the\s+gathering|carte\s+magic|maptool|steam\b|valve\s+corporation|cyberpunk', '08 Famiglia e scuola/Luca Simondi/Attività', 0.8, 'giochi e passatempi'),
+    (r'calendario\s+del\s+contadino|atlante\s+uccelli|birdwatching|fotografia\s+naturalistica|paola\s+solaro|dina\s+sanichar|logo\s+chiesa|jewelry|amici\s+per\s+l.?africa|senegal|leggicomodo|tamburo\s+sciamanico|acroyoga|sapore\s+vegano|arte\s+dei\s+5\s+elementi|5\s*x\s*1000|5\s+per\s+mille|natale\s*insieme|centro\s+recupero\s+animali|bambinisolitogo', '08 Famiglia e scuola/Luca Simondi/Attività', 0.75, 'passioni, associazioni e attività personali'),
+    (r'grohe|forno\s+da\s+incasso|integratore|ultra\s+preventive|portobello|myhomeineurope|loft\s+amsterdam|mercatini|ristorante|range\s+rover|obiettivo\s+(nikon|canon|fisheye)|opteka|canon\s+(xm2|1dmk)|british\s+museum|parco\s+acquatico|moby', '13 Acquisti e garanzie/{an}', 0.8, 'acquisti, viaggi e tempo libero'),
+    (r'corso\s+(dr\s+)?filler|rossani|joosten|magister\s+formazione', '12 Lavoro e professione/Seminari', 0.85, 'corsi di medicina estetica'),
+    (r'^(?!.*(diffida|precetto|decreto\s+ingiuntivo|procura\s+alle\s+liti|relata|ricorso)).*(one\s+apple|via\s+pacini)', '12 Lavoro e professione/Società e progetti/One Apple', 0.85, 'società One Apple'),
+    (r"modello\s+unico.*(l.arabi|immobiliare\s+la)|certificazione\s+unica.*(l.arabi|larab)", "12 Lavoro e professione/Società e progetti/Immobiliare La – L'Arabi", 0.85, "dichiarazioni di Immobiliare La / L'Arabi"),
+    (r'mobe-?e|mob-e', '12 Lavoro e professione/Società e progetti/Mall-e', 0.8, 'società MOBE-E (progetto Mall-e)'),
+    (r'poliedron.*(test|collaudo)|collaudo\s+tecnico|non\s+leggibile|senza\s+contenuto|documento\s+scansionato\s+vuoto|^gg$|^cia$|^simondi$|^doc\s+simondi$|^file\s+simondi$|nessun\s+oggetto', '99 Da verificare/Dubbi', 0.45, 'senza contenuto leggibile: da guardare'),
+]
+
+def correggi(d, perc, sog, conf, motivo, sc):
+    if perc.startswith('99 Da verificare/Duplicati'):
+        return perc, sog, conf, motivo, sc
+    t = norm(' '.join(str(d.get(k) or '') for k in ('t', 'n')))
+    for rx, dest, c, m in CORREZIONI:
+        if re.search(rx, t):
+            return dest.replace('{an}', anno(d) or 'Senza anno'), sog, c, m + ' (correzione dopo rilettura)', sc
+    return perc, sog, conf, motivo, sc
+
+
+# Dubbi riletti uno per uno (Claude Code, 2026-11-22): assegnati solo quando il titolo basta. Valgono solo per «99 Da verificare/Dubbi».
+DA_DUBBI = [
+    (r'kousmine|minarelli|glioma\s+profile|medicor\s+cancer|\bihf\b|ivano\s+ferri|vaccini\s+immunomodulanti', '07 Salute/Roberto Simondi/Referti', 0.65, 'cure e ricerche per Roberto Simondi'),
+    (r"documento\s+d.?\s*identit.\s+–\s+(abdulahi|elisa\s+romano|laxmi|olga|sindou|carlos|yulyia|comune\s+di\s+cuneo\s+–\s+gj)|fotografia\s+(tessera\s+–\s+identit.|–\s+(adil|maryam|franco))|foto\s+identificativa|passport|documento\s+zymberi|nulla\s+osta", '12 Lavoro e professione/Società e progetti/Storie per tessere', 0.65, 'documenti di persone accolte («Storie per tessere»)'),
+    (r'\bitas\b|avviso\s+di\s+scadenza\s+polizza|premio\s+di\s+polizza\s+non\s+incassato|questionario\s+di\s+adeguatezza|salomone\s+assicurazioni|quietanza\s+polizza', '09 Assicurazioni/Altre polizze/ITAS Mutua', 0.65, 'polizza ITAS (ramo da confermare)'),
+    (r'generali|polizze\s+7624', '09 Assicurazioni/Altre polizze/Generali', 0.65, 'polizza Generali (ramo da confermare)'),
+    (r'unit.\s+da\s+diporto', '06 Auto e veicoli/Barca Sealine F37/Proprietà e libretto', 0.75, 'assicurazione della barca'),
+    (r'cane|gatto', '08 Famiglia e scuola/Famiglia/Animali', 0.7, 'animali di casa'),
+    (r'rentalcars|hertz|polizia\s+locale\s+–\s+verbale|autostrada\s+asti', '06 Auto e veicoli/Noleggi e car sharing/Multe', 0.7, 'multa o pedaggio'),
+    (r'leasing\s+7042828|fca\s+bank|audi\s+q5|land\s+rover|freelander|renault\s+zoe|macan|minivoltura|numero\s+telaio|minivol', '06 Auto e veicoli/Acquisti e leasing', 0.65, 'acquisto o leasing di un\'auto'),
+    (r'affitt|locazion|via\s+g\.?\s*b\.?\s+vico|corso\s+genova|soloaffitti|immodomus|uppi\s+pavia|\brli\b|fideiussione\s+bancaria|papiniano|boccaccio|via\s+conca|immobilsarda', '02 Casa e catasto/Ricerca e progetti di case/Affitti', 0.62, 'affitti e ricerca casa'),
+    (r'planimetri|visura\s+(catastale|ipotecaria)|visura\s+–\s+box|cappotto|caldaia|thermoshield|greypor|stiferite|insufflaggio|sanitari\s+e\s+rubinett|prospetti|disegno\s+cad|tettoia|prestazione\s+energetica|frazionamento|confedilizia|condomin|hydrorep|controsoffitto|arcadia\s+biocase|antifurto|disegno\s+tecnico\s+scala', '02 Casa e catasto/Immobile da attribuire', 0.6, 'casa o immobile: quale, da confermare'),
+    (r'divisione.*pradleves|pradleves.*divisione|lotti\s+pradleve', '02 Casa e catasto/Pradleves/Atti e rogiti', 0.7, 'divisione di famiglia a Pradleves'),
+    (r'diritto\s+annuale|ufficio\s+camerale|visura\s+camerale', '12 Lavoro e professione/Studio Cuneo/{an}', 0.65, 'Camera di Commercio dello studio'),
+    (r'avviso\s+di\s+irregolarit|invito\s+a\s+regolarizzare|037-crt|cartella\s+037|ingiunzione|avvio\s+procedimento\s+110194|rigetto\s+istanza\s+110194|richiesta\s+rateizzazione', '05 Fisco e tasse/{an}/Avvisi e cartelle', 0.7, 'avvisi e cartelle'),
+    (r'^fattura\s+n\.?\s*\d+.*simondi|report\s+fatture.*incassare|verifiche\s+ricavi|nota\s+pro\s+forma|pro\s+forma\s+simondi', '05 Fisco e tasse/{an}/Dichiarazioni', 0.6, 'fatture e ricavi di Luca'),
+    (r'marmellata|mirtill|confettur|crema\s+per\s+colazione|tartuficoltura', '08 Famiglia e scuola/Luca Simondi/Attività', 0.65, 'ricette e passioni'),
+    (r'faizal\s+wedding|consenso\s+pcr|omicron|point\s+of\s+care|fine\s+quarantena', '12 Lavoro e professione/Società e progetti/Tamponi e screening COVID', 0.7, 'tamponi e screening COVID'),
+    (r'ordine\s+medici', '12 Lavoro e professione/Ordine Medici', 0.85, 'Ordine dei Medici'),
+    (r'monopattino|etwow|johnson\s+fitness|apple\s+store|telecamera\s+wifi|ivy-sectec', '13 Acquisti e garanzie/{an}', 0.65, 'acquisti'),
+    (r'ubi\s+banca|saldo_e_movimentiubi|moratoria\s+coronavirus', '04 Banche e conti/Intesa Sanpaolo/Estratti conto/{an}', 0.65, 'conto UBI (oggi Intesa Sanpaolo)'),
+    (r'movimenti\s+conto|elenco\s+bonifici|disposizione\s+bonifico|ricevuta\s+di\s+bonifico|sumup|estratto\s+conto\s+492|coordinate\s+bancarie', '04 Banche e conti/Altri conti/{an}', 0.6, 'movimenti bancari, banca da confermare'),
+    (r'infocert|inad|\bpec\b\s+infocert', '13 Acquisti e garanzie/{an}', 0.6, 'servizio PEC/firma InfoCert'),
+]
+
+def da_dubbi(d, perc, sog, conf, motivo, sc):
+    if perc != '99 Da verificare/Dubbi':
+        return perc, sog, conf, motivo, sc
+    t = norm(' '.join(str(d.get(k) or '') for k in ('t', 'n')))
+    for rx, dest, c, m in DA_DUBBI:
+        if re.search(rx, t):
+            return dest.replace('{an}', anno(d) or 'Senza anno'), sog, c, m + ' (dubbio riletto)', sc
+    return perc, sog, conf, motivo, sc
+
 def main(fdocs, fdrive, fprat, fout):
     D = json.load(open(fdocs))
     el = json.load(open(fdrive))
@@ -532,6 +615,7 @@ def main(fdocs, fdrive, fprat, fout):
         if not f:
             continue  # file fuori da «Archivio personale»: non si toccano (file di Drive di Luca indicizzati)
         perc, sog, conf, motivo, sc = categoria(d, P)
+        perc, sog, conf, motivo, sc = correggi(d, perc, sog, conf, motivo, sc)
         tipo = tipo_di(d)
         ext = (re.search(r'\.[A-Za-z0-9]{1,5}$', f['name']) or re.search(r'\.[A-Za-z0-9]{1,5}$', str(d.get('n') or '')) or [''])[0]
         ext = ext.lower() if ext else ''
@@ -573,6 +657,13 @@ def main(fdocs, fdrive, fprat, fout):
         if r['confidenza'] < 0.6 and not r['percorso_nuovo'].startswith('99 '):
             r['motivo'] = f'incerto ({r["percorso_nuovo"]}): ' + r['motivo']
             r['percorso_nuovo'] = '99 Da verificare/Dubbi'
+    # dubbi riletti: assegnati quando il titolo basta
+    per_id = {d['id']: d for d in D}
+    for r in righe:
+        if r['percorso_nuovo'] == '99 Da verificare/Dubbi' and r['documento_id'] in per_id:
+            p2, _, c2, m2, _ = da_dubbi(per_id[r['documento_id']], r['percorso_nuovo'], None, r['confidenza'], r['motivo'], [])
+            if p2 != r['percorso_nuovo']:
+                r['percorso_nuovo'], r['confidenza'], r['motivo'] = p2, c2, m2
     # nomi unici nella stessa cartella
     visti = Counter()
     for r in sorted(righe, key=lambda r: (r['percorso_nuovo'], r['nome_nuovo'])):

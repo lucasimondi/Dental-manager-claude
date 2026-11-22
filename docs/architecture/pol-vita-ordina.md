@@ -171,3 +171,19 @@ Su indicazione di Luca («Fallo tu senza api») la classificazione l'ha fatta Cl
 2. **Elenchi da confermare** in `TASSONOMIA.md`: persone dubbie, immobili dubbi e centraline.
 3. **229 file dell'archivio fuori da «Archivio personale»:** non sono nel piano. Decidere se includerli.
 4. **Documenti «Storie per tessere»:** sono documenti d'identità di persone accolte e restano in una cartella a sé.
+
+### Revisione fatta da Claude Code (2026-11-22, Luca: «É un lavoro troppo lungo da fare, ho chiesto a te di farlo apposta»)
+- Rilette a mano le cartelle grandi («12/Studio Cuneo», «05/…/Dichiarazioni», «08/Famiglia/Attività», «13 Acquisti», «11/Altre questioni legali», «12/Seminari e Docenza») e i 606 dubbi. Le correzioni ricorrenti sono regole nel classificatore (`CORREZIONI`, `DA_DUBBI`).
+  - Cosa è stato spostato: assicurazioni, pignoramenti, causa Primo, multe, barca, studi universitari, passatempi, acquisti, One Apple, MOBE-E.
+  - Le cartelle delle polizze sono una per compagnia, non una per polizza.
+- 1.138 righe del piano sono state aggiornate nel database: 38 cartelle nuove e 1.078 destinazioni corrette. Dopo l'aggiornamento il conteggio per cartella coincide con il classificatore.
+- **Approvate da Claude Code su delega di Luca:** 6.610 righe, cioè tutte quelle fuori da «99».
+- **Restano da decidere:** 460 righe in «99 Da verificare».
+  - 380 dubbi veri: titoli vuoti, allegati illeggibili e alcuni messaggi spam.
+  - 60 copie identiche.
+  - 20 «Possibili documenti clinici» (panoramiche, file STL, elenchi di pazienti): non si spostano, vanno nel fascicolo clinico per decisione di Luca.
+- **Indicatori dopo la revisione:**
+  - «99» = 6,5%, di cui 5,7% senza contare le copie identiche;
+  - nomi conformi: 98,9%;
+  - 347 cartelle di destinazione, al massimo 4 livelli;
+  - confidenza: 1.789 righe a 0,85 o più, 4.881 fra 0,60 e 0,85.
