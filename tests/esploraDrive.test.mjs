@@ -167,3 +167,69 @@ test('doPost: le nuove azioni del menu dopo il controllo del proprietario', () =
   const controllo = corpo.indexOf('Accesso non autorizzato');
   for (const a of ['rinomina_file', 'proprieta_file', 'accesso_file']) assert.ok(corpo.indexOf(`'${a}'`) > controllo, a);
 });
+
+// PR #337 §5: Cestino dell'app, ripristino di una versione, nuovo Documento / Foglio Google.
+test('ripristina_file: solo file registrati in archivio tornano fuori dal Cestino di Drive', () => {
+  const docs = [{ id: U(50), drive_file_id: 'f50registrato' }];
+  const s = scriptFinto({ docs });
+  const tolti = [];
+  s.ctx.DriveApp.getFileById = (id) => ({ setTrashed: (v) => tolti.push([id, v]) });
+  s.ctx.sb_ = (p) => (p.startsWith('documenti?select=drive_file_id') ? docs.filter((d) => p.includes(d.drive_file_id)).map((d) => ({ drive_file_id: d.drive_file_id })) : []);
+  const r = JSON.parse(JSON.stringify(s.ctx.ripristinaFileEsplora_(['f50registrato', 'fAltroFileDrive', 'x'])));
+  assert.deepEqual(r, { ok: true, ripristinati: ['f50registrato'], non_trovati: ['fAltroFileDrive'] });
+  assert.deepEqual(tolti, [['f50registrato', false]]);
+});
+
+test('ripristina_versione: mai per Documenti/Fogli Google; versione non valida rifiutata', () => {
+  const docs = [{ id: U(60), drive_file_id: 'f60', mime_type: 'application/vnd.google-apps.document' }, { id: U(61), drive_file_id: 'f61', mime_type: 'application/pdf' }];
+  const s = scriptFinto({ docs });
+  assert.match(s.ctx.ripristinaVersioneEsplora_({ id: U(60), versione: 'v1' }).errore, /Documenti e Fogli Google/);
+  assert.match(s.ctx.ripristinaVersioneEsplora_({ id: U(61), versione: 'v1/../x' }).errore, /non valida/);
+});
+
+test('doPost PR #337 §5: crea_file, ripristina_file, ripristina_versione dopo il controllo del proprietario', () => {
+  const i = codice.indexOf('function doPost(');
+  const corpo = codice.slice(i, codice.indexOf('\n}\n', i));
+  const controllo = corpo.indexOf('Accesso non autorizzato');
+  for (const a of ['crea_file', 'ripristina_file', 'ripristina_versione']) assert.ok(corpo.indexOf(`'${a}'`) > controllo, a);
+  // il nuovo file nasce nella gemella, si registra e non va mai a un modello
+  const f = codice.slice(codice.indexOf('function creaFileEsplora_'), codice.indexOf('function ripristinaFileEsplora_'));
+  assert.match(f, /cartellaDriveDi_\(idCartella\)/);
+  assert.match(f, /rpc\/registra_documento/);
+  assert.match(f, /analisi_contenuto: false/);
+  assert.doesNotMatch(f, /analizza_\(|gemini_\(|modello_\(/);
+});
+
+// PR #337 (PO 2026-11-22: «Duplica crea una vera copia del file»)
+test('duplica_file: copia vera su Drive accanto all\'originale, registrata con lo stesso catalogo, mai a un modello', () => {
+  const docs = [{ id: U(70), drive_file_id: 'f70', mime_type: 'application/pdf', titolo: 'Rogito', fascicolo: 'immobili', tag: ['casa', 'cestino'], ente: 'Notaio' }];
+  const s = scriptFinto({ docs });
+  const copie = []; const registrati = []; const patch = []; const messi = [];
+  const padre = { getId: () => 'cartella-padre' };
+  s.ctx.DriveApp.getFileById = () => ({
+    getName: () => 'Rogito.pdf', getParents: () => { let x = false; return { hasNext: () => !x, next: () => { x = true; return padre; } }; },
+    makeCopy: (nome, dove) => { copie.push([nome, dove.getId()]); return { getId: () => 'copia70', getUrl: () => 'https://drive/copia70', setTrashed() {} }; },
+  });
+  s.ctx.Utilities.getUuid = () => 'u';
+  s.ctx.mettiInCartella_ = (c, d) => messi.push([c, d]);
+  s.ctx.sb_ = (p, o = {}) => {
+    if (p === 'rpc/registra_documento') { registrati.push(o.body.p); return { documento_id: U(71) }; }
+    if (o.method === 'patch') { patch.push([p, o.body]); return null; }
+    if (p.startsWith('documenti?')) return docs.map((d) => ({ ...d }));
+    return [];
+  };
+  const r = JSON.parse(JSON.stringify(s.ctx.duplicaFileEsplora_({ id: U(70) })));
+  assert.deepEqual(r, { ok: true, id: U(71), drive_file_id: 'copia70', titolo: 'Rogito - Copia' });
+  assert.deepEqual(copie, [['Rogito - Copia.pdf', 'cartella-padre']]);
+  assert.equal(registrati[0].hash_sha256, 'copia:copia70');
+  assert.equal(registrati[0].fascicolo, 'immobili');
+  assert.deepEqual(registrati[0].tag, ['casa']);
+  assert.equal(registrati[0].analisi_contenuto, false);
+  assert.equal(patch[0][1].drive_fissa, true);
+  assert.deepEqual(messi, []);
+  const f = codice.slice(codice.indexOf('function duplicaFileEsplora_'), codice.indexOf('// Cestino dell\'app: «Ripristina»'));
+  assert.doesNotMatch(f, /analizza_\(|gemini_\(|modello_\(/);
+  const i = codice.indexOf('function doPost(');
+  const corpo = codice.slice(i, codice.indexOf('\n}\n', i));
+  assert.ok(corpo.indexOf("'duplica_file'") > corpo.indexOf('Accesso non autorizzato'));
+});

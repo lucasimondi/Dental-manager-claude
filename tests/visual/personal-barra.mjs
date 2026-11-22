@@ -23,6 +23,8 @@ try {
       if (u.hostname === '127.0.0.1') return route.continue();
       if (u.hostname.endsWith('supabase.co')) {
         if (u.pathname.includes('/auth/')) return route.fulfill({ json: {} });
+        // PR #337 §8: una scadenza fra due giorni (pallino di Oggi e campanella, stessa fonte del Centro notifiche)
+        if (u.pathname.endsWith('/scadenze')) { const d = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10); return route.fulfill({ json: [{ id: 's1', data: d, descrizione: 'Rata IMU', importo: 120, completata: false, storica: false, documento_id: 'a1', documento: { id: 'a1', titolo: 'IMU 2026', fascicolo: 'utenze', tipo_documento: 'avviso', tag: [] } }] }); }
         if (u.pathname.endsWith('/promemoria_azioni')) return route.fulfill({ json: [{ id: 'p1', priorita: 'alta', rimanda_al: null }, { id: 'p2', priorita: 'media', rimanda_al: null }, { id: 'p3', priorita: 'bassa', rimanda_al: null }] });
         if (u.pathname.endsWith('/documenti') && u.searchParams.get('azione_richiesta')) return route.fulfill({ json: [{ id: 'a1', fascicolo: 'utenze', azione_richiesta: true }, { id: 'a2', fascicolo: 'conti', azione_richiesta: true }] });
         if (req.method() === 'HEAD') return route.fulfill({ status: 200, headers: { 'content-range': '*/0', 'access-control-allow-origin': '*', 'access-control-expose-headers': 'Content-Range' }, body: '' });
@@ -48,14 +50,17 @@ try {
     assert.equal(g.w, g.vw);
     assert.equal(g.filtro, 'blur(30px) saturate(1.5)');
     assert.equal(g.gap, '4px');
-    assert.deepEqual(g.voci.map((v) => v.label), ['Start', 'Oggi, 1 urgenti', 'Agenda', 'Esplora file, 2 da gestire', 'Assistente', 'Personale']);
+    assert.deepEqual(g.voci.map((v) => v.label), ['Start', 'Cerca', 'Oggi, 1 urgenti', 'Agenda', 'Esplora file, 2 da gestire', 'Assistente', 'Personale']);
     for (const v of g.voci) { assert.equal(v.w, 40); assert.equal(v.h, 40); assert.equal(v.raggio, '6px'); }
     assert.ok(Math.abs(g.centro - g.vw / 2) < 2, `icone centrate (${g.centro} su ${g.vw})`);
-    assert.equal(g.sisVisibile, desktop, desktop ? 'area di sistema su desktop' : 'area di sistema nascosta su mobile');
+    assert.equal(g.sisVisibile, true, 'area di sistema (su mobile solo la campanella)');
+    assert.equal(await page.locator('.pb-campanella').isVisible(), !desktop, 'campanella solo su mobile');
+    assert.equal(await page.locator('.pb-ora').isVisible(), desktop, 'ora e data solo su desktop');
+    assert.ok(g.icDestra <= g.sisSinistra, 'l’area di sistema non copre le icone');
     if (desktop) {
       assert.ok(g.icDestra <= g.sisSinistra, 'l’area di sistema non copre le icone');
       assert.equal(await page.locator('.pb-ora').evaluate((e) => getComputedStyle(e).fontSize), '12px');
-      assert.equal(await page.locator('.pb-notifiche').textContent(), '3');
+      assert.equal(await page.locator('.pb-notifiche').textContent(), '1');
       assert.equal(await page.locator('.pb-drive').getAttribute('aria-label'), 'Drive sincronizzato');
       assert.ok(await dentro(page, '.pb-sistema'));
     }
@@ -70,7 +75,7 @@ try {
     assert.equal(await page.locator('.pb-voce.attiva').getAttribute('aria-label'), 'Oggi, 1 urgenti');
     // Esplora file dalla barra
     await barra.getByRole('button', { name: /^Esplora file/ }).click();
-    await page.locator('.esp-albero').waitFor();
+    await page.locator('.esp-contenuto').waitFor();
     await page.waitForTimeout(350); // fine dell'animazione d'ingresso della pagina
     assert.equal(await page.locator('.pb-voce.attiva').getAttribute('aria-label'), 'Esplora file, 2 da gestire');
     // Oggi resta aperta sotto Esplora: trattino corto da 6 px
@@ -105,11 +110,19 @@ try {
     await page.keyboard.press('Enter');
     await page.getByText('Cerca nel tuo archivio').last().waitFor();
     assert.equal(await page.locator('.pp-pagina:not([hidden]) input').first().inputValue(), 'bolletta');
-    // ora, data e notifiche → Da fare (solo desktop; su mobile Da fare è in Start)
-    if (desktop) {
-      await page.locator('.pb-area').click();
-      await page.getByRole('heading', { name: 'Da fare' }).waitFor();
-    }
+    // ora e data (campanella su mobile) → Centro notifiche: notifica con azioni rapide, calendario con il giorno segnato
+    await page.locator('.pb-area').click();
+    const cn = page.getByRole('dialog', { name: 'Centro notifiche' });
+    await cn.waitFor();
+    await cn.getByText('Rata IMU').waitFor();
+    assert.ok(await cn.getByRole('button', { name: 'Apri documento' }).count());
+    assert.ok(await cn.getByRole('button', { name: 'Segna come fatto' }).count());
+    assert.ok(await page.locator('.pn-giorno.con').count() >= 1, 'giorno con scadenza nel calendario');
+    await page.waitForTimeout(350); // fine dell'animazione di entrata
+    assert.ok(await dentro(page, '.pn-centro'), 'Centro notifiche dentro lo schermo');
+    await page.screenshot({ path: `${out}/${nome}-centro.png` });
+    await page.keyboard.press('Escape');
+    await cn.waitFor({ state: 'detached' });
 
     const larga = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
     assert.equal(larga, false, 'nessuno scorrimento orizzontale');

@@ -76,7 +76,10 @@ test('PERSONAL-ESPLORA-WIN11 fase 3: barra stile Windows 11 al posto del dock (m
   assert.match(css, /backdrop-filter: blur\(30px\) saturate\(150%\)/);
   assert.match(css, /--pb-hover: rgba\(255, 255, 255, \.08\);/);
   assert.match(css, /--pb-linea: rgba\(255, 255, 255, \.08\);/);
-  assert.match(css, /\.pb-lato, \.pb-sistema \{ display: none; \}/);
+  // PR #337 dock: su mobile l'area di sistema si riduce alla campanella con il pallino
+  assert.match(css, /\.pb-drive, \.pb-ora, \.pb-notifiche \{ display: none; \}/);
+  assert.match(css, /\.pb-campanella \{ display: grid; \}/);
+  assert.match(css, /--pb-bordo: rgba\(255, 255, 255, \.08\);/);
   assert.match(css, /'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', system-ui/);
   assert.match(css, /env\(safe-area-inset-bottom\)/);
   const app = read('personal/src/App.jsx');

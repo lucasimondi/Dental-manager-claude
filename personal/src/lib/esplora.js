@@ -19,8 +19,22 @@ export const FUORI = 'fuori'; // un documento che non sta in nessuna cartella mi
 export const CLINICO = 'clinico_pazienti';
 export const nodoCategoria = (codice) => `categoria:${codice}`;
 export const codiceCategoria = (nodo) => (String(nodo).startsWith('categoria:') ? String(nodo).slice(10) : null);
-export const eVirtuale = (nodo) => nodo === DA_CATALOGARE || nodo === CATEGORIE || nodo === 'accesso-rapido' || !!codiceCategoria(nodo);
+// PR #337 §2: nodi del pannello di navigazione (Home, Preferiti, Recenti, Cestino) e risultati di ricerca.
+export const HOME = 'home';
+export const PREFERITI = 'preferiti';
+export const RECENTI = 'recenti';
+export const CESTINO = 'cestino';
+const SEP_CERCA = '\u0001';
+export const nodoCerca = (base, testo) => `cerca:${base}${SEP_CERCA}${testo}`;
+export const datiCerca = (nodo) => {
+  if (!String(nodo).startsWith('cerca:')) return null;
+  const [base, ...t] = String(nodo).slice(6).split(SEP_CERCA);
+  return { base: base || HOME, testo: t.join(SEP_CERCA) };
+};
+const SPECIALI = new Set([DA_CATALOGARE, CATEGORIE, 'accesso-rapido', HOME, PREFERITI, RECENTI, CESTINO]);
+export const eVirtuale = (nodo) => SPECIALI.has(nodo) || !!codiceCategoria(nodo) || !!datiCerca(nodo);
 export const NOME_RADICE = 'Personale';
+const NOMI_SPECIALI = { [HOME]: 'Home', [PREFERITI]: 'Preferiti', [RECENTI]: 'Recenti', [CESTINO]: 'Cestino' };
 
 /* ---------- disposizione ---------- */
 
@@ -48,7 +62,10 @@ export function sottocartelle(cartelle, nodo) {
 }
 
 export function padreDi(cartelle, nodo) {
-  if (nodo === RADICE || nodo === DA_CATALOGARE || nodo === CATEGORIE || nodo === 'accesso-rapido') return null;
+  if (nodo === HOME) return null;
+  if (nodo === RADICE || SPECIALI.has(nodo)) return HOME;
+  const cerca = datiCerca(nodo);
+  if (cerca) return cerca.base;
   if (codiceCategoria(nodo)) return CATEGORIE;
   const c = cartellaDi(cartelle, nodo);
   return c ? (c.padre_id || RADICE) : null;
@@ -61,6 +78,9 @@ export function nomeNodo(nodo, { cartelle = [], fascicoli = [] } = {}) {
   if (nodo === DA_CATALOGARE) return 'Da catalogare';
   if (nodo === CATEGORIE) return 'Per categoria';
   if (nodo === 'accesso-rapido') return 'Accesso rapido';
+  if (NOMI_SPECIALI[nodo]) return NOMI_SPECIALI[nodo];
+  const cerca = datiCerca(nodo);
+  if (cerca) return `Risultati per «${cerca.testo}»`;
   const f = codiceCategoria(nodo);
   if (f) return nomeCategoria(fascicoli, f);
   return cartellaDi(cartelle, nodo)?.nome || 'Cartella';
@@ -69,7 +89,9 @@ export function nomeNodo(nodo, { cartelle = [], fascicoli = [] } = {}) {
 // Dalla cima al nodo: [{id, nome}], per il percorso cliccabile.
 export function percorsoNodo(nodo, { cartelle = [], fascicoli = [] } = {}) {
   if (nodo === RADICE) return [{ id: RADICE, nome: NOME_RADICE }];
-  if (nodo === DA_CATALOGARE || nodo === CATEGORIE || nodo === 'accesso-rapido') return [{ id: nodo, nome: nomeNodo(nodo) }];
+  if (nodo === DA_CATALOGARE || nodo === CATEGORIE || nodo === 'accesso-rapido' || NOMI_SPECIALI[nodo]) return [{ id: nodo, nome: nomeNodo(nodo) }];
+  const cerca = datiCerca(nodo);
+  if (cerca) return [...(cerca.base === HOME ? [] : percorsoNodo(cerca.base, { cartelle, fascicoli })), { id: nodo, nome: nomeNodo(nodo) }];
   const f = codiceCategoria(nodo);
   if (f) return [{ id: CATEGORIE, nome: 'Per categoria' }, { id: nodo, nome: nomeCategoria(fascicoli, f) }];
   return [{ id: RADICE, nome: NOME_RADICE }, ...percorso(vive(cartelle), nodo)];
@@ -280,17 +302,29 @@ export function nomeNuovaCartella(esistenti, base = 'Nuova cartella') {
 // rapide = la riga di icone in alto (Taglia, Copia, Rinomina, Condividi, Elimina);
 // voci = { id, nome, tasto?, attiva, sotto?: [...] } oppure { separatore: true }.
 // `selezione` = elementi su cui agisce (uno o più); le voci non applicabili restano visibili, disattivate.
-export function menuContestuale(cosa, { nodo, appunti = null, opz = {}, selezione = [], preferiti = [], ambiente = 'scarica', convertibile = false, conFile = true } = {}) {
+export function menuContestuale(cosa, { nodo, appunti = null, opz = {}, selezione = [], preferiti = [], ambiente = 'scarica', convertibile = false, conFile = true, vista = 'grandi', ordine = { chiave: 'nome', verso: 'su' }, gruppo = '', altrove = false, zip = false, cestino = false } = {}) {
   const sep = { separatore: true };
+  const segno = (si, nome) => `${si ? '✓ ' : ''}${nome}`;
   if (cosa === 'vuoto') {
     const vero = !eVirtuale(nodo);
     return { rapide: [], voci: [
-      { id: 'nuova', nome: 'Nuova cartella', tasto: 'Ctrl+Maiusc+N', attiva: vero },
-      { id: 'incolla', nome: appunti ? `Incolla «${appunti.nome}»` : 'Incolla', tasto: 'Ctrl+V', attiva: vero && !!incolla(appunti, nodo, opz) },
+      { id: 'vista', nome: 'Visualizza', attiva: true, sotto: VISTE_ESPLORA.map(([k, n]) => ({ id: `vista:${k}`, nome: segno(vista === k, n), attiva: true })) },
+      { id: 'ordina', nome: 'Ordina per', attiva: true, sotto: [['nome', 'Nome'], ['data', 'Data modifica'], ['tipo', 'Tipo'], ['dimensione', 'Dimensione'], ['categoria', 'Categoria']].map(([k, n]) => ({ id: `ordina:${k}`, nome: segno(ordine.chiave === k, n), attiva: true }))
+        .concat([sep, { id: 'verso:su', nome: segno(ordine.verso === 'su', 'Crescente'), attiva: true }, { id: 'verso:giu', nome: segno(ordine.verso === 'giu', 'Decrescente'), attiva: true }]) },
+      { id: 'raggruppa', nome: 'Raggruppa per', attiva: true, sotto: GRUPPI.map(([k, n]) => ({ id: `gruppo:${k || 'nessuno'}`, nome: segno(gruppo === k, n), attiva: true })) },
       sep,
-      { id: 'vista', nome: 'Visualizza', attiva: true, sotto: VISTE_ESPLORA.map(([k, n]) => ({ id: `vista:${k}`, nome: n, attiva: true })) },
+      { id: 'nuovo', nome: 'Nuovo', attiva: vero, sotto: [
+        { id: 'nuova', nome: 'Cartella', tasto: 'Ctrl+Maiusc+N', attiva: vero },
+        { id: 'nuovo:doc', nome: 'Documento Google', attiva: vero },
+        { id: 'nuovo:foglio', nome: 'Foglio Google', attiva: vero },
+        sep,
+        { id: 'carica', nome: 'Carica file…', attiva: vero },
+      ] },
+      { id: 'incolla', nome: appunti ? `Incolla «${appunti.nome}»` : 'Incolla', tasto: 'Ctrl+V', attiva: vero && !!incolla(appunti, nodo, opz) },
       { id: 'aggiorna', nome: 'Aggiorna', tasto: 'F5', attiva: true },
       { id: 'seleziona-tutto', nome: 'Seleziona tutto', tasto: 'Ctrl+A', attiva: true },
+      sep,
+      { id: 'proprieta-cartella', nome: 'Proprietà della cartella', tasto: 'Alt+Invio', attiva: vero && nodo !== RADICE },
     ] };
   }
   const piu = selezione.length > 1;
@@ -300,6 +334,13 @@ export function menuContestuale(cosa, { nodo, appunti = null, opz = {}, selezion
   const file = una.tipo === 'doc';
   const clinico = selezione.some((x) => x.clinico);
   const nodoMenu = una.id;
+  if (cestino) {
+    return { rapide: [], voci: [
+      { id: 'ripristina', nome: 'Ripristina', attiva: true },
+      sep,
+      { id: 'elimina-definitivo', nome: 'Elimina definitivamente', tasto: 'Maiusc+Canc', attiva: soloFile && !clinico },
+    ] };
+  }
   const rapide = [
     { id: 'taglia', nome: 'Taglia', attiva: mie },
     { id: 'copia', nome: 'Copia', attiva: soloFile },
@@ -311,16 +352,20 @@ export function menuContestuale(cosa, { nodo, appunti = null, opz = {}, selezion
     const cartellaMia = !piu && nodoMenu !== RADICE && !eVirtuale(nodoMenu);
     return { rapide, voci: [
       { id: 'apri', nome: 'Apri', tasto: 'Invio', attiva: !piu },
+      { id: 'scheda-nuova', nome: 'Apri in una nuova scheda', attiva: !piu },
       { id: 'nuova', nome: 'Nuova cartella qui', attiva: !piu && !eVirtuale(nodoMenu) },
       sep,
+      { id: 'preferito', nome: ePreferito(preferiti, 'cartella', nodoMenu) ? 'Togli da Accesso rapido' : 'Aggiungi ad Accesso rapido', attiva: !piu && (nodoMenu === RADICE || !eVirtuale(nodoMenu)) },
+      sep,
       { id: 'taglia', nome: 'Taglia', tasto: 'Ctrl+X', attiva: mie },
-      { id: 'incolla-qui', nome: appunti ? `Incolla in questa cartella` : 'Incolla', tasto: 'Ctrl+V', attiva: !piu && !!incolla(appunti, nodoMenu, opz) },
+      { id: 'incolla-qui', nome: appunti ? 'Incolla in questa cartella' : 'Incolla', tasto: 'Ctrl+V', attiva: !piu && !!incolla(appunti, nodoMenu, opz) },
+      { id: 'copia-percorso', nome: 'Copia percorso', attiva: !piu },
       sep,
       { id: 'rinomina', nome: 'Rinomina', tasto: 'F2', attiva: cartellaMia },
       { id: 'sposta', nome: 'Sposta in…', attiva: mie },
-      { id: 'preferito', nome: ePreferito(preferiti, 'cartella', nodoMenu) ? 'Togli da Accesso rapido' : 'Aggiungi ad Accesso rapido', attiva: !piu && (nodoMenu === RADICE || !eVirtuale(nodoMenu)) },
       sep,
       { id: 'zip', nome: 'Comprimi in ZIP', attiva: mie },
+      { id: 'mostra-cartella', nome: 'Mostra nella cartella', attiva: altrove && !piu },
       { id: 'proprieta', nome: 'Proprietà', tasto: 'Alt+Invio', attiva: cartellaMia },
       sep,
       { id: 'elimina', nome: 'Elimina (archivia)', tasto: 'Canc', attiva: mie },
@@ -330,11 +375,13 @@ export function menuContestuale(cosa, { nodo, appunti = null, opz = {}, selezion
     { id: 'apri', nome: 'Apri', tasto: 'Invio', attiva: !piu },
     { id: 'apri-con', nome: 'Apri con', attiva: !piu && conFile, sotto: [
       { id: 'con:anteprima', nome: 'Anteprima Poliedra', attiva: true },
-      { id: 'con:drive', nome: 'Google Drive (visualizzatore)', attiva: true },
+      { id: 'con:drive', nome: 'Visualizzatore Google Drive', attiva: true },
       { id: 'con:docs', nome: 'Google Documenti / Fogli', attiva: convertibile },
       { id: 'con:scheda', nome: 'Nuova scheda del browser', attiva: true },
       { id: 'con:scarica', nome: 'Scarica', attiva: true },
       { id: 'con:altra', nome: ambiente === 'capacitor' ? 'Altra app…' : 'Altra app… (condividi)', attiva: ambiente !== 'scarica' },
+      sep,
+      { id: 'con:predefinita', nome: 'Scegli app predefinita…', attiva: true },
     ] },
     { id: 'condividi', nome: 'Condividi', attiva: !piu, sotto: [
       { id: 'cond:sistema', nome: 'Condivisione di sistema', attiva: conFile },
@@ -343,17 +390,21 @@ export function menuContestuale(cosa, { nodo, appunti = null, opz = {}, selezion
       { id: 'cond:whatsapp', nome: 'WhatsApp', attiva: true },
       { id: 'cond:accesso', nome: 'Gestisci accesso Drive', attiva: conFile },
     ] },
+    { id: 'preferito', nome: ePreferito(preferiti, 'doc', una.id) ? 'Togli dai Preferiti' : 'Aggiungi ai Preferiti', attiva: !piu },
     sep,
     { id: 'taglia', nome: 'Taglia', tasto: 'Ctrl+X', attiva: true },
     { id: 'copia', nome: 'Copia', tasto: 'Ctrl+C', attiva: true },
-    { id: 'duplica', nome: 'Duplica in…', tasto: 'Ctrl+D', attiva: true },
+    { id: 'duplica', nome: 'Duplica', tasto: 'Ctrl+D', attiva: true },
+    { id: 'copia-percorso', nome: 'Copia percorso', attiva: !piu },
     sep,
     { id: 'rinomina', nome: 'Rinomina', tasto: 'F2', attiva: !piu },
     { id: 'sposta', nome: 'Sposta in…', attiva: true },
-    { id: 'preferito', nome: ePreferito(preferiti, 'doc', una.id) ? 'Togli da Accesso rapido' : 'Aggiungi ad Accesso rapido', attiva: !piu },
+    { id: 'copia-in', nome: 'Copia in…', attiva: true },
     sep,
     { id: 'zip', nome: 'Comprimi in ZIP', attiva: true },
+    { id: 'estrai', nome: 'Estrai tutto', attiva: !piu && zip && conFile },
     { id: 'scarica', nome: 'Scarica', attiva: !piu && conFile },
+    { id: 'mostra-cartella', nome: 'Mostra nella cartella', attiva: altrove && !piu },
     { id: 'proprieta', nome: 'Proprietà', tasto: 'Alt+Invio', attiva: !piu },
     sep,
     { id: 'elimina', nome: 'Elimina', tasto: 'Canc', attiva: !clinico },
@@ -498,6 +549,38 @@ async function chiamaScript(corpo, fetchImpl) {
 }
 
 
+/* ---------- PR #337 §5: azioni nuove dello script (pubblicazione con clasp a cura di Luca) ---------- */
+// Lo script di prima risponde «File mancante» alle azioni che non conosce: messaggio chiaro.
+async function chiamaScriptNuovo(corpo, fetchImpl) {
+  try { return await chiamaScript(corpo, fetchImpl); } catch (e) {
+    if (/File mancante/.test(e.message)) throw new Error('Questa azione richiede lo script di Drive aggiornato (da pubblicare)');
+    throw e;
+  }
+}
+export const creaFileDrive = ({ token, tipo, nome, cartella }, fetchImpl = fetch) => chiamaScriptNuovo({ token, azione: 'crea_file', tipo, nome, cartella: cartella && cartella !== RADICE ? cartella : null }, fetchImpl);
+// Duplica = vera copia del file su Drive (decisione del PO del 2026-11-22), registrata come documento nuovo.
+export const duplicaFileDrive = ({ token, id, cartella }, fetchImpl = fetch) => chiamaScriptNuovo({ token, azione: 'duplica_file', id, cartella: cartella || null }, fetchImpl);
+export const ripristinaFileDrive = ({ token, ids }, fetchImpl = fetch) => chiamaScriptNuovo({ token, azione: 'ripristina_file', ids }, fetchImpl);
+export const ripristinaVersioneDrive = ({ token, id, versione }, fetchImpl = fetch) => chiamaScriptNuovo({ token, azione: 'ripristina_versione', id, versione }, fetchImpl);
+
+// Cestino dell'app (recuperabile): il documento resta in archivio con l'etichetta «cestino» e il file va nel
+// Cestino di Drive. «Ripristina» fa il contrario. «Elimina definitivamente» = il flusso di sempre (righe tolte
+// dall'archivio, file nel Cestino di Drive per 30 giorni): mai cancellazioni definitive su Drive.
+export const TAG_CESTINO = 'cestino';
+export const nelCestino = (d) => Array.isArray(d?.tag) && d.tag.includes(TAG_CESTINO);
+export const conCestino = (tag = [], dentro = true) => (dentro ? [...new Set([...(tag || []), TAG_CESTINO])] : (tag || []).filter((t) => t !== TAG_CESTINO));
+export async function segnaCestino(db, docs, dentro = true) {
+  for (const d of docs) {
+    const { error } = await db.from('documenti').update({ tag: conCestino(d.tag, dentro) }).eq('id', d.id);
+    if (error) throw new Error(error.message);
+  }
+}
+export async function documentiNelCestino(db) {
+  return esito(await db.from('documenti').select(CAMPI_ESPLORA).contains('tag', [TAG_CESTINO]).neq('fascicolo', CLINICO).order('creato_il', { ascending: false }).limit(500));
+}
+// «Estrai tutto»: solo gli archivi ZIP.
+export const eZip = (d = {}) => /zip/.test(String(d.mime_type || '').toLowerCase()) || /\.zip$/i.test(String(d.nome_file_originale || ''));
+
 /* ---------- PR #337: Drive prima, interfaccia solo a successo ---------- */
 
 /**
@@ -593,7 +676,14 @@ export const proprietaDrive = ({ token, id, cartella = false }, fetchImpl = fetc
 export const accessoDrive = ({ token, ...corpo }, fetchImpl = fetch) => chiamaScript({ token, azione: 'accesso_file', ...corpo }, fetchImpl);
 
 /* ---------- viste: Icone grandi, Icone medie, Elenco, Dettagli (salvate per cartella) ---------- */
-export const VISTE_ESPLORA = [['grandi', 'Icone grandi'], ['medie', 'Icone medie'], ['elenco', 'Elenco'], ['dettagli', 'Dettagli']];
+// PR #337 §3: le sei viste di Windows 11. L'ordine è anche quello di Ctrl+rotella (dalla più grande).
+export const VISTE_ESPLORA = [['grandi', 'Icone grandi'], ['medie', 'Icone medie'], ['piccole', 'Icone piccole'], ['elenco', 'Elenco'], ['dettagli', 'Dettagli'], ['riquadri', 'Riquadri']];
+// Ctrl+rotella: verso < 0 (rotella su) = più grande, > 0 = più piccola; ai bordi si resta fermi.
+export function vistaConRotella(vista, verso) {
+  const ordine = VISTE_ESPLORA.map(([k]) => k);
+  const i = Math.max(0, ordine.indexOf(vista));
+  return ordine[Math.max(0, Math.min(ordine.length - 1, i + (verso > 0 ? 1 : -1)))];
+}
 const CHIAVE_VISTE = 'poliedron-esplora-viste';
 export function leggiViste(storage = globalThis.localStorage) {
   try { const v = JSON.parse(storage?.getItem(CHIAVE_VISTE) || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; }
@@ -632,12 +722,72 @@ export function dataLeggibile(iso, fuso = 'Europe/Rome') {
   return new Intl.DateTimeFormat('it-IT', { timeZone: fuso, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(t)).replace(',', '');
 }
 // Righe della vista Dettagli: cartelle prima, poi file (come in Windows), ordinate per la colonna scelta.
-export function righeDettagli(cartelle = [], documenti = [], titoli = {}) {
+export function righeDettagli(cartelle = [], documenti = [], titoli = {}, fascicoli = []) {
+  const categoria = (d) => fascicoli.find((f) => f.codice === d.fascicolo)?.nome || d.fascicolo || '';
   return [
-    ...cartelle.map((c) => ({ id: c.id, cosa: 'cartella', nome: c.nome, data: c.modificato_il || c.creato_il || null, tipo: 'Cartella di file', dimensione: null, voce: c })),
-    ...documenti.map((d) => ({ id: d.id, cosa: 'file', nome: titoli[d.id] ?? (d.titolo || d.nome_file_originale || 'Documento'), data: d.creato_il || null, tipo: tipoLeggibile(d), dimensione: d.dimensione_byte ?? null, voce: d })),
+    ...cartelle.map((c) => ({ id: c.id, cosa: 'cartella', nome: c.nome, data: c.modificato_il || c.creato_il || null, tipo: 'Cartella di file', dimensione: null, categoria: '', voce: c })),
+    ...documenti.map((d) => ({ id: d.id, cosa: 'file', nome: titoli[d.id] ?? (d.titolo || d.nome_file_originale || 'Documento'), data: d.creato_il || null, tipo: tipoLeggibile(d), dimensione: d.dimensione_byte ?? null, categoria: categoria(d), voce: d })),
   ];
 }
+
+/* ---------- PR #337 §3: colonne, raggruppamento, impostazioni per cartella ---------- */
+export const COLONNE_DETTAGLI = [['nome', 'Nome', 280], ['data', 'Data modifica', 150], ['tipo', 'Tipo', 150], ['dimensione', 'Dimensione', 96], ['categoria', 'Categoria', 150]];
+export const COLONNE_PREDEFINITE = ['nome', 'data', 'tipo', 'dimensione', 'categoria'];
+// Il Nome resta sempre; le altre si accendono e si spengono dal menu dell'intestazione.
+export const cambiaColonna = (visibili, chiave) => (chiave === 'nome' ? visibili : visibili.includes(chiave) ? visibili.filter((k) => k !== chiave) : COLONNE_DETTAGLI.map(([k]) => k).filter((k) => k === chiave || visibili.includes(k)));
+
+export const GRUPPI = [['', 'Nessuno'], ['nome', 'Nome'], ['data', 'Data modifica'], ['tipo', 'Tipo'], ['categoria', 'Categoria']];
+const giornoRoma = (t) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Rome' }).format(new Date(t));
+// Gruppi come in Windows: Nome per intervalli di lettere, Data per periodo, Tipo e Categoria per valore.
+export function gruppoDi(riga, chiave, adesso = Date.now()) {
+  if (chiave === 'nome') {
+    const c = String(riga.nome || '').trim().charAt(0).toLocaleUpperCase('it');
+    if (/[0-9]/.test(c)) return '0 – 9';
+    if (c >= 'A' && c <= 'H') return 'A – H';
+    if (c >= 'I' && c <= 'P') return 'I – P';
+    if (c >= 'Q' && c <= 'Z') return 'Q – Z';
+    return 'Altro';
+  }
+  if (chiave === 'data') {
+    const t = Date.parse(riga.data || '');
+    if (!Number.isFinite(t)) return 'Senza data';
+    const g = Math.round((Date.parse(`${giornoRoma(adesso)}T12:00:00Z`) - Date.parse(`${giornoRoma(t)}T12:00:00Z`)) / 86400000);
+    if (g <= 0) return 'Oggi';
+    if (g === 1) return 'Ieri';
+    if (g < 7) return 'Questa settimana';
+    if (g < 31) return 'Questo mese';
+    if (g < 366) return 'Quest’anno';
+    return 'Tempo fa';
+  }
+  if (chiave === 'tipo') return riga.tipo || 'File';
+  if (chiave === 'categoria') return riga.cosa === 'cartella' ? 'Cartelle' : riga.categoria || 'Senza categoria';
+  return '';
+}
+const ORDINE_DATE = ['Oggi', 'Ieri', 'Questa settimana', 'Questo mese', 'Quest’anno', 'Tempo fa', 'Senza data'];
+// [{ titolo, righe }] mantenendo l'ordine delle righe dentro ogni gruppo; senza chiave un solo gruppo.
+export function raggruppa(righe, chiave, adesso = Date.now()) {
+  if (!chiave) return [{ titolo: '', righe }];
+  const m = new Map();
+  for (const r of righe) { const g = gruppoDi(r, chiave, adesso); if (!m.has(g)) m.set(g, []); m.get(g).push(r); }
+  const gruppi = [...m.entries()].map(([titolo, rr]) => ({ titolo, righe: rr }));
+  if (chiave === 'data') return gruppi.sort((a, b) => ORDINE_DATE.indexOf(a.titolo) - ORDINE_DATE.indexOf(b.titolo));
+  return gruppi.sort((a, b) => (a.titolo === 'Cartelle' ? -1 : b.titolo === 'Cartelle' ? 1 : a.titolo.localeCompare(b.titolo, 'it')));
+}
+
+// Ordinamento e raggruppamento salvati per cartella (la vista resta in CHIAVE_VISTE, come prima).
+const CHIAVE_CARTELLE = 'poliedron-esplora-cartelle';
+export function leggiCartelle(storage = globalThis.localStorage) {
+  try { const v = JSON.parse(storage?.getItem(CHIAVE_CARTELLE) || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; }
+}
+export function salvaCartella(nodo, parte, storage = globalThis.localStorage) {
+  const tutte = leggiCartelle(storage);
+  tutte[nodo] = { ...(tutte[nodo] || {}), ...parte };
+  try { storage?.setItem(CHIAVE_CARTELLE, JSON.stringify(tutte)); } catch { /* memoria non disponibile */ }
+  return tutte;
+}
+export const impostazioniDi = (tutte, nodo) => ({ ordine: tutte?.[nodo]?.ordine || { chiave: 'nome', verso: 'su' }, gruppo: tutte?.[nodo]?.gruppo || '', colonne: tutte?.['*']?.colonne || COLONNE_PREDEFINITE });
+// Miniature reali solo per immagini e PDF con un file su Drive (lo script non le dà mai per i pazienti).
+export const conMiniatura = (d = {}) => !!d.drive_file_id && d.fascicolo !== CLINICO && ['immagine', 'pdf'].includes(tipoFile(d));
 export function ordinaRighe(righe, { chiave = 'nome', verso = 'su' } = {}) {
   const k = verso === 'giu' ? -1 : 1;
   const conf = (a, b) => {

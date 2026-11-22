@@ -1,4 +1,5 @@
 // Impostazioni — persone, documenti personali, sezioni dei documenti, categorie, etichette, studio, account.
+import { SceltaAppPredefinite } from '../../AppPredefinite.jsx';
 import { useEffect, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { sessioneStudio, esciStudio, studioDb, impostazioniAgenda, aggiornaAgendaStudio } from '../../lib/studio.js';
@@ -206,6 +207,10 @@ function AreaPersonale({ ctx, email }) {
   const { persone, categorie, sezioni } = impostazioni;
   return (
     <>
+      <Sezione titolo="App predefinite">
+        <p className="pp-riga-meta pp-spiegazione">Con cosa si apre ogni tipo di file in Esplora file (doppio clic o tocco).</p>
+        <SceltaAppPredefinite />
+      </Sezione>
       <Sezione titolo="Persone">
         <p className="pp-riga-meta pp-spiegazione">A chi appartengono i documenti personali (carta d'identità, codice fiscale, …).</p>
         <ListaModificabile

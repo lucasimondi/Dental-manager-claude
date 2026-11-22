@@ -4986,3 +4986,18 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 
 ## Note — PR #337 script published (2026-11-22, Claude Code)
 - On Luca's "Pubblica": online Code.gs pulled and compared (= master dcf9524, web app v27), then `clasp push -f` of the PR #337 Code.gs and web app deployment AKfycbzQf7…UDw moved 27 → 28 (same URL). The script is backward compatible with the production app. Rollback: redeploy version 27 (`clasp create-deployment --deploymentId <id> --versionNumber 27`).
+
+## Handoff — PERSONAL-ESPLORA-WIN11 PR #337 second follow-up (2026-11-22, Claude Code)
+- Task: PERSONAL-ESPLORA-WIN11, PR #337, PO 10-section request (dock, window, views, opening, context menu, selection/drag, Start, notification center, general rules, verification); branch `ccr-37864811-5h4ztp`; one commit per section.
+- Completed: see current-task.md «PR #337 SECOND FOLLOW-UP».
+- Files: `personal/src/{Barra.jsx,barra.css,CentroNotifiche.jsx (new),PannelloTrasferimenti.jsx (new),AppPredefinite.jsx (new),App.jsx,personal.css}`, `personal/src/lib/{barra.js,esplora.js,esploraNav.js (new),apertura.js (new),trasferimenti.js (new),centroNotifiche.js (new)}`, `personal/src/sezioni/documenti/{Esplora.jsx,EsploraBarre.jsx (new),EsploraFinestre.jsx,esplora.css}`, `personal/src/sezioni/impostazioni/Impostazioni.jsx`, `poliedron/archivio/Code.gs`, tests `esploraFinestra.test.mjs` (new), `esploraDrive.test.mjs`, `esplora.test.mjs`, `personaleHome.test.mjs`, visual `esplora-dati.mjs` (new), `personal-esplora-win11.mjs` (new), `personal-esplora.mjs`, `personal-barra.mjs`, `docs/screenshots/pr337/`.
+- Database: none.
+- Tests: npm test 1923/1923; build:personal PASS; visuals PASS.
+- Unresolved/risks: script actions crea_file / ripristina_file / ripristina_versione to publish (clasp push, web app v29; rollback = redeploy v28); documents in the app Cestino (tag `cestino`) are hidden in Esplora, Start and notifications but still listed by older sections (Documenti, Ricerca) with the tag; Ctrl+T/W and Win key depend on the browser; ZIP extraction flattens subfolders; desktop not polished further per PO.
+- Rollback: revert the section commits (each is self-contained); no data or schema change.
+- Next exact action: Luca tries the preview on the phone, says whether to publish the script; "Mergia" for PR #337.
+
+## Note — PR #337 Duplica + script v29 (2026-11-22, Claude Code)
+- PO decision: "Duplica crea una vera copia del file" → new action `duplica_file` (makeCopy next to the original, registered with the same catalogue, never to a model); «Copia in…» unchanged. Commit f0de9a3.
+- On Luca's request ("mandami link clasp") clasp 3.4.1 was authorized in this session (no-localhost flow); online script pulled and compared (= v28, eaebc30), `clasp push -f`, deployment AKfycbzQf7…UDw moved 28 → 29 (same URL). No secrets written to the repository; Luca can revoke the grant from myaccount.google.com → Sicurezza → App di terze parti. Rollback: redeploy version 28.
+- Next exact action: Luca tries the preview on the phone (Duplica, Documento/Foglio Google, Cestino → Ripristina, Proprietà → Ripristina versione); "Mergia" for PR #337.
