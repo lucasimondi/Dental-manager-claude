@@ -37,6 +37,7 @@ import {
 import { TitoloSchede, BarraIndirizzi, CampoCerca, FiltriRicerca, BarraComandi, BarraStato, Riquadro } from './EsploraBarre.jsx';
 import { inizioDrive, fineDrive } from '../../lib/statoDrive.js';
 import { accettaFile, APP_PER_FILE } from '../../lib/barra.js';
+import { aggiornaCentro, daGestireDa, statoCentro, ascoltaCentro } from '../../lib/centroNotifiche.js';
 import { preparaFile, comeFile, condividi, scaricaDocumento } from '../../lib/condividi.js';
 import { preparaVoci, scaricaFile, creaZip, MAX_FILE_ZIP } from '../../lib/pacchetto.js';
 import { titoloDoc, tokenSessione } from '../../ui.jsx';
@@ -155,6 +156,8 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     return () => { window.removeEventListener('resize', r); window.removeEventListener('orientationchange', r); };
   }, []);
   useEffect(() => () => { if (cambiato.current) ctx.aggiorna?.(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // PR #337 §8: i pallini delle cartelle seguono la stessa fonte del dock e del Centro notifiche.
+  useEffect(() => ascoltaCentro(() => { const st = statoCentro(); if (st.pronto) setDaGestire(daGestireDa(st)); }), []);
 
   /* ---------- avvisi ---------- */
   const mostraAvviso = useCallback((testo, { tipo = 'ok', azione = null, durata } = {}) => {
@@ -171,7 +174,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     setCaricando(true);
     (async () => {
       try {
-        const [c, p, g] = await Promise.all([caricaCartelleMie(archivioDb, { ancheArchiviate: false }), caricaPosizioni(archivioDb), caricaDaGestire(archivioDb).catch(() => new Map())]);
+        const [c, p, g] = await Promise.all([caricaCartelleMie(archivioDb, { ancheArchiviate: false }), caricaPosizioni(archivioDb), aggiornaCentro(archivioDb).then((st) => daGestireDa(st)).catch(() => new Map())]);
         if (!vivo) return;
         setDati({ cartelle: c, posizioni: p.posizioni, titoli: {} });
         setDaGestire(g);

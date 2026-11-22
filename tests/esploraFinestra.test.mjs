@@ -246,3 +246,44 @@ test('Start: Consigliati con le scadenze imminenti dal catalogo (scadute prima),
   assert.deepEqual(r.map((x) => [x.nome, x.scaduta]), [['Bollo', true], ['IMU', false]]);
   assert.equal(r[1].documento_id, 'd1'); assert.equal(r[1].importo, 100);
 });
+
+/* ---------- §8 Centro notifiche: una sola fonte per notifiche e pallini ---------- */
+import { notificheDa, raggruppaNotifiche, conteggiCentro, daGestireDa, posticipa, leggiPosticipate, posticipata, nuoveDaAvvisare, calendarioMese, giorniConScadenze, impostaCentro, statoCentro } from '../personal/src/lib/centroNotifiche.js';
+
+test('Centro notifiche: scadenze, pratiche aperte, documenti nuovi; stessi numeri per dock, cartelle e campanella', () => {
+  const st = {
+    scadenze: [
+      { id: 1, data: '2026-11-20', descrizione: 'Bollo auto', importo: 80, documento_id: 'd1', documento: { id: 'd1', titolo: 'Bollo', fascicolo: 'veicoli', tipo_documento: 'avviso', tag: [] } },
+      { id: 2, data: '2026-11-30', descrizione: 'IMU', documento_id: 'd2', documento: { id: 'd2', titolo: 'IMU', fascicolo: 'fiscale', tipo_documento: 'avviso', tag: [] } },
+      { id: 3, data: '2027-03-01', descrizione: 'Lontana', documento_id: 'd3', documento: { id: 'd3', fascicolo: 'fiscale', tag: [] } },
+    ],
+    azioni: [{ id: 'd9', fascicolo: 'utenze', azione_richiesta: true }],
+    pratiche: [{ id: 'p1', titolo: 'Condominio', stato: 'aperta', urgenza: 'alta', n_documenti: 4 }, { id: 'p2', titolo: 'Tranquilla', stato: 'aperta', urgenza: 'bassa' }],
+    nuovi: [{ id: 'n1', titolo: 'Ricevuta', creato_il: '2026-11-21T10:00:00Z', ente: 'Banca' }],
+  };
+  const n = notificheDa(st, { oggi: '2026-11-22' });
+  assert.deepEqual(n.map((x) => x.chiave), ['scadenza:1', 'scadenza:2', 'pratica:p1', 'nuovo:n1']);
+  assert.match(n[0].testo, /Scaduta il 20 nov/); assert.ok(n[0].urgente);
+  assert.deepEqual(raggruppaNotifiche(n).map((g) => [g.nome, g.voci.length]), [['Scadenze', 2], ['Pratiche aperte', 1], ['Documenti nuovi', 1]]);
+  assert.deepEqual(conteggiCentro(st, { oggi: '2026-11-22' }), { notifiche: 4, scadenze: 2, esplora: 3 });
+  assert.deepEqual([...daGestireDa(st, '2026-11-22').keys()].sort(), ['d1', 'd2', 'd9']);
+  // Posticipa: la notifica sparisce fino al giorno scelto e i numeri scendono insieme
+  const m = memoria();
+  posticipa('scadenza:2', 3, m, '2026-11-22');
+  const post = leggiPosticipate(m);
+  assert.ok(posticipata(post, 'scadenza:2', '2026-11-22')); assert.ok(!posticipata(post, 'scadenza:2', '2026-11-25'));
+  assert.equal(conteggiCentro(st, { posticipate: post, oggi: '2026-11-22' }).scadenze, 1);
+});
+
+test('Centro notifiche: toast solo per le novità (mai la prima volta), calendario del mese da lunedì, giorni con scadenze', () => {
+  const n = [{ chiave: 'a' }, { chiave: 'b' }];
+  assert.deepEqual(nuoveDaAvvisare(n, null), []);
+  assert.deepEqual(nuoveDaAvvisare(n, { chiavi: ['a'] }).map((x) => x.chiave), ['b']);
+  const nov = calendarioMese(2026, 10);
+  assert.equal(nov[0][0].giorno, '2026-10-26'); // lunedì
+  assert.equal(nov[0][6].giorno, '2026-11-01'); // domenica 1
+  assert.ok(nov.every((s) => s.length === 7)); assert.equal(nov.at(-1)[0].giorno, '2026-11-30');
+  assert.deepEqual([...giorniConScadenze([{ data: '2026-11-24' }, { data: '2026-11-24' }, { data: '2026-11-25', completata: true }])], [['2026-11-24', 2]]);
+  impostaCentro({ scadenze: [], azioni: [], pratiche: [], nuovi: [] });
+  assert.ok(statoCentro().pronto);
+});

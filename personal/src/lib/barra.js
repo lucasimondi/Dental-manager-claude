@@ -66,7 +66,8 @@ export const AGGIUNTE = [
 export const vociStart = (conteggi = {}) => AGGIUNTE.map((v) => ({ ...v, n: v.conteggio ? Number(conteggi[v.conteggio]) || 0 : 0 }));
 
 // Il numero accanto all'ora: i promemoria «Da fare» aperti (gli stessi delle notifiche sul telefono).
-export const numeroNotifiche = (conteggi = {}) => Number(conteggi.dafare) || 0;
+// PR #337 §8: il numero della campanella = le notifiche del Centro notifiche (prima: i Da fare aperti).
+export const numeroNotifiche = (conteggi = {}) => Number(conteggi.notifiche ?? conteggi.dafare) || 0;
 
 // Ora e data come nella barra di Windows: «14:05» e «21/11/2026», fuso di Roma.
 export function oraData(d = new Date(), fuso = 'Europe/Rome') {

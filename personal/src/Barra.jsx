@@ -8,7 +8,6 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { archivioDb } from './lib/supabasePersonal.js';
 import { documentiRecenti, documentiDaGestire, cercaDocumenti, scadenzeAperte } from './lib/archivio.js';
-import { caricaDaGestire } from './lib/esplora.js';
 import { contaDaFare } from './lib/daFare.js';
 import { elencoRecenti, fileRecente } from './lib/recenti.js';
 import { scaricaDocumento } from './lib/condividi.js';
@@ -17,6 +16,8 @@ import {
   AGGIUNTE, normalizzaStart, spostaAggiunta, togliAggiunta, cambiaDock, nelDock, vociBarra, appTrovate, scadenzeImminenti,
 } from './lib/barra.js';
 import { caricaPreferiti } from './lib/esplora.js';
+import { statoCentro, ascoltaCentro, aggiornaCentro, conteggiCentro, leggiPosticipate, notificheDa, nuoveDaAvvisare, leggiViste, salvaViste } from './lib/centroNotifiche.js';
+import { CentroNotifiche, ToastNotifiche } from './CentroNotifiche.jsx';
 import { statoDrive, ascoltaStatoDrive, attesaDrive, testoStatoDrive } from './lib/statoDrive.js';
 import { sectionDestination } from '../../shared/agenda/navigation.js';
 import { IconaCartellaW11, IconaFileW11 } from './IconeW11.jsx';
@@ -39,21 +40,28 @@ const Numero = ({ n, classe = '' }) => { const t = etichettaNumero(n); return t 
 // Pallini della barra e di Start: stessi criteri di Esplora, Da fare e Documenti (nessun conteggio nuovo
 // sul server). Calcolati dopo il primo disegno, così l'apertura dell'app non rallenta.
 export function useConteggiBarra(versione) {
-  const [conteggi, setConteggi] = useState({});
+  // PR #337 §8: scadenze, documenti da gestire e notifiche dalla stessa fonte del Centro notifiche e delle
+  // cartelle di Esplora (lib/centroNotifiche.js): un'azione in un punto aggiorna tutti i pallini.
+  const st = useSyncExternalStore(ascoltaCentro, statoCentro);
+  const [altri, setAltri] = useState({});
   useEffect(() => {
     let vivo = true;
-    const t = setTimeout(() => {
+    const carica = () => {
+      aggiornaCentro(archivioDb).catch(() => {});
       Promise.all([
-        caricaDaGestire(archivioDb).then((m) => m.size).catch(() => 0),
         contaDaFare(archivioDb).catch(() => ({ aperte: 0, urgenti: 0 })),
         documentiDaGestire(archivioDb).then((l) => l.length).catch(() => 0),
         // file che lo script deve ancora sistemare su Drive (note '>cartella:…'): stato di sincronizzazione
         archivioDb.from('documenti').select('id', { count: 'exact', head: true }).like('drive_cartella', '>cartella:%').then((r) => r.count || 0, () => 0),
-      ]).then(([esplora, dafare, documenti, inAttesa]) => { if (vivo) { setConteggi({ esplora, dafare: dafare.aperte, urgenti: dafare.urgenti, documenti }); attesaDrive(inAttesa); } });
-    }, 1200);
-    return () => { vivo = false; clearTimeout(t); };
+      ]).then(([dafare, documenti, inAttesa]) => { if (vivo) { setAltri({ dafare: dafare.aperte, documenti }); attesaDrive(inAttesa); } });
+    };
+    const t = setTimeout(carica, 1200); // dopo il primo disegno: l'apertura dell'app non rallenta
+    const ogni = setInterval(() => aggiornaCentro(archivioDb).catch(() => {}), 5 * 60 * 1000);
+    return () => { vivo = false; clearTimeout(t); clearInterval(ogni); };
   }, [versione]);
-  return conteggi;
+  if (!st.pronto) return altri;
+  const c = conteggiCentro(st, { posticipate: leggiPosticipate() });
+  return { ...altri, esplora: c.esplora, urgenti: c.scadenze, notifiche: c.notifiche };
 }
 
 // PR #337: un file trascinato da Esplora su un'icona della barra si apre con quell'app
@@ -103,6 +111,18 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
       .then(({ error }) => { if (error) setImpStart(prima); }, () => setImpStart(prima));
   }, [impStart]);
   const voci = vociBarra(impStart.dock);
+  const [centro, setCentro] = useState(false);
+  const mobile = typeof window !== 'undefined' && (window.matchMedia?.('(pointer: coarse)').matches || window.innerWidth < 768);
+  // Toast per gli eventi nuovi dall'ultima volta (la prima volta nessuno).
+  const st = useSyncExternalStore(ascoltaCentro, statoCentro);
+  const [toast, setToast] = useState([]);
+  useEffect(() => {
+    if (!st.pronto) return;
+    const tutte = notificheDa(st, { posticipate: leggiPosticipate() });
+    const nuove = nuoveDaAvvisare(tutte, leggiViste());
+    salvaViste(tutte.map((n) => n.chiave));
+    if (nuove.length) setToast((t) => [...nuove.slice(0, 3), ...t].slice(0, 3));
+  }, [st.caricato]); // eslint-disable-line react-hooks/exhaustive-deps
   const [adesso, setAdesso] = useState(() => new Date());
   useEffect(() => { const t = setInterval(() => setAdesso(new Date()), 20000); return () => clearInterval(t); }, []);
   const attiva = voceAttiva({ vista, pagine, start, dock: impStart.dock });
@@ -142,12 +162,13 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
   }, [start, chiudi]);
 
   const tocca = (v) => {
+    setCentro(false);
     if (v.id === 'start' || v.id === 'cerca') { if (start === v.id) chiudi(); else apriStart(v.id); return; }
     if (start) chiudi();
     if (v.azione) { esegui(v.azione); return; }
     if (v.pagina) apri({ tipo: v.pagina }); else vai(v.vista);
   };
-  const apriCentro = () => { if (start) chiudi(); if (onCentro) onCentro(); else vai('dafare'); };
+  const apriCentro = () => { if (start) chiudi(); if (onCentro) onCentro(); else setCentro((c) => !c); };
   const esegui = (azione) => {
     chiudi();
     if (azione.vai) vai(azione.vai);
@@ -157,6 +178,9 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
 
   return (
     <>
+      {centro && <CentroNotifiche mobile={mobile} apri={apri} onChiudi={() => setCentro(false)} />}
+      <ToastNotifiche toast={toast} onChiudi={(k) => setToast((t) => t.filter((x) => x.chiave !== k))}
+        onApri={(n) => (n.documento_id ? apri({ tipo: 'documento', id: n.documento_id }) : n.pratica ? apri({ tipo: 'pratica', p: n.pratica }) : null)} />
       {start && <Start modo={start} conteggi={conteggi} email={email} onAzione={esegui} onChiudi={chiudi} apri={apri} onEsci={onEsci} imp={impStart} onImp={salvaStart} />}
       <nav className="pb-barra" aria-label="Barra delle applicazioni">
         <span className="pb-lato" aria-hidden="true" />
@@ -181,7 +205,7 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
             <IconaVoce id={`drive-${drive.stato === 'ok' ? 'ok' : drive.stato === 'errore' ? 'errore' : 'sync'}`} />
           </span>
           {/* Clic su ora e data (o sulla campanella su mobile) → Centro notifiche. */}
-          <button type="button" className={`pb-area${centroAperto ? ' attiva' : ''}`} onClick={apriCentro} aria-expanded={centroAperto} aria-haspopup="dialog"
+          <button type="button" className={`pb-area${centroAperto || centro ? ' attiva' : ''}`} onClick={apriCentro} aria-expanded={centroAperto || centro} aria-haspopup="dialog"
             aria-label={`${ora}, ${data}. ${notifiche ? `${notifiche} notifiche` : 'Nessuna notifica'}: apri il Centro notifiche`}>
             <span className="pb-ora"><span>{ora}</span><span className="pb-data">{data}</span></span>
             <span className="pb-campanella"><IconaVoce id="campanella" /><Numero n={notifiche} /></span>
