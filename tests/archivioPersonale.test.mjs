@@ -53,6 +53,7 @@ test('lo schema di Cowork è la base, seguito dalla migrazione di sicurezza', ()
     '20261120120000_concordato_ipocatastale.sql',
     '20261122150000_pol_vita_ordina_piano.sql',
     '20261122200000_pol_vita_ordina_esecuzione.sql',
+    '20261122230000_pol_vita_ordina_registra.sql',
   ]);
 });
 
