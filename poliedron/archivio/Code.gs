@@ -117,6 +117,9 @@ function elabora() {
     const pratiche = praticheAperte_();
     const meseOggi = Utilities.formatDate(new Date(), CONFIG.FUSO, 'yyyy-MM');
 
+    // POL-VITA-ORDINA: lotti di riordino automatici se attivati (impostazioni_app 'riordino_automatico').
+    try { allineaRiordinoAutomatico_(); } catch (e) { logErrore_('riordino automatico', e); }
+
     // Notifiche sul telefono dei promemoria (POL-VITA-018): dalle 8 alle 21, al massimo una volta l'ora.
     inviaNotifiche_(false);
 
@@ -3467,7 +3470,7 @@ function cartellaPerCategoria_(percorso, cache) {
 }
 
 function eseguiLottoRiordino_() {
-  const lock = LockService.getScriptLock();
+  const lock = LockService.getUserLock();   // separato dal lock di elabora: i lotti non aspettano il giro
   if (!lock.tryLock(5000)) return { ok: false, errore: 'Un altro lotto è già in corso.' };
   try {
     const righe = sb_('piano_riordino?select=id,documento_id,file_id,percorso_nuovo,nome_nuovo,scorciatoie&stato=eq.approvato' +
@@ -3524,9 +3527,10 @@ function eseguiLottoRiordino_() {
         sb_('piano_riordino?id=eq.' + r.id, { method: 'patch', body: { stato: 'eseguito' } });
         esito.eseguiti++;
       } catch (e) {
-        // A metà: il file torna dov'era con il suo nome, la riga resta approvata.
+        // A metà: il file torna dov'era con il suo nome; la riga torna «da decidere» con il motivo (niente tentativi infiniti).
         try { if (spostato && daPadre) { file.moveTo(DriveApp.getFolderById(daPadre)); file.setName(daNome); } } catch (x) { /* resta nel registro */ }
         sb_('log_spostamenti?id=eq.' + log.id, { method: 'patch', body: { esito: 'errore', errore: String(e.message || e).slice(0, 300) } });
+        sb_('piano_riordino?id=eq.' + r.id, { method: 'patch', body: { stato: 'proposto', motivo: ('spostamento non riuscito: ' + String(e.message || e)).slice(0, 300) } });
         logErrore_('Riordino ' + r.file_id, e);
         esito.errori++;
       }
@@ -3537,7 +3541,7 @@ function eseguiLottoRiordino_() {
 
 function annullaLottoRiordino_(lotto) {
   if (!UUID_.test(lotto)) return { ok: false, errore: 'Lotto non valido' };
-  const lock = LockService.getScriptLock();
+  const lock = LockService.getUserLock();
   if (!lock.tryLock(5000)) return { ok: false, errore: 'Un altro lotto è in corso.' };
   try {
     const righe = sb_('log_spostamenti?select=*&lotto=eq.' + lotto + '&esito=eq.eseguito&order=id.desc') || [];
@@ -3565,4 +3569,34 @@ function annullaLottoRiordino_(lotto) {
     });
     return esito;
   } finally { lock.releaseLock(); }
+}
+
+/* ---- POL-VITA-ORDINA fase 3, lotti automatici (Luca 2026-11-22: «Fallo tu, sposta tutti i lotti») ----
+ * Acceso con impostazioni_app chiave 'riordino_automatico' = true. elabora crea il trigger
+ * riordinoAutomatico (ogni 5 minuti, un lotto da 100 a volta); finite le righe approvate si spegne da solo
+ * e toglie il proprio trigger. Stesse regole di esegui_lotto: solo righe approvate, mai «99», mai i clinici. */
+function riordinoAutomaticoAcceso_() {
+  const r = (sb_('impostazioni_app?select=valore&chiave=eq.riordino_automatico') || [])[0];
+  return !!(r && r.valore === true);
+}
+
+function triggerRiordino_() {
+  return ScriptApp.getProjectTriggers().filter(function (t) { return t.getHandlerFunction() === 'riordinoAutomatico'; });
+}
+
+function allineaRiordinoAutomatico_() {
+  const acceso = riordinoAutomaticoAcceso_();
+  const t = triggerRiordino_();
+  if (acceso && !t.length) ScriptApp.newTrigger('riordinoAutomatico').timeBased().everyMinutes(5).create();
+  if (!acceso) t.forEach(function (x) { ScriptApp.deleteTrigger(x); });
+}
+
+function riordinoAutomatico() {
+  if (!riordinoAutomaticoAcceso_()) { triggerRiordino_().forEach(function (x) { ScriptApp.deleteTrigger(x); }); return; }
+  const esito = eseguiLottoRiordino_();
+  if (esito.ok && !esito.eseguiti && !esito.errori && !esito.saltati) {
+    sb_('impostazioni_app?on_conflict=chiave', { method: 'post', prefer: 'resolution=merge-duplicates,return=minimal',
+      body: { chiave: 'riordino_automatico', valore: false } });
+    triggerRiordino_().forEach(function (x) { ScriptApp.deleteTrigger(x); });
+  }
 }
