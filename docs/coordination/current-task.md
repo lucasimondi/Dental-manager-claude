@@ -11,7 +11,8 @@
 - DB: tables created; rows NOT yet loaded (they load via the app button after publishing). DRIVE: one new private JSON file in My Drive root; no file of the archive moved or renamed.
 - VALIDATION: npm test PASS (new tests/pianoRiordino.test.mjs 9/9); build + build:personal PASS; node --check Code.gs OK; visual tests/visual/personal-riordino.mjs PASS at 375×812 light/dark (no horizontal overflow, yellow rows, rename, approve ≥ 0.85).
 - PHASES 1–2 MERGED: PR #339 squash 9800c32 after PO "Mergia" (all checks green, head a7c1855 unchanged).
-- STATUS: script deployment @29 → @30 still pending (needs Luca's "Pubblica"); then Luca loads and reviews the plan; phase 3 only on approved rows.
+- SCRIPT PUBLISHED 2026-11-22 on Luca's "Pubblica": online HEAD pulled and compared = master 9800c32; web app deployment AKfycbzQf7…UDw @29 → @30 (same URL). Rollback: redeploy 29.
+- STATUS: Luca loads the plan from Personale → «Riordino» and reviews it; phase 3 only on approved rows.
 
 # Current task — PERSONAL-ESPLORA-WIN11 (2026-11-21)
 - OWNER Claude Code; branch `ccr-37864811-5h4ztp` (from master f3d241a = PR #333 IMPOSTAZIONI-UNICHE merged; no overlap).
