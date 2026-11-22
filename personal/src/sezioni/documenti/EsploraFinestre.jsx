@@ -4,9 +4,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { preparaFile, comeFile } from '../../lib/condividi.js';
 import { tokenSessione } from '../../ui.jsx';
-import { Anteprima } from './AnteprimaDocumento.jsx';
 import { IconaCartellaW11, IconaFileW11 } from '../../IconeW11.jsx';
-import { posizioneMenu, dimensioneLeggibile, dataLeggibile, tipoLeggibile, tipoFile, proprietaDrive, accessoDrive } from '../../lib/esplora.js';
+import { posizioneMenu, dimensioneLeggibile, dataLeggibile, tipoLeggibile, tipoFile, proprietaDrive, accessoDrive, comeAprire } from '../../lib/esplora.js';
+import { snapDa, vicina, zoom } from '../../lib/apertura.js';
 
 /* ---------- icone lineari 16 px ---------- */
 const D = {
@@ -101,26 +101,54 @@ export function MenuContestuale({ menu, struttura, mobile, schermo, onScegli, on
 }
 
 /* ---------- finestra stile Win11 ---------- */
-export function Finestra({ titolo, icona, stato: statoDato, onStato: onStatoDato, onChiudi, children, classe = '' }) {
+// Barra del titolo con riduci / ingrandisci / chiudi; su desktop si trascina dal titolo e si aggancia ai
+// bordi (sinistra / destra = metà schermo, in alto = ingrandita), con l'anteprima dell'aggancio.
+export function Finestra({ titolo, icona, stato: statoDato, onStato: onStatoDato, onChiudi, children, classe = '', strumenti = null }) {
   const [statoLocale, setStatoLocale] = useState('normale');
   const stato = statoDato ?? statoLocale;
   const onStato = onStatoDato || setStatoLocale;
+  const [pos, setPos] = useState(null); // { x, y } della finestra normale spostata
+  const [anteprimaSnap, setAnteprimaSnap] = useState(null);
+  const ref = useRef(null);
   useEffect(() => {
     const k = (e) => { if (e.key === 'Escape') onChiudi(); };
     window.addEventListener('keydown', k);
     return () => window.removeEventListener('keydown', k);
   }, [onChiudi]);
+  const trascina = (e) => {
+    if (e.button !== 0 || e.target.closest('button') || window.matchMedia?.('(pointer: coarse)').matches) return;
+    const r = ref.current.getBoundingClientRect();
+    const dx = e.clientX - r.left; const dy = e.clientY - r.top;
+    let mosso = false;
+    const muovi = (ev) => {
+      if (!mosso && Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) < 4) return;
+      if (!mosso && stato !== 'normale') { onStato('normale'); }
+      mosso = true;
+      setPos({ x: Math.max(0, Math.min(ev.clientX - dx, window.innerWidth - 120)), y: Math.max(0, Math.min(ev.clientY - dy, window.innerHeight - 40)) });
+      setAnteprimaSnap(snapDa(ev.clientX, ev.clientY, window.innerWidth));
+    };
+    const fine = (ev) => {
+      window.removeEventListener('pointermove', muovi); window.removeEventListener('pointerup', fine);
+      setAnteprimaSnap(null);
+      const s = mosso ? snapDa(ev.clientX, ev.clientY, window.innerWidth) : null;
+      if (s) { setPos(null); onStato(s); }
+    };
+    window.addEventListener('pointermove', muovi); window.addEventListener('pointerup', fine);
+  };
   if (stato === 'ridotta') {
     return <button type="button" className="esp-finestra-ridotta" onClick={() => onStato('normale')} aria-label={`Ripristina ${titolo}`}>{icona}<span>{titolo}</span></button>;
   }
+  const grande = stato !== 'normale';
   return (
-    <div className={`esp-velo esp-velo-finestra${stato === 'ingrandita' ? ' ingrandita' : ''}`}>
-      <section className={`esp-finestra ${classe}`} role="dialog" aria-label={titolo}>
-        <header className="esp-finestra-titolo" onDoubleClick={() => onStato(stato === 'ingrandita' ? 'normale' : 'ingrandita')}>
+    <div className={`esp-velo esp-velo-finestra esp-snap-${stato}${stato === 'ingrandita' ? ' ingrandita' : ''}`}>
+      {anteprimaSnap && <div className={`esp-snap-anteprima esp-snap-anteprima-${anteprimaSnap}`} aria-hidden="true" />}
+      <section ref={ref} className={`esp-finestra ${classe}`} role="dialog" aria-label={titolo} style={!grande && pos ? { position: 'fixed', left: pos.x, top: pos.y, margin: 0 } : undefined}>
+        <header className="esp-finestra-titolo" onPointerDown={trascina} onDoubleClick={() => { setPos(null); onStato(stato === 'ingrandita' ? 'normale' : 'ingrandita'); }}>
           {icona}<span className="esp-finestra-nome">{titolo}</span>
+          {strumenti}
           <div className="esp-finestra-tasti">
             <button type="button" onClick={() => onStato('ridotta')} aria-label="Riduci a icona" title="Riduci a icona"><svg viewBox="0 0 10 10" width="10" height="10"><path d="M1 5h8" stroke="currentColor" /></svg></button>
-            <button type="button" onClick={() => onStato(stato === 'ingrandita' ? 'normale' : 'ingrandita')} aria-label={stato === 'ingrandita' ? 'Ripristina' : 'Ingrandisci'} title={stato === 'ingrandita' ? 'Ripristina' : 'Ingrandisci'}>
+            <button type="button" onClick={() => { setPos(null); onStato(grande ? 'normale' : 'ingrandita'); }} aria-label={grande ? 'Ripristina' : 'Ingrandisci'} title={grande ? 'Ripristina' : 'Ingrandisci'}>
               <svg viewBox="0 0 10 10" width="10" height="10"><rect x="1.5" y="1.5" width="7" height="7" rx="1" fill="none" stroke="currentColor" /></svg>
             </button>
             <button type="button" className="esp-finestra-chiudi" onClick={onChiudi} aria-label="Chiudi" title="Chiudi"><svg viewBox="0 0 10 10" width="10" height="10"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7" stroke="currentColor" /></svg></button>
@@ -132,24 +160,98 @@ export function Finestra({ titolo, icona, stato: statoDato, onStato: onStatoDato
   );
 }
 
-// Anteprima integrata: PDF e immagini con l'anteprima di Documenti, video e audio con il lettore del browser.
-export function FinestraAnteprima({ doc, tipo, titolo, stato, onStato, onChiudi, onApriScheda }) {
+/* ---------- visualizzatore: PDF con pagine e zoom, immagini con ←/→ e zoom ---------- */
+async function apriPdf(base64) {
+  const [pdfjs, worker] = await Promise.all([import('pdfjs-dist/legacy/build/pdf.js'), import('pdfjs-dist/legacy/build/pdf.worker.min.js?url')]);
+  pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+  return pdfjs.getDocument({ data: Uint8Array.from(atob(base64), (c) => c.charCodeAt(0)) }).promise;
+}
+function VisorePdf({ dati, livello, pagina, onPagine }) {
+  const tela = useRef(null);
+  const contenitore = useRef(null);
+  const [pdf, setPdf] = useState(null);
+  const [errore, setErrore] = useState(null);
+  useEffect(() => { let vivo = true; apriPdf(dati).then((p) => { if (vivo) { setPdf(p); onPagine(p.numPages); } }).catch((e) => vivo && setErrore(e.message)); return () => { vivo = false; }; }, [dati]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!pdf || !tela.current) return undefined;
+    let compito = null; let vivo = true;
+    pdf.getPage(pagina).then((pg) => {
+      if (!vivo) return;
+      const base = pg.getViewport({ scale: 1 });
+      const adatta = ((contenitore.current?.clientWidth || 600) - 24) / base.width;
+      const scala = adatta * livello;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const v = pg.getViewport({ scale: scala * dpr });
+      const c = tela.current;
+      c.width = v.width; c.height = v.height; c.style.width = `${v.width / dpr}px`; c.style.height = `${v.height / dpr}px`;
+      compito = pg.render({ canvasContext: c.getContext('2d'), viewport: v });
+    });
+    return () => { vivo = false; compito?.cancel?.(); };
+  }, [pdf, pagina, livello]);
+  if (errore) return <p className="esp-nota">{errore}</p>;
+  return <div ref={contenitore} className="esp-visore-pagina">{!pdf && <p className="esp-nota"><span className="pp-rotella" /> Carico il PDF…</p>}<canvas ref={tela} aria-label={`Pagina ${pagina}`} /></div>;
+}
+
+export function FinestraAnteprima({ doc, tipo, titolo, stato, onStato, onChiudi, onApriScheda, elenco = [], onCambia }) {
+  const [file, setFile] = useState(null); // { dati, mime }
   const [url, setUrl] = useState(null);
   const [errore, setErrore] = useState(null);
+  const [livello, setLivello] = useState(1);
+  const [pagina, setPagina] = useState(1);
+  const [pagine, setPagine] = useState(0);
+  const immagini = elenco.filter((d) => comeAprire(d).tipo === 'immagine');
+  const prec = tipo === 'immagine' ? vicina(immagini, doc.id, -1) : null;
+  const succ = tipo === 'immagine' ? vicina(immagini, doc.id, 1) : null;
   useEffect(() => {
-    if (tipo !== 'video' && tipo !== 'audio') return undefined;
     let vivo = true; let u = null;
-    tokenSessione().then((t) => preparaFile(doc.drive_file_id, t)).then((f) => { if (!vivo) return; u = URL.createObjectURL(comeFile(f)); setUrl(u); }).catch((e) => vivo && setErrore(e.message));
+    setFile(null); setUrl(null); setErrore(null); setPagina(1); setPagine(0); setLivello(1);
+    tokenSessione().then((t) => preparaFile(doc.drive_file_id, t)).then((f) => {
+      if (!vivo) return;
+      if (tipo === 'video' || tipo === 'audio') { u = URL.createObjectURL(comeFile(f)); setUrl(u); } else setFile(f);
+    }).catch((e) => vivo && setErrore(e.message));
     return () => { vivo = false; if (u) URL.revokeObjectURL(u); };
   }, [doc.drive_file_id, tipo]);
+  // Tastiera: ←/→ immagini o pagine, + / − zoom, 0 adatta.
+  useEffect(() => {
+    const k = (e) => {
+      if (e.target.closest?.('input, textarea, select')) return;
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') { if (tipo === 'immagine' && succ) { e.preventDefault(); onCambia?.(succ); } else if (tipo === 'pdf' && pagina < pagine) { e.preventDefault(); setPagina((p) => p + 1); } }
+      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { if (tipo === 'immagine' && prec) { e.preventDefault(); onCambia?.(prec); } else if (tipo === 'pdf' && pagina > 1) { e.preventDefault(); setPagina((p) => p - 1); } }
+      else if (e.key === '+' || e.key === '=') setLivello((z) => zoom(z, 1));
+      else if (e.key === '-') setLivello((z) => zoom(z, -1));
+      else if (e.key === '0') setLivello(1);
+    };
+    window.addEventListener('keydown', k);
+    return () => window.removeEventListener('keydown', k);
+  }, [tipo, succ, prec, pagina, pagine, onCambia]);
+  const strumenti = (tipo === 'pdf' || tipo === 'immagine') ? (
+    <div className="esp-visore-strumenti" role="toolbar" aria-label="Visualizzatore" onPointerDown={(e) => e.stopPropagation()}>
+      {tipo === 'pdf' && <>
+        <button type="button" onClick={() => setPagina((p) => Math.max(1, p - 1))} disabled={pagina <= 1} aria-label="Pagina precedente" title="Pagina precedente (←)">‹</button>
+        <span className="esp-visore-pagine" aria-live="polite">{pagina} / {pagine || '…'}</span>
+        <button type="button" onClick={() => setPagina((p) => Math.min(pagine, p + 1))} disabled={!pagine || pagina >= pagine} aria-label="Pagina successiva" title="Pagina successiva (→)">›</button>
+      </>}
+      <button type="button" onClick={() => setLivello((z) => zoom(z, -1))} aria-label="Riduci zoom" title="Riduci (−)">−</button>
+      <button type="button" className="esp-visore-zoom" onClick={() => setLivello(1)} aria-label="Adatta alla finestra" title="Adatta (0)">{Math.round(livello * 100)}%</button>
+      <button type="button" onClick={() => setLivello((z) => zoom(z, 1))} aria-label="Aumenta zoom" title="Ingrandisci (+)">+</button>
+    </div>
+  ) : null;
   return (
-    <Finestra titolo={titolo} icona={<IconaFileW11 tipo={tipoFile(doc)} size={16} />} stato={stato} onStato={onStato} onChiudi={onChiudi} classe="esp-finestra-anteprima">
-      {(tipo === 'pdf' || tipo === 'immagine') && <Anteprima doc={doc} />}
-      {(tipo === 'video' || tipo === 'audio') && !url && !errore && <p className="esp-nota"><span className="pp-rotella" /> Carico…</p>}
-      {errore && <p className="esp-nota">{errore}</p>}
-      {tipo === 'video' && url && <video src={url} controls playsInline className="esp-media" />}
-      {tipo === 'audio' && url && <audio src={url} controls className="esp-media-audio" />}
-      <div className="esp-finestra-piede"><button type="button" className="esp-bottone" onClick={onApriScheda}>Apri la scheda del documento</button></div>
+    <Finestra titolo={titolo} icona={<IconaFileW11 tipo={tipoFile(doc)} size={16} />} stato={stato} onStato={onStato} onChiudi={onChiudi} classe="esp-finestra-anteprima" strumenti={strumenti}>
+      <div className="esp-visore" onWheel={(e) => { if (e.ctrlKey) { e.preventDefault(); setLivello((z) => zoom(z, e.deltaY > 0 ? -1 : 1)); } }}>
+        {!file && !url && !errore && <p className="esp-nota"><span className="pp-rotella" /> Carico…</p>}
+        {errore && <p className="esp-nota">{errore}</p>}
+        {tipo === 'pdf' && file && <VisorePdf dati={file.dati} livello={livello} pagina={pagina} onPagine={setPagine} />}
+        {tipo === 'immagine' && file && <div className="esp-visore-pagina"><img src={`data:${file.mime};base64,${file.dati}`} alt={titolo} style={{ width: `${livello * 100}%` }} /></div>}
+        {tipo === 'immagine' && prec && <button type="button" className="esp-visore-freccia sinistra" onClick={() => onCambia?.(prec)} aria-label="Immagine precedente" title="Precedente (←)">‹</button>}
+        {tipo === 'immagine' && succ && <button type="button" className="esp-visore-freccia destra" onClick={() => onCambia?.(succ)} aria-label="Immagine successiva" title="Successiva (→)">›</button>}
+        {tipo === 'video' && url && <video src={url} controls playsInline className="esp-media" />}
+        {tipo === 'audio' && url && <audio src={url} controls className="esp-media-audio" />}
+      </div>
+      <div className="esp-finestra-piede">
+        {tipo === 'immagine' && immagini.length > 1 && <span className="esp-nota">{immagini.findIndex((d) => d.id === doc.id) + 1} di {immagini.length}</span>}
+        <button type="button" className="esp-bottone" onClick={onApriScheda}>Apri la scheda del documento</button>
+      </div>
     </Finestra>
   );
 }

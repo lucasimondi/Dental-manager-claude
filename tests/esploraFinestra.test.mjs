@@ -153,3 +153,35 @@ test('Raggruppa per nome / data / tipo / categoria; impostazioni salvate per car
   assert.ok(!conMiniatura({ drive_file_id: 'x', mime_type: 'application/pdf', fascicolo: 'clinico_pazienti' }), 'mai miniature dei pazienti');
   assert.ok(!conMiniatura({ mime_type: 'image/jpeg' }));
 });
+
+/* ---------- §4 apertura diretta e App predefinite ---------- */
+import { estensioneDi, comeAprireCon, appAutomatica, cambiaApp, snapDa, vicina, zoom, APP_APERTURA } from '../personal/src/lib/apertura.js';
+
+test('apertura: regola automatica, app predefinita per estensione, mai senza file', () => {
+  const pdf = { id: 'a', drive_file_id: 'f1', mime_type: 'application/pdf', nome_file_originale: 'atto.PDF' };
+  const docx = { id: 'b', drive_file_id: 'f2', mime_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', nome_file_originale: 'lettera.docx' };
+  const zip = { id: 'c', drive_file_id: 'f3', mime_type: 'application/zip', nome_file_originale: 'x.zip' };
+  assert.deepEqual([estensioneDi(pdf), estensioneDi(docx), estensioneDi({ mime_type: 'image/jpeg' }), estensioneDi({ nome_file_originale: 'a.JPEG' })], ['pdf', 'docx', 'jpg', 'jpg']);
+  assert.deepEqual(comeAprireCon(pdf), { modo: 'anteprima', tipo: 'pdf' });
+  assert.equal(comeAprireCon(docx).modo, 'link');
+  assert.equal(comeAprireCon(zip).modo, 'scarica');
+  assert.deepEqual(comeAprireCon(pdf, { pdf: 'drive' }), { modo: 'link', url: 'https://drive.google.com/file/d/f1/view' });
+  assert.deepEqual(comeAprireCon(pdf, { pdf: 'browser' }), { modo: 'browser' });
+  assert.match(comeAprireCon(docx, { docx: 'docs' }).url, /^https:\/\/docs\.google\.com\/document\/d\/f2/);
+  assert.deepEqual(comeAprireCon(zip, { zip: 'anteprima' }), { modo: 'scheda' }, 'non visualizzabile → scheda del documento');
+  assert.deepEqual(comeAprireCon({ id: 'e', mime_type: 'message/rfc822', drive_url: 'https://mail' }, { eml: 'scarica' }), { modo: 'link', url: 'https://mail' }, 'email senza file: resta il link');
+  assert.equal(appAutomatica(pdf), 'anteprima'); assert.equal(appAutomatica(docx), 'drive'); assert.equal(appAutomatica(zip), 'scarica');
+  assert.deepEqual(cambiaApp({ pdf: 'drive' }, 'pdf', ''), {});
+  assert.deepEqual(cambiaApp({}, 'xml', 'browser'), { xml: 'browser' });
+  assert.equal(APP_APERTURA.length, 6);
+});
+
+test('finestra: snap ai bordi, immagini vicine, zoom 25%–400%', () => {
+  assert.equal(snapDa(2, 300, 1440), 'sinistra');
+  assert.equal(snapDa(1438, 300, 1440), 'destra');
+  assert.equal(snapDa(700, 2, 1440), 'ingrandita');
+  assert.equal(snapDa(700, 300, 1440), null);
+  const el = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+  assert.equal(vicina(el, 'b', 1).id, 'c'); assert.equal(vicina(el, 'a', -1), null); assert.equal(vicina(el, 'x', 1), null);
+  assert.equal(zoom(1, 1), 1.25); assert.equal(zoom(0.25, -1), 0.25); assert.equal(zoom(4, 1), 4);
+});

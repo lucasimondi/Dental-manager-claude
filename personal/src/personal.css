@@ -1421,3 +1421,8 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-giorni-visibili { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
 .pp-giorni-visibili button { padding: 8px 0; border-radius: 8px; border: 1.5px solid color-mix(in srgb, var(--pp-grigio) 40%, transparent); color: var(--pp-grigio); font-size: 12.5px; font-weight: 700; background: var(--pp-superficie); }
 .pp-giorni-visibili button.attivo { border-color: var(--pp-verde, #15803d); color: var(--pp-verde, #15803d); background: color-mix(in srgb, var(--pp-verde, #15803d) 12%, var(--pp-superficie)); }
+/* PR #337 §4: Impostazioni › App predefinite */
+.pp-riga-app { display: flex; align-items: center; gap: 10px; }
+.pp-riga-app select { flex-shrink: 0; max-width: 52%; min-height: 36px; border-radius: 8px; border: 1px solid var(--pp-linea); background: var(--pp-superficie); color: var(--pp-inchiostro); font: inherit; font-size: 13px; padding: 0 8px; }
+.pp-app-nuova { display: flex; gap: 8px; margin-top: 8px; }
+.pp-app-nuova input { flex: 1; min-width: 0; min-height: 40px; border-radius: 8px; border: 1px solid var(--pp-linea); background: var(--pp-superficie); color: var(--pp-inchiostro); font: inherit; padding: 0 10px; }

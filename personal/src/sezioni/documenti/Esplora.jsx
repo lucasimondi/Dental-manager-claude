@@ -39,6 +39,7 @@ import { preparaVoci, scaricaFile, creaZip, MAX_FILE_ZIP } from '../../lib/pacch
 import { titoloDoc, tokenSessione } from '../../ui.jsx';
 import { useTrascina } from './Trascina.jsx';
 import { miniatura } from '../../lib/miniature.js';
+import { comeAprireCon, caricaAppPredefinite } from '../../lib/apertura.js';
 import { FoglioInvia } from './CartelleMie.jsx';
 import { MenuContestuale, FinestraAnteprima, DialogoProprieta, DialogoAccesso, FoglioSpostaIn, Avviso, IcoMenu } from './EsploraFinestre.jsx';
 import { IconaCartellaW11, IconaFileW11 } from '../../IconeW11.jsx';
@@ -89,6 +90,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
   const [riquadro, setRiquadro] = useState(null); // null | 'anteprima' | 'dettagli'
   const [scadenzeSel, setScadenzeSel] = useState(null);
   const [recenti, setRecenti] = useState(() => leggiRecenti());
+  const [appPredefinite, setAppPredefinite] = useState({});
   const [cestino, setCestino] = useState({ cartelle: [] });
   const [testoCerca, setTestoCerca] = useState('');
   const [filtri, setFiltri] = useState({ tipo: '', data: '', categoria: '' });
@@ -168,6 +170,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
         setDaGestire(g);
         contaDaCatalogare(archivioDb, p.fascicoloDi).then((n) => vivo && setNDaCatalogare(n)).catch(() => {});
         caricaPreferiti(archivioDb).then((x) => vivo && setPreferiti(x)).catch(() => {});
+        caricaAppPredefinite(archivioDb).then((x) => vivo && setAppPredefinite(x)).catch(() => {});
       } catch (e) {
         if (vivo) { setDati((d) => d || { cartelle: [], posizioni: [], titoli: {} }); mostraAvviso(`Non riesco a leggere le cartelle: ${e.message}`, { tipo: 'errore', azione: { nome: 'Riprova', fai: () => setRinfresca((n) => n + 1) } }); }
       } finally { if (vivo) setCaricando(false); }
@@ -393,10 +396,13 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     const d = cache.get(s.id);
     if (!d) return;
     setRecenti(ricordaRecente(d.id));
-    const come = comeAprire(d);
-    if (come.modo === 'anteprima') setFinestra({ doc: d, tipo: come.tipo, stato: 'normale' });
+    // App predefinita per l'estensione (Impostazioni › App predefinite), altrimenti la regola automatica.
+    const come = comeAprireCon(d, appPredefinite);
+    if (come.modo === 'anteprima') setFinestra((f) => ({ doc: d, tipo: come.tipo, stato: f?.stato && f.stato !== 'ridotta' ? f.stato : 'normale', elenco: docMostrati }));
     else if (come.modo === 'link') window.open(come.url, '_blank', 'noopener');
     else if (come.modo === 'scarica') scarica(d);
+    else if (come.modo === 'browser') nuovaScheda(d);
+    else if (come.modo === 'altra') altraApp(d);
     else apri({ tipo: 'documento', id: d.id });
   };
   const fileDi = async (d) => comeFile(await preparaFile(d.drive_file_id, await tokenSessione()));
@@ -1057,7 +1063,8 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
           }} />
       )}
       {finestra && (
-        <FinestraAnteprima doc={finestra.doc} tipo={finestra.tipo} titolo={titoloDi(finestra.doc.id)} stato={finestra.stato}
+        <FinestraAnteprima doc={finestra.doc} tipo={finestra.tipo} titolo={titoloDi(finestra.doc.id)} stato={finestra.stato} elenco={finestra.elenco || []}
+          onCambia={(d) => { const c = comeAprire(d); if (c.modo === 'anteprima') setFinestra((f) => ({ ...f, doc: d, tipo: c.tipo })); }}
           onStato={(s) => setFinestra((f) => ({ ...f, stato: s }))} onChiudi={() => setFinestra(null)}
           onApriScheda={() => { const id = finestra.doc.id; setFinestra(null); apri({ tipo: 'documento', id }); }} />
       )}
