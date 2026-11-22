@@ -5001,3 +5001,6 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - PO decision: "Duplica crea una vera copia del file" → new action `duplica_file` (makeCopy next to the original, registered with the same catalogue, never to a model); «Copia in…» unchanged. Commit f0de9a3.
 - On Luca's request ("mandami link clasp") clasp 3.4.1 was authorized in this session (no-localhost flow); online script pulled and compared (= v28, eaebc30), `clasp push -f`, deployment AKfycbzQf7…UDw moved 28 → 29 (same URL). No secrets written to the repository; Luca can revoke the grant from myaccount.google.com → Sicurezza → App di terze parti. Rollback: redeploy version 28.
 - Next exact action: Luca tries the preview on the phone (Duplica, Documento/Foglio Google, Cestino → Ripristina, Proprietà → Ripristina versione); "Mergia" for PR #337.
+
+## Note — PR #338 merged (2026-11-22, Claude Code)
+- PR #337 had been merged (squash 2f1d34b) before the 10-section follow-up; the follow-up went in PR #338 (branch merged with master without history rewrite). On the PO's "Mergia": 9/9 checks green on 400c73f, squash-merged as 6d74f59; Vercel production deployment READY (dpl_EzHhwjXvyjtqCKmUbbNWJmv97aHF). Script v29 already live. Task PERSONAL-ESPLORA-WIN11 closed; next: PO tests on the phone.
