@@ -5001,3 +5001,9 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - PO decision: "Duplica crea una vera copia del file" → new action `duplica_file` (makeCopy next to the original, registered with the same catalogue, never to a model); «Copia in…» unchanged. Commit f0de9a3.
 - On Luca's request ("mandami link clasp") clasp 3.4.1 was authorized in this session (no-localhost flow); online script pulled and compared (= v28, eaebc30), `clasp push -f`, deployment AKfycbzQf7…UDw moved 28 → 29 (same URL). No secrets written to the repository; Luca can revoke the grant from myaccount.google.com → Sicurezza → App di terze parti. Rollback: redeploy version 28.
 - Next exact action: Luca tries the preview on the phone (Duplica, Documento/Foglio Google, Cestino → Ripristina, Proprietà → Ripristina versione); "Mergia" for PR #337.
+
+## 2026-11-22 — POL-VITA-ORDINA phase 2 (Claude Code)
+- Branch `ccr-1043796f-p8idej`. Classification by Claude Code in session ("Fallo tu senza api"): `poliedron/archivio/riordino/classifica.py`; inputs were read-only exports in the session scratchpad (not committed: they contain document titles).
+- Tables `categorie` / `piano_riordino` exist (migration applied); the plan is in Luca's Drive as private `poliedra-piano-riordino.json`; Code.gs `importa_piano` loads it (version 30 created, deployment still @29: publishing was blocked by the permission classifier, needs Luca's OK).
+- Screen Personale → «Riordino». Nothing moved or renamed on Drive. Phase 3 (execution in batches of 100 with `log_spostamenti` and «Annulla lotto») only after Luca approves rows.
+- Known weak spot: «12 Lavoro e professione/Studio Cuneo» still collects some documents of other subjects (bank, legal, housing); 99 at 9.7% (target 5%).

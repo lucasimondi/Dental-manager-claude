@@ -1,0 +1,45 @@
+/* POL-VITA-ORDINA fase 2 — Piano di riordino (pensato per il telefono: una colonna, tasti grandi). */
+.rr-vista { display: flex; flex-direction: column; gap: 12px; padding-bottom: 96px; }
+.rr-carta { background: var(--pp-superficie); border-radius: var(--pp-raggio); box-shadow: var(--pp-ombra); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.rr-carta h2 { margin: 0; font-size: 19px; }
+.rr-carta p { margin: 0; color: var(--pp-grigio); line-height: 1.4; }
+.rr-numeri { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; color: var(--pp-grigio); font-size: 13px; }
+.rr-numeri b { display: block; font-size: 22px; color: var(--pp-inchiostro); }
+.rr-criteri { font-size: 13px; }
+.rr-errore { color: var(--pp-rosso) !important; }
+.rr-cerca { width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--pp-linea); background: var(--pp-superficie); color: var(--pp-inchiostro); font-size: 16px; }
+.rr-indice { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.rr-indice button { flex: none; min-width: 44px; min-height: 44px; padding: 4px 10px; border-radius: 12px; background: var(--pp-superficie); color: var(--pp-inchiostro); font-weight: 650; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: var(--pp-ombra); }
+.rr-indice button small { font-weight: 400; font-size: 11px; color: var(--pp-grigio); }
+.rr-indice button.attiva { background: var(--pp-blu); color: #fff; }
+.rr-indice button.attiva small { color: inherit; }
+.rr-gruppo { background: var(--pp-superficie); border-radius: var(--pp-raggio); box-shadow: var(--pp-ombra); overflow: hidden; border-left: 4px solid var(--pp-verde); }
+.rr-gruppo.rr-media { border-left-color: #eab308; }
+.rr-gruppo.rr-bassa { border-left-color: var(--pp-rosso); }
+.rr-gruppo header { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; }
+.rr-testa { text-align: left; background: none; color: inherit; padding: 0; display: flex; flex-direction: column; gap: 3px; min-height: 44px; }
+.rr-percorso { font-weight: 650; overflow-wrap: anywhere; }
+.rr-testa small, .rr-vecchio, .rr-motivo { color: var(--pp-grigio); font-size: 13px; }
+.rr-tutto { align-self: flex-start; padding: 10px 14px; }
+.rr-gruppo ul { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--pp-linea); }
+.rr-riga { border-bottom: 1px solid var(--pp-linea); }
+.rr-riga.rr-media { background: color-mix(in srgb, #facc15 20%, transparent); }
+.rr-riga.rr-stato-rifiutato .rr-nuovo { text-decoration: line-through; color: var(--pp-grigio); }
+.rr-tocco { width: 100%; text-align: left; background: none; color: inherit; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; min-height: 56px; }
+.rr-nuovo { font-weight: 600; overflow-wrap: anywhere; }
+.rr-vecchio { overflow-wrap: anywhere; }
+.rr-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+.rr-conf, .rr-chip { font-size: 12px; font-weight: 650; padding: 2px 8px; border-radius: 999px; background: var(--pp-sfondo); color: var(--pp-inchiostro); }
+.rr-riga.rr-alta .rr-conf { background: color-mix(in srgb, var(--pp-verde) 22%, transparent); }
+.rr-riga.rr-media .rr-conf { background: color-mix(in srgb, #facc15 55%, transparent); }
+.rr-riga.rr-bassa .rr-conf { background: color-mix(in srgb, var(--pp-rosso) 22%, transparent); }
+.rr-stato-approvato .rr-chip:first-of-type { background: color-mix(in srgb, var(--pp-verde) 22%, transparent); }
+.rr-dettagli { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+.rr-motivo { margin: 0; }
+.rr-link { align-self: flex-start; background: none; color: var(--pp-blu); padding: 6px 0; font-weight: 600; min-height: 44px; }
+.rr-tasti { display: flex; flex-wrap: wrap; gap: 8px; }
+.rr-tasti .pp-bottone { padding: 10px 14px; min-height: 44px; }
+.rr-modifica { display: flex; flex-direction: column; gap: 6px; }
+.rr-modifica label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--pp-grigio); }
+.rr-modifica input { padding: 12px; border-radius: 10px; border: 1px solid var(--pp-linea); background: var(--pp-sfondo); color: var(--pp-inchiostro); font-size: 16px; }
+.rr-altri { align-self: center; }
