@@ -1,5 +1,5 @@
 // Impostazioni — persone, documenti personali, sezioni dei documenti, categorie, etichette, studio, account.
-import { SceltaAppPredefinite } from './AppPredefinite.jsx';
+import { SceltaAppPredefinite } from '../../AppPredefinite.jsx';
 import { useEffect, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { sessioneStudio, esciStudio, studioDb, impostazioniAgenda, aggiornaAgendaStudio } from '../../lib/studio.js';

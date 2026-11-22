@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { preparaFile, comeFile } from '../../lib/condividi.js';
 import { tokenSessione } from '../../ui.jsx';
 import { IconaCartellaW11, IconaFileW11 } from '../../IconeW11.jsx';
-import { posizioneMenu, dimensioneLeggibile, dataLeggibile, tipoLeggibile, tipoFile, proprietaDrive, accessoDrive, comeAprire } from '../../lib/esplora.js';
+import { posizioneMenu, dimensioneLeggibile, dataLeggibile, tipoLeggibile, tipoFile, proprietaDrive, accessoDrive, comeAprire, ripristinaVersioneDrive } from '../../lib/esplora.js';
 import { snapDa, vicina, zoom } from '../../lib/apertura.js';
 
 /* ---------- icone lineari 16 px ---------- */
@@ -38,6 +38,9 @@ export function MenuContestuale({ menu, struttura, mobile, schermo, onScegli, on
   const [sotto, setSotto] = useState(null); // { id, voci, y }
   const [pos, setPos] = useState(null);
   const ref = useRef(null);
+  const timerSotto = useRef(null); // i sottomenu si aprono (e chiudono) in hover dopo 300 ms, come in Windows
+  useEffect(() => () => clearTimeout(timerSotto.current), []);
+  const inHover = (f) => { clearTimeout(timerSotto.current); timerSotto.current = setTimeout(f, 300); };
   const apertoIl = useRef(Date.now());
   useLayoutEffect(() => {
     if (mobile || !ref.current) return;
@@ -51,11 +54,18 @@ export function MenuContestuale({ menu, struttura, mobile, schermo, onScegli, on
   }, [sotto, onChiudi]);
   // Al rilascio del dito il telefono genera un «click» proprio dove compare il menu: per un attimo lo si ignora.
   const pronto = () => Date.now() - apertoIl.current > 450;
-  const scegli = (v) => { if (!pronto() || !v.attiva) return; if (v.sotto) { setSotto({ id: v.id, nome: v.nome, voci: v.sotto }); return; } onScegli(v.id); };
+  const scegli = (v, e) => { if (!pronto() || !v.attiva) return; if (v.sotto) { clearTimeout(timerSotto.current); setSotto({ id: v.id, nome: v.nome, voci: v.sotto, y: e?.currentTarget?.getBoundingClientRect?.().top }); return; } onScegli(v.id); };
   const voce = (v, i) => (v.separatore ? <div key={`s${i}`} className="esp-menu-sep" role="separator" /> : (
     <button key={v.id} type="button" role="menuitem" className={`esp-menu-voce${sotto?.id === v.id ? ' aperta' : ''}`} disabled={!v.attiva}
-      aria-haspopup={v.sotto ? 'menu' : undefined} onClick={() => scegli(v)}
-      onMouseEnter={(e) => { if (!mobile && v.sotto && v.attiva) setSotto({ id: v.id, nome: v.nome, voci: v.sotto, y: e.currentTarget.getBoundingClientRect().top }); else if (!mobile && !v.sotto) setSotto(null); }}>
+      aria-haspopup={v.sotto ? 'menu' : undefined} aria-expanded={v.sotto ? sotto?.id === v.id : undefined} onClick={(e) => scegli(v, e)}
+      onMouseEnter={(e) => {
+        if (mobile) return;
+        const y = e.currentTarget.getBoundingClientRect().top;
+        if (v.sotto && v.attiva) { if (sotto?.id !== v.id) inHover(() => setSotto({ id: v.id, nome: v.nome, voci: v.sotto, y })); else clearTimeout(timerSotto.current); }
+        else if (!v.sotto && !e.currentTarget.closest('.esp-sottomenu')) inHover(() => setSotto(null));
+        else clearTimeout(timerSotto.current);
+      }}
+      onMouseLeave={() => clearTimeout(timerSotto.current)}>
       <IcoMenu id={v.id} /><span className="esp-menu-nome">{v.nome}</span>
       {v.tasto && <kbd className="esp-menu-tasto">{v.tasto}</kbd>}
       {v.sotto && <span className="esp-menu-freccia" aria-hidden="true">›</span>}
@@ -259,12 +269,19 @@ export function FinestraAnteprima({ doc, tipo, titolo, stato, onStato, onChiudi,
 /* ---------- Proprietà ---------- */
 export function DialogoProprieta({ voce, cosa, percorsoApp, onChiudi }) {
   const [drive, setDrive] = useState(null);
+  const [giro, setGiro] = useState(0);
+  const [ripristino, setRipristino] = useState(null); // { versione, fase: 'conferma'|'lavoro'|'fatto'|'errore', testo }
   useEffect(() => {
     let vivo = true;
     tokenSessione().then((token) => proprietaDrive({ token, id: voce.id, cartella: cosa === 'cartella' }))
       .then((r) => vivo && setDrive(r)).catch((e) => vivo && setDrive({ errore: e.message }));
     return () => { vivo = false; };
-  }, [voce.id, cosa]);
+  }, [voce.id, cosa, giro]);
+  const ripristina = async (v) => {
+    setRipristino({ versione: v, fase: 'lavoro' });
+    try { await ripristinaVersioneDrive({ token: await tokenSessione(), id: voce.id, versione: v.id }); setRipristino({ versione: v, fase: 'fatto' }); setGiro((n) => n + 1); }
+    catch (e) { setRipristino({ versione: v, fase: 'errore', testo: e.message }); }
+  };
   const file = cosa !== 'cartella';
   const righe = [
     ['Tipo', file ? tipoLeggibile(voce) : 'Cartella di file'],
@@ -282,7 +299,22 @@ export function DialogoProprieta({ voce, cosa, percorsoApp, onChiudi }) {
       {file && drive?.versioni && (
         <>
           <h3 className="esp-sezione">Cronologia versioni su Drive</h3>
-          {drive.versioni.length ? <ul className="esp-versioni">{drive.versioni.map((v) => <li key={v.id}><span>{dataLeggibile(v.quando)}</span><span>{v.chi || ''}</span><span>{dimensioneLeggibile(v.dimensione)}</span></li>)}</ul> : <p className="esp-nota">Una sola versione.</p>}
+          {drive.versioni.length ? (
+            <ul className="esp-versioni">{drive.versioni.map((v, i) => (
+              <li key={v.id}><span>{dataLeggibile(v.quando)}{i === 0 ? ' (attuale)' : ''}</span><span>{v.chi || ''}</span><span>{dimensioneLeggibile(v.dimensione)}</span>
+                {i > 0 && <button type="button" className="esp-bottone esp-bottone-piccolo" disabled={ripristino?.fase === 'lavoro'} onClick={() => setRipristino({ versione: v, fase: 'conferma' })}>Ripristina</button>}
+              </li>
+            ))}</ul>
+          ) : <p className="esp-nota">Una sola versione.</p>}
+          {ripristino?.fase === 'conferma' && (
+            <div className="esp-conferma" role="alertdialog">
+              <p>Ripristinare la versione del {dataLeggibile(ripristino.versione.quando)}? Diventa la versione attuale; quelle di adesso restano nella cronologia.</p>
+              <div className="esp-dialogo-azioni"><button type="button" className="esp-bottone" onClick={() => setRipristino(null)}>Annulla</button><button type="button" className="esp-bottone esp-bottone-blu" onClick={() => ripristina(ripristino.versione)}>Ripristina</button></div>
+            </div>
+          )}
+          {ripristino?.fase === 'lavoro' && <p className="esp-nota"><span className="pp-rotella" /> Ripristino su Drive…</p>}
+          {ripristino?.fase === 'fatto' && <p className="esp-nota" role="status">Versione ripristinata su Drive.</p>}
+          {ripristino?.fase === 'errore' && <p className="esp-nota esp-errore" role="alert">Non ripristinata: {ripristino.testo}</p>}
         </>
       )}
       {drive?.link && <div className="esp-finestra-piede"><a className="esp-bottone" href={drive.link} target="_blank" rel="noopener noreferrer">Apri in Drive</a></div>}

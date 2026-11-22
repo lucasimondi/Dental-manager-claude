@@ -2,8 +2,8 @@
 // aprire i file in Esplora (doppio clic / tocco). «Automatica» = regola di Poliedra. Salvate in
 // impostazioni_app (chiave esplora_app_predefinite), uguali su tutti i dispositivi.
 import { useEffect, useState } from 'react';
-import { archivioDb } from '../../lib/supabasePersonal.js';
-import { APP_APERTURA, ESTENSIONI_COMUNI, nomeApp, appAutomatica, cambiaApp, caricaAppPredefinite, salvaAppPredefinite } from '../../lib/apertura.js';
+import { archivioDb } from './lib/supabasePersonal.js';
+import { APP_APERTURA, ESTENSIONI_COMUNI, nomeApp, appAutomatica, cambiaApp, caricaAppPredefinite, salvaAppPredefinite } from './lib/apertura.js';
 
 const ESEMPIO = { pdf: 'application/pdf', jpg: 'image/jpeg', png: 'image/png', heic: 'image/heic', mp4: 'video/mp4', mp3: 'audio/mpeg', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', eml: 'message/rfc822' };
 

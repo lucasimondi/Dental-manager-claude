@@ -167,3 +167,35 @@ test('doPost: le nuove azioni del menu dopo il controllo del proprietario', () =
   const controllo = corpo.indexOf('Accesso non autorizzato');
   for (const a of ['rinomina_file', 'proprieta_file', 'accesso_file']) assert.ok(corpo.indexOf(`'${a}'`) > controllo, a);
 });
+
+// PR #337 §5: Cestino dell'app, ripristino di una versione, nuovo Documento / Foglio Google.
+test('ripristina_file: solo file registrati in archivio tornano fuori dal Cestino di Drive', () => {
+  const docs = [{ id: U(50), drive_file_id: 'f50registrato' }];
+  const s = scriptFinto({ docs });
+  const tolti = [];
+  s.ctx.DriveApp.getFileById = (id) => ({ setTrashed: (v) => tolti.push([id, v]) });
+  s.ctx.sb_ = (p) => (p.startsWith('documenti?select=drive_file_id') ? docs.filter((d) => p.includes(d.drive_file_id)).map((d) => ({ drive_file_id: d.drive_file_id })) : []);
+  const r = JSON.parse(JSON.stringify(s.ctx.ripristinaFileEsplora_(['f50registrato', 'fAltroFileDrive', 'x'])));
+  assert.deepEqual(r, { ok: true, ripristinati: ['f50registrato'], non_trovati: ['fAltroFileDrive'] });
+  assert.deepEqual(tolti, [['f50registrato', false]]);
+});
+
+test('ripristina_versione: mai per Documenti/Fogli Google; versione non valida rifiutata', () => {
+  const docs = [{ id: U(60), drive_file_id: 'f60', mime_type: 'application/vnd.google-apps.document' }, { id: U(61), drive_file_id: 'f61', mime_type: 'application/pdf' }];
+  const s = scriptFinto({ docs });
+  assert.match(s.ctx.ripristinaVersioneEsplora_({ id: U(60), versione: 'v1' }).errore, /Documenti e Fogli Google/);
+  assert.match(s.ctx.ripristinaVersioneEsplora_({ id: U(61), versione: 'v1/../x' }).errore, /non valida/);
+});
+
+test('doPost PR #337 §5: crea_file, ripristina_file, ripristina_versione dopo il controllo del proprietario', () => {
+  const i = codice.indexOf('function doPost(');
+  const corpo = codice.slice(i, codice.indexOf('\n}\n', i));
+  const controllo = corpo.indexOf('Accesso non autorizzato');
+  for (const a of ['crea_file', 'ripristina_file', 'ripristina_versione']) assert.ok(corpo.indexOf(`'${a}'`) > controllo, a);
+  // il nuovo file nasce nella gemella, si registra e non va mai a un modello
+  const f = codice.slice(codice.indexOf('function creaFileEsplora_'), codice.indexOf('function ripristinaFileEsplora_'));
+  assert.match(f, /cartellaDriveDi_\(idCartella\)/);
+  assert.match(f, /rpc\/registra_documento/);
+  assert.match(f, /analisi_contenuto: false/);
+  assert.doesNotMatch(f, /analizza_\(|gemini_\(|modello_\(/);
+});

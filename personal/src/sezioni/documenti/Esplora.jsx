@@ -10,7 +10,7 @@
 // Copia / Duplica (decisione del PO): il documento compare anche nell'altra cartella, nessun file nuovo su Drive.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
-import { aggiornaDocumento, cestinaSuDrive, eliminaDocumenti, cercaDocumenti, scadenzeDelDocumento } from '../../lib/archivio.js';
+import { aggiornaDocumento, cestinaSuDrive, eliminaDocumenti, cercaDocumenti, scadenzeDelDocumento, caricaDocumento } from '../../lib/archivio.js';
 import { eliminaConDrive } from '../../lib/eliminazioneSwipe.js';
 import {
   caricaCartelleMie, creaCartella, rinominaCartella, spostaCartelle, archiviaCartelle,
@@ -24,8 +24,11 @@ import {
   paginaDaCatalogare, paginaCategoria, eseguiCompleto, documentiCartellaEsplora, documentiPerId,
   VISTE_ESPLORA, leggiViste, salvaVista, vistaDi, vistaConRotella, COLONNE_DETTAGLI, cambiaColonna, GRUPPI, raggruppa, leggiCartelle, salvaCartella, impostazioniDi, conMiniatura, righeDettagli, ordinaRighe, ordinaSuColonna, dimensioneLeggibile, dataLeggibile, tipoLeggibile,
   comeAprire, linkDrive, linkDocs, linkEmail, linkWhatsApp, ambienteApertura, seleziona, caricaPreferiti, salvaPreferiti, cambiaPreferito,
-  HOME, PREFERITI, RECENTI, CESTINO, nodoCerca, datiCerca,
+  HOME, PREFERITI, RECENTI, CESTINO, nodoCerca, datiCerca, FUORI,
+  creaFileDrive, ripristinaFileDrive, segnaCestino, conCestino, nelCestino, documentiNelCestino, eZip,
 } from '../../lib/esplora.js';
+import { eseguiInCoda } from '../../lib/trasferimenti.js';
+import { SceltaAppPredefinite } from '../../AppPredefinite.jsx';
 import {
   nuovaScheda as creaScheda, nodoScheda, vaiInScheda, sostituisciInScheda, indietroScheda, avantiScheda, puoIndietro, puoAvanti, chiudiScheda, spostaScheda,
   nodoDaTesto, documentiNelSottoalbero, cartelleNelSottoalbero, filtraRisultati, cartelleTrovate, nelNome, evidenzia,
@@ -39,9 +42,9 @@ import { preparaVoci, scaricaFile, creaZip, MAX_FILE_ZIP } from '../../lib/pacch
 import { titoloDoc, tokenSessione } from '../../ui.jsx';
 import { useTrascina } from './Trascina.jsx';
 import { miniatura } from '../../lib/miniature.js';
-import { comeAprireCon, caricaAppPredefinite } from '../../lib/apertura.js';
+import { comeAprireCon, caricaAppPredefinite, estensioneDi } from '../../lib/apertura.js';
 import { FoglioInvia } from './CartelleMie.jsx';
-import { MenuContestuale, FinestraAnteprima, DialogoProprieta, DialogoAccesso, FoglioSpostaIn, Avviso, IcoMenu } from './EsploraFinestre.jsx';
+import { MenuContestuale, FinestraAnteprima, DialogoProprieta, DialogoAccesso, FoglioSpostaIn, Avviso, IcoMenu, Finestra } from './EsploraFinestre.jsx';
 import { IconaCartellaW11, IconaFileW11 } from '../../IconeW11.jsx';
 import './esplora.css';
 
@@ -91,7 +94,8 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
   const [scadenzeSel, setScadenzeSel] = useState(null);
   const [recenti, setRecenti] = useState(() => leggiRecenti());
   const [appPredefinite, setAppPredefinite] = useState({});
-  const [cestino, setCestino] = useState({ cartelle: [] });
+  const [cestino, setCestino] = useState({ cartelle: [], docs: [] });
+  const inputCarica = useRef(null);
   const [testoCerca, setTestoCerca] = useState('');
   const [filtri, setFiltri] = useState({ tipo: '', data: '', categoria: '' });
   const campoCerca = useRef(null);
@@ -195,8 +199,8 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
           const docs = ids.length ? await documentiPerId(archivioDb, [...new Set(ids)]) : [];
           if (vivo) metti(docs);
         } else if (nodo === CESTINO) {
-          const tutte = await caricaCartelleMie(archivioDb, { ancheArchiviate: true });
-          if (vivo) setCestino({ cartelle: tutte.filter((c) => c.archiviata_il) });
+          const [tutte, docs] = await Promise.all([caricaCartelleMie(archivioDb, { ancheArchiviate: true }), documentiNelCestino(archivioDb).catch(() => [])]);
+          if (vivo) { metti(docs); setCestino({ cartelle: tutte.filter((c) => c.archiviata_il), docs: docs.map((d) => d.id) }); }
         } else if (datiCerca(nodo)) {
           const { testo } = datiCerca(nodo);
           const trovati = (await cercaDocumenti(archivioDb, testo, null, 200)) || [];
@@ -342,6 +346,105 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     mostraAvviso(`${docs.length === 1 ? `«${titoloDi(docs[0].id)}» eliminato` : `${docs.length} documenti eliminati`}: i file vanno nel Cestino di Drive`, { azione: { nome: 'Annulla', fai: annulla } });
   };
 
+  // PR #337 §5: Elimina (Canc) = Cestino recuperabile. Prima Drive (file nel Cestino di Drive), poi l'etichetta
+  // «cestino» in archivio; l'interfaccia cambia solo se entrambe riescono. Annulla (5 s, Ctrl+Z) = Ripristina.
+  const cestina = async (sorgenti) => {
+    setFoglio(null); setScelti(new Set()); setModoSelezione(false);
+    const cartelleIds = sorgenti.filter((x) => x.tipo === 'cartella' && x.id !== RADICE && !eVirtuale(x.id)).map((x) => x.id);
+    if (cartelleIds.length) fai({ tipo: 'archivia', ids: cartelleIds }, `${cartelleIds.length === 1 ? `«${nomeNodo(cartelleIds[0], nomi)}» nel Cestino` : `${cartelleIds.length} cartelle nel Cestino`} (si può ripristinare)`);
+    const docs = sorgenti.filter((x) => x.tipo === 'doc').map((x) => cache.get(x.id)).filter((d) => d && d.fascicolo !== CLINICO);
+    if (!docs.length) return;
+    setLavoro((n) => n + 1); inizioDrive();
+    try {
+      const token = await tokenSessione();
+      const conFile = docs.filter((d) => d.drive_file_id && !/rfc822/.test(String(d.mime_type || '')));
+      if (conFile.length) await cestinaSuDrive({ token, ids: conFile.map((d) => d.drive_file_id) });
+      await segnaCestino(archivioDb, docs, true);
+      fineDrive();
+      metti(docs.map((d) => ({ ...d, tag: conCestino(d.tag, true) })));
+      cambiato.current = true;
+      const annulla = () => { annullaRef.current = null; ripristinaDocs(docs, 'Annullato'); };
+      annullaRef.current = { fai: annulla, fino: Date.now() + DURATA_ANNULLA };
+      mostraAvviso(`${docs.length === 1 ? `«${titoloDi(docs[0].id)}»` : `${docs.length} documenti`} nel Cestino`, { azione: { nome: 'Annulla', fai: annulla } });
+    } catch (e) {
+      fineDrive(e.message);
+      mostraAvviso(`Non eliminato: ${e.message}`, { tipo: 'errore', azione: { nome: 'Riprova', fai: () => cestina(sorgenti) } });
+    } finally { setLavoro((n) => n - 1); }
+  };
+  const ripristinaDocs = async (docs, messaggio) => {
+    setLavoro((n) => n + 1); inizioDrive();
+    try {
+      const token = await tokenSessione();
+      const conFile = docs.filter((d) => d.drive_file_id && !/rfc822/.test(String(d.mime_type || '')));
+      if (conFile.length) await ripristinaFileDrive({ token, ids: conFile.map((d) => d.drive_file_id) });
+      await segnaCestino(archivioDb, docs, false);
+      fineDrive();
+      metti(docs.map((d) => ({ ...d, tag: conCestino(d.tag, false) })));
+      setCestino((c) => ({ ...c, docs: c.docs.filter((id) => !docs.some((d) => d.id === id)) }));
+      cambiato.current = true;
+      mostraAvviso(messaggio);
+    } catch (e) {
+      fineDrive(e.message);
+      mostraAvviso(`Non ripristinato: ${e.message}`, { tipo: 'errore', azione: { nome: 'Riprova', fai: () => ripristinaDocs(docs, messaggio) } });
+    } finally { setLavoro((n) => n - 1); }
+  };
+
+  // Carica file (Nuovo ▸ Carica file…, trascinamento dal computer, Estrai tutto): uno alla volta nel pannello
+  // «Trasferimento file», con Annulla. Il file nasce nella cartella gemella su Drive (o in «Archivio personale»).
+  const leggiBase64 = (blob) => new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = () => ko(new Error('Lettura del file non riuscita')); r.readAsDataURL(blob); });
+  const caricaQui = async (files, dest = eVirtuale(nodo) ? RADICE : nodo, titolo = null) => {
+    const lista = [...(files || [])].filter((f) => f && f.size !== undefined);
+    if (!lista.length) return;
+    const token = await tokenSessione().catch(() => null);
+    inizioDrive(); setLavoro((n) => n + 1);
+    const r = await eseguiInCoda(titolo || `Caricamento in «${nomeNodo(dest, nomi)}»`, lista, async (f) => {
+      const x = await caricaDocumento({ token, dati: await leggiBase64(f), nome: f.name, mime: f.type || 'application/octet-stream', cartella: dest !== RADICE ? dest : null });
+      return x.id;
+    });
+    setLavoro((n) => n - 1); fineDrive(r.errori.length && !r.fatti.length ? r.errori[0] : null);
+    // In «Personale» il file va nella radice di Archivio personale (stesso spostamento di Esplora: prima Drive).
+    if (dest === RADICE && r.fatti.length) await fai({ tipo: 'sposta', mosse: r.fatti.map((id) => ({ tipo: 'doc', id, da: FUORI, a: RADICE })) }, null);
+    cambiato.current = true; setRinfresca((n) => n + 1);
+    if (r.errori.length) mostraAvviso(`${r.fatti.length} caricati, ${r.errori.length} non riusciti: ${r.errori[0]}`, { tipo: 'errore', azione: { nome: 'Riprova', fai: () => caricaQui(lista.filter((f) => r.errori.some((e) => e.startsWith(`${f.name}:`))), dest, titolo) } });
+    else if (r.annullato) mostraAvviso(`Caricamento annullato: ${r.fatti.length} file già su Drive`);
+    else mostraAvviso(`${r.fatti.length === 1 ? '1 file caricato' : `${r.fatti.length} file caricati`} in «${nomeNodo(dest, nomi)}»`);
+  };
+  const MIME_ESTRATTI = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', txt: 'text/plain', xml: 'application/xml', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' };
+  const estrai = async (d, sorg) => {
+    const dest = sorg?.da && sorg.da !== FUORI && !eVirtuale(sorg.da) ? sorg.da : RADICE;
+    try {
+      const f = await fileDi(d);
+      const { ZipReader, BlobReader, BlobWriter } = await import('@zip.js/zip.js');
+      const lettore = new ZipReader(new BlobReader(f));
+      const voci = (await lettore.getEntries()).filter((e) => !e.directory && !/(^|\/)(__MACOSX|\.DS_Store)/.test(e.filename));
+      const files = [];
+      for (const e of voci) {
+        const nome = e.filename.split('/').pop();
+        files.push(new File([await e.getData(new BlobWriter())], nome, { type: MIME_ESTRATTI[(nome.split('.').pop() || '').toLowerCase()] || 'application/octet-stream' }));
+      }
+      await lettore.close();
+      if (!files.length) { mostraAvviso('Lo ZIP è vuoto'); return; }
+      await caricaQui(files, dest, `Estrai «${titoloDi(d.id)}» in «${nomeNodo(dest, nomi)}»`);
+    } catch (e) { mostraAvviso(`Non estratto: ${e.message}`, { tipo: 'errore', azione: { nome: 'Riprova', fai: () => estrai(d, sorg) } }); }
+  };
+  // Nuovo ▸ Documento Google / Foglio Google: creato su Drive nella cartella, poi aperto in una nuova scheda.
+  const creaGoogle = async (tipo) => {
+    const dest = eVirtuale(nodo) ? RADICE : nodo;
+    const finestraNuova = window.open('', '_blank');
+    setLavoro((n) => n + 1); inizioDrive();
+    try {
+      const r = await creaFileDrive({ token: await tokenSessione(), tipo, nome: tipo === 'foglio' ? 'Nuovo foglio' : 'Nuovo documento', cartella: dest });
+      if (dest === RADICE) await aggiungiAScrivania(archivioDb, [r.id]);
+      fineDrive();
+      if (finestraNuova) finestraNuova.location.href = r.url; else window.open(r.url, '_blank', 'noopener');
+      cambiato.current = true; setRinfresca((n) => n + 1);
+      mostraAvviso(`${tipo === 'foglio' ? 'Foglio' : 'Documento'} Google creato in «${nomeNodo(dest, nomi)}»`);
+    } catch (e) {
+      finestraNuova?.close(); fineDrive(e.message);
+      mostraAvviso(`Non creato: ${e.message}`, { tipo: 'errore', azione: { nome: 'Riprova', fai: () => creaGoogle(tipo) } });
+    } finally { setLavoro((n) => n - 1); }
+  };
+
   /* ---------- elementi mostrati ---------- */
   const titoloDi = (id) => dati?.titoli?.[id] ?? titoloDoc(cache.get(id));
   const docMostrati = (() => {
@@ -353,10 +456,10 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     else if (nodo === ACCESSO_RAPIDO) ids = [];
     else if (nodo === PREFERITI) ids = preferiti.filter((p) => p.tipo === 'doc').map((p) => p.id);
     else if (nodo === RECENTI || nodo === HOME) ids = recenti.map((r) => r.id);
-    else if (nodo === CESTINO) ids = [];
+    else if (nodo === CESTINO) ids = cestino.docs;
     else if (datiCerca(nodo)) ids = lista?.nodo === nodo ? lista.documenti : [];
     else ids = documentiNelNodo(posizioni, nodo);
-    const docs = ids.filter((id) => cache.has(id) && !nascosti.has(id)).map((id) => cache.get(id));
+    const docs = ids.filter((id) => cache.has(id) && !nascosti.has(id)).map((id) => cache.get(id)).filter((d) => nodo === CESTINO || !nelCestino(d));
     if (datiCerca(nodo)) return filtraRisultati(docs, { ...filtri, dentro: documentiNelSottoalbero(datiCerca(nodo).base, opz) });
     return docs;
   })();
@@ -580,6 +683,10 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     ] };
     if (menu.cosa === 'nuovo') return { rapide: [], voci: [
       { id: 'nuova', nome: 'Cartella', tasto: 'Ctrl+Maiusc+N', attiva: !eVirtuale(nodo) },
+      { id: 'nuovo:doc', nome: 'Documento Google', attiva: !eVirtuale(nodo) },
+      { id: 'nuovo:foglio', nome: 'Foglio Google', attiva: !eVirtuale(nodo) },
+      sep,
+      { id: 'carica', nome: 'Carica file…', attiva: true },
     ] };
     if (menu.cosa === 'altro') return { rapide: [], voci: [
       { id: 'seleziona-tutto', nome: 'Seleziona tutto', tasto: 'Ctrl+A', attiva: true },
@@ -590,12 +697,13 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
       { id: 'copia-percorso', nome: 'Copia percorso', attiva: true },
       { id: 'proprieta-cartella', nome: 'Proprietà della cartella', attiva: !eVirtuale(nodo) && nodo !== RADICE },
     ] };
-    if (nodo === CESTINO && menu.cosa === 'cartella') return { rapide: [], voci: [{ id: 'ripristina', nome: 'Ripristina', attiva: true }] };
     const una = menu.sorgenti[0];
     const d = una?.tipo === 'doc' ? cache.get(una.id) : null;
     return menuContestuale(menu.cosa, {
       nodo: menu.cosa === 'vuoto' ? nodo : una?.id, appunti, opz, selezione: menu.sorgenti, preferiti,
       ambiente: ambienteApertura(), convertibile: !!(d && linkDocs(d)), conFile: !!d?.drive_file_id,
+      vista, ordine, gruppo, zip: !!d && eZip(d), cestino: nodo === CESTINO && menu.cosa !== 'vuoto',
+      altrove: [HOME, PREFERITI, RECENTI, ACCESSO_RAPIDO].includes(nodo) || !!datiCerca(nodo),
     });
   };
 
@@ -605,7 +713,13 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     const nomeDi = (s) => (s.tipo === 'cartella' ? nomeNodo(s.id, nomi) : titoloDi(s.id));
     const nomeSel = sorgenti.length === 1 ? nomeDi(una) : `${sorgenti.length} elementi`;
     switch (id) {
-      case 'ripristina': fai({ tipo: 'ripristina', ids: sorgenti.map((x) => x.id) }, sorgenti.length === 1 ? 'Cartella ripristinata' : `${sorgenti.length} cartelle ripristinate`).then(() => setRinfresca((n) => n + 1)); break;
+      case 'ripristina': {
+        const c = sorgenti.filter((x) => x.tipo === 'cartella').map((x) => x.id);
+        const ds = sorgenti.filter((x) => x.tipo === 'doc').map((x) => cache.get(x.id)).filter(Boolean);
+        if (c.length) fai({ tipo: 'ripristina', ids: c }, c.length === 1 ? 'Cartella ripristinata' : `${c.length} cartelle ripristinate`).then(() => setRinfresca((n) => n + 1));
+        if (ds.length) ripristinaDocs(ds, ds.length === 1 ? 'Ripristinato' : `${ds.length} documenti ripristinati`);
+        break;
+      }
       case 'deseleziona': setScelti(new Set()); break;
       case 'inverti': setScelti(new Set(elementi.filter((k) => !scelti.has(k)))); break;
       case 'scheda-nuova': apriScheda(una?.tipo === 'cartella' ? una.id : nodo); break;
@@ -624,14 +738,26 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
       case 'apri': apriElemento(chiaveDi(una.tipo, una.id)); break;
       case 'taglia': setAppunti(taglia(sorgenti, nomeSel)); mostraAvviso(`«${nomeSel}» tagliato: Incolla nella cartella di arrivo (Ctrl+V)`); break;
       case 'copia': { const a = copia(sorgenti, nomeSel); if (a) { setAppunti(a); mostraAvviso(`«${nomeSel}» copiato: Incolla per metterlo anche in un'altra cartella`); } break; }
-      case 'duplica': setFoglio({ tipo: 'duplica', sorgenti }); break;
+      // Duplica e Copia in… (decisione del PO): il documento compare anche nell'altra cartella, stesso file su Drive.
+      case 'duplica': case 'copia-in': setFoglio({ tipo: 'duplica', sorgenti }); break;
+      case 'con:predefinita': if (d) setFoglio({ tipo: 'app', doc: d }); break;
+      case 'mostra-cartella': {
+        const dove = una.tipo === 'cartella' ? padreDi(cartelle, una.id) : una.da;
+        const k = chiaveDi(una.tipo === 'cartella' ? 'cartella' : 'doc', una.id);
+        vai(dove || RADICE); setScelti(new Set([k])); setAncora(k);
+        break;
+      }
+      case 'estrai': if (d) estrai(d, una); break;
+      case 'nuovo:doc': case 'nuovo:foglio': creaGoogle(id === 'nuovo:foglio' ? 'foglio' : 'doc'); break;
+      case 'carica': inputCarica.current?.click(); break;
+      case 'elimina-definitivo': setFoglio({ tipo: 'elimina', sorgenti: sorgenti.filter((x) => x.tipo === 'doc') }); break;
       case 'sposta': setFoglio({ tipo: 'sposta', sorgenti }); break;
       case 'rinomina': if (una.tipo === 'cartella') { setAperti((a) => new Set([...a, ...antenati(una.id, nomi)])); setRinomina({ cosa: 'cartella', id: una.id, nome: nomeNodo(una.id, nomi) }); } else setRinomina({ cosa: 'doc', id: una.id, nome: titoloDi(una.id) }); break;
       case 'preferito': { const nuovi = cambiaPreferito(preferiti, una.tipo === 'cartella' ? 'cartella' : 'doc', una.id); setPreferiti(nuovi); salvaPreferiti(archivioDb, nuovi).then(() => mostraAvviso(una.tipo === 'cartella' ? (nuovi.length > preferiti.length ? 'Aggiunta ad Accesso rapido' : 'Tolta da Accesso rapido') : (nuovi.length > preferiti.length ? 'Aggiunto ai Preferiti' : 'Tolto dai Preferiti'))).catch((e) => { setPreferiti(preferiti); mostraAvviso(`Non salvato: ${e.message}`, { tipo: 'errore' }); }); break; }
       case 'zip': setStatoZip(null); setFoglio({ tipo: 'zip', cartelleScelte: sorgenti.filter((s) => s.tipo === 'cartella').map((s) => s.id), documentiScelti: sorgenti.filter((s) => s.tipo === 'doc').map((s) => cache.get(s.id)).filter(Boolean), nome: nomeSel }); break;
       case 'scarica': case 'con:scarica': if (d) scarica(d); break;
       case 'proprieta': setFoglio({ tipo: 'proprieta', sorgente: una }); break;
-      case 'elimina': if (sorgenti.some((s) => s.tipo === 'doc')) setFoglio({ tipo: 'elimina', sorgenti }); else elimina(sorgenti); break;
+      case 'elimina': cestina(sorgenti); break;
       case 'con:anteprima': if (d) { const c = comeAprire(d); if (c.modo === 'anteprima') setFinestra({ doc: d, tipo: c.tipo, stato: 'normale' }); else apri({ tipo: 'documento', id: d.id }); } break;
       case 'con:drive': if (d) window.open(linkDrive(d), '_blank', 'noopener'); break;
       case 'con:docs': if (d && linkDocs(d)) window.open(linkDocs(d), '_blank', 'noopener'); break;
@@ -694,6 +820,8 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
       else if (ctrl && k === 'c') { e.preventDefault(); azione('copia', sel); }
       else if (ctrl && k === 'd' && sel.every((s) => s.tipo === 'doc')) { e.preventDefault(); azione('duplica', sel); }
       else if (e.key === 'F2' && sel.length === 1 && (una.tipo === 'doc' || (una.id !== RADICE && !eVirtuale(una.id)))) { e.preventDefault(); azione('rinomina', sel); }
+      else if (e.key === 'Delete' && e.shiftKey && sel.some((s) => s.tipo === 'doc') && !sel.some((s) => s.clinico)) { e.preventDefault(); azione('elimina-definitivo', sel); }
+      else if (e.key === 'Delete' && nodo === CESTINO) { e.preventDefault(); azione('elimina-definitivo', sel); }
       else if (e.key === 'Delete' && tutteMie && !sel.some((s) => s.clinico)) { e.preventDefault(); azione('elimina', sel); }
       else if (e.key === 'Enter' && e.altKey && sel.length === 1) { e.preventDefault(); azione('proprieta', sel); }
       else if (e.key === 'Enter' && sel.length === 1) { e.preventDefault(); apriElemento(chiaveDi(una.tipo, una.id)); }
@@ -1020,7 +1148,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
       {menu && struttura && <MenuContestuale menu={menu} struttura={struttura} mobile={mobile} schermo={schermo} onScegli={sceltaMenu} onChiudi={() => setMenu(null)} />}
 
       {(foglio?.tipo === 'sposta' || foglio?.tipo === 'duplica') && (
-        <FoglioSpostaIn disp={disp} titolo={foglio.tipo === 'duplica' ? 'Duplica in…' : 'Sposta in…'}
+        <FoglioSpostaIn disp={disp} titolo={foglio.tipo === 'duplica' ? 'Copia in…' : 'Sposta in…'}
           voci={foglio.tipo === 'duplica'
             ? vociSpostaIn([], opz).map((v) => ({ ...v, attuale: false, vietata: !operazioneAggiungi(foglio.sorgenti, v.id, opz) }))
             : vociSpostaIn(foglio.sorgenti, opz)}
@@ -1030,11 +1158,11 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
       {foglio?.tipo === 'elimina' && (
         <div className="esp-velo" onClick={() => setFoglio(null)}>
           <div className={`esp-dialogo esp-dialogo-${disp}`} role="alertdialog" aria-label="Elimina" onClick={(e) => e.stopPropagation()}>
-            <h2>{foglio.sorgenti.length === 1 ? `Eliminare «${titoloDi(foglio.sorgenti[0].id)}»?` : `Eliminare ${foglio.sorgenti.length} elementi?`}</h2>
-            <p>I documenti escono dall’archivio e i file vanno nel Cestino di Google Drive (recuperabili per 30 giorni). Le cartelle si archiviano. Per 5 secondi puoi annullare.</p>
+            <h2>{foglio.sorgenti.length === 1 ? `Eliminare definitivamente «${titoloDi(foglio.sorgenti[0].id)}»?` : `Eliminare definitivamente ${foglio.sorgenti.length} documenti?`}</h2>
+            <p>I documenti escono dall’archivio di Poliedra e non si ripristinano più da qui. I file restano nel Cestino di Google Drive per 30 giorni (Poliedra non li cancella mai da Drive). Per 5 secondi puoi annullare.</p>
             <div className="esp-dialogo-azioni">
               <button type="button" className="esp-bottone" onClick={() => setFoglio(null)}>Annulla</button>
-              <button type="button" className="esp-bottone esp-bottone-rosso" autoFocus onClick={() => elimina(foglio.sorgenti)}>Elimina</button>
+              <button type="button" className="esp-bottone esp-bottone-rosso" autoFocus onClick={() => { const x = foglio.sorgenti; elimina(x); setCestino((c) => ({ ...c, docs: c.docs.filter((id) => !x.some((y) => y.id === id)) })); }}>Elimina definitivamente</button>
             </div>
           </div>
         </div>
@@ -1067,6 +1195,13 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
           onCambia={(d) => { const c = comeAprire(d); if (c.modo === 'anteprima') setFinestra((f) => ({ ...f, doc: d, tipo: c.tipo })); }}
           onStato={(s) => setFinestra((f) => ({ ...f, stato: s }))} onChiudi={() => setFinestra(null)}
           onApriScheda={() => { const id = finestra.doc.id; setFinestra(null); apri({ tipo: 'documento', id }); }} />
+      )}
+      <input ref={inputCarica} type="file" multiple hidden onChange={(e) => { const f = [...e.target.files]; e.target.value = ''; caricaQui(f); }} />
+      {foglio?.tipo === 'app' && (
+        <Finestra titolo={`Scegli app predefinita · .${(foglio.doc.nome_file_originale || '').split('.').pop() || 'file'}`} icona={<IconaFileW11 tipo={tipoFile(foglio.doc)} size={16} />} onChiudi={() => setFoglio(null)} classe="esp-finestra-piccola">
+          <p className="esp-nota">Con cosa aprire questo tipo di file in Esplora (vale per tutti i dispositivi).</p>
+          <SceltaAppPredefinite solo={estensioneDi(foglio.doc) || 'file'} onFatto={(m) => { setAppPredefinite(m); mostraAvviso('App predefinita salvata'); }} />
+        </Finestra>
       )}
       <Avviso avviso={avviso} onChiudi={() => setAvviso(null)} />
     </div>

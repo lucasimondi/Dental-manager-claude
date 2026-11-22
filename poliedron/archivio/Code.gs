@@ -1488,6 +1488,63 @@ function accessoEsplora_(req) {
   return { ok: true, permessi: permessi, link: DriveApp.getFileById(fid).getUrl(), clinico: d.fascicolo === 'clinico_pazienti' };
 }
 
+/* ---- Esplora file PR #337 §5: Nuovo Google Doc / Foglio, Cestino dell'app, ripristino di una versione ---- */
+// Nuovo ▸ Documento Google / Foglio Google: il file nasce nella cartella gemella (o in «Archivio personale»
+// per Personale), si registra in archivio (mai inviato a un modello) e, per una cartella mia, entra nella cartella.
+function creaFileEsplora_(req) {
+  const tipo = req.tipo === 'foglio' ? 'foglio' : 'doc';
+  const nome = pulisciNome_(String(req.nome || '')) || (tipo === 'foglio' ? 'Nuovo foglio' : 'Nuovo documento');
+  const idCartella = UUID_.test(String(req.cartella || '')) ? String(req.cartella) : null;
+  const dove = idCartella ? cartellaDriveDi_(idCartella) : cartellaRadice_();
+  const id = tipo === 'foglio' ? SpreadsheetApp.create(nome).getId() : DocumentApp.create(nome).getId();
+  const f = DriveApp.getFileById(id);
+  f.moveTo(dove);
+  const mime = tipo === 'foglio' ? 'application/vnd.google-apps.spreadsheet' : 'application/vnd.google-apps.document';
+  const ora = new Date();
+  const esito = sb_('rpc/registra_documento', { method: 'post', body: { p: {
+    hash_sha256: 'gapps:' + id, gmail_message_id: 'creato:' + Utilities.getUuid(), gmail_thread_id: null,
+    email_oggetto: null, email_mittente: 'Creato in Esplora file', email_data: ora.toISOString(),
+    nome_file_originale: nome, mime_type: mime, dimensione_byte: 0, drive_file_id: id, drive_url: f.getUrl(),
+    fascicolo: 'altro', tipo_documento: tipo === 'foglio' ? 'Foglio di calcolo' : 'Documento', titolo: nome, riassunto: null,
+    data_documento: Utilities.formatDate(ora, CONFIG.FUSO, 'yyyy-MM-dd'), importo: null, tag: [], azione_richiesta: false,
+    azione_descrizione: null, urgenza: null, analisi_contenuto: false, dati_estratti: {}, soggetti: [], scadenze: [], pratica: {},
+  } } });
+  const idDoc = esito && esito.documento_id;
+  if (!idDoc) { try { f.setTrashed(true); } catch (e) {} throw new Error('Registrazione non riuscita'); }
+  sb_('documenti?id=eq.' + idDoc, { method: 'patch', body: { drive_fissa: true, drive_rinomina: false, drive_cartella: idCartella ? 'cartella:' + idCartella : 'cartella:radice' } });
+  if (idCartella) mettiInCartella_(idCartella, idDoc);
+  return { ok: true, id: idDoc, drive_file_id: id, url: f.getUrl(), titolo: nome };
+}
+
+// Cestino dell'app: «Ripristina» toglie dal Cestino di Drive i file registrati in archivio (mai altri file).
+function ripristinaFileEsplora_(ids) {
+  const richiesti = (Array.isArray(ids) ? ids : []).map(String).filter(function (id) { return /^[\w-]{10,}$/.test(id); }).slice(0, CESTINA_MAX);
+  if (!richiesti.length) return { ok: true, ripristinati: [], non_trovati: [] };
+  const registrati = sb_('documenti?select=drive_file_id&drive_file_id=in.(' + richiesti.map(enc_).join(',') + ')').map(function (d) { return d.drive_file_id; });
+  const fatti = []; const nonTrovati = [];
+  richiesti.forEach(function (id) {
+    if (registrati.indexOf(id) < 0) { nonTrovati.push(id); return; }
+    try { DriveApp.getFileById(id).setTrashed(false); fatti.push(id); } catch (e) { nonTrovati.push(id); }
+  });
+  return { ok: true, ripristinati: fatti, non_trovati: nonTrovati };
+}
+
+// Proprietà › Cronologia versioni › Ripristina: la versione scelta diventa una NUOVA versione del file
+// (le altre restano: niente si perde). Solo file normali: Drive non lo permette per Documenti/Fogli Google.
+function ripristinaVersioneEsplora_(req) {
+  const d = documentoEsplora_(req.id);
+  if (senzaFileDrive_(d)) return { ok: false, errore: 'Questo documento non ha un file su Drive' };
+  if (/google-apps/.test(String(d.mime_type || ''))) return { ok: false, errore: 'Per Documenti e Fogli Google usa la cronologia versioni di Drive' };
+  const versione = String(req.versione || '');
+  if (!/^[\w-]{1,200}$/.test(versione)) return { ok: false, errore: 'Versione non valida' };
+  const r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(d.drive_file_id) + '/revisions/' + encodeURIComponent(versione) + '?alt=media',
+    { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true });
+  if (r.getResponseCode() !== 200) return { ok: false, errore: 'Versione non disponibile (' + r.getResponseCode() + ')' };
+  const blob = r.getBlob().setContentType(d.mime_type || 'application/octet-stream');
+  Drive.Files.update({}, d.drive_file_id, blob);
+  return { ok: true };
+}
+
 // I '>cartella:…' rimasti (Drive non raggiungibile al momento dello spostamento): rifatti a ogni giro.
 function recuperaSpostamenti_(scadenza) {
   const docs = sb_('documenti?select=id,drive_file_id,mime_type,drive_cartella&drive_cartella=like.' + enc_(DA_SPOSTARE_ + 'cartella:*') + '&order=id&limit=100') || [];
@@ -1816,6 +1873,9 @@ function doPost(e) {
     if (req.azione === 'rinomina_file') return rispostaJson_(rinominaFileEsplora_(req));
     if (req.azione === 'proprieta_file') return rispostaJson_(proprietaEsplora_(req));
     if (req.azione === 'accesso_file') return rispostaJson_(accessoEsplora_(req));
+    if (req.azione === 'crea_file') return rispostaJson_(creaFileEsplora_(req));
+    if (req.azione === 'ripristina_file') return rispostaJson_(ripristinaFileEsplora_(req.ids));
+    if (req.azione === 'ripristina_versione') return rispostaJson_(ripristinaVersioneEsplora_(req));
     if (req.azione === 'contenuto') {
       const filtri = req.filtri && typeof req.filtri === 'object' ? req.filtri : {};
       return rispostaJson_({ ok: true, documenti: cercaNelContenuto_(req.testo, filtri, 20, CAMPI_APP) });

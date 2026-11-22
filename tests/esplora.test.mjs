@@ -173,9 +173,11 @@ test('Taglia / Incolla', () => {
   assert.equal(incolla(null, 'auto', opz), null);
   assert.equal(taglia([]), null);
   const menu = vociMenu('vuoto', { nodo: 'auto', appunti: app, opz });
-  assert.deepEqual(menu.map((v) => [v.nome, v.attiva]), [['Nuova cartella', true], ['Incolla «Contratto»', true], ['Visualizza', true], ['Aggiorna', true], ['Seleziona tutto', true]]);
-  assert.equal(vociMenu('vuoto', { nodo: 'casa', appunti: app, opz })[1].attiva, false);
-  assert.equal(vociMenu('vuoto', { nodo: DA_CATALOGARE, appunti: app, opz })[0].attiva, false);
+  // PR #337 §5: spazio vuoto = Visualizza ▸, Ordina per ▸, Raggruppa per ▸, Nuovo ▸, Incolla, Aggiorna, Proprietà della cartella
+  assert.deepEqual(menu.map((v) => [v.nome, v.attiva]), [['Visualizza', true], ['Ordina per', true], ['Raggruppa per', true], ['Nuovo', true], ['Incolla «Contratto»', true], ['Aggiorna', true], ['Seleziona tutto', true], ['Proprietà della cartella', true]]);
+  assert.deepEqual(menu.find((v) => v.id === 'nuovo').sotto.filter((x) => !x.separatore).map((x) => x.nome), ['Cartella', 'Documento Google', 'Foglio Google', 'Carica file…']);
+  assert.equal(vociMenu('vuoto', { nodo: 'casa', appunti: app, opz }).find((v) => v.id === 'incolla').attiva, false);
+  assert.equal(vociMenu('vuoto', { nodo: DA_CATALOGARE, appunti: app, opz }).find((v) => v.id === 'nuovo').attiva, false);
 });
 
 test('menu Win11: riga rapida, sottomenu, scorciatoie; voci non applicabili disattivate; pazienti non si eliminano', () => {
@@ -189,8 +191,15 @@ test('menu Win11: riga rapida, sottomenu, scorciatoie; voci non applicabili disa
   assert.equal(att('file', { clinico: true }).elimina, false);
   const m = menuContestuale('file', { selezione: [{ tipo: 'doc', id: 'd1', da: 'casa' }], ambiente: 'condividi', convertibile: true });
   assert.deepEqual(m.rapide.map((x) => x.nome), ['Taglia', 'Copia', 'Rinomina', 'Condividi', 'Elimina']);
-  assert.deepEqual(m.voci.filter((x) => !x.separatore).map((x) => x.nome), ['Apri', 'Apri con', 'Condividi', 'Taglia', 'Copia', 'Duplica in…', 'Rinomina', 'Sposta in…', 'Aggiungi ai Preferiti', 'Comprimi in ZIP', 'Scarica', 'Proprietà', 'Elimina']);
-  assert.deepEqual(m.voci.find((x) => x.id === 'apri-con').sotto.map((x) => x.nome), ['Anteprima Poliedra', 'Google Drive (visualizzatore)', 'Google Documenti / Fogli', 'Nuova scheda del browser', 'Scarica', 'Altra app… (condividi)']);
+  assert.deepEqual(m.voci.filter((x) => !x.separatore).map((x) => x.nome), ['Apri', 'Apri con', 'Condividi', 'Aggiungi ai Preferiti', 'Taglia', 'Copia', 'Duplica', 'Copia percorso', 'Rinomina', 'Sposta in…', 'Copia in…', 'Comprimi in ZIP', 'Estrai tutto', 'Scarica', 'Mostra nella cartella', 'Proprietà', 'Elimina']);
+  assert.deepEqual(m.voci.find((x) => x.id === 'apri-con').sotto.filter((x) => !x.separatore).map((x) => x.nome), ['Anteprima Poliedra', 'Visualizzatore Google Drive', 'Google Documenti / Fogli', 'Nuova scheda del browser', 'Scarica', 'Altra app… (condividi)', 'Scegli app predefinita…']);
+  // Estrai tutto solo per gli ZIP; Mostra nella cartella solo fuori dalla cartella (ricerca, Recenti…)
+  assert.equal(m.voci.find((x) => x.id === 'estrai').attiva, false);
+  assert.equal(menuContestuale('file', { selezione: [{ tipo: 'doc', id: 'z' }], zip: true }).voci.find((x) => x.id === 'estrai').attiva, true);
+  assert.equal(menuContestuale('file', { selezione: [{ tipo: 'doc', id: 'z' }], altrove: true }).voci.find((x) => x.id === 'mostra-cartella').attiva, true);
+  // Cestino: Ripristina ed Elimina definitivamente (mai per i pazienti)
+  assert.deepEqual(menuContestuale('file', { selezione: [{ tipo: 'doc', id: 'z' }], cestino: true }).voci.filter((x) => !x.separatore).map((x) => [x.nome, x.attiva]), [['Ripristina', true], ['Elimina definitivamente', true]]);
+  assert.equal(menuContestuale('file', { selezione: [{ tipo: 'doc', id: 'z', clinico: true }], cestino: true }).voci.at(-1).attiva, false);
   assert.deepEqual(m.voci.find((x) => x.id === 'condividi').sotto.map((x) => x.nome), ['Condivisione di sistema', 'Copia link Drive', 'Email', 'WhatsApp', 'Gestisci accesso Drive']);
   assert.equal(m.voci.find((x) => x.id === 'rinomina').tasto, 'F2');
   assert.equal(m.voci.find((x) => x.id === 'elimina').tasto, 'Canc');
@@ -200,7 +209,7 @@ test('menu Win11: riga rapida, sottomenu, scorciatoie; voci non applicabili disa
   assert.deepEqual(['apri', 'rinomina', 'proprieta'].map((k) => piu.voci.find((x) => x.id === k).attiva), [false, false, false]);
   assert.equal(menuContestuale('cartella', { selezione: [{ tipo: 'cartella', id: 'casa' }] }).rapide.find((x) => x.id === 'copia').attiva, false);
   // Altra app: senza condivisione né Capacitor è disattivata
-  assert.equal(menuContestuale('file', { selezione: [{ tipo: 'doc', id: 'd1' }], ambiente: 'scarica' }).voci.find((x) => x.id === 'apri-con').sotto.at(-1).attiva, false);
+  assert.equal(menuContestuale('file', { selezione: [{ tipo: 'doc', id: 'd1' }], ambiente: 'scarica' }).voci.find((x) => x.id === 'apri-con').sotto.find((x) => x.id === 'con:altra').attiva, false);
 });
 
 test('nuova cartella, menu dentro lo schermo, tipo di file', () => {

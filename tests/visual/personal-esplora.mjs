@@ -221,7 +221,7 @@ try {
     assert.ok(await page.locator('.esp-casella.attiva').count() >= 1, 'casella di selezione');
     await page.screenshot({ path: `${out}/telefono-menu.png` });
     await sceltaMenu(page, 'Apri con');
-    assert.deepEqual(await page.locator('.esp-foglio-menu .esp-menu-voce:not(.esp-menu-indietro) .esp-menu-nome').allInnerTexts(), ['Anteprima Poliedra', 'Google Drive (visualizzatore)', 'Google Documenti / Fogli', 'Nuova scheda del browser', 'Scarica', 'Altra app… (condividi)']);
+    assert.deepEqual(await page.locator('.esp-foglio-menu .esp-menu-voce:not(.esp-menu-indietro) .esp-menu-nome').allInnerTexts(), ['Anteprima Poliedra', 'Visualizzatore Google Drive', 'Google Documenti / Fogli', 'Nuova scheda del browser', 'Scarica', 'Altra app… (condividi)', 'Scegli app predefinita…']);
     await page.locator('.esp-menu-indietro').tap();
     await sceltaMenu(page, 'Sposta in…');
     await page.locator('.esp-sposta').waitFor(); await page.waitForTimeout(300);
@@ -261,7 +261,8 @@ try {
     const bb = await page.locator('.esp-contenuto').boundingBox();
     await premi(T, { x: bb.x + bb.width / 2, y: bb.y + bb.height - 30 });
     await page.locator('.esp-foglio-menu').waitFor();
-    await sceltaMenu(page, 'Nuova cartella');
+    await sceltaMenu(page, 'Nuovo'); // PR #337 §5: Nuovo ▸ Cartella, Documento Google, Foglio Google, Carica file
+    await sceltaMenu(page, 'Cartella');
     const campo = page.getByRole('textbox', { name: 'Nome della nuova cartella' });
     await campo.fill('Mutuo'); await campo.press('Enter');
     await page.locator('.esp-avviso', { hasText: 'Cartella «Mutuo» creata' }).waitFor();
@@ -369,17 +370,25 @@ try {
     await tessera(page, 'Rogito casa').click();
     await page.keyboard.press('F2');
     await page.getByRole('textbox', { name: 'Nuovo nome' }).press('Escape');
-    // Canc → conferma → Annulla con Ctrl+Z: niente va nel Cestino
+    // PR #337 §5: Canc → Cestino recuperabile (prima Drive, poi l'etichetta); Ctrl+Z = Ripristina
     await page.keyboard.press('Delete');
-    await page.getByRole('alertdialog', { name: 'Elimina' }).getByRole('button', { name: 'Elimina' }).click();
-    await page.locator('.esp-avviso', { hasText: 'Cestino di Drive' }).waitFor();
+    await page.locator('.esp-avviso', { hasText: '«Rogito casa» nel Cestino' }).waitFor();
+    assert.deepEqual(S.drive.filter((b) => b.azione === 'cestina').at(-1).ids, ['f-rogito']);
+    assert.deepEqual(S.chiamate.at(-1), ['documenti', 'eq.rogito', { tag: ['cestino'] }]);
     const av = await page.locator('.esp-avviso').boundingBox();
     assert.ok(Math.abs(1280 - (av.x + av.width) - 16) < 2, 'avviso in basso a destra');
     assert.equal(await tessera(page, 'Rogito casa').count(), 0);
     await page.keyboard.press('Control+z');
     await tessera(page, 'Rogito casa').waitFor();
-    await page.waitForTimeout(5300);
-    assert.ok(!S.drive.some((b) => b.azione === 'cestina'), 'annullato: nessun file nel Cestino');
+    assert.deepEqual(S.drive.at(-1), { token: 'token-finto', azione: 'ripristina_file', ids: ['f-rogito'] });
+    assert.deepEqual(S.chiamate.at(-1), ['documenti', 'eq.rogito', { tag: [] }]);
+    // Maiusc+Canc → conferma «definitivamente» (file nel Cestino di Drive, mai cancellato da Drive)
+    await tessera(page, 'Rogito casa').click();
+    await page.keyboard.press('Shift+Delete');
+    const def = page.getByRole('alertdialog', { name: 'Elimina' });
+    await def.getByText(/Eliminare definitivamente/).waitFor();
+    await def.getByRole('button', { name: 'Annulla' }).click();
+    assert.ok(!S.chiamate.some((c) => c[0] === 'elimina'), 'nessuna eliminazione senza conferma');
     // Visualizza Dettagli: colonne ridimensionabili e ordinabili
     await page.getByRole('button', { name: /^Visualizza/ }).click();
     await page.waitForTimeout(500);

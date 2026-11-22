@@ -185,3 +185,28 @@ test('finestra: snap ai bordi, immagini vicine, zoom 25%–400%', () => {
   assert.equal(vicina(el, 'b', 1).id, 'c'); assert.equal(vicina(el, 'a', -1), null); assert.equal(vicina(el, 'x', 1), null);
   assert.equal(zoom(1, 1), 1.25); assert.equal(zoom(0.25, -1), 0.25); assert.equal(zoom(4, 1), 4);
 });
+
+/* ---------- §5 Cestino dell'app e coda dei trasferimenti ---------- */
+import { conCestino, nelCestino, eZip } from '../personal/src/lib/esplora.js';
+import { eseguiInCoda, trasferimenti, annullaTrasferimento, testoAvanzamento, togliFiniti } from '../personal/src/lib/trasferimenti.js';
+
+test('Cestino: etichetta «cestino» aggiunta e tolta senza toccare le altre; ZIP riconosciuti', () => {
+  assert.deepEqual(conCestino(['imu'], true), ['imu', 'cestino']);
+  assert.deepEqual(conCestino(['imu', 'cestino'], true), ['imu', 'cestino']);
+  assert.deepEqual(conCestino(['imu', 'cestino'], false), ['imu']);
+  assert.ok(nelCestino({ tag: ['cestino'] })); assert.ok(!nelCestino({ tag: null }));
+  assert.ok(eZip({ mime_type: 'application/zip' })); assert.ok(eZip({ nome_file_originale: 'a.ZIP' })); assert.ok(!eZip({ mime_type: 'application/pdf' }));
+});
+
+test('trasferimenti: uno alla volta con avanzamento, errori per file, Annulla ferma al prossimo', async () => {
+  togliFiniti();
+  const r = await eseguiInCoda('Caricamento', [{ name: 'a' }, { name: 'b' }, { name: 'c' }], async (f) => { if (f.name === 'b') throw new Error('troppo grande'); return f.name; });
+  assert.deepEqual(r.fatti, ['a', 'c']); assert.deepEqual(r.errori, ['b: troppo grande']);
+  const t = trasferimenti().find((x) => x.id === r.id);
+  assert.equal(t.stato, 'parziale'); assert.equal(testoAvanzamento(t), 'Completato con 1 errore');
+  let id = null;
+  const r2 = await eseguiInCoda('Copia', [1, 2, 3, 4], async (x) => { id ??= trasferimenti().at(-1).id; if (x === 2) annullaTrasferimento(id); return x; }, { nomeDi: String });
+  assert.deepEqual(r2.fatti, [1, 2]); assert.ok(r2.annullato);
+  assert.equal(trasferimenti().find((x) => x.id === r2.id).stato, 'annullato');
+  assert.equal(testoAvanzamento({ stato: 'in_corso', fatti: 3, totale: 10, errori: [] }), '3 di 10 · 30%');
+});
