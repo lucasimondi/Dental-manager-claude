@@ -30,7 +30,7 @@ import { classifyAction, DECISION } from "./confidence.js";
 import { validaAllegato, messaggiConAllegato, senzaDatiAllegato } from "./allegato.js";
 import { STRUMENTI_MEMORIA, STRUMENTO_RICETTA, normalizzaMemoria, sezioneMemoria, sezioneFarmaciFrequenti, normalizzaRicetta, documentoRicetta } from "./memoria.js";
 import { leggiRichiestaTeam, strumentiSpecialista, toolConsulta, leggiConsulti, eseguiConsulti, promptTeam, contestoGruppo, CONSULTA_SPECIALISTI } from "./team.js";
-import { normalizeProvider, callOpenAI, providerFailure, providerOrder, runProviderChain } from "./provider.js";
+import { normalizeProvider, callOpenAI, callGemini, geminiModel, providerFailure, providerOrder, runProviderChain } from "./provider.js";
 import { emergencyIntent, emergencyMessage } from "./emergency.js";
 import { rigaEvento, registraEvento } from "./poliedron-eventi.js";
 import { understandPoliedron } from "./poliedron-core.js";
@@ -42,6 +42,8 @@ const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-6-luna";
 const POLIEDRON_LLM_PROVIDER = normalizeProvider(Deno.env.get("POLIEDRON_LLM_PROVIDER") || "auto");
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+// POL-AI-GEMINI: Google AI Studio model id, configurable without a deploy.
+const GEMINI_MODEL = geminiModel(Deno.env.get("GEMINI_MODEL"));
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
@@ -1696,10 +1698,18 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
         return result;
       };
       if (POLIEDRON_LLM_PROVIDER === "openai") return callOpenAIProvider();
-      if (POLIEDRON_LLM_PROVIDER === "gemini") {
-        console.error("llm_provider_not_enabled", JSON.stringify({ provider: "gemini", configured: Boolean(GEMINI_API_KEY) }));
-        return { ok: false, failure: providerFailure("gemini", 503, "provider_not_enabled") };
-      }
+      // POL-AI-GEMINI: free Google AI Studio quota, so the logged cost is 0.
+      const callGeminiProvider = async () => {
+        const result = await callGemini({ apiKey: GEMINI_API_KEY, model: GEMINI_MODEL, system, messages: messaggi, tools, signal });
+        if (result.ok && result.data?.usage) {
+          const u = result.data.usage;
+          logConsumi.push(supabase.from("ai_agent_usage").insert({
+            studio_id: studioId, fonte: "chat", modello: GEMINI_MODEL,
+            input_tokens: u.input_tokens || 0, output_tokens: u.output_tokens || 0, costo_usd: 0,
+          }).then((r) => r, (e) => e));
+        }
+        return result;
+      };
       const callAnthropicProvider = async () => {
       if (!ANTHROPIC_API_KEY) return { ok: false, failure: providerFailure("anthropic", 503, "provider_not_configured") };
       try {
@@ -1753,17 +1763,17 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
         configured: {
           openai: Boolean(OPENAI_API_KEY),
           anthropic: Boolean(ANTHROPIC_API_KEY),
-          gemini: false, // adapter intentionally disabled until implemented and tested
+          gemini: Boolean(GEMINI_API_KEY),
         },
       });
       const chained = await runProviderChain({
         providers,
         canReplay: true,
-        invoke: (provider) => provider === "openai" ? callOpenAIProvider() : callAnthropicProvider(),
+        invoke: (provider) => provider === "openai" ? callOpenAIProvider() : provider === "gemini" ? callGeminiProvider() : callAnthropicProvider(),
         onFallback: ({ from, to, failure }) => console.warn("llm_provider_fallback", JSON.stringify({ from, to, kind: failure?.kind || null })),
       });
       // Which providers are set up (never their keys), to see why no fallback ran.
-      if (!chained?.ok) console.error("llm_provider_chain_failed", JSON.stringify({ preferred: POLIEDRON_LLM_PROVIDER, tried: providers, configured: { openai: Boolean(OPENAI_API_KEY), anthropic: Boolean(ANTHROPIC_API_KEY) } }));
+      if (!chained?.ok) console.error("llm_provider_chain_failed", JSON.stringify({ preferred: POLIEDRON_LLM_PROVIDER, tried: providers, configured: { openai: Boolean(OPENAI_API_KEY), anthropic: Boolean(ANTHROPIC_API_KEY), gemini: Boolean(GEMINI_API_KEY) } }));
       return chained;
     };
 

@@ -153,3 +153,20 @@ session uses `confirm.connector_request_id` to recheck/reprepare before executin
 the same signed canonical action. See docs/architecture/assistant-connectors.md
 and docs/runbooks/assistant-connectors.md. New migration/OAuth configuration is
 required; Vercel preview alone does not activate either external account.
+
+## POL-AI-GEMINI (Gemini come modello di Poliedron)
+
+`provider.js` → `callGemini`: Google AI Studio `generateContent` (v1beta), chiave
+nell'intestazione `x-goog-api-key` (mai nell'URL), strumenti convertiti in
+`functionDeclarations` (sottoinsieme OpenAPI dello schema), risposta normalizzata
+nello stesso formato di Claude: permessi, conferme firmate e scritture non cambiano.
+Dati dei pazienti inviati con i nomi reali (decisione PO 2026-11-23, nessuna
+pseudonimizzazione).
+
+Secret della funzione:
+- `GEMINI_API_KEY` (Google AI Studio);
+- `GEMINI_MODEL` facoltativo, default `gemini-2.5-flash`;
+- `POLIEDRON_LLM_PROVIDER=gemini` per usarlo per primo; Claude e OpenAI, se
+  configurati, restano il ripiego automatico (es. quota gratuita finita, 429).
+
+Consumi in `ai_agent_usage` con `costo_usd = 0`. Test: `tests/poliedronGemini.test.mjs`.

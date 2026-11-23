@@ -128,3 +128,196 @@ export async function runProviderChain({ providers, invoke, canReplay = true, on
   }
   return last || { ok: false, failure: providerFailure('router', 503, 'provider_not_configured') };
 }
+
+// ---------------------------------------------------------------------------
+// Gemini (Google AI Studio API key). POL-AI-GEMINI, PO 2026-11-23: Gemini as
+// a Poliedron model for the studio, patient names sent as they are (no
+// pseudonymisation, explicit PO choice). Same contract as OpenAI above: the
+// response becomes Anthropic-shaped content, so tools, permissions and signed
+// confirmations stay exactly the ones Poliedron already uses.
+// ---------------------------------------------------------------------------
+
+export const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash';
+
+// Only a plain model id may reach the request URL.
+export const geminiModel = (value) => {
+  const v = String(value || '').trim();
+  return /^[a-z0-9][a-z0-9.\-]{0,62}$/i.test(v) ? v : GEMINI_DEFAULT_MODEL;
+};
+
+// Gemini 3 requires the thought signature of a function call to come back with
+// it on the next turn. It is kept on the tool_use block as a NON-enumerable
+// property: JSON.stringify drops it, so an Anthropic/OpenAI fallback in the same
+// request never sees an unknown field. When it is missing (a block that was
+// copied) Google's documented placeholder keeps validation from failing.
+const SIGNATURE = 'geminiThoughtSignature';
+export const GEMINI_SKIP_SIGNATURE = 'skip_thought_signature_validator';
+
+const GEMINI_SCHEMA_KEYS = new Set([
+  'type', 'description', 'enum', 'properties', 'required', 'items', 'nullable',
+  'minItems', 'maxItems', 'minimum', 'maximum', 'minLength', 'maxLength', 'pattern', 'anyOf', 'title',
+]);
+
+// Gemini's `parameters` accepts an OpenAPI subset: unknown keywords
+// (additionalProperties, format: uuid, $schema...) are dropped and
+// `type: ['string','null']` becomes `type: 'string', nullable: true`.
+export const jsonSchemaToGemini = (schema) => {
+  if (Array.isArray(schema)) return schema.map(jsonSchemaToGemini);
+  if (!schema || typeof schema !== 'object') return schema;
+  const out = {};
+  for (const [key, value] of Object.entries(schema)) {
+    if (!GEMINI_SCHEMA_KEYS.has(key)) continue;
+    if (key === 'type' && Array.isArray(value)) {
+      const types = value.filter((t) => t !== 'null');
+      out.type = types[0] || 'string';
+      if (types.length !== value.length) out.nullable = true;
+    } else if (key === 'properties') {
+      out.properties = Object.fromEntries(Object.entries(value || {}).map(([k, v]) => [k, jsonSchemaToGemini(v)]));
+    } else if (key === 'items' || key === 'anyOf') {
+      out[key] = jsonSchemaToGemini(value);
+    } else {
+      out[key] = value;
+    }
+  }
+  if (out.type === 'object' && !out.properties) out.properties = {};
+  if (Array.isArray(out.required) && out.properties) out.required = out.required.filter((k) => k in out.properties);
+  return out;
+};
+
+export const anthropicToolsToGemini = (tools = []) => tools.length ? [{
+  functionDeclarations: tools.map((t) => ({
+    name: t.name,
+    description: t.description || '',
+    parameters: jsonSchemaToGemini(t.input_schema || { type: 'object', properties: {} }),
+  })),
+}] : [];
+
+const systemText = (system) => Array.isArray(system)
+  ? system.map((part) => part?.text || '').filter(Boolean).join('\n\n')
+  : String(system || '');
+
+const toolResultValue = (content) => {
+  const text = Array.isArray(content)
+    ? content.map((b) => (b?.type === 'text' ? b.text : '')).join('\n')
+    : String(content ?? '');
+  try {
+    const parsed = JSON.parse(text);
+    // functionResponse.response must be an object.
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : { result: parsed };
+  } catch {
+    return { result: text };
+  }
+};
+
+export const anthropicConversationToGemini = (messages = []) => {
+  // A tool_result only carries the id: the name comes from the earlier tool_use.
+  const names = new Map();
+  for (const m of messages) {
+    for (const b of Array.isArray(m?.content) ? m.content : []) if (b?.type === 'tool_use') names.set(b.id, b.name);
+  }
+  const contents = [];
+  for (const m of messages) {
+    const role = m?.role === 'assistant' ? 'model' : 'user';
+    const parts = [];
+    if (typeof m?.content === 'string') {
+      if (m.content) parts.push({ text: m.content });
+    } else {
+      let firstCall = true;
+      for (const b of Array.isArray(m?.content) ? m.content : []) {
+        if (b?.type === 'text' && b.text) parts.push({ text: b.text });
+        else if ((b?.type === 'image' || b?.type === 'document') && b.source?.type === 'base64') {
+          parts.push({ inlineData: { mimeType: b.source.media_type, data: b.source.data } });
+        } else if (b?.type === 'tool_use') {
+          const part = { functionCall: { name: b.name, args: b.input || {} } };
+          const signature = b[SIGNATURE] || (firstCall ? GEMINI_SKIP_SIGNATURE : null);
+          if (signature) part.thoughtSignature = signature;
+          firstCall = false;
+          parts.push(part);
+        } else if (b?.type === 'tool_result') {
+          parts.push({ functionResponse: { name: names.get(b.tool_use_id) || 'strumento', response: toolResultValue(b.content) } });
+        }
+      }
+    }
+    if (!parts.length) continue;
+    const last = contents[contents.length - 1];
+    if (last && last.role === role) last.parts.push(...parts);
+    else contents.push({ role, parts });
+  }
+  return contents;
+};
+
+let geminiCallSeq = 0;
+const geminiCallId = () => `gm_${Date.now().toString(36)}_${(geminiCallSeq++).toString(36)}`;
+
+export const geminiResponseToAnthropic = (response = {}) => {
+  const content = [];
+  const candidate = response.candidates?.[0];
+  for (const part of candidate?.content?.parts || []) {
+    if (part?.thought) continue; // reasoning summaries are not answers
+    if (part?.functionCall) {
+      const block = { type: 'tool_use', id: part.functionCall.id || geminiCallId(), name: part.functionCall.name, input: part.functionCall.args || {} };
+      if (part.thoughtSignature) Object.defineProperty(block, SIGNATURE, { value: part.thoughtSignature, enumerable: false });
+      content.push(block);
+    } else if (typeof part?.text === 'string' && part.text) {
+      content.push({ type: 'text', text: part.text });
+    }
+  }
+  const u = response.usageMetadata;
+  return {
+    content,
+    finishReason: candidate?.finishReason || response.promptFeedback?.blockReason || null,
+    usage: u ? {
+      input_tokens: u.promptTokenCount || 0,
+      output_tokens: (u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0),
+      cache_read_input_tokens: u.cachedContentTokenCount || 0,
+    } : undefined,
+  };
+};
+
+export const geminiErrorKind = (status, body = {}) => {
+  const reason = (body?.error?.details || []).map((d) => d?.reason).find(Boolean) || null;
+  if (status === 429) return 'rate_limit_or_quota';
+  if (status >= 500) return 'provider_unavailable';
+  if (status === 401 || status === 403 || reason === 'API_KEY_INVALID') return 'provider_auth';
+  return 'provider_error';
+};
+
+export async function callGemini({ apiKey, model, system, messages, tools, signal, maxOutputTokens = 4096 }) {
+  if (!apiKey) return { ok: false, failure: providerFailure('gemini', 503, 'provider_not_configured') };
+  const id = geminiModel(model);
+  const instruction = systemText(system);
+  let resp;
+  try {
+    resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${id}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({
+        ...(instruction ? { systemInstruction: { parts: [{ text: instruction }] } } : {}),
+        contents: anthropicConversationToGemini(messages),
+        ...(tools?.length ? { tools: anthropicToolsToGemini(tools), toolConfig: { functionCallingConfig: { mode: 'AUTO' } } } : {}),
+        generationConfig: { maxOutputTokens },
+      }),
+      signal,
+    });
+  } catch (error) {
+    const kind = error?.name === 'AbortError' ? 'timeout' : 'network_error';
+    console.error('llm_provider_error', JSON.stringify({ provider: 'gemini', status: 503, kind }));
+    return { ok: false, failure: providerFailure('gemini', 503, kind) };
+  }
+  if (!resp.ok) {
+    const status = resp.status;
+    let body = {};
+    try { body = JSON.parse(await resp.text()); } catch {}
+    const kind = geminiErrorKind(status, body);
+    // Status and Google's error code only: never the prompt or the key.
+    console.error('llm_provider_error', JSON.stringify({ provider: 'gemini', model: id, status, kind, errorStatus: body?.error?.status || null }));
+    return { ok: false, failure: providerFailure('gemini', status, kind) };
+  }
+  const raw = await resp.json();
+  const data = geminiResponseToAnthropic(raw);
+  if (!data.content.length && raw?.promptFeedback?.blockReason) {
+    console.error('llm_provider_error', JSON.stringify({ provider: 'gemini', model: id, status: 200, kind: 'provider_blocked', reason: raw.promptFeedback.blockReason }));
+    return { ok: false, failure: providerFailure('gemini', 422, 'provider_blocked') };
+  }
+  return { ok: true, data, raw };
+}
