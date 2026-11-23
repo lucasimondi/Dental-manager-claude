@@ -5,6 +5,7 @@
 - First real call: Gemini 404 NOT_FOUND on `gemini-2.5-flash` (retired). Fix: default `gemini-flash-latest`, 404 = `model_not_found` and lets Claude/OpenAI answer. Immediate workaround without deploy: secret `GEMINI_MODEL=gemini-flash-latest`.
 - Secrets seen by the PO: `POLIEDRON_LLM_PROVIDER` was `openai` (digest), then set to `gemini`.
 - Second real call (21:55 UTC): Gemini 503 UNAVAILABLE (free tier overloaded), OpenAI 429 credit exhausted, Anthropic 400 → emergency mode. Fix: one retry on 503, then next model (`GEMINI_MODEL` list, default `gemini-flash-latest,gemini-flash-lite-latest`). Tests 1948/1948.
+- Third real call (22:07–22:08 UTC): `gemini-flash-latest` 503 three times, then `gemini-flash-lite-latest` never answered → chat loading forever. Fix: 25 s limit per attempt, 45 s per Gemini turn, then next model/provider or emergency mode. Tests 1950/1950.
 
 ## 2026-11-23 — CLAUDE — POL-AI-GEMINI step 1 (Gemini in Poliedron Studio)
 - TASK: POL-AI-GEMINI. BRANCH: `ccr-df927fa7-l6gbrd` from `master@00fedcf`. OBJECTIVE: enable Gemini as a Poliedron model (PO option B; real patient names, PO decision 2026-11-23).

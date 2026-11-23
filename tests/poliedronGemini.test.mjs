@@ -153,3 +153,23 @@ test('every model overloaded: the failure stays retryable so Claude/OpenAI can a
   const out = await withFetch(async () => { calls++; return jsonResponse(503, { error: { status: 'UNAVAILABLE' } }); }, () => callGemini({ apiKey: 'k', messages: [], retryDelayMs: 0 }));
   assert.equal(calls, 4); assert.equal(out.failure.retryable, true);
 });
+
+test('a Gemini call that never answers is cut off and the next model is tried', async () => {
+  const seen = [];
+  const out = await withFetch((url, init) => {
+    const id = url.match(/models\/([^:]+)/)[1];
+    seen.push(id);
+    if (id === 'slow') return new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(Object.assign(new Error('t'), { name: 'TimeoutError' }))));
+    return Promise.resolve(jsonResponse(200, { candidates: [{ content: { parts: [{ text: 'ok' }] } }] }));
+  }, () => callGemini({ apiKey: 'k', model: 'slow,fast', messages: [], timeoutMs: 30, budgetMs: 1000, retryDelayMs: 0 }));
+  assert.deepEqual(seen, ['slow', 'fast']);
+  assert.equal(out.ok, true); assert.equal(out.model, 'fast');
+});
+
+test('the whole Gemini turn stops at its budget and stays retryable', async () => {
+  const started = Date.now();
+  const out = await withFetch((url, init) => new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(Object.assign(new Error('t'), { name: 'TimeoutError' })))),
+    () => callGemini({ apiKey: 'k', model: 'a,b,c', messages: [], timeoutMs: 40, budgetMs: 100, retryDelayMs: 0 }));
+  assert.equal(out.failure.kind, 'timeout'); assert.equal(out.failure.retryable, true);
+  assert.ok(Date.now() - started < 1000, 'answers quickly instead of loading forever');
+});

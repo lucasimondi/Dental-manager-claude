@@ -300,8 +300,26 @@ const pause = (ms, signal) => new Promise((resolve) => {
   signal?.addEventListener?.('abort', () => { clearTimeout(t); resolve(); }, { once: true });
 });
 
-async function callGeminiModel({ apiKey, id, system, messages, tools, signal, maxOutputTokens }) {
+// A Gemini call that never answers kept the chat loading forever (production,
+// 2026-11-23, gemini-flash-lite-latest): every attempt has its own time limit.
+// A plain timer (not AbortSignal.timeout, whose timer does not keep a runtime
+// alive) aborts the attempt; the caller's own signal still aborts it too.
+const timeoutSignal = (ms, signal) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(Object.assign(new Error('Gemini timeout'), { name: 'TimeoutError' })), ms);
+  const onAbort = () => controller.abort(signal.reason);
+  if (signal?.aborted) onAbort(); else signal?.addEventListener?.('abort', onAbort, { once: true });
+  return { signal: controller.signal, done: () => { clearTimeout(timer); signal?.removeEventListener?.('abort', onAbort); } };
+};
+
+async function callGeminiModel({ apiKey, id, system, messages, tools, signal, maxOutputTokens, timeoutMs }) {
   const instruction = systemText(system);
+  const limit = timeoutSignal(timeoutMs, signal);
+  try { return await geminiRequest({ apiKey, id, instruction, messages, tools, maxOutputTokens, signal: limit.signal }); }
+  finally { limit.done(); }
+}
+
+async function geminiRequest({ apiKey, id, instruction, messages, tools, maxOutputTokens, signal }) {
   let resp;
   try {
     resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${id}:generateContent`, {
@@ -316,7 +334,7 @@ async function callGeminiModel({ apiKey, id, system, messages, tools, signal, ma
       signal,
     });
   } catch (error) {
-    const kind = error?.name === 'AbortError' ? 'timeout' : 'network_error';
+    const kind = error?.name === 'AbortError' || error?.name === 'TimeoutError' ? 'timeout' : 'network_error';
     console.error('llm_provider_error', JSON.stringify({ provider: 'gemini', model: id, status: 503, kind }));
     return { ok: false, failure: providerFailure('gemini', 503, kind) };
   }
@@ -332,7 +350,12 @@ async function callGeminiModel({ apiKey, id, system, messages, tools, signal, ma
     const failure = providerFailure('gemini', status, kind);
     return { ok: false, failure: kind === 'model_not_found' ? { ...failure, retryable: true } : failure };
   }
-  const raw = await resp.json();
+  let raw;
+  try { raw = await resp.json(); } catch (error) {
+    const kind = error?.name === 'AbortError' || error?.name === 'TimeoutError' ? 'timeout' : 'network_error';
+    console.error('llm_provider_error', JSON.stringify({ provider: 'gemini', model: id, status: 503, kind }));
+    return { ok: false, failure: providerFailure('gemini', 503, kind) };
+  }
   const data = geminiResponseToAnthropic(raw);
   if (!data.content.length && raw?.promptFeedback?.blockReason) {
     console.error('llm_provider_error', JSON.stringify({ provider: 'gemini', model: id, status: 200, kind: 'provider_blocked', reason: raw.promptFeedback.blockReason }));
@@ -344,17 +367,22 @@ async function callGeminiModel({ apiKey, id, system, messages, tools, signal, ma
 // The free quota often answers 503 "overloaded" for a few seconds (production,
 // 2026-11-23): one short retry on the same model, then the next model. Each
 // attempt is a read-only model call, so retrying never repeats a write.
-export async function callGemini({ apiKey, model, system, messages, tools, signal, maxOutputTokens = 4096, retryDelayMs = 1200 }) {
+// timeoutMs bounds one attempt; budgetMs bounds the whole Gemini turn so the
+// chat always gets an answer (or the emergency mode) instead of loading forever.
+export async function callGemini({ apiKey, model, system, messages, tools, signal, maxOutputTokens = 4096, retryDelayMs = 1200, timeoutMs = 25000, budgetMs = 45000 }) {
   if (!apiKey) return { ok: false, failure: providerFailure('gemini', 503, 'provider_not_configured') };
   const ids = Array.isArray(model) ? geminiModels(model.join(',')) : geminiModels(model);
+  const deadline = Date.now() + budgetMs;
+  const attempt = (id) => callGeminiModel({ apiKey, id, system, messages, tools, signal, maxOutputTokens, timeoutMs: Math.max(1, Math.min(timeoutMs, deadline - Date.now())) });
   let last = null;
   for (const id of ids) {
-    last = await callGeminiModel({ apiKey, id, system, messages, tools, signal, maxOutputTokens });
-    if (!last.ok && last.failure.kind === 'provider_unavailable' && !signal?.aborted) {
+    if (last && Date.now() >= deadline) break;
+    last = await attempt(id);
+    if (!last.ok && last.failure.kind === 'provider_unavailable' && !signal?.aborted && Date.now() + retryDelayMs < deadline) {
       await pause(retryDelayMs, signal);
-      last = await callGeminiModel({ apiKey, id, system, messages, tools, signal, maxOutputTokens });
+      last = await attempt(id);
     }
-    if (last.ok || !last.failure.retryable || last.failure.kind === 'timeout' || signal?.aborted) return last;
+    if (last.ok || !last.failure.retryable || signal?.aborted) return last;
   }
   return last;
 }
