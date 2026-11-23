@@ -210,3 +210,13 @@ test('annulla_lotto con file_ids: solo quei file (id non validi scartati)', () =
   assert.match(q, /&file_id=in\.\(fA_1234567890\)/);
   assert.doesNotMatch(q, /drop/);
 });
+
+test('quota: riconosce i messaggi di Google (anche in italiano), non gli altri «Limite superato»', () => {
+  const s = scriptFinto();
+  const q = vm.runInContext('RIORDINO_QUOTA', s.ctx);
+  assert.ok(q.test('Servizio richiamato troppe volte in un giorno: drive.'));
+  assert.ok(q.test('Service invoked too many times for one day: urlfetch.'));
+  assert.ok(q.test('User rate limit exceeded'));
+  assert.ok(!q.test('Limite superato: Lunghezza URL URLFetch.'));
+  assert.ok(!q.test('File nel cestino di Drive'));
+});

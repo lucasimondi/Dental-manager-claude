@@ -3589,7 +3589,7 @@ const RIORDINO_LIMITE = 100;
 const RIORDINO_GIRO_MS = 270000;          // 4 min 30 s: il limite di Apps Script è 6 minuti
 const RIORDINO_REGISTRA_OGNI = 25;
 const RIORDINO_QUOTA_PAUSA_MS = 3600000;  // errore di quota → pausa automatica di 1 ora
-const RIORDINO_QUOTA = /too many times|invoked too many|quota|limit exceeded|rate limit|troppe volte|limite/i;
+const RIORDINO_QUOTA = /too many times|invoked too many|quota|rate limit|user rate|troppe volte/i;  // non «limite»: «Limite superato: Lunghezza URL» non è una quota
 // Trigger della versione precedente (riordino automatico in parallelo, mai unita in master): vanno tolti.
 const RIORDINO_VECCHI = ['riordinoAutomatico', 'riordinoParallelo0', 'riordinoParallelo1', 'riordinoParallelo2', 'riordinoParallelo3'];
 

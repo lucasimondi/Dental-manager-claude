@@ -23,6 +23,7 @@ join cartelle_mie m on m.categoria_id = c.id and m.archiviata_il is null and m.d
 where c.percorso not like '99 %' order by c.percorso limit 1;
 create temp table t_99 as select percorso from categorie where percorso like '99 %' order by percorso limit 1;
 select pg_temp.ok((select count(*) from t_dest) = 1 and (select count(*) from t_99) = 1, 'cartelle di prova trovate');
+grant select on t_dest, t_99 to service_role;   -- le tabelle temporanee servono anche al ruolo simulato dello script
 
 -- Documenti sintetici: uno normale, uno clinico.
 insert into documenti (id, hash_sha256, gmail_message_id, titolo, fascicolo, drive_fissa, drive_rinomina, drive_cartella) values
