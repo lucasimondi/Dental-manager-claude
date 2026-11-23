@@ -162,3 +162,36 @@ export async function caricaLotti(db) {
 
 /** Quante righe approvate restano da spostare (escluse quelle in «99»). */
 export const daEseguire = (righe) => righe.filter((x) => x.stato === 'approvato' && !String(x.percorso_nuovo).startsWith('99 ')).length;
+
+// ---------------------------------------------------------------- fase 3b: lo script sposta da solo
+/** Stato dello spostamento automatico (scritto dallo script in impostazioni_app 'riordino_stato') e file fermi dopo 3 errori. */
+export async function caricaStatoRiordino(db) {
+  const [s, f] = await Promise.all([
+    db.from('impostazioni_app').select('valore').eq('chiave', 'riordino_stato').maybeSingle(),
+    db.from('v_riordino_errori_ripetuti').select('file_id,nome_attuale,nome_nuovo,percorso_nuovo,errori,ultimo_errore,ultimo_il').order('ultimo_il', { ascending: false }).limit(200),
+  ]);
+  if (s.error) throw s.error;
+  return { stato: s.data?.valore || null, fermi: f.error ? [] : f.data || [] };
+}
+
+/** Barra in alto: eseguiti sul totale degli approvati (eseguiti + ancora da spostare, mai «99»), errori, ultimo giro. */
+export function avanzamento(righe, stato = null, fermi = []) {
+  const fuori99 = (x) => !String(x.percorso_nuovo).startsWith('99 ');
+  const eseguiti = righe.filter((x) => x.stato === 'eseguito').length;
+  const daSpostare = righe.filter((x) => x.stato === 'approvato' && fuori99(x)).length;
+  const totale = eseguiti + daSpostare;
+  const s = stato || {};
+  const riprendiDopo = s.riprendi_dopo && Date.parse(s.riprendi_dopo) > Date.now() ? s.riprendi_dopo : null;
+  return {
+    eseguiti, daSpostare, totale,
+    perc: totale ? Math.floor((1000 * eseguiti) / totale) / 10 : 0,
+    errori: Number(s.totale?.errori) || 0,
+    fermi: fermi.length,
+    ultimoGiro: s.ultimo_giro || null,
+    attivo: !!s.attivo, pausa: !!s.pausa, riprendiDopo, finito: s.finito_il || null,
+    stato: s.finito_il && !daSpostare ? 'finito' : s.pausa ? 'pausa' : riprendiDopo ? 'quota' : s.attivo ? 'attivo' : 'spento',
+  };
+}
+
+/** Pausa / Riprendi dello spostamento automatico (proprietà RIORDINO_PAUSA dello script, solo con il token di Luca). */
+export const pausaRiordino = ({ token, pausa }, fetchImpl = fetch) => chiamaScriptPiano({ token, azione: 'riordino_pausa', pausa: !!pausa }, fetchImpl);

@@ -15,12 +15,22 @@ const P = [
 ];
 const righe = P.map(([percorso_nuovo, confidenza, nome_nuovo, nome_attuale], i) => ({ id: `r${i}`, documento_id: `d${i}`, file_id: `f${i}`, percorso_attuale: 'Altro', nome_attuale, percorso_nuovo, nome_nuovo, confidenza, motivo: 'esempio: regola sul contenuto', scorciatoie: i === 3 ? ['02 Casa e catasto/Cuneo – via Esempio 1/Tasse'] : [], duplicato_di: null, stato: 'proposto' }));
 const categorie = [...new Set(P.map((p) => p[0]))].map((percorso, i) => ({ id: `c${i}`, percorso }));
+// ?giro=1 (fase 3b): lo script sta spostando da solo; 3 file già eseguiti, uno fermo dopo 3 errori.
+const GIRO = new URLSearchParams(location.search).has('giro');
+if (GIRO) {
+  righe.forEach((r, i) => { r.stato = i < 3 ? 'eseguito' : i < 5 ? 'approvato' : 'proposto'; });
+  window.rrTest.stato = { attivo: true, pausa: false, ultimo_giro: '2026-11-23T20:05:00Z', totale: { spostati: 3, errori: 4 } };
+}
+const FERMI = [{ file_id: 'f4', nome_attuale: 'documento (3).pdf', nome_nuovo: '2023-11-30_F24_Agenzia-Entrate_Acconto.pdf', percorso_nuovo: '05 Fisco e tasse/2023/F24 e pagamenti', errori: 3, ultimo_errore: 'File nel cestino di Drive', ultimo_il: '2026-11-23T20:05:00Z' }];
 const qb = (tab) => {
   const q = { _ids: null, _campi: null,
     select() { return q; }, order() { return q; },
     range() { return Promise.resolve({ data: tab === 'categorie' ? categorie : righe.map((r) => ({ ...r })), error: null }); },
     update(c) { q._campi = c; return q; }, in(k, v) { q._ids = v; return q; },
     neq() { window.rrTest.update.push([q._ids, q._campi]); righe.forEach((r) => { if (q._ids.includes(r.id)) Object.assign(r, q._campi); }); return Promise.resolve({ error: null }); },
+    eq() { return q; },
+    maybeSingle() { return Promise.resolve(tab === 'impostazioni_app' && GIRO ? { data: { valore: window.rrTest.stato }, error: null } : { data: null, error: null }); },
+    limit() { return Promise.resolve(tab === 'v_riordino_errori_ripetuti' && GIRO ? { data: FERMI, error: null } : { data: [], error: null }); },
     then(ok) { return Promise.resolve({ data: categorie, error: null }).then(ok); },
   };
   return q;

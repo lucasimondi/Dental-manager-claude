@@ -206,3 +206,25 @@ Su indicazione di Luca («Fallo tu senza api») la classificazione l'ha fatta Cl
     Se qualcosa si interrompe a metà, il file torna dov'era. Il fascicolo `clinico_pazienti` non si tocca mai.
   - **`annulla_lotto`**: rimette ogni file nella cartella e con il nome di prima, sposta nel Cestino solo le scorciatoie create dal lotto, ripristina documento e cartelle dell'app, e riporta la riga ad `approvato`.
 - **App:** nella schermata «Riordino», il riquadro «Spostamento su Drive» ha il tasto «Sposta i prossimi 100» e l'elenco dei lotti, ciascuno con «Annulla lotto».
+
+## Fase 3b — lo script finisce da solo gli spostamenti approvati (2026-11-23)
+Richiesta PO del 23/11. Situazione alle 16:40: 2.329 righe `eseguito`, 4.281 `approvato`, 460 `proposto`. Finora gli spostamenti li ha fatti la chat, un file alla volta: Drive update, poi `riordino_registra`.
+
+- **Migrazione** `20261123200000_pol_vita_ordina_script.sql`, solo additiva (`riordino_registra` non cambia). Prova a vuoto in una transazione annullata: 4.281 file selezionabili, 0 clinici, 0 «99».
+  - `riordino_prossimi(p_limite)`: stessi join e filtri di `riordino_registra`, ordinata per `file_id`. Esclude i file con 3 errori di fila e quelli con una riga `in_corso` degli ultimi 15 minuti.
+  - `riordino_registra_v2(p_lotto, p_righe)`: `da_padre_id` e `da_nome` arrivano dalla riga, cioè dal valore reale letto su Drive.
+  - `riordino_errore(p_lotto, p_file_id, p_errore)`.
+  - `riordino_errori_di_fila(file_id)`: conta gli errori dopo l'ultimo spostamento riuscito o annullato.
+  - Vista `v_riordino_errori_ripetuti` (security_invoker) e indice `log_spostamenti(file_id)`.
+  - Privilegi: le funzioni le esegue solo `service_role`; REVOKE ad anon, PUBLIC e authenticated. La vista è leggibile solo da authenticated, sotto RLS del proprietario.
+  - Si porta nel repo anche `20261122230000_pol_vita_ordina_registra.sql`: già applicata in produzione dalla branch `ccr-1043796f-p8idej`, ma mai unita in master.
+- **Script.** Funzioni nuove:
+  - `riordinoGiro` (trigger ogni 5 minuti), `spostaFileRiordino_`, `finisciRiordino_`;
+  - a mano: `avviaRiordino`, `pausaRiordino`, `riprendiRiordino`, `statoRiordino`, `provaRiordino`, `provaAnnullaRiordino`;
+  - doPost: azione nuova `riordino_pausa`; `annulla_lotto` accetta `file_ids` facoltativi; `esegui_lotto` si rifiuta mentre il trigger è acceso.
+
+  Regole e funzionamento: `poliedron/archivio/CLAUDE.md` § «Riordino automatico su Drive».
+- **Scorciatoie.** Erano già implementate nella fase 3 (`esegui_lotto`: `createShortcut` + `moveTo`, mai copie; 28 righe eseguite le hanno). Lo script le replica allo stesso modo e le registra in `log_spostamenti.scorciatoie`. Oggi nessuna delle 4.281 righe approvate ha scorciatoie.
+- **App.** In cima a «Piano di riordino» c'è una barra di avanzamento: eseguiti sul totale approvato, errori, file fermi con il motivo, ora dell'ultimo giro e tasto Pausa/Riprendi. Il tasto manuale «Sposta i prossimi» sparisce mentre lo script è acceso. «Annulla lotto» funziona anche sui lotti dello script, perché usa `da_padre_id` e `da_nome` del registro.
+- **Anomalia del 23/11 alle 11:54 UTC (lotto 356133c8…).** Le 3 righe `in_corso` le ha scritte la sessione chat «Catalogazione archivio personale» (session_01RTzzfVCFMApQxrBfHvWpiF) con un solo `execute_sql`: hanno lo stesso `eseguito_il`, e in quella finestra non c'è nessuna chiamata REST nei log. Prima ha scritto le righe, poi si è fermata ad aspettare il permesso per tre `Google_Drive update_file`. Il suo `da_padre_id` era dedotto da altre righe del registro, non letto da Drive. La sessione è ancora in attesa di quel permesso.
+- **Altra anomalia.** Lo script online contiene il riordino automatico della branch non unita (`riordinoAutomatico` + 4 trigger `riordinoParallelo*` ogni minuto). Il 23/11 alle 12:24 ha esaurito la quota giornaliera di urlfetch. La versione nuova toglie quei trigger (`avviaRiordino` / `provaRiordino`), e i vecchi handler si spengono da soli senza chiamare Supabase.

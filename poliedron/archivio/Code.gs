@@ -1914,8 +1914,10 @@ function doPost(e) {
     if (req.azione === 'ripristina_file') return rispostaJson_(ripristinaFileEsplora_(req.ids));
     if (req.azione === 'ripristina_versione') return rispostaJson_(ripristinaVersioneEsplora_(req));
     if (req.azione === 'importa_piano') return rispostaJson_(importaPianoRiordino_());
-    if (req.azione === 'esegui_lotto') return rispostaJson_(eseguiLottoRiordino_());
-    if (req.azione === 'annulla_lotto') return rispostaJson_(annullaLottoRiordino_(String(req.lotto || '')));
+    if (req.azione === 'esegui_lotto') return rispostaJson_(triggerRiordinoGiro_().length ? { ok: false, errore: 'Lo spostamento automatico è acceso: i giri partono da soli.' } : eseguiLottoRiordino_());
+    if (req.azione === 'annulla_lotto') return rispostaJson_(annullaLottoRiordino_(String(req.lotto || ''), req.file_ids));
+    // Piano di riordino, fase 3b: Pausa / Riprendi dello spostamento automatico dalla schermata del piano.
+    if (req.azione === 'riordino_pausa') return rispostaJson_(req.pausa ? pausaRiordino() : riprendiRiordino());
     if (req.azione === 'contenuto') {
       const filtri = req.filtri && typeof req.filtri === 'object' ? req.filtri : {};
       return rispostaJson_({ ok: true, documenti: cercaNelContenuto_(req.testo, filtri, 20, CAMPI_APP) });
@@ -3535,12 +3537,15 @@ function eseguiLottoRiordino_() {
   } finally { lock.releaseLock(); }
 }
 
-function annullaLottoRiordino_(lotto) {
+// fileIds (facoltativo): annulla solo quei file del lotto (prova di «Annulla» su pochi file).
+function annullaLottoRiordino_(lotto, fileIds) {
   if (!UUID_.test(lotto)) return { ok: false, errore: 'Lotto non valido' };
+  const solo = (Array.isArray(fileIds) ? fileIds : []).map(String).filter(function (id) { return /^[\w-]{10,}$/.test(id); });
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(5000)) return { ok: false, errore: 'Un altro lotto è in corso.' };
   try {
-    const righe = sb_('log_spostamenti?select=*&lotto=eq.' + lotto + '&esito=eq.eseguito&order=id.desc') || [];
+    const righe = sb_('log_spostamenti?select=*&lotto=eq.' + lotto + '&esito=eq.eseguito' +
+      (solo.length ? '&file_id=in.(' + solo.map(enc_).join(',') + ')' : '') + '&order=id.desc') || [];
     const tassonomia = (sb_('cartelle_mie?select=id&categoria_id=not.is.null') || []).map(function (c) { return c.id; });
     const esito = { ok: true, annullati: 0, errori: 0 };
     righe.forEach(function (l) {
@@ -3565,4 +3570,291 @@ function annullaLottoRiordino_(lotto) {
     });
     return esito;
   } finally { lock.releaseLock(); }
+}
+
+/* =====================================================================
+ * POL-VITA-ORDINA fase 3b — lo script finisce da solo gli spostamenti APPROVATI (Luca 2026-11-23)
+ * Un trigger ogni 5 minuti chiama riordinoGiro: lock dello script (mai due giri insieme, né insieme a
+ * elabora / esegui_lotto / annulla_lotto), al massimo 100 file e 4 min 30 s per giro. Per ogni file:
+ * cartella e nome REALI letti su Drive, moveTo + setName (mai copie, mai cancellazioni, mai cestino;
+ * id e link restano uguali), riletti e verificati. Registrazione ogni 25 file con riordino_registra_v2;
+ * i file spostati e non ancora registrati restano nella proprietà RIORDINO_PENDENTI e si registrano
+ * per primi al giro dopo (così un'interruzione non perde mai la cartella di prima).
+ * La selezione (riordino_prossimi) dà solo righe 'approvato', mai '99 %', mai clinico_pazienti.
+ * Finito il piano: il trigger si cancella, notifica sul telefono, riepilogo in impostazioni_app.
+ * A mano dall'editor: avviaRiordino, pausaRiordino, riprendiRiordino, statoRiordino, provaRiordino.
+ * ===================================================================*/
+const RIORDINO_GIRO = 'riordinoGiro';
+const RIORDINO_LIMITE = 100;
+const RIORDINO_GIRO_MS = 270000;          // 4 min 30 s: il limite di Apps Script è 6 minuti
+const RIORDINO_REGISTRA_OGNI = 25;
+const RIORDINO_QUOTA_PAUSA_MS = 3600000;  // errore di quota → pausa automatica di 1 ora
+const RIORDINO_QUOTA = /too many times|invoked too many|quota|rate limit|user rate|troppe volte/i;  // non «limite»: «Limite superato: Lunghezza URL» non è una quota
+// Trigger della versione precedente (riordino automatico in parallelo, mai unita in master): vanno tolti.
+const RIORDINO_VECCHI = ['riordinoAutomatico', 'riordinoParallelo0', 'riordinoParallelo1', 'riordinoParallelo2', 'riordinoParallelo3'];
+
+function triggerRiordinoGiro_() {
+  return ScriptApp.getProjectTriggers().filter(function (t) { return t.getHandlerFunction() === RIORDINO_GIRO; });
+}
+function togliTriggerVecchiRiordino_() {
+  let n = 0;
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (RIORDINO_VECCHI.indexOf(t.getHandlerFunction()) >= 0) { ScriptApp.deleteTrigger(t); n++; }
+  });
+  return n;
+}
+// Se un vecchio trigger parte ancora: si toglie da solo, senza chiamare Supabase (niente quota consumata).
+function riordinoAutomatico() { togliTriggerVecchiRiordino_(); }
+function riordinoParallelo0() { togliTriggerVecchiRiordino_(); }
+function riordinoParallelo1() { togliTriggerVecchiRiordino_(); }
+function riordinoParallelo2() { togliTriggerVecchiRiordino_(); }
+function riordinoParallelo3() { togliTriggerVecchiRiordino_(); }
+
+// Stato per la schermata «Piano di riordino» (impostazioni_app 'riordino_stato', letto dall'app).
+function statoRiordinoSalvato_() {
+  try { return ((sb_('impostazioni_app?select=valore&chiave=eq.riordino_stato') || [])[0] || {}).valore || {}; } catch (e) { return {}; }
+}
+function salvaStatoRiordino_(modifiche) {
+  const sp = PropertiesService.getScriptProperties();
+  const s = Object.assign({}, statoRiordinoSalvato_(), modifiche || {}, {
+    attivo: triggerRiordinoGiro_().length > 0,
+    pausa: sp.getProperty('RIORDINO_PAUSA') === '1',
+    riprendi_dopo: Number(sp.getProperty('RIORDINO_RIPRENDI_DOPO') || 0) > Date.now() ? new Date(Number(sp.getProperty('RIORDINO_RIPRENDI_DOPO'))).toISOString() : null,
+    aggiornato_il: new Date().toISOString(),
+  });
+  sb_('impostazioni_app?on_conflict=chiave', { method: 'post', prefer: 'resolution=merge-duplicates,return=minimal',
+    body: { chiave: 'riordino_stato', valore: s, aggiornato_il: new Date().toISOString() } });
+  return s;
+}
+
+/* File spostati e non ancora registrati: proprietà dello script (sopravvive a un'interruzione). */
+function pendentiRiordino_() {
+  try { return JSON.parse(PropertiesService.getScriptProperties().getProperty('RIORDINO_PENDENTI') || '[]'); } catch (e) { return []; }
+}
+function salvaPendentiRiordino_(righe) {
+  const sp = PropertiesService.getScriptProperties();
+  if (righe.length) sp.setProperty('RIORDINO_PENDENTI', JSON.stringify(righe)); else sp.deleteProperty('RIORDINO_PENDENTI');
+}
+// Registra i pendenti, lotto per lotto. Restituisce quanti file ha registrato il database.
+function registraPendentiRiordino_() {
+  const righe = pendentiRiordino_();
+  if (!righe.length) return 0;
+  const perLotto = {};
+  righe.forEach(function (r) { (perLotto[r.lotto] = perLotto[r.lotto] || []).push({ file_id: r.file_id, da_padre_id: r.da_padre_id, da_nome: r.da_nome, scorciatoie: r.scorciatoie || [] }); });
+  let n = 0;
+  Object.keys(perLotto).forEach(function (lotto) {
+    n += Number(sb_('rpc/riordino_registra_v2', { method: 'post', body: { p_lotto: lotto, p_righe: perLotto[lotto] } })) || 0;
+  });
+  salvaPendentiRiordino_([]);
+  return n;
+}
+
+// Una cartella di destinazione: deve esistere e non essere nel cestino (mai ricreata qui).
+function cartellaRiordino_(id, cache) {
+  if (cache[id]) return cache[id];
+  let f;
+  try { f = DriveApp.getFolderById(id); } catch (e) { throw new Error('Cartella di destinazione non trovata su Drive (' + id + ')'); }
+  if (f.isTrashed()) throw new Error('Cartella di destinazione nel cestino di Drive (' + id + ')');
+  cache[id] = f;
+  return f;
+}
+function padriDi_(file) {
+  const out = [];
+  const it = file.getParents();
+  while (it.hasNext()) out.push(it.next().getId());
+  return out;
+}
+
+// Sposta e rinomina UN file del piano. Restituisce la riga da registrare; lancia un errore se non riesce
+// (in quel caso il file è rimesso com'era, se era stato toccato).
+function spostaFileRiordino_(r, cache) {
+  let file;
+  try { file = DriveApp.getFileById(r.file_id); } catch (e) {
+    if (RIORDINO_QUOTA.test(String(e.message))) throw e;
+    throw new Error('File non trovato su Drive');
+  }
+  if (file.isTrashed()) throw new Error('File nel cestino di Drive');
+  const dest = cartellaRiordino_(r.drive_cartella_id, cache);
+  const destId = dest.getId();
+  const nome = String(r.nome_nuovo || '');
+  if (!nome) throw new Error('Nome nuovo vuoto nel piano');
+  const scorciatoie = (r.scorciatoie || []).map(function (s) {
+    if (!s.cartella_id || !s.drive_cartella_id) throw new Error('Cartella della scorciatoia mancante: ' + s.percorso);
+    return { cartella_id: s.cartella_id, f: cartellaRiordino_(s.drive_cartella_id, cache) };
+  });
+  const padri = padriDi_(file);
+  if (!padri.length) throw new Error('File senza cartella su Drive: non si saprebbe dove rimetterlo');
+  const daPadre = padri[0];
+  const daNome = file.getName();
+  const giaAPosto = padri.length === 1 && daPadre === destId && daNome === nome;
+  if (!giaAPosto) {
+    try {
+      if (!(padri.length === 1 && daPadre === destId)) file.moveTo(dest);
+      if (daNome !== nome) file.setName(nome);
+      const ora = DriveApp.getFileById(r.file_id);
+      const padriOra = padriDi_(ora);
+      if (padriOra.length !== 1 || padriOra[0] !== destId || ora.getName() !== nome) {
+        throw new Error('Verifica non riuscita: su Drive cartella o nome non sono quelli del piano');
+      }
+    } catch (e) {
+      try { file.moveTo(DriveApp.getFolderById(daPadre)); if (file.getName() !== daNome) file.setName(daNome); } catch (x) { /* resta nel registro */ }
+      throw e;
+    }
+  }
+  // Scorciatoie Drive nelle cartelle secondarie, come nei lotti della fase 3 (mai copie del file).
+  const fatte = [];
+  if (!giaAPosto) {
+    scorciatoie.forEach(function (s) {
+      const sc = DriveApp.createShortcut(file.getId());
+      sc.moveTo(s.f);
+      fatte.push({ id: sc.getId(), cartella_id: s.cartella_id });
+    });
+  }
+  return { file_id: r.file_id, da_padre_id: daPadre, da_nome: daNome, scorciatoie: fatte, gia_a_posto: giaAPosto };
+}
+
+// Handler del trigger (le funzioni con «_» finale non si possono usare nei trigger).
+function riordinoGiro() {
+  try { riordinoGiro_(); } catch (e) { logErrore_('riordino giro', e); }
+}
+
+function riordinoGiro_(opt) {
+  opt = opt || {};
+  const sp = PropertiesService.getScriptProperties();
+  if (sp.getProperty('RIORDINO_PAUSA') === '1') return { ok: true, saltato: 'pausa' };
+  const riprendi = Number(sp.getProperty('RIORDINO_RIPRENDI_DOPO') || 0);
+  if (riprendi > Date.now()) return { ok: true, saltato: 'quota', riprendi_dopo: new Date(riprendi).toISOString() };
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) return { ok: true, saltato: 'giro già in corso' };
+  const t0 = Date.now();
+  const esito = { ok: true, lotto: Utilities.getUuid(), letti: 0, spostati: 0, gia_a_posto: 0, errori: 0, registrati: 0, quota: false };
+  try {
+    if (riprendi) sp.deleteProperty('RIORDINO_RIPRENDI_DOPO');
+    esito.registrati += registraPendentiRiordino_();   // prima quelli rimasti dal giro interrotto
+    const righe = sb_('rpc/riordino_prossimi', { method: 'post', body: { p_limite: opt.limite || RIORDINO_LIMITE } }) || [];
+    if (!righe.length) { esito.finito = true; finisciRiordino_(); return esito; }
+    const cache = {};
+    let pendenti = [];
+    const registra = function () {
+      if (!pendenti.length) return;
+      esito.registrati += registraPendentiRiordino_();
+      pendenti = [];
+    };
+    for (let i = 0; i < righe.length; i++) {
+      if (Date.now() - t0 > (opt.tempo || RIORDINO_GIRO_MS)) break;
+      const r = righe[i];
+      esito.letti++;
+      try {
+        const fatto = spostaFileRiordino_(r, cache);
+        fatto.lotto = esito.lotto;
+        pendenti.push(fatto);
+        salvaPendentiRiordino_(pendenti);          // subito: un'interruzione non perde la cartella di prima
+        if (fatto.gia_a_posto) esito.gia_a_posto++; else esito.spostati++;
+      } catch (e) {
+        const msg = String(e.message || e);
+        if (RIORDINO_QUOTA.test(msg)) {            // limite di Google: non è colpa del file, pausa di 1 ora
+          sp.setProperty('RIORDINO_RIPRENDI_DOPO', String(Date.now() + RIORDINO_QUOTA_PAUSA_MS));
+          esito.quota = true;
+          logErrore_('riordino quota', e);
+          break;
+        }
+        esito.errori++;
+        try { sb_('rpc/riordino_errore', { method: 'post', body: { p_lotto: esito.lotto, p_file_id: r.file_id, p_errore: msg } }); }
+        catch (x) { logErrore_('riordino errore ' + r.file_id, x); }
+      }
+      if (pendenti.length >= RIORDINO_REGISTRA_OGNI) registra();
+    }
+    registra();
+    return esito;
+  } finally {
+    esito.secondi = Math.round((Date.now() - t0) / 1000);
+    esito.secondi_per_file = esito.letti ? Math.round((Date.now() - t0) / esito.letti) / 1000 : null;
+    try {
+      const prima = statoRiordinoSalvato_();
+      const tot = prima.totale || { spostati: 0, gia_a_posto: 0, errori: 0, giri: 0 };
+      salvaStatoRiordino_({ ultimo_giro: new Date().toISOString(), ultimo_lotto: esito.lotto,
+        ultimo: { letti: esito.letti, spostati: esito.spostati, gia_a_posto: esito.gia_a_posto, errori: esito.errori, registrati: esito.registrati,
+          secondi: esito.secondi, secondi_per_file: esito.secondi_per_file, quota: esito.quota },
+        totale: { spostati: (tot.spostati || 0) + esito.spostati, gia_a_posto: (tot.gia_a_posto || 0) + esito.gia_a_posto,
+          errori: (tot.errori || 0) + esito.errori, giri: (tot.giri || 0) + 1 } });
+    } catch (e) { logErrore_('riordino stato', e); }
+    lock.releaseLock();
+  }
+}
+
+// Piano finito: niente più trigger, notifica sul telefono (promemoria di oggi) e riepilogo.
+function finisciRiordino_() {
+  const avevaTrigger = triggerRiordinoGiro_().length > 0;
+  triggerRiordinoGiro_().forEach(function (t) { ScriptApp.deleteTrigger(t); });
+  const prima = statoRiordinoSalvato_();
+  if (prima.finito_il && !avevaTrigger) return;   // già notificato
+  const tot = prima.totale || {};
+  const fermi = sb_('v_riordino_errori_ripetuti?select=file_id,nome_attuale,percorso_nuovo,errori,ultimo_errore') || [];
+  const testo = 'Riordino finito: ' + ((tot.spostati || 0) + (tot.gia_a_posto || 0)) + ' spostati, ' + fermi.length + ' errori';
+  sb_('scadenze', { method: 'post', prefer: 'return=minimal', body: {
+    data: Utilities.formatDate(new Date(), CONFIG.FUSO, 'yyyy-MM-dd'), descrizione: testo, categoria: 'riordino' } });
+  salvaStatoRiordino_({ finito_il: new Date().toISOString(), riepilogo: testo, errori_ripetuti: fermi.slice(0, 50) });
+  inviaNotifiche_(true);
+}
+
+/* ---- Da lanciare a mano dall'editor (vedi poliedron/archivio/CLAUDE.md) ---- */
+function avviaRiordino() {
+  const sp = PropertiesService.getScriptProperties();
+  const vecchi = togliTriggerVecchiRiordino_();
+  sp.deleteProperty('RIORDINO_PAUSA');
+  sp.deleteProperty('RIORDINO_RIPRENDI_DOPO');
+  if (!triggerRiordinoGiro_().length) ScriptApp.newTrigger(RIORDINO_GIRO).timeBased().everyMinutes(5).create();
+  const s = salvaStatoRiordino_({ avviato_il: new Date().toISOString(), finito_il: null, riepilogo: null });
+  console.log('Riordino avviato (trigger ogni 5 minuti; vecchi trigger tolti: ' + vecchi + ').');
+  return s;
+}
+function pausaRiordino() {
+  PropertiesService.getScriptProperties().setProperty('RIORDINO_PAUSA', '1');
+  const s = salvaStatoRiordino_({});
+  console.log('Riordino in pausa.');
+  return { ok: true, stato: s };
+}
+function riprendiRiordino() {
+  const sp = PropertiesService.getScriptProperties();
+  sp.deleteProperty('RIORDINO_PAUSA');
+  sp.deleteProperty('RIORDINO_RIPRENDI_DOPO');
+  const s = salvaStatoRiordino_({});
+  console.log('Riordino ripreso.');
+  return { ok: true, stato: s };
+}
+function contaPiano_(stato) {
+  const p = props_();
+  const headers = { apikey: p.SUPABASE_KEY, Prefer: 'count=exact', Range: '0-0' };
+  if (/^eyJ/.test(p.SUPABASE_KEY)) headers.Authorization = 'Bearer ' + p.SUPABASE_KEY;
+  const res = UrlFetchApp.fetch(p.SUPABASE_URL + '/rest/v1/piano_riordino?select=id&stato=eq.' + stato, { headers: headers, muteHttpExceptions: true });
+  const m = String(res.getHeaders()['Content-Range'] || res.getHeaders()['content-range'] || '').match(/\/(\d+)$/);
+  return m ? Number(m[1]) : null;
+}
+function statoRiordino() {
+  const s = {
+    approvati: contaPiano_('approvato'), eseguiti: contaPiano_('eseguito'), proposti: contaPiano_('proposto'),
+    errori_ripetuti: (sb_('v_riordino_errori_ripetuti?select=file_id,percorso_nuovo,errori,ultimo_errore') || []),
+    ultimi_lotti: sb_('v_lotti_riordino?select=*&order=iniziato_il.desc&limit=5') || [],
+    pendenti: pendentiRiordino_().length,
+    trigger: triggerRiordinoGiro_().length, vecchi_trigger: ScriptApp.getProjectTriggers().filter(function (t) { return RIORDINO_VECCHI.indexOf(t.getHandlerFunction()) >= 0; }).length,
+    salvato: statoRiordinoSalvato_(),
+  };
+  console.log(JSON.stringify(s, null, 2));
+  return s;
+}
+// Collaudo: UN giro subito, senza creare il trigger. Il risultato (lotto, spostati, errori, secondi per file) va nel registro.
+function provaRiordino() {
+  togliTriggerVecchiRiordino_();
+  const e = riordinoGiro_();
+  console.log(JSON.stringify(e, null, 2));
+  return e;
+}
+// Collaudo di «Annulla»: annulla i primi 5 file dell'ultimo lotto dello script.
+function provaAnnullaRiordino() {
+  const lotto = statoRiordinoSalvato_().ultimo_lotto;
+  const ids = (sb_('log_spostamenti?select=file_id&lotto=eq.' + lotto + '&esito=eq.eseguito&order=id&limit=5') || []).map(function (r) { return r.file_id; });
+  const e = annullaLottoRiordino_(lotto, ids);
+  e.lotto = lotto; e.file_ids = ids;
+  console.log(JSON.stringify(e, null, 2));
+  return e;
 }

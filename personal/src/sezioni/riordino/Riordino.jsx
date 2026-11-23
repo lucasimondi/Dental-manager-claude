@@ -9,6 +9,7 @@ import {
   caricaPiano, caricaCategorie, approva, rifiuta, riproponi, rinomina, cambiaCartella, importaPiano,
   riepilogo, filtra, raggruppa, radici, livello, confidenzaTesto, controllaNome, FILTRI, SOGLIA_ALTA,
   eseguiLotto, annullaLotto, caricaLotti, daEseguire,
+  caricaStatoRiordino, avanzamento, pausaRiordino,
 } from '../../lib/pianoRiordino.js';
 import './riordino.css';
 
@@ -16,8 +17,61 @@ const STATI = { proposto: 'Da decidere', approvato: 'Approvato', rifiutato: 'Rif
 const MAX_GRUPPI = 60;
 const quando = (t) => new Date(t).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
+const ora = (t) => new Date(t).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+const STATO_GIRO = { attivo: 'In corso: un giro ogni 5 minuti', pausa: 'In pausa', quota: 'Pausa per limite di Google', spento: 'Fermo', finito: 'Finito' };
+
+// Fase 3b: lo script sposta da solo le righe approvate. In alto: avanzamento, errori, ultimo giro, Pausa/Riprendi.
+function Avanzamento({ righe, stato, fermi, mostra, ricarica }) {
+  const [lavoro, setLavoro] = useState(false);
+  const [errore, setErrore] = useState(null);
+  const [vediFermi, setVediFermi] = useState(false);
+  const a = avanzamento(righe, stato, fermi);
+  if (!stato && !a.eseguiti) return null;
+  const cambia = async () => {
+    setLavoro(true); setErrore(null);
+    try {
+      await pausaRiordino({ token: await tokenSessione(), pausa: a.stato !== 'pausa' });
+      mostra(a.stato === 'pausa' ? 'Spostamento ripreso' : 'Spostamento in pausa');
+      await ricarica();
+    } catch (e) { setErrore(e.message); } finally { setLavoro(false); }
+  };
+  return (
+    <section className="rr-carta rr-avanzamento" aria-label="Avanzamento dello spostamento su Drive">
+      <div className="rr-av-testa">
+        <h2>Spostamento su Drive</h2>
+        <b className={`rr-chip rr-giro-${a.stato}`}>{STATO_GIRO[a.stato]}{a.stato === 'quota' ? ` fino alle ${ora(a.riprendiDopo)}` : ''}</b>
+      </div>
+      <div className="rr-barra" role="progressbar" aria-valuemin={0} aria-valuemax={a.totale} aria-valuenow={a.eseguiti} aria-label="File spostati">
+        <span style={{ width: `${a.perc}%` }} />
+      </div>
+      <p className="rr-criteri"><b>{a.eseguiti.toLocaleString('it-IT')}</b> di {a.totale.toLocaleString('it-IT')} spostati ({a.perc.toLocaleString('it-IT')}%) · {a.daSpostare.toLocaleString('it-IT')} da spostare</p>
+      <p className="rr-criteri">
+        Errori: {a.errori}{a.fermi ? ` · ${a.fermi} fermi dopo 3 tentativi` : ''}{a.ultimoGiro ? ` · ultimo giro ${quando(a.ultimoGiro)}` : ''}
+      </p>
+      {errore && <p className="rr-errore" role="alert">{errore}</p>}
+      {a.stato !== 'finito' && (a.attivo || a.pausa) && (
+        <button type="button" className={`pp-bottone${a.stato === 'pausa' ? '' : ' pp-bottone-chiaro'}`} disabled={lavoro} onClick={cambia}>
+          {lavoro ? 'Un attimo…' : a.stato === 'pausa' ? 'Riprendi' : 'Pausa'}
+        </button>
+      )}
+      {a.fermi > 0 && (
+        <>
+          <button type="button" className="rr-link" aria-expanded={vediFermi} onClick={() => setVediFermi((v) => !v)}>{vediFermi ? 'Nascondi' : 'Vedi'} i file fermi ›</button>
+          {vediFermi && (
+            <ul className="rr-fermi">
+              {fermi.map((f) => (
+                <li key={f.file_id}><b>{f.nome_attuale || f.nome_nuovo}</b><small>{f.percorso_nuovo} · {f.ultimo_errore}</small></li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 // Fase 3: sposta su Drive a lotti di 100 le righe approvate; ogni lotto si può annullare.
-function Esecuzione({ righe, db, mostra, ricarica }) {
+function Esecuzione({ righe, db, mostra, ricarica, automatico = false }) {
   const [lotti, setLotti] = useState([]);
   const [lavoro, setLavoro] = useState(null);
   const [errore, setErrore] = useState(null);
@@ -38,10 +92,10 @@ function Esecuzione({ righe, db, mostra, ricarica }) {
   });
   return (
     <section className="rr-carta" aria-label="Esecuzione su Drive">
-      <h2>Spostamento su Drive</h2>
-      <p>{n ? `${n} file approvati da spostare. Si fa a lotti di 100: ogni lotto si può annullare.` : 'Nessun file approvato da spostare.'}</p>
+      <h2>Lotti</h2>
+      <p>{automatico ? 'Lo script sposta da solo i file approvati, 100 per giro. Ogni lotto si può annullare.' : n ? `${n} file approvati da spostare. Si fa a lotti di 100: ogni lotto si può annullare.` : 'Nessun file approvato da spostare.'}</p>
       {errore && <p className="rr-errore" role="alert">{errore}</p>}
-      {n > 0 && <button type="button" className="pp-bottone" disabled={Boolean(lavoro)} onClick={esegui}>{lavoro === 'esegui' ? 'Sposto…' : `Sposta i prossimi ${Math.min(100, n)}`}</button>}
+      {n > 0 && !automatico && <button type="button" className="pp-bottone" disabled={Boolean(lavoro)} onClick={esegui}>{lavoro === 'esegui' ? 'Sposto…' : `Sposta i prossimi ${Math.min(100, n)}`}</button>}
       {lotti.length > 0 && (
         <ul className="rr-lotti">
           {lotti.map((l) => (
@@ -126,6 +180,9 @@ export function VistaRiordino({ ctx, db = archivioDb }) {
   const [errore, setErrore] = useState(null);
   const [importo, setImporto] = useState(false);
   const [quanti, setQuanti] = useState(MAX_GRUPPI);
+  const [giro, setGiro] = useState({ stato: null, fermi: [] });
+  const caricaGiro = useCallback(() => caricaStatoRiordino(db).then(setGiro).catch(() => {}), [db]);
+  useEffect(() => { caricaGiro(); }, [caricaGiro]);
 
   const carica = useCallback(() => esegui(async () => {
     const [p, c] = await Promise.all([caricaPiano(db), caricaCategorie(db)]);
@@ -191,8 +248,10 @@ export function VistaRiordino({ ctx, db = archivioDb }) {
       </div>
     );
   }
+  const ricaricaTutto = async () => { setRighe(await caricaPiano(db)); await caricaGiro(); };
   return (
     <div className="rr-vista">
+      <Avanzamento righe={righe} stato={giro.stato} fermi={giro.fermi} mostra={mostra} ricarica={ricaricaTutto} />
       <datalist id="rr-cartelle">{categorie.map((c) => <option key={c.id} value={c.percorso} />)}</datalist>
       <section className="rr-carta rr-riepilogo" aria-label="Riepilogo">
         <div className="rr-numeri">
@@ -212,7 +271,7 @@ export function VistaRiordino({ ctx, db = archivioDb }) {
         {chiedi && <Conferma testo={chiedi.testo} etichetta="Approva" onSi={() => { chiedi.fai(); setChiedi(null); }} onNo={() => setChiedi(null)} />}
       </section>
 
-      <Esecuzione righe={righe} db={db} mostra={mostra} ricarica={async () => setRighe(await caricaPiano(db))} />
+      <Esecuzione righe={righe} db={db} mostra={mostra} ricarica={ricaricaTutto} automatico={Boolean(giro.stato?.attivo)} />
       <Chips voci={FILTRI.map((f) => [f.id, f.nome])} attiva={filtro} onScegli={(f) => { setFiltro(f); setQuanti(MAX_GRUPPI); }} />
       <input className="rr-cerca" type="search" placeholder="Cerca nome, cartella o motivo" value={testo} onChange={(e) => { setTesto(e.target.value); setQuanti(MAX_GRUPPI); }} aria-label="Cerca nel piano" />
       <div className="rr-indice" role="tablist" aria-label="Cartelle principali">

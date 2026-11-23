@@ -140,6 +140,21 @@ Se ci sono thread in errore, leggi la causa in `log_elaborazione`. Se è transit
 - **Dopo lo storico.** Proponi a Luca di eseguire `select archivia_pratiche_ferme(12);` per chiudere le vicende ferme da oltre un anno.
 - **Riclassificazioni.** `update documenti set fascicolo = '...' where id = '...'`. Il file su Drive segue da solo al giro successivo (`ordinaDrive_`).
 
+### Riordino automatico su Drive (POL-VITA-ORDINA fase 3b)
+
+Lo script sposta e rinomina da solo le righe `approvato` di `piano_riordino`: mai `proposto`/`rifiutato`, mai percorsi `99 …`, mai il fascicolo `clinico_pazienti`. Fa solo `moveTo` e `setName`: niente copie, cancellazioni o cestino; id e link dei file restano uguali.
+
+- **Come gira.** Il trigger `riordinoGiro` parte ogni 5 minuti. Prende il lock dello script, quindi un giro non parte mai insieme a un altro, né a `elabora`, `esegui_lotto` o `annulla_lotto`. In ogni giro elabora al massimo 100 file e lavora al massimo 4 min 30 s. Per ogni file legge su Drive la cartella e il nome reali, lo sposta, poi rilegge e verifica. Registra con `riordino_registra_v2` ogni 25 file. I file spostati e non ancora registrati restano nella proprietà `RIORDINO_PENDENTI` e si registrano per primi al giro dopo. Un file che non riesce va in `riordino_errore`: il piano resta `approvato` e il file si ritenta. Dopo 3 errori di fila il file esce dalla selezione e compare nella vista `v_riordino_errori_ripetuti`, che l'app mostra in «Piano di riordino».
+- **Quote.** Con un errore di quota Google il giro si ferma e mette `RIORDINO_RIPRENDI_DOPO` a un'ora dopo.
+- **Fine.** Quando `riordino_prossimi` non restituisce più righe, lo script cancella il trigger, crea il promemoria di oggi «Riordino finito: X spostati, Y errori» (categoria `riordino`, arriva come notifica sul telefono) e salva il riepilogo in `impostazioni_app` alla chiave `riordino_stato`.
+- **Funzioni da lanciare a mano** dall'editor di Apps Script (menu funzioni → Esegui):
+  - `provaRiordino()`: un solo giro subito, senza trigger. Nel registro trovi lotto, spostati, errori e secondi per file.
+  - `provaAnnullaRiordino()`: annulla i primi 5 file dell'ultimo lotto (collaudo di «Annulla»).
+  - `avviaRiordino()`: crea il trigger ogni 5 minuti e toglie i trigger della versione vecchia (`riordinoAutomatico`, `riordinoParallelo0–3`). **Si lancia solo dopo il «Vai» di Luca.**
+  - `pausaRiordino()` e `riprendiRiordino()`: mettono e tolgono la proprietà `RIORDINO_PAUSA` (anche dall'app, con il tasto Pausa/Riprendi).
+  - `statoRiordino()`: conteggi da `piano_riordino`, ultimi lotti da `v_lotti_riordino`, file fermi, pendenti, trigger.
+- **Le chat non spostano file del piano.** Mentre lo script è acceso, nessuna sessione di Claude sposta o rinomina file del piano con il connettore Drive, né scrive righe in `log_spostamenti`. Il 23/11 una chat ha scritto 3 righe `in_corso` (lotto 356133c8…) e si è fermata in attesa di un permesso. Come difesa, `riordino_prossimi` salta i file con una riga `in_corso` degli ultimi 15 minuti.
+
 ## 7. Fase 4: integrazione in Poliedron
 
 Poliedron (`poliedron/`) deve diventare l'interfaccia principale dell'archivio. Per l'integrazione:
