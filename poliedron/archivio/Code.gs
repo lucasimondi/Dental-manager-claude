@@ -3556,7 +3556,10 @@ function annullaLottoRiordino_(lotto, fileIds) {
         (l.scorciatoie || []).forEach(function (s) { try { DriveApp.getFileById(s).setTrashed(true); } catch (x) { /* già via */ } });  // solo le scorciatoie create qui
         if (l.documento_id) {
           sb_('documenti?id=eq.' + l.documento_id, { method: 'patch', body: { drive_fissa: !!l.drive_fissa_prima, drive_cartella: l.drive_cartella_prima || null, drive_rinomina: !!l.drive_rinomina_prima } });
-          const nuove = tassonomia.filter(function (c) { return (l.cartelle_prima || []).indexOf(c) < 0; });
+          // Solo le cartelle dove il documento sta ADESSO (poche): la lista di tutta la tassonomia (~550 id) supera
+          // la lunghezza massima di un URL di UrlFetch (primo collaudo di «Annulla», 2026-11-23).
+          const ora = (sb_('cartelle_mie_documenti?select=cartella_id&documento_id=eq.' + l.documento_id) || []).map(function (x) { return x.cartella_id; });
+          const nuove = ora.filter(function (c) { return tassonomia.indexOf(c) >= 0 && (l.cartelle_prima || []).indexOf(c) < 0; });
           if (nuove.length) sb_('cartelle_mie_documenti?documento_id=eq.' + l.documento_id + '&cartella_id=in.(' + nuove.join(',') + ')', { method: 'delete' });
           (l.cartelle_prima || []).forEach(function (c) { mettiInCartella_(c, l.documento_id); });
         }

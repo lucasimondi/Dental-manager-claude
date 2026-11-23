@@ -220,3 +220,27 @@ test('quota: riconosce i messaggi di Google (anche in italiano), non gli altri Â
   assert.ok(!q.test('Limite superato: Lunghezza URL URLFetch.'));
   assert.ok(!q.test('File nel cestino di Drive'));
 });
+
+test('annulla_lotto: toglie il documento solo dalle cartelle della tassonomia dove sta ora (URL corto), lo rimette in quelle di prima', () => {
+  const tassonomia = Array.from({ length: 600 }, (_, i) => `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`);
+  const s = scriptFinto({ cartelle: { vecchia: {}, dest: {} }, file: { fA_1234567890: { nome: 'nuovo.pdf', padri: ['dest'] } } });
+  const mie = 'aaaaaaaa-0000-4000-8000-000000000001';
+  const chiamate = [];
+  s.ctx.sb_ = (percorso, o = {}) => {
+    chiamate.push([percorso, o.method || 'get', o.body]);
+    if (percorso.startsWith('log_spostamenti?select=*')) return [{ id: 1, file_id: 'fA_1234567890', documento_id: 'd1', piano_id: 'p1', da_padre_id: 'vecchia', da_nome: 'vecchio.pdf', scorciatoie: [], cartelle_prima: [mie], drive_fissa_prima: false, drive_cartella_prima: 'Altro/2020', drive_rinomina_prima: true }];
+    if (percorso.startsWith('cartelle_mie?select=id&categoria_id')) return tassonomia.map((id) => ({ id }));
+    if (percorso.startsWith('cartelle_mie_documenti?select=cartella_id')) return [{ cartella_id: tassonomia[7] }, { cartella_id: mie }];
+    return null;
+  };
+  s.ctx.mettiInCartella_ = (c, d) => chiamate.push(['metti', c, d]);
+  const e = s.ctx.annullaLottoRiordino_(LOTTO_VECCHIO);
+  assert.equal(e.annullati, 1); assert.equal(e.errori, 0);
+  const del = chiamate.find(([, m]) => m === 'delete');
+  assert.equal(del[0], `cartelle_mie_documenti?documento_id=eq.d1&cartella_id=in.(${tassonomia[7]})`);
+  assert.ok(del[0].length < 200);
+  assert.ok(chiamate.some(([a, c]) => a === 'metti' && c === mie));
+  assert.deepEqual(s.drive, [['moveTo', 'fA_1234567890', 'vecchia'], ['setName', 'fA_1234567890', 'vecchio.pdf']]);
+  assert.ok(chiamate.some(([p, m, b]) => p === 'piano_riordino?id=eq.p1' && m === 'patch' && b.stato === 'approvato'));
+  assert.ok(chiamate.some(([p, m, b]) => p === 'log_spostamenti?id=eq.1' && m === 'patch' && b.esito === 'annullato'));
+});
