@@ -167,7 +167,8 @@ Secret della funzione:
 - `GEMINI_API_KEY` (Google AI Studio);
 - `GEMINI_MODEL` facoltativo: uno o più modelli separati da virgola, provati in ordine
   (default `gemini-flash-latest,gemini-flash-lite-latest`); su 503 «sovraccarico» un
-  secondo tentativo dopo ~1 s, poi il modello successivo;
+  secondo tentativo dopo ~1 s, poi il modello successivo; ogni tentativo ha un limite di
+  25 s e il turno Gemini intero di 45 s (mai caricamento infinito);
 - `POLIEDRON_LLM_PROVIDER=gemini` per usarlo per primo; Claude e OpenAI, se
   configurati, restano il ripiego automatico (es. quota gratuita finita, 429).
 
