@@ -1,5 +1,12 @@
 # Handoffs
 
+## 2026-11-23 — CLAUDE — POL-AI-GEMINI step 1 (Gemini in Poliedron Studio)
+- TASK: POL-AI-GEMINI. BRANCH: `ccr-df927fa7-l6gbrd` from `master@00fedcf`. OBJECTIVE: enable Gemini as a Poliedron model (PO option B; real patient names, PO decision 2026-11-23).
+- FILES: `supabase/functions/agente-assistente/provider.js` (Gemini adapter), `supabase/functions/agente-assistente/index.ts` (provider chain), `supabase/functions/agente-assistente/README.md`, `tests/poliedronGemini.test.mjs` (new), `docs/coordination/current-task.md`.
+- DATABASE: none. TESTS: `npm test` 1944/1944 PASS (includes the new file, 8/8); `index.ts` parsed with esbuild (no Deno in this container: `deno check` not run). Not tested against the real Gemini API (no key in this session).
+- RISKS: free-tier data terms (see current-task); Gemini 3 thought-signature handling relies on Google's documented placeholder when a block was copied; free-quota 429 falls back to Claude/OpenAI only if their keys are set, otherwise the existing read-only emergency mode answers.
+- NEXT ACTION: PO review → secrets + deploy with PO OK → smoke test in chat ("che appuntamenti ho domani?", one confirmed write). Then step 2 (Calendar in `Code.gs`).
+
 ## 2026-11-19 — CLAUDE — PRATICHE-WORKFLOW batch 3
 - Codex's script guard published (clasp, @26). Banca Alpi Marittime scheda complete (not user-verified), 12 docs moved into the pratica, 3 new Da fare actions, appeal-term scadenza. Register and undo: `docs/coordination/pratiche-batch3-2026-11-19.md`. Next: Mondino 36/2023.
 
