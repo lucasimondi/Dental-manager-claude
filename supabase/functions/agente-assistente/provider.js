@@ -137,7 +137,9 @@ export async function runProviderChain({ providers, invoke, canReplay = true, on
 // confirmations stay exactly the ones Poliedron already uses.
 // ---------------------------------------------------------------------------
 
-export const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash';
+// Alias of the newest Flash: a fixed id (e.g. gemini-2.5-flash) is retired by
+// Google and answers 404 (production, 2026-11-23). Same choice as the archive script.
+export const GEMINI_DEFAULT_MODEL = 'gemini-flash-latest';
 
 // Only a plain model id may reach the request URL.
 export const geminiModel = (value) => {
@@ -279,6 +281,7 @@ export const geminiErrorKind = (status, body = {}) => {
   if (status === 429) return 'rate_limit_or_quota';
   if (status >= 500) return 'provider_unavailable';
   if (status === 401 || status === 403 || reason === 'API_KEY_INVALID') return 'provider_auth';
+  if (status === 404) return 'model_not_found';
   return 'provider_error';
 };
 
@@ -311,7 +314,10 @@ export async function callGemini({ apiKey, model, system, messages, tools, signa
     const kind = geminiErrorKind(status, body);
     // Status and Google's error code only: never the prompt or the key.
     console.error('llm_provider_error', JSON.stringify({ provider: 'gemini', model: id, status, kind, errorStatus: body?.error?.status || null }));
-    return { ok: false, failure: providerFailure('gemini', status, kind) };
+    // A retired/unknown model is a configuration error: nothing ran, so the
+    // next configured provider may answer instead of the emergency mode.
+    const failure = providerFailure('gemini', status, kind);
+    return { ok: false, failure: kind === 'model_not_found' ? { ...failure, retryable: true } : failure };
   }
   const raw = await resp.json();
   const data = geminiResponseToAnthropic(raw);

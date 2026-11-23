@@ -1,5 +1,10 @@
 # Handoffs
 
+## 2026-11-23 — CLAUDE — POL-AI-GEMINI step 1 release + fix
+- Deploys after #277 and #343 had failed (Supabase CLI asks for confirmation): PR #344 adds `--yes`; manual dispatch → production `agente-assistente` v51, 26/26 files identical to master.
+- First real call: Gemini 404 NOT_FOUND on `gemini-2.5-flash` (retired). Fix: default `gemini-flash-latest`, 404 = `model_not_found` and lets Claude/OpenAI answer. Immediate workaround without deploy: secret `GEMINI_MODEL=gemini-flash-latest`.
+- Secrets seen by the PO: `POLIEDRON_LLM_PROVIDER` was `openai` (digest), then set to `gemini`.
+
 ## 2026-11-23 — CLAUDE — POL-AI-GEMINI step 1 (Gemini in Poliedron Studio)
 - TASK: POL-AI-GEMINI. BRANCH: `ccr-df927fa7-l6gbrd` from `master@00fedcf`. OBJECTIVE: enable Gemini as a Poliedron model (PO option B; real patient names, PO decision 2026-11-23).
 - FILES: `supabase/functions/agente-assistente/provider.js` (Gemini adapter), `supabase/functions/agente-assistente/index.ts` (provider chain), `supabase/functions/agente-assistente/README.md`, `tests/poliedronGemini.test.mjs` (new), `docs/coordination/current-task.md`.

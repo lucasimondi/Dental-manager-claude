@@ -165,7 +165,7 @@ pseudonimizzazione).
 
 Secret della funzione:
 - `GEMINI_API_KEY` (Google AI Studio);
-- `GEMINI_MODEL` facoltativo, default `gemini-2.5-flash`;
+- `GEMINI_MODEL` facoltativo, default `gemini-flash-latest`;
 - `POLIEDRON_LLM_PROVIDER=gemini` per usarlo per primo; Claude e OpenAI, se
   configurati, restano il ripiego automatico (es. quota gratuita finita, 429).
 

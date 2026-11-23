@@ -100,6 +100,10 @@ test('errors map to the same retry rules as the other providers', async () => {
   assert.equal(geminiErrorKind(503), 'provider_unavailable');
   assert.equal(geminiErrorKind(400, { error: { details: [{ reason: 'API_KEY_INVALID' }] } }), 'provider_auth');
   assert.equal(geminiErrorKind(400, {}), 'provider_error');
+  assert.equal(geminiErrorKind(404, { error: { status: 'NOT_FOUND' } }), 'model_not_found');
+  const retired = await withFetch(async () => jsonResponse(404, { error: { status: 'NOT_FOUND' } }), () => callGemini({ apiKey: 'k', model: 'gemini-2.5-flash', messages: [] }));
+  assert.equal(retired.failure.kind, 'model_not_found');
+  assert.equal(retired.failure.retryable, true, 'a retired model lets Claude/OpenAI answer');
   const quota = await withFetch(async () => jsonResponse(429, { error: { status: 'RESOURCE_EXHAUSTED' } }), () => callGemini({ apiKey: 'k', messages: [] }));
   assert.equal(quota.ok, false); assert.equal(quota.failure.retryable, true);
   const missing = await callGemini({ apiKey: '', messages: [] });
