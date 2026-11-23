@@ -30,7 +30,7 @@ import { classifyAction, DECISION } from "./confidence.js";
 import { validaAllegato, messaggiConAllegato, senzaDatiAllegato } from "./allegato.js";
 import { STRUMENTI_MEMORIA, STRUMENTO_RICETTA, normalizzaMemoria, sezioneMemoria, sezioneFarmaciFrequenti, normalizzaRicetta, documentoRicetta } from "./memoria.js";
 import { leggiRichiestaTeam, strumentiSpecialista, toolConsulta, leggiConsulti, eseguiConsulti, promptTeam, contestoGruppo, CONSULTA_SPECIALISTI } from "./team.js";
-import { normalizeProvider, callOpenAI, callGemini, geminiModel, providerFailure, providerOrder, runProviderChain } from "./provider.js";
+import { normalizeProvider, callOpenAI, callGemini, geminiModels, providerFailure, providerOrder, runProviderChain } from "./provider.js";
 import { emergencyIntent, emergencyMessage } from "./emergency.js";
 import { rigaEvento, registraEvento } from "./poliedron-eventi.js";
 import { understandPoliedron } from "./poliedron-core.js";
@@ -43,7 +43,7 @@ const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-6-luna";
 const POLIEDRON_LLM_PROVIDER = normalizeProvider(Deno.env.get("POLIEDRON_LLM_PROVIDER") || "auto");
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 // POL-AI-GEMINI: Google AI Studio model id, configurable without a deploy.
-const GEMINI_MODEL = geminiModel(Deno.env.get("GEMINI_MODEL"));
+const GEMINI_MODELS = geminiModels(Deno.env.get("GEMINI_MODEL"));
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
@@ -1700,11 +1700,11 @@ Prossimi giorni: ${prossimiGiorni}.${noteLivello}${noteAzione}${memoriaAttiva ? 
       if (POLIEDRON_LLM_PROVIDER === "openai") return callOpenAIProvider();
       // POL-AI-GEMINI: free Google AI Studio quota, so the logged cost is 0.
       const callGeminiProvider = async () => {
-        const result = await callGemini({ apiKey: GEMINI_API_KEY, model: GEMINI_MODEL, system, messages: messaggi, tools, signal });
+        const result = await callGemini({ apiKey: GEMINI_API_KEY, model: GEMINI_MODELS, system, messages: messaggi, tools, signal });
         if (result.ok && result.data?.usage) {
           const u = result.data.usage;
           logConsumi.push(supabase.from("ai_agent_usage").insert({
-            studio_id: studioId, fonte: "chat", modello: GEMINI_MODEL,
+            studio_id: studioId, fonte: "chat", modello: result.model || GEMINI_MODELS[0],
             input_tokens: u.input_tokens || 0, output_tokens: u.output_tokens || 0, costo_usd: 0,
           }).then((r) => r, (e) => e));
         }

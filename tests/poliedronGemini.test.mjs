@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  callGemini, geminiModel, GEMINI_DEFAULT_MODEL, GEMINI_SKIP_SIGNATURE,
+  callGemini, geminiModel, geminiModels, GEMINI_DEFAULT_MODEL, GEMINI_SKIP_SIGNATURE,
   jsonSchemaToGemini, anthropicToolsToGemini, anthropicConversationToGemini,
   geminiResponseToAnthropic, geminiErrorKind, providerOrder, runProviderChain, providerFailure,
 } from '../supabase/functions/agente-assistente/provider.js';
@@ -120,4 +120,36 @@ test('Gemini first when chosen; free quota exhausted falls back to Claude', asyn
   const seen = [];
   const out = await runProviderChain({ providers: ['gemini', 'anthropic'], invoke: async (p) => { seen.push(p); return p === 'gemini' ? { ok: false, failure: providerFailure(p, 429, 'rate_limit_or_quota') } : { ok: true, data: { content: [] } }; } });
   assert.deepEqual(seen, ['gemini', 'anthropic']); assert.equal(out.provider, 'anthropic');
+});
+
+test('GEMINI_MODEL accepts a list; the default is newest Flash then Flash-Lite', () => {
+  assert.deepEqual(geminiModels(undefined), ['gemini-flash-latest', 'gemini-flash-lite-latest']);
+  assert.deepEqual(geminiModels('gemini-flash-latest'), ['gemini-flash-latest']);
+  assert.deepEqual(geminiModels(' a-1 , ../x , a-1, b-2 '), ['a-1', 'b-2']);
+});
+
+test('overloaded (503): one retry, then the next model; success stops the chain', async () => {
+  const seen = [];
+  const answers = [503, 503, 200];
+  const out = await withFetch(async (url) => {
+    seen.push(url.match(/models\/([^:]+)/)[1]);
+    const status = answers.shift();
+    return status === 200
+      ? jsonResponse(200, { candidates: [{ content: { parts: [{ text: 'ok' }] } }] })
+      : jsonResponse(503, { error: { status: 'UNAVAILABLE' } });
+  }, () => callGemini({ apiKey: 'k', model: 'gemini-flash-latest,gemini-flash-lite-latest', messages: [{ role: 'user', content: 'x' }], retryDelayMs: 0 }));
+  assert.deepEqual(seen, ['gemini-flash-latest', 'gemini-flash-latest', 'gemini-flash-lite-latest']);
+  assert.equal(out.ok, true); assert.equal(out.model, 'gemini-flash-lite-latest');
+});
+
+test('a non-retryable error (bad request) does not try other models', async () => {
+  let calls = 0;
+  const out = await withFetch(async () => { calls++; return jsonResponse(400, {}); }, () => callGemini({ apiKey: 'k', messages: [], retryDelayMs: 0 }));
+  assert.equal(calls, 1); assert.equal(out.failure.kind, 'provider_error');
+});
+
+test('every model overloaded: the failure stays retryable so Claude/OpenAI can answer', async () => {
+  let calls = 0;
+  const out = await withFetch(async () => { calls++; return jsonResponse(503, { error: { status: 'UNAVAILABLE' } }); }, () => callGemini({ apiKey: 'k', messages: [], retryDelayMs: 0 }));
+  assert.equal(calls, 4); assert.equal(out.failure.retryable, true);
 });

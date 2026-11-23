@@ -285,9 +285,22 @@ export const geminiErrorKind = (status, body = {}) => {
   return 'provider_error';
 };
 
-export async function callGemini({ apiKey, model, system, messages, tools, signal, maxOutputTokens = 4096 }) {
-  if (!apiKey) return { ok: false, failure: providerFailure('gemini', 503, 'provider_not_configured') };
-  const id = geminiModel(model);
+// GEMINI_MODEL may list several ids separated by commas, tried in order
+// (same idea as the archive script). Default: newest Flash, then Flash-Lite.
+export const GEMINI_DEFAULT_MODELS = Object.freeze([GEMINI_DEFAULT_MODEL, 'gemini-flash-lite-latest']);
+export const geminiModels = (value) => {
+  const list = String(value || '').split(',').map((v) => v.trim()).filter(Boolean)
+    .filter((v) => geminiModel(v) === v);
+  return list.length ? [...new Set(list)] : [...GEMINI_DEFAULT_MODELS];
+};
+
+const pause = (ms, signal) => new Promise((resolve) => {
+  if (signal?.aborted) return resolve();
+  const t = setTimeout(resolve, ms);
+  signal?.addEventListener?.('abort', () => { clearTimeout(t); resolve(); }, { once: true });
+});
+
+async function callGeminiModel({ apiKey, id, system, messages, tools, signal, maxOutputTokens }) {
   const instruction = systemText(system);
   let resp;
   try {
@@ -304,7 +317,7 @@ export async function callGemini({ apiKey, model, system, messages, tools, signa
     });
   } catch (error) {
     const kind = error?.name === 'AbortError' ? 'timeout' : 'network_error';
-    console.error('llm_provider_error', JSON.stringify({ provider: 'gemini', status: 503, kind }));
+    console.error('llm_provider_error', JSON.stringify({ provider: 'gemini', model: id, status: 503, kind }));
     return { ok: false, failure: providerFailure('gemini', 503, kind) };
   }
   if (!resp.ok) {
@@ -315,7 +328,7 @@ export async function callGemini({ apiKey, model, system, messages, tools, signa
     // Status and Google's error code only: never the prompt or the key.
     console.error('llm_provider_error', JSON.stringify({ provider: 'gemini', model: id, status, kind, errorStatus: body?.error?.status || null }));
     // A retired/unknown model is a configuration error: nothing ran, so the
-    // next configured provider may answer instead of the emergency mode.
+    // next model or provider may answer instead of the emergency mode.
     const failure = providerFailure('gemini', status, kind);
     return { ok: false, failure: kind === 'model_not_found' ? { ...failure, retryable: true } : failure };
   }
@@ -325,5 +338,23 @@ export async function callGemini({ apiKey, model, system, messages, tools, signa
     console.error('llm_provider_error', JSON.stringify({ provider: 'gemini', model: id, status: 200, kind: 'provider_blocked', reason: raw.promptFeedback.blockReason }));
     return { ok: false, failure: providerFailure('gemini', 422, 'provider_blocked') };
   }
-  return { ok: true, data, raw };
+  return { ok: true, data, raw, model: id };
+}
+
+// The free quota often answers 503 "overloaded" for a few seconds (production,
+// 2026-11-23): one short retry on the same model, then the next model. Each
+// attempt is a read-only model call, so retrying never repeats a write.
+export async function callGemini({ apiKey, model, system, messages, tools, signal, maxOutputTokens = 4096, retryDelayMs = 1200 }) {
+  if (!apiKey) return { ok: false, failure: providerFailure('gemini', 503, 'provider_not_configured') };
+  const ids = Array.isArray(model) ? geminiModels(model.join(',')) : geminiModels(model);
+  let last = null;
+  for (const id of ids) {
+    last = await callGeminiModel({ apiKey, id, system, messages, tools, signal, maxOutputTokens });
+    if (!last.ok && last.failure.kind === 'provider_unavailable' && !signal?.aborted) {
+      await pause(retryDelayMs, signal);
+      last = await callGeminiModel({ apiKey, id, system, messages, tools, signal, maxOutputTokens });
+    }
+    if (last.ok || !last.failure.retryable || last.failure.kind === 'timeout' || signal?.aborted) return last;
+  }
+  return last;
 }
