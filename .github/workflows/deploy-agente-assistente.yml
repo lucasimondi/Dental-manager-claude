@@ -47,4 +47,5 @@ jobs:
         run: |
           if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then echo "Secret SUPABASE_ACCESS_TOKEN mancante"; exit 1; fi
           # No supabase/config.toml: verify_jwt stays on, as in production.
-          supabase functions deploy agente-assistente --project-ref "$PROJECT_REF" --use-api
+          # --yes: newer CLIs ask for confirmation and exit without a terminal (run 9, 2026-11-23).
+          supabase functions deploy agente-assistente --project-ref "$PROJECT_REF" --use-api --yes
