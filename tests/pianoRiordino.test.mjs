@@ -122,3 +122,42 @@ test('fase 3 nello script: solo righe approvate fuori da 99, mai i clinici, regi
   assert.match(gs, /req\.azione === 'esegui_lotto'/);
   assert.match(gs, /req\.azione === 'annulla_lotto'/);
 });
+
+// ---------------------------------------------------------------- fase 3b
+import { avanzamento, pausaRiordino, caricaStatoRiordino } from '../personal/src/lib/pianoRiordino.js';
+
+test('avanzamento: eseguiti sul totale approvato (mai «99», mai proposti o rifiutati), errori e stato del giro', () => {
+  const righe = [
+    { stato: 'eseguito', percorso_nuovo: '04 Banche/2020' },
+    { stato: 'eseguito', percorso_nuovo: '05 Fisco/2021' },
+    { stato: 'approvato', percorso_nuovo: '05 Fisco/2022' },
+    { stato: 'approvato', percorso_nuovo: '99 Da verificare' },
+    { stato: 'proposto', percorso_nuovo: '99 Da verificare' },
+    { stato: 'rifiutato', percorso_nuovo: '01 Casa' },
+  ];
+  const a = avanzamento(righe, { attivo: true, totale: { errori: 4 }, ultimo_giro: '2026-11-23T20:00:00Z' }, [{ file_id: 'x' }]);
+  assert.equal(a.eseguiti, 2); assert.equal(a.daSpostare, 1); assert.equal(a.totale, 3); assert.equal(a.perc, 66.6);
+  assert.equal(a.errori, 4); assert.equal(a.fermi, 1); assert.equal(a.stato, 'attivo');
+  assert.equal(avanzamento(righe, { attivo: true, pausa: true }).stato, 'pausa');
+  assert.equal(avanzamento(righe, { attivo: true, riprendi_dopo: new Date(Date.now() + 60000).toISOString() }).stato, 'quota');
+  assert.equal(avanzamento(righe, { attivo: true, riprendi_dopo: new Date(Date.now() - 60000).toISOString() }).stato, 'attivo');
+  assert.equal(avanzamento(righe.filter((x) => x.stato !== 'approvato'), { finito_il: '2026-11-24T01:00:00Z' }).stato, 'finito');
+  assert.equal(avanzamento([], null).stato, 'spento');
+  assert.equal(avanzamento([], null).perc, 0);
+});
+
+test('pausaRiordino: azione riordino_pausa con il token del proprietario; senza token non chiama', async () => {
+  const chiamate = [];
+  const f = async (url, o) => { chiamate.push(JSON.parse(o.body)); return { json: async () => ({ ok: true }) }; };
+  await pausaRiordino({ token: 't', pausa: true }, f);
+  await pausaRiordino({ token: 't', pausa: 0 }, f);
+  assert.deepEqual(chiamate, [{ token: 't', azione: 'riordino_pausa', pausa: true }, { token: 't', azione: 'riordino_pausa', pausa: false }]);
+  await assert.rejects(pausaRiordino({ pausa: true }, f), /Sessione scaduta/);
+  assert.equal(chiamate.length, 2);
+});
+
+test('caricaStatoRiordino: legge riordino_stato e i file fermi; senza la vista restano zero fermi', async () => {
+  const q = (risposta) => { const o = { select: () => o, eq: () => o, order: () => o, limit: () => Promise.resolve(risposta), maybeSingle: () => Promise.resolve(risposta) }; return o; };
+  const db = { from: (t) => (t === 'impostazioni_app' ? q({ data: { valore: { attivo: true } } }) : q({ error: { message: 'manca' } })) };
+  assert.deepEqual(await caricaStatoRiordino(db), { stato: { attivo: true }, fermi: [] });
+});

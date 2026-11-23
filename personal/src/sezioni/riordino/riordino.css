@@ -46,3 +46,12 @@
 .rr-lotti { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .rr-lotti li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; color: var(--pp-grigio); }
 .rr-lotti .pp-bottone { padding: 8px 12px; min-height: 44px; }
+/* POL-VITA-ORDINA fase 3b — avanzamento dello spostamento automatico. */
+.rr-av-testa { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.rr-barra { height: 10px; border-radius: 999px; background: var(--pp-linea); overflow: hidden; }
+.rr-barra span { display: block; height: 100%; background: var(--pp-verde); border-radius: inherit; transition: width .3s; }
+.rr-giro-pausa, .rr-giro-quota { background: color-mix(in srgb, #facc15 30%, transparent); }
+.rr-giro-finito { background: color-mix(in srgb, var(--pp-verde) 25%, transparent); }
+.rr-fermi { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.rr-fermi li { display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; font-size: 14px; }
+.rr-fermi small { color: var(--pp-grigio); font-size: 12px; }
