@@ -152,7 +152,7 @@ test('foglio: titolo «… firmato» modificabile, suggerimento, Documenti firma
   assert.match(salva, /Altro \(facoltativo\): categoria, persona, tipo, tag/);
   assert.match(salva, /if \(clinico \|\| !testoPdf\) return undefined;/, 'mai il suggerimento per i pazienti');
   assert.match(salva, /Si crea solo una bozza in Gmail: la invii tu\./);
-  assert.match(gestore, /if \(tipo !== 'data'\) firmatoRef\.current = true;/);
+  assert.match(gestore, /if \(tipo === 'firma' \|\| tipo === 'sigla'\) firmatoRef\.current = true;/);
   assert.match(gestore, /'Salva firmato nell’archivio'/);
 });
 

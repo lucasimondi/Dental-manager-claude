@@ -24,7 +24,7 @@ import { EstraiTesto } from './EstraiTesto.jsx';
 // SCAN-HUB (PO 2026-11-12): le pagine proprie di Scan, aperte dalla Home sopra di essa. Le altre
 // (archiviazione, gestore PDF) sono quelle di Personal (sezioni/index.js).
 const PAGINE_SCAN = {
-  scanner: { titolo: 'Scanner', modulo: true, render: (p, { ctx }) => <PaginaScansione files={p.files} ctx={ctx} sostituisci={ctx.apri} opzioni={{ destinazione: true }} /> },
+  scanner: { titolo: 'Scanner', modulo: true, render: (p, { ctx }) => <PaginaScansione files={p.files} ctx={ctx} sostituisci={ctx.apri} opzioni={{ destinazione: true, fotocamera: Boolean(p.fotocamera) }} /> },
   tessera: { titolo: "Carta d'identità", modulo: true, render: (p, { ctx }) => <CartaIdentita ctx={ctx} sostituisci={ctx.apri} /> },
   testo: { titolo: 'Estrai testo', modulo: true, render: (p, { ctx }) => <EstraiTesto ctx={ctx} /> },
   pdfStrumento: { titolo: 'Gestore PDF', modulo: true, render: (p, { ctx, chiudi, sostituisci }) => <PaginaPdf strumento={p.strumento} file={p.file} ctx={ctx} chiudi={chiudi} sostituisci={sostituisci} /> },
@@ -117,7 +117,8 @@ export function Scan({ email }) {
   const sopra = pagine.length > 0;
   // SCAN-HUB: dalla griglia della Home allo strumento.
   function strumento(id) {
-    if (id === 'scanner' || id === 'unisci') apri({ tipo: 'scanner' });
+    if (id === 'scanner') apri({ tipo: 'scanner', fotocamera: true }); // SCAN-VIVO: lo scanner parte dalla fotocamera
+    else if (id === 'unisci') apri({ tipo: 'scanner' });
     else if (id === 'tessera' || id === 'testo') apri({ tipo: id });
     else if (id === 'pdf') apri({ tipo: 'pdf' });
     else if (id === 'firma' || id === 'comprimi' || id === 'pagine') apri({ tipo: 'pdfStrumento', strumento: id });

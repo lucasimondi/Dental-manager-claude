@@ -124,7 +124,7 @@ export function ScanHome({ ctx, versioneRecenti, onStrumento, onFiles, coperta =
         ))}
       </section>
 
-      {!coperta && <button className="scan-fab" aria-label="Scatta e scansiona" onClick={() => camera.current.click()}><IconaFotocamera size={28} /></button>}
+      {!coperta && <button className="scan-fab" aria-label="Scatta e scansiona" onClick={() => onStrumento('scanner')}><IconaFotocamera size={28} /></button>}
     </div>
   );
 }

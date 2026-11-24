@@ -1426,3 +1426,34 @@ body.pp-tastiera .pp-chat-composer { padding-bottom: 8px; }
 .pp-riga-app select { flex-shrink: 0; max-width: 52%; min-height: 36px; border-radius: 8px; border: 1px solid var(--pp-linea); background: var(--pp-superficie); color: var(--pp-inchiostro); font: inherit; font-size: 13px; padding: 0 8px; }
 .pp-app-nuova { display: flex; gap: 8px; margin-top: 8px; }
 .pp-app-nuova input { flex: 1; min-width: 0; min-height: 40px; border-radius: 8px; border: 1px solid var(--pp-linea); background: var(--pp-superficie); color: var(--pp-inchiostro); font: inherit; padding: 0 10px; }
+/* SCAN-VIVO (PO 2026-11-24): fotocamera dal vivo a tutto schermo, contorno del foglio, scatto automatico. */
+.scan-camera{position:fixed;inset:0;z-index:2000;background:#000;color:#fff;display:flex;flex-direction:column;font-family:inherit;padding-top:env(safe-area-inset-top)}
+.scan-camera button{font:inherit;color:inherit;cursor:pointer}
+.scan-camera-barra{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px}
+.scan-camera-tondo{width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.scan-camera-tondo.grande{width:52px;height:52px}
+.scan-camera-tondo.acceso{background:#ffd54a;color:#000}
+.scan-camera-vuoto{width:44px;flex-shrink:0}
+.scan-camera-auto{display:flex;padding:3px;border-radius:999px;background:rgba(255,255,255,.14)}
+.scan-camera-auto button{border:0;background:transparent;min-height:38px;padding:0 14px;border-radius:999px;font-size:14px;font-weight:600}
+.scan-camera-auto button[aria-checked=true]{background:#fff;color:#111}
+.scan-camera-area{position:relative;flex:1;min-height:0;overflow:hidden}
+.scan-camera-area video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+.scan-camera-contorno{position:absolute;overflow:visible;pointer-events:none}
+.scan-camera-contorno polygon{fill:rgba(64,156,255,.18);stroke:#4aa3ff;stroke-width:3;stroke-linejoin:round;transition:fill .2s,stroke .2s}
+.scan-camera-contorno polygon.fase-fermo,.scan-camera-contorno polygon.fase-scatta{fill:rgba(52,199,120,.22);stroke:#34c778}
+.scan-camera-contorno polygon.fase-avvicina{stroke:#ffd54a;fill:rgba(255,213,74,.12)}
+.scan-camera-messaggio{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);margin:0;padding:8px 14px;border-radius:999px;background:rgba(0,0,0,.62);font-size:14px;font-weight:600;white-space:nowrap;max-width:calc(100% - 32px);overflow:hidden;text-overflow:ellipsis}
+.scan-camera-lampo{position:absolute;inset:0;background:#fff;opacity:0;animation:scan-lampo .35s ease-out;pointer-events:none}
+@keyframes scan-lampo{0%{opacity:.85}100%{opacity:0}}
+.scan-camera-comandi{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;justify-items:center;padding:16px 20px calc(18px + env(safe-area-inset-bottom))}
+.scan-camera-scatto{--avanzamento:0;width:76px;height:76px;border-radius:50%;border:0;padding:0;background:conic-gradient(#34c778 calc(var(--avanzamento) * 360deg),rgba(255,255,255,.35) 0);display:flex;align-items:center;justify-content:center}
+.scan-camera-scatto span{width:62px;height:62px;border-radius:50%;background:#fff;border:3px solid #000;display:block;transition:transform .1s}
+.scan-camera-scatto:active span{transform:scale(.9)}
+.scan-camera-scatto:disabled{opacity:.5}
+.scan-camera-fine{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;border:0;background:transparent;min-width:64px;padding:0}
+.scan-camera-fine img,.scan-camera-segnaposto{width:46px;height:58px;border-radius:6px;object-fit:cover;border:2px solid #fff;background:rgba(255,255,255,.1);display:block}
+.scan-camera-fine b{position:absolute;top:-8px;right:2px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:#34c778;color:#fff;font-size:12px;line-height:22px}
+.scan-camera-fine>span:last-child{font-size:13px;font-weight:600}
+.scan-camera-fine:disabled{opacity:.45}
+@media (orientation:landscape) and (max-height:500px){.scan-camera{flex-direction:row}.scan-camera-barra{flex-direction:column;padding:12px 8px}.scan-camera-comandi{grid-template-columns:none;grid-template-rows:1fr auto 1fr;padding:12px 16px}}
