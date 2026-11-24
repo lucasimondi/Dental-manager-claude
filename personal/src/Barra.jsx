@@ -30,11 +30,13 @@ import {
 } from './Icone.jsx';
 import gemmaPoliedron from '../../src/assets/icon-poliedra-gem.png';
 import './barra.css';
+import { IconaFinestra } from './IconeFinestre.jsx';
+import { titoloPagina } from './sezioni/index.js';
 
 const ICONE_START = {
   oggi: IconaOggi, agenda: IconaCalendario, documenti: IconaDocumenti, dafare: IconaPerTe, conti: IconaEuro, legal: IconaPratiche,
   pratiche: IconaPratiche, personali: IconaPortafoglio, diario: IconaNote, note: IconaNote, password: IconaLucchetto, foto: IconaFoto,
-  concordato: IconaPratiche, studio: (p) => <IconaDock n="brief" s={p.size} />, impostazioni: IconaImpostazioni,
+  concordato: IconaPratiche, scan: (p) => <IconaFinestra tipo="scan" size={p.size} />, studio: (p) => <IconaDock n="brief" s={p.size} />, impostazioni: IconaImpostazioni,
 };
 const Numero = ({ n, classe = '' }) => { const t = etichettaNumero(n); return t ? <span className={`pb-pallino ${classe}`} aria-hidden="true">{t}</span> : null; };
 
@@ -96,7 +98,7 @@ function IconaVoce({ id }) {
   return Icona ? <Icona size={24} /> : <IconaPerTe size={24} />;
 }
 
-export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, apri, onEsci, onCentro, centroAperto = false }) {
+export function BarraApplicazioni({ vista, pagine, finestre = [], inPrimo = null, onFinestra, onDesktop, conteggi = {}, email, vai, apri, onEsci, onCentro, centroAperto = false }) {
   const [start, setStart] = useState(false); // false | 'start' | 'cerca'
   const [impStart, setImpStart] = useState(() => normalizzaStart());
   useEffect(() => {
@@ -112,6 +114,10 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
       .then(({ error }) => { if (error) setImpStart(prima); }, () => setImpStart(prima));
   }, [impStart]);
   const voci = vociBarra(impStart.dock);
+  // PERSONAL-FINESTRE: la finestra di un'app fissata (es. Esplora) usa la sua icona; le altre hanno la propria.
+  const tipiFissati = new Set(voci.map((v) => v.pagina).filter(Boolean));
+  const altreFinestre = finestre.filter((f) => !tipiFissati.has(f.tipo));
+  const finestraDi = (v) => (v.pagina ? finestre.find((f) => f.tipo === v.pagina) : null);
   const [centro, setCentro] = useState(false);
   const mobile = typeof window !== 'undefined' && (window.matchMedia?.('(pointer: coarse)').matches || window.innerWidth < 768);
   // Toast per gli eventi nuovi dall'ultima volta (la prima volta nessuno).
@@ -167,13 +173,15 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
     if (v.id === 'start' || v.id === 'cerca') { if (start === v.id) chiudi(); else apriStart(v.id); return; }
     if (start) chiudi();
     if (v.azione) { esegui(v.azione); return; }
-    if (v.pagina) apri({ tipo: v.pagina }); else vai(v.vista);
+    // PERSONAL-FINESTRE: se la finestra di quell'app è già aperta viene avanti (come Windows), altrimenti si apre.
+    // (di nuovo sull'icona della finestra in primo piano = riduci a icona, come Windows).
+    if (v.pagina) { const f = finestre.find((x) => x.tipo === v.pagina); if (f && onFinestra) onFinestra(f.chiave); else apri({ tipo: v.pagina }); } else vai(v.vista);
   };
   const apriCentro = () => { if (start) chiudi(); if (onCentro) onCentro(); else setCentro((c) => !c); };
   const esegui = (azione) => {
     chiudi();
     if (azione.vai) vai(azione.vai);
-    else if (azione.apri) apri(azione.apri);
+    else if (azione.apri) { const f = finestre.find((x) => x.tipo === azione.apri.tipo); if (f && onFinestra) { if (inPrimo !== f.chiave) onFinestra(f.chiave); } else apri(azione.apri); }
     else if (azione.href) window.location.assign(sectionDestination(azione.href, azione.href));
   };
 
@@ -191,7 +199,7 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
             const n = badgeBarra(v.id, conteggi);
             const etichetta = n ? `${v.nome}, ${n} ${v.id === 'oggi' ? 'urgenti' : 'da gestire'}` : v.nome;
             return (
-              <button key={v.id} type="button" className={`pb-voce${attiva === v.id ? ' attiva' : ''}${aperte.has(v.id) ? ' aperta' : ''}`} onClick={() => tocca(v)}
+              <button key={v.id} type="button" className={`pb-voce${(finestraDi(v) ? !start && inPrimo === finestraDi(v).chiave : attiva === v.id) ? ' attiva' : ''}${aperte.has(v.id) || (finestraDi(v) && (start || inPrimo !== finestraDi(v).chiave)) ? ' aperta' : ''}`} onClick={() => tocca(v)}
                 aria-label={etichetta} title={accettaFile(v.id) ? `${v.nome} · trascina qui un file: ${APP_PER_FILE[v.id].toLowerCase()}` : v.nome}
                 aria-current={attiva === v.id && v.id !== 'start' && v.id !== 'cerca' ? 'page' : undefined}
                 aria-expanded={v.id === 'start' || v.id === 'cerca' ? start === v.id : undefined}
@@ -201,6 +209,20 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
               </button>
             );
           })}
+          {/* PERSONAL-FINESTRE: una icona per ogni finestra aperta (tocco = in primo piano, di nuovo = riduci). */}
+          {altreFinestre.length > 0 && <span className="pb-separatore" aria-hidden="true" />}
+          {finestre.length > 0 && <div className="pb-finestre" role="group" aria-label="Finestre aperte">
+            {/* sul telefono (niente angolo «Mostra desktop») una icona Home riduce tutto e torna alle app */}
+            {onDesktop && <button type="button" className="pb-voce pb-home" aria-label="Home: riduci tutte le finestre" title="Home" onClick={() => { if (start) chiudi(); onDesktop(); }}>
+              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 11.5 12 4l8 7.5M6.5 9.5V20h11V9.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" strokeLinecap="round" /></svg></button>}
+            {altreFinestre.map((f) => {
+              const nome = titoloPagina(f) || 'Finestra';
+              return <button key={f.chiave} type="button" className={`pb-voce pb-finestra${inPrimo === f.chiave ? ' attiva' : ' aperta'}${f.stato === 'ridotta' ? ' ridotta' : ''}`}
+                aria-label={`${nome}${f.stato === 'ridotta' ? ' (ridotta a icona)' : ''}`} title={nome} aria-pressed={inPrimo === f.chiave} onClick={() => { if (start) chiudi(); onFinestra?.(f.chiave); }}>
+                <IconaFinestra tipo={f.tipo} size={22} />
+              </button>;
+            })}
+          </div>}
         </div>
         <div className="pb-sistema">
           <span className={`pb-drive pb-drive-${drive.stato}`} role="status" title={testoStatoDrive(drive)} aria-label={testoStatoDrive(drive)}>
@@ -213,6 +235,8 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
             <span className="pb-campanella"><IconaVoce id="campanella" /><Numero n={notifiche} /></span>
             {notifiche > 0 && <span className="pb-notifiche">{etichettaNumero(notifiche)}</span>}
           </button>
+          {/* PERSONAL-FINESTRE: «Mostra desktop» (come l'angolo destro di Windows): riduce tutto e torna alla Home. */}
+          {onDesktop && <button type="button" className="pb-desktop" aria-label="Mostra desktop" title="Mostra desktop" onClick={() => { if (start) chiudi(); onDesktop(); }} />}
         </div>
       </nav>
     </>

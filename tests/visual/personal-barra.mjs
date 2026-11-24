@@ -81,8 +81,10 @@ try {
     // Oggi resta aperta sotto Esplora: trattino corto da 6 px
     assert.equal(await page.locator('.pb-voce.aperta').getAttribute('aria-label'), 'Oggi, 1 urgenti');
     assert.equal(await page.locator('.pb-voce.aperta').evaluate((e) => getComputedStyle(e, '::after').width), '6px');
-    const pagina = await page.evaluate(() => innerHeight - document.querySelector('.pp-pagina:not([hidden])').getBoundingClientRect().bottom);
-    assert.equal(Math.round(pagina), altezza, 'la pagina finisce sopra la barra');
+    // PERSONAL-FINESTRE: Esplora è una finestra; finisce sopra la barra (ingrandita sul telefono: appoggiata alla barra).
+    const pagina = await page.evaluate(() => innerHeight - document.querySelector('.pf-finestra:not([hidden])').getBoundingClientRect().bottom);
+    assert.ok(Math.round(pagina) >= altezza, 'la finestra finisce sopra la barra');
+    if (!desktop) assert.equal(Math.round(pagina), altezza, 'sul telefono ingrandita fino alla barra');
     await page.screenshot({ path: `${out}/${nome}-esplora.png` });
 
     // Start: apre, dentro lo schermo, 4 colonne; si chiude con un tocco fuori, con Indietro e col logo
@@ -109,7 +111,7 @@ try {
     await page.getByRole('searchbox', { name: 'Cerca nel tuo archivio' }).or(page.getByLabel('Cerca nel tuo archivio')).first().fill('bolletta');
     await page.keyboard.press('Enter');
     await page.getByText('Cerca nel tuo archivio').last().waitFor();
-    assert.equal(await page.locator('.pp-pagina:not([hidden]) input').first().inputValue(), 'bolletta');
+    assert.equal(await page.locator('.pf-finestra.pf-attiva input').first().inputValue(), 'bolletta');
     // ora e data (campanella su mobile) → Centro notifiche: notifica con azioni rapide, calendario con il giorno segnato
     await page.locator('.pb-area').click();
     const cn = page.getByRole('dialog', { name: 'Centro notifiche' });

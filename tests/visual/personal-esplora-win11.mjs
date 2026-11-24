@@ -100,7 +100,8 @@ try {
       await premi(T, tessera(page, 'Rogito casa'));
       await page.locator('.esp-foglio-menu').waitFor(); await page.waitForTimeout(300);
       const fr = await page.locator('.esp-foglio-menu').boundingBox();
-      assert.ok(Math.abs(fr.width - width) < 1, 'foglio a tutta larghezza');
+      const larghezzaFinestra = await page.locator('.pf-corpo:has(.esp)').evaluate((e) => e.getBoundingClientRect().width); // PERSONAL-FINESTRE: dentro la finestra
+      assert.ok(Math.abs(fr.width - larghezzaFinestra) < 1, 'foglio a tutta larghezza della finestra');
       assert.ok(await page.locator('.esp-barra-selezione').isVisible(), 'selezione con barra azioni in alto');
       await foto(page, '08-menu-foglio');
       await voce(page, 'Apri con').tap(); await page.waitForTimeout(250);

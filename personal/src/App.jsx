@@ -6,7 +6,7 @@ import { useImpostazioniComuni } from './lib/etichetteComuni.js';
 import { avviaAzioneWidget } from './lib/widgetAzioni.js';
 // PERSONAL-ESPLORA-WIN11 fase 3: barra delle applicazioni e Start stile Windows 11 (al posto del dock).
 import { BarraApplicazioni, useConteggiBarra, useApriCon } from './Barra.jsx';
-import { Pagina } from './Pagina.jsx';
+import { Desktop, useFinestre } from './Desktop.jsx'; // PERSONAL-FINESTRE: le pagine sono finestre stile Windows
 import { readAgendaLocation, readSectionLocation } from '../../shared/agenda/navigation.js';
 // POL-VITA-003/006 — Poliedron Personal: app per telefono dell'archivio personale.
 // Dock: Oggi · Agenda · Documenti · Assistente · Altro. Ogni dettaglio si apre come pagina sopra la
@@ -27,7 +27,7 @@ const Scan = differito(() => import('./scan/Scan.jsx'), 'Scan'); // SCAN-HOME: l
 import { eScan } from './lib/scan.js';
 import { INGRESSI, PAGINE_AGGIUNGI, LIVELLI_AGGIUNGI, voceDaIndirizzo } from './lib/ingressi.js';
 import { Accesso, NuovaPassword } from './Accesso.jsx';
-import { sezione, pagina, titoloPagina, eModulo } from './sezioni/index.js';
+import { sezione, pagina, titoloPagina } from './sezioni/index.js';
 import { IconaPiu, IconaImpostazioni } from './Icone.jsx';
 
 impostaToken(tokenSessione);
@@ -41,8 +41,9 @@ function Archivio({ email }) {
   useEffect(() => startAndroidAgendaWidget({ db: studioDb, session: sessioneStudio, studioId: studioDellaSessione, etichette: () => etichetteWidget.current }), []);
   const [vista, setVistaStato] = useState(vistaIniziale);
   const [sotto, setSotto] = useState(null);
-  const [pagine, setPagine] = useState([]);
   const [errore, setErrore] = useState(null);
+  const fs = useFinestre({ onErrore: setErrore });
+  const { pagine, visibili, inPrimo, apri: apriFinestra, indietro, sostituisci } = fs;
   const [toast, setToast] = useState(null);
   const [occupato, setOccupato] = useState(0);
   const [versione, setVersione] = useState(0);
@@ -51,7 +52,6 @@ function Archivio({ email }) {
   const [chat, setChat] = useState(CHAT_VUOTA);
   const [impostazioni, setImpostazioni] = useState(() => JSON.parse(JSON.stringify(IMPOSTAZIONI_PREDEFINITE)));
   etichetteWidget.current = impostazioni.etichette;
-  const contatore = useRef(0);
   const diarioVisitato = useRef(vista === 'diario');
   const ingressi = useRef({}); // DOCK-PER-TE passo 3: selettori del + (lib/ingressi.js)
 
@@ -77,14 +77,15 @@ function Archivio({ email }) {
   }, []);
   const vai = useCallback((v, sottoVista = null) => {
     if (v === 'diario') diarioVisitato.current = true;
-    setPagine([]); setVistaStato(v); setSotto(sottoVista); setErrore(null);
+    // PERSONAL-FINESTRE: andare a un'app della barra mostra quell'app; le finestre restano nella barra.
+    fs.azioni.perVista(); setVistaStato(v); setSotto(sottoVista); setErrore(null);
     try { localStorage.setItem(VISTA_KEY, v); } catch { /* facoltativo */ }
     window.scrollTo(0, 0);
   }, []);
-  const apri = useCallback((p) => { contatore.current += 1; setErrore(null); setFoglio(false); setPagine((st) => [...st, { ...p, chiave: contatore.current }]); }, []);
+  const apri = useCallback((p) => { setFoglio(false); apriFinestra(p); }, [apriFinestra]);
   useIngressoPdf(apri, setErrore);
   // AGENDA-ETICHETTE: «Impostazioni di Personal» dalle Impostazioni dello Studio (?sezione=impostazioni).
-  useEffect(() => { if (readSectionLocation() === 'impostazioni') apri({ tipo: 'impostazioni' }); }, [apri]);
+  useEffect(() => { if (readSectionLocation() === 'impostazioni') apri({ tipo: 'impostazioni' }); if (new URLSearchParams(location.search).get('finestra') === 'scan') apri({ tipo: 'scan' }); }, [apri]); // PERSONAL-FINESTRE: «Apri nel desktop» dallo Scan
   // Azioni dei widget Android (nuovo, apri riga, rimanda): solo editor, mai salvataggi automatici.
   const widgetOpened = useRef(false);
   useEffect(() => {
@@ -92,8 +93,6 @@ function Archivio({ email }) {
     widgetOpened.current = true;
     return avviaAzioneWidget({ apri, mostra, errore: setErrore, appuntamento: appuntamentoPerId, impegno: impegnoPerId, sessione: sessioneStudio });
   }, [apri, mostra]);
-  const indietro = useCallback(() => { setErrore(null); setPagine((st) => st.slice(0, -1)); }, []);
-  const sostituisci = useCallback((p) => { contatore.current += 1; setPagine((st) => [...st.slice(0, -1), { ...p, chiave: contatore.current }]); }, []);
 
   // Tasto + e azioni rapide della Home. Foto e file: il selettore si apre subito (gesto dell'utente).
   const aggiungi = useCallback((id) => {
@@ -114,7 +113,7 @@ function Archivio({ email }) {
   useApriCon(apri, apriChat); // PR #337: file trascinato da Esplora su un'icona della barra
 
   const ctx = {
-    esegui, aggiorna, mostra, versione, impostazioni, salvaImp, salvaEtichette, fascicoli, apri, vai, aggiungi, sotto, apriChat, chat, setChat, indietro,
+    esegui, aggiorna, mostra, versione, impostazioni, salvaImp, salvaEtichette, fascicoli, apri, apriFinestra: apri, vai, aggiungi, sotto, apriChat, chat, setChat, indietro,
     apriAggiungi: () => setFoglio(true), // PERSONALE-HOME: il + della Home personale apre lo stesso foglio del tasto +
     // Pagato da un elenco: spesa e prossimo fisso si creano da soli, Annulla li toglie (POL-VITA-021).
     pagato: (s) => esegui(async () => {
@@ -124,14 +123,11 @@ function Archivio({ email }) {
     }),
   };
 
-  useEffect(() => {
-    document.body.classList.toggle('pp-con-pagina', pagine.length > 0);
-  }, [pagine.length]);
 
   const attuale = sezione(vista);
   const { Vista, AzioniTestata } = attuale;
   const VistaDiario = sezione('diario').Vista;
-  const sopra = pagine.length > 0;
+  const sopra = visibili.some((f) => f.stato === 'ingrandita');
 
   return (
     <div className={`pp-app pp-vista-${vista}`}>
@@ -149,15 +145,11 @@ function Archivio({ email }) {
         <div hidden={vista !== 'diario'}>{diarioVisitato.current && <VistaDiario ctx={ctx} active={vista === 'diario'} />}</div>
         {vista !== 'diario' && <Vista key={`${vista}-${sotto || ''}`} ctx={ctx} />}
       </main>
-      {pagine.map((p, i) => (
-        <Pagina key={p.chiave} titolo={titoloPagina(p)} visibile={i === pagine.length - 1} onIndietro={indietro} senzaChiudi={eModulo(p.tipo)}>
-          {i === pagine.length - 1 && errore && <p className="pp-messaggio pp-messaggio-errore" role="alert">{errore}</p>}
-          {pagina(p.tipo)?.render(p, { ctx, chiudi: indietro, sostituisci, email }) ?? null}
-        </Pagina>
-      ))}
+      <Desktop finestre={fs} titolo={titoloPagina} errore={errore}
+        render={(p, { chiudi, sostituisci: nellaStessa }) => pagina(p.tipo)?.render(p, { ctx: { ...ctx, indietro: chiudi }, chiudi, sostituisci: nellaStessa, email }) ?? null} />
       {/* PERSONAL-ESPLORA-WIN11 fase 3: barra stile Windows 11 (Start · Oggi · Agenda · Esplora file · Assistente ·
           Personale, a destra ora, data e notifiche). Stesse viste e stessi percorsi del dock di prima. */}
-      <BarraApplicazioni vista={vista} pagine={pagine} conteggi={conteggi} email={email} vai={vai} apri={apri}
+      <BarraApplicazioni vista={vista} pagine={visibili} finestre={pagine} inPrimo={inPrimo?.chiave} onFinestra={fs.azioni.icona} onDesktop={fs.azioni.desktop} conteggi={conteggi} email={email} vai={vai} apri={apri}
         onEsci={() => archivioDb.auth.signOut()} />
       {!sopra && !attuale.senzaPiu && <TastoAcquisisci className="pp-acquisisci" onClick={() => apri({ tipo: 'scansione', opzioni: { destinazione: true } })} />}
       {!sopra && !attuale.senzaPiu && <button className="pp-fab" onClick={() => setFoglio(true)} aria-label="Aggiungi"><IconaPiu size={26} /></button>}

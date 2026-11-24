@@ -11,6 +11,8 @@ let ascolta = false;
 function alPop() {
   if (daIgnorare > 0) { daIgnorare -= 1; return; }
   const cima = pila[pila.length - 1]; if (!cima) return;
+  // Tolto un passo di qualcun altro sopra il nostro (es. lo Start della barra): il nostro è ancora lì.
+  if (history.state?.poliedraIndietro === cima.id) return;
   pila.pop(); cima.chiusa = true;
   if (cima.gestisci()) { cima.chiusa = false; pila.push(cima); history.pushState({ ...(history.state || {}), poliedraIndietro: cima.id }, ''); }
 }

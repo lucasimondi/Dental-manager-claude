@@ -10,6 +10,9 @@ import { Segmenti } from './ui.jsx';
 import { Angoli } from './Angoli.jsx';
 import { Fotocamera, fotocameraDisponibile } from './scan/Fotocamera.jsx';
 import { ScegliPoliedron } from './scan/ScegliPoliedron.jsx';
+import { useDocumentiInFinestra } from './lib/portale.js';
+import { preparaFile, comeFile } from './lib/condividi.js';
+import { tokenSessione } from './ui.jsx';
 import { eScan, indirizzoScan } from './lib/scan.js';
 import {
   IconaFotocamera, IconaFile, IconaPortafoglio, IconaCalendario, IconaEuro, IconaChiudi, IconaScansiona, IconaFoto,
@@ -191,6 +194,15 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
     }
   };
   const aggiungiRef = useRef(aggiungi); aggiungiRef.current = aggiungi;
+  // PERSONAL-FINESTRE: documenti trascinati da Esplora su questa finestra, o scelti in Esplora «per lo Scan».
+  const miaFinestra = useDocumentiInFinestra(async (docs) => {
+    try { setLavoro('Scarico dall’archivio…'); const t = await tokenSessione(); const files = []; for (const d of docs) files.push(comeFile(await preparaFile(d.drive_file_id, t))); setLavoro(null); aggiungiRef.current(files); }
+    catch (e) { setLavoro(null); mostra(e.message || 'Documento non scaricato.'); }
+  });
+  const scegliDaPoliedron = () => {
+    if (ctx.apriFinestra && miaFinestra != null) ctx.apriFinestra({ tipo: 'esplora', scegliPer: miaFinestra, perNome: 'lo Scan', titolo: 'Scegli da Poliedron · Esplora file' });
+    else setDaPoliedron(true);
+  };
   useEffect(() => {
     if (initialFiles?.length && ricevuti.current !== initialFiles) { ricevuti.current = initialFiles; void aggiungi(initialFiles); }
   }, [initialFiles]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -259,7 +271,7 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
         <button className="pp-bottone" onClick={apriScatto}><IconaFotocamera size={20} /> Scatta</button>
         <button className="pp-bottone pp-bottone-chiaro" onClick={() => galleria.current.click()}><IconaFoto size={20} /> Foto</button>
         <button className="pp-bottone pp-bottone-chiaro" onClick={() => altriFile.current.click()}><IconaFile size={20} /> PDF e file</button>
-        <button className="pp-bottone pp-bottone-chiaro" onClick={() => setDaPoliedron(true)}><IconaDocumenti size={20} /> Poliedron</button>
+        <button className="pp-bottone pp-bottone-chiaro" onClick={scegliDaPoliedron}><IconaDocumenti size={20} /> Poliedron</button>
       </div>
       {pagine.length === 0 && <p className="pp-riga-meta pp-spiegazione">Scatta le pagine: inquadra il foglio su un piano scuro, lo scanner lo riconosce e scatta da solo quando sei fermo. Ombre tolte, foglio raddrizzato; tocca ✂ per sistemare gli angoli.</p>}
       <div className="scan-opzioni">

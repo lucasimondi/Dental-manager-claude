@@ -194,112 +194,112 @@
 
 /* SCAN-GRAFICA (PO 2026-11-24): le pagine interne dello Scan (scanner, carta d'identità, estrai testo,
    gestore PDF, archiviazione) usano lo stesso blu e le stesse schede della Home dello Scan, invece del
-   verde di Personal. body.scan-app vale anche per i fogli aperti fuori dall'app (portali). */
-body.scan-app { --pp-blu: #1f6fe5; --pp-blu-chiaro: #e8f0fd; --pp-verde: #1f6fe5; --scan-accento: #1f6fe5; --scan-accento-chiaro: #e8f0fd; }
-@media (prefers-color-scheme: dark) { body.scan-app { --pp-blu: #82b1ff; --pp-blu-chiaro: #1a2a47; --pp-verde: #82b1ff; --scan-accento: #82b1ff; --scan-accento-chiaro: #1a2a47; } }
-body.scan-app input[type=checkbox], body.scan-app input[type=radio], body.scan-app input[type=range] { accent-color: var(--scan-accento); }
-body.scan-app .pp-pagina { background: var(--pp-sfondo); }
-body.scan-app .pp-sorgenti-rapide .pp-bottone { border-radius: 18px; }
-body.scan-app .pp-bottone-chiaro { background: var(--pp-superficie); border: 1px solid var(--pp-linea); box-shadow: var(--pp-ombra); }
-body.scan-app .scan-opzioni { padding: 10px 12px; border-radius: 18px; background: var(--pp-superficie); border: 1px solid var(--pp-linea); }
+   verde di Personal. .scan-app vale anche per i fogli aperti fuori dall'app (portali). */
+.scan-app { --pp-blu: #1f6fe5; --pp-blu-chiaro: #e8f0fd; --pp-verde: #1f6fe5; --scan-accento: #1f6fe5; --scan-accento-chiaro: #e8f0fd; }
+@media (prefers-color-scheme: dark) { .scan-app { --pp-blu: #82b1ff; --pp-blu-chiaro: #1a2a47; --pp-verde: #82b1ff; --scan-accento: #82b1ff; --scan-accento-chiaro: #1a2a47; } }
+.scan-app input[type=checkbox], .scan-app input[type=radio], .scan-app input[type=range] { accent-color: var(--scan-accento); }
+.scan-app .pp-pagina { background: var(--pp-sfondo); }
+.scan-app .pp-sorgenti-rapide .pp-bottone { border-radius: 18px; }
+.scan-app .pp-bottone-chiaro { background: var(--pp-superficie); border: 1px solid var(--pp-linea); box-shadow: var(--pp-ombra); }
+.scan-app .scan-opzioni { padding: 10px 12px; border-radius: 18px; background: var(--pp-superficie); border: 1px solid var(--pp-linea); }
 /* schede delle pagine scansionate: numero sopra la foto, comandi su una riga */
-body.scan-app .pp-scansione-pagina { border-radius: 18px; border: 1px solid var(--pp-linea); box-shadow: var(--pp-ombra); }
-body.scan-app .pp-scansione-pagina img { background: #eef1f6; }
-body.scan-app .scan-controls .pp-scansione-pagina figcaption { flex-wrap: nowrap; justify-content: space-between; gap: 0; padding: 4px 4px 6px; }
-body.scan-app .scan-controls .pp-scansione-pagina figcaption button { min-width: 0; width: 36px; height: 40px; color: var(--pp-inchiostro); }
-body.scan-app .scan-controls .pp-scansione-pagina figcaption .scan-select { position: absolute; left: 8px; top: 8px; min-height: 30px; padding: 0 10px 0 6px; border-radius: 999px; background: rgba(255, 255, 255, .94); color: #18243b; font-weight: 700; box-shadow: 0 1px 4px rgba(0, 0, 0, .15); margin: 0; }
-body.scan-app .scan-controls .pp-scansione-pagina figcaption .scan-edit { position: static; width: auto; flex: 1; order: 0; color: var(--scan-accento); }
-body.scan-app .pp-scan-auto { left: auto; right: 8px; top: 8px; background: color-mix(in srgb, var(--scan-accento) 92%, transparent); }
-body.scan-app .pp-scansione-nuova { border-radius: 18px; border-color: color-mix(in srgb, var(--scan-accento) 45%, transparent); color: var(--scan-accento); }
-body.scan-app .scan-output-file { border-radius: 18px; background: var(--pp-superficie); }
+.scan-app .pp-scansione-pagina { border-radius: 18px; border: 1px solid var(--pp-linea); box-shadow: var(--pp-ombra); }
+.scan-app .pp-scansione-pagina img { background: #eef1f6; }
+.scan-app .scan-controls .pp-scansione-pagina figcaption { flex-wrap: nowrap; justify-content: space-between; gap: 0; padding: 4px 4px 6px; }
+.scan-app .scan-controls .pp-scansione-pagina figcaption button { min-width: 0; width: 36px; height: 40px; color: var(--pp-inchiostro); }
+.scan-app .scan-controls .pp-scansione-pagina figcaption .scan-select { position: absolute; left: 8px; top: 8px; min-height: 30px; padding: 0 10px 0 6px; border-radius: 999px; background: rgba(255, 255, 255, .94); color: #18243b; font-weight: 700; box-shadow: 0 1px 4px rgba(0, 0, 0, .15); margin: 0; }
+.scan-app .scan-controls .pp-scansione-pagina figcaption .scan-edit { position: static; width: auto; flex: 1; order: 0; color: var(--scan-accento); }
+.scan-app .pp-scan-auto { left: auto; right: 8px; top: 8px; background: color-mix(in srgb, var(--scan-accento) 92%, transparent); }
+.scan-app .pp-scansione-nuova { border-radius: 18px; border-color: color-mix(in srgb, var(--scan-accento) 45%, transparent); color: var(--scan-accento); }
+.scan-app .scan-output-file { border-radius: 18px; background: var(--pp-superficie); }
 /* gestore PDF dentro lo Scan */
-body.scan-app .pdf-manager .pdf-primary, body.scan-app .pdf-manager button[aria-pressed=true], body.scan-app .pdf-link-bottone.pdf-primary { background: var(--scan-accento); border-color: var(--scan-accento); color: #fff; }
-body.scan-app .pdf-manager .pdf-inchiostro.attivo, body.scan-app .pdf-manager .pdf-scelte button.attivo, body.scan-app .pdf-manager .pdf-scelte button[aria-pressed=true] { border-color: var(--scan-accento); box-shadow: inset 0 0 0 1px var(--scan-accento); background: var(--scan-accento-chiaro); color: #17263c; }
-body.scan-app .pdf-manager .pdf-signature { border-color: var(--scan-accento); }
-body.scan-app .pdf-manager .pdf-signature-remove, body.scan-app .pdf-manager .pdf-signature-resize, body.scan-app .pdf-manager .pdf-testo-modifica { background: var(--scan-accento); border-color: var(--scan-accento); }
-body.scan-app .pdf-auto { color: var(--scan-accento); background: var(--scan-accento-chiaro); }
-body.scan-app .pdf-sheet, body.scan-app .pdf-manager .pdf-tools button { border-radius: 18px; }
-body.scan-app .pdf-manager .pdf-tools button { border-radius: 999px; }
+.scan-app .pdf-manager .pdf-primary, .scan-app .pdf-manager button[aria-pressed=true], .scan-app .pdf-link-bottone.pdf-primary { background: var(--scan-accento); border-color: var(--scan-accento); color: #fff; }
+.scan-app .pdf-manager .pdf-inchiostro.attivo, .scan-app .pdf-manager .pdf-scelte button.attivo, .scan-app .pdf-manager .pdf-scelte button[aria-pressed=true] { border-color: var(--scan-accento); box-shadow: inset 0 0 0 1px var(--scan-accento); background: var(--scan-accento-chiaro); color: #17263c; }
+.scan-app .pdf-manager .pdf-signature { border-color: var(--scan-accento); }
+.scan-app .pdf-manager .pdf-signature-remove, .scan-app .pdf-manager .pdf-signature-resize, .scan-app .pdf-manager .pdf-testo-modifica { background: var(--scan-accento); border-color: var(--scan-accento); }
+.scan-app .pdf-auto { color: var(--scan-accento); background: var(--scan-accento-chiaro); }
+.scan-app .pdf-sheet, .scan-app .pdf-manager .pdf-tools button { border-radius: 18px; }
+.scan-app .pdf-manager .pdf-tools button { border-radius: 999px; }
 
 /* SCAN-PRO (PO 2026-11-24: «la grafica ed i tasti devono essere più professionali, con trasparenze,
    opacità, gradienti, tridimensionalità»). Linguaggio unico per lo Scan: sfondo a gradiente morbido,
    superfici di vetro smerigliato (trasparenza + sfocatura + bordo luminoso), pulsanti in rilievo con
    gradiente, luce in alto e ombra colorata, stati premuti che "affondano". Valido su Home, pagine
-   interne, fogli e gestore PDF (body.scan-app). */
-body.scan-app {
+   interne, fogli e gestore PDF (.scan-app). */
+.scan-app {
   --vetro: rgba(255, 255, 255, .62); --vetro-forte: rgba(255, 255, 255, .82); --vetro-bordo: rgba(255, 255, 255, .75);
   --vetro-ombra: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 12px 32px rgba(28, 52, 104, .13), 0 2px 6px rgba(28, 52, 104, .08);
   --rilievo: 0 1px 0 rgba(255, 255, 255, .45) inset, 0 -2px 0 rgba(0, 0, 0, .12) inset, 0 10px 22px rgba(31, 99, 214, .34), 0 2px 4px rgba(31, 99, 214, .25);
   --grad-primario: linear-gradient(180deg, #5b9bff 0%, #2f74ea 48%, #1c5ad0 100%);
   --sfondo-scan: radial-gradient(120% 70% at 0% 0%, #e9e3ff 0%, transparent 55%), radial-gradient(90% 60% at 100% 10%, #dcebff 0%, transparent 60%), radial-gradient(100% 70% at 50% 110%, #ffe6ee 0%, transparent 60%), #f4f6fb;
 }
-@media (prefers-color-scheme: dark) { body.scan-app {
+@media (prefers-color-scheme: dark) { .scan-app {
   --vetro: rgba(30, 40, 62, .58); --vetro-forte: rgba(34, 46, 70, .82); --vetro-bordo: rgba(255, 255, 255, .1);
   --vetro-ombra: 0 1px 0 rgba(255, 255, 255, .06) inset, 0 14px 34px rgba(0, 0, 0, .45), 0 2px 6px rgba(0, 0, 0, .3);
   --rilievo: 0 1px 0 rgba(255, 255, 255, .25) inset, 0 -2px 0 rgba(0, 0, 0, .25) inset, 0 10px 24px rgba(40, 110, 255, .35);
   --grad-primario: linear-gradient(180deg, #6aa5ff 0%, #3a7cf0 50%, #2458c8 100%);
   --sfondo-scan: radial-gradient(120% 70% at 0% 0%, #2a2350 0%, transparent 55%), radial-gradient(90% 60% at 100% 10%, #142a4d 0%, transparent 60%), radial-gradient(100% 70% at 50% 110%, #3a1d33 0%, transparent 60%), #0e1422;
 } }
-body.scan-app, body.scan-app .pp-app.pp-scan, body.scan-app .pp-pagina { background: var(--sfondo-scan); background-attachment: fixed; }
+.scan-app, .scan-app .pp-app.pp-scan, .scan-app .pp-pagina { background: var(--sfondo-scan); background-attachment: fixed; }
 /* superfici di vetro */
-body.scan-app .scan-griglia, body.scan-app .scan-sorgenti, body.scan-app .scan-opzioni, body.scan-app .pp-scansione-pagina, body.scan-app .scan-output-file,
-body.scan-app .pp-bottone-chiaro, body.scan-app .pp-segmenti, body.scan-app .scan-finestra-cerca, body.scan-app .scan-voce {
+.scan-app .scan-griglia, .scan-app .scan-sorgenti, .scan-app .scan-opzioni, .scan-app .pp-scansione-pagina, .scan-app .scan-output-file,
+.scan-app .pp-bottone-chiaro, .scan-app .pp-segmenti, .scan-app .scan-finestra-cerca, .scan-app .scan-voce {
   background: var(--vetro); -webkit-backdrop-filter: blur(18px) saturate(170%); backdrop-filter: blur(18px) saturate(170%);
   border: 1px solid var(--vetro-bordo); box-shadow: var(--vetro-ombra);
 }
-body.scan-app .pp-testata, body.scan-app .pp-pagina-barra { background: color-mix(in srgb, var(--pp-superficie) 55%, transparent); -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); border-bottom: 1px solid var(--vetro-bordo); box-shadow: 0 6px 18px rgba(28, 52, 104, .06); }
+.scan-app .pp-testata, .scan-app .pp-pagina-barra { background: color-mix(in srgb, var(--pp-superficie) 55%, transparent); -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); border-bottom: 1px solid var(--vetro-bordo); box-shadow: 0 6px 18px rgba(28, 52, 104, .06); }
 /* pulsanti in rilievo */
-body.scan-app .pp-bottone:not(.pp-bottone-chiaro), body.scan-app .scan-vetro-primario, body.scan-app .scan-fab {
+.scan-app .pp-bottone:not(.pp-bottone-chiaro), .scan-app .scan-vetro-primario, .scan-app .scan-fab {
   background: var(--grad-primario); color: #fff; border: 0; box-shadow: var(--rilievo); text-shadow: 0 1px 1px rgba(0, 0, 0, .18);
   transition: transform .12s ease, box-shadow .12s ease, filter .12s;
 }
-body.scan-app .pp-bottone:not(.pp-bottone-chiaro):active, body.scan-app .scan-vetro-primario:active, body.scan-app .scan-fab:active { transform: translateY(1px) scale(.985); box-shadow: 0 1px 0 rgba(255, 255, 255, .3) inset, 0 4px 10px rgba(31, 99, 214, .3); filter: brightness(.97); }
-body.scan-app .pp-bottone:disabled { filter: grayscale(.5); opacity: .5; box-shadow: none; }
-body.scan-app .pp-bottone-chiaro { color: var(--scan-accento); transition: transform .12s, box-shadow .12s; }
-body.scan-app .pp-bottone-chiaro:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(255, 255, 255, .7) inset, 0 4px 12px rgba(28, 52, 104, .1); }
-body.scan-app .pp-sorgenti-rapide { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-body.scan-app .pp-sorgenti-rapide .pp-bottone { min-height: 72px; font-size: 13px; }
-body.scan-app .pp-sorgenti-rapide .pp-icona-contenuto, body.scan-app .scan-sorgenti .pp-icona-contenuto { filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .15)); }
+.scan-app .pp-bottone:not(.pp-bottone-chiaro):active, .scan-app .scan-vetro-primario:active, .scan-app .scan-fab:active { transform: translateY(1px) scale(.985); box-shadow: 0 1px 0 rgba(255, 255, 255, .3) inset, 0 4px 10px rgba(31, 99, 214, .3); filter: brightness(.97); }
+.scan-app .pp-bottone:disabled { filter: grayscale(.5); opacity: .5; box-shadow: none; }
+.scan-app .pp-bottone-chiaro { color: var(--scan-accento); transition: transform .12s, box-shadow .12s; }
+.scan-app .pp-bottone-chiaro:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(255, 255, 255, .7) inset, 0 4px 12px rgba(28, 52, 104, .1); }
+.scan-app .pp-sorgenti-rapide { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.scan-app .pp-sorgenti-rapide .pp-bottone { min-height: 72px; font-size: 13px; }
+.scan-app .pp-sorgenti-rapide .pp-icona-contenuto, .scan-app .scan-sorgenti .pp-icona-contenuto { filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .15)); }
 /* segmenti: binario di vetro, cursore in rilievo */
-body.scan-app .pp-segmenti { padding: 4px; border-radius: 14px; }
-body.scan-app .pp-segmenti button { border-radius: 10px; }
-body.scan-app .pp-segmenti button.attivo { background: linear-gradient(180deg, #fff, #f1f5fd); box-shadow: 0 1px 0 #fff inset, 0 4px 12px rgba(28, 52, 104, .16), 0 1px 2px rgba(28, 52, 104, .12); color: var(--scan-accento); }
-@media (prefers-color-scheme: dark) { body.scan-app .pp-segmenti button.attivo { background: linear-gradient(180deg, #34456a, #27365a); color: #fff; } }
+.scan-app .pp-segmenti { padding: 4px; border-radius: 14px; }
+.scan-app .pp-segmenti button { border-radius: 10px; }
+.scan-app .pp-segmenti button.attivo { background: linear-gradient(180deg, #fff, #f1f5fd); box-shadow: 0 1px 0 #fff inset, 0 4px 12px rgba(28, 52, 104, .16), 0 1px 2px rgba(28, 52, 104, .12); color: var(--scan-accento); }
+@media (prefers-color-scheme: dark) { .scan-app .pp-segmenti button.attivo { background: linear-gradient(180deg, #34456a, #27365a); color: #fff; } }
 /* Home: riquadri grandi tridimensionali con riflesso */
-body.scan-app .scan-hero button { box-shadow: 0 1px 0 rgba(255, 255, 255, .8) inset, 0 16px 34px rgba(60, 50, 140, .18), 0 3px 8px rgba(60, 50, 140, .1); transition: transform .15s; isolation: isolate; }
-body.scan-app .scan-hero button::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: radial-gradient(120% 80% at 10% 0%, rgba(255, 255, 255, .75), transparent 55%); pointer-events: none; }
-body.scan-app .scan-hero button:active { transform: scale(.98); }
-body.scan-app .scan-hero-grande { background: linear-gradient(155deg, #efe9ff 0%, #c9b8ff 55%, #a58cff 100%); }
-body.scan-app .scan-hero-grande .scan-hero-icona { color: #fff; opacity: 1; filter: drop-shadow(0 4px 8px rgba(70, 40, 180, .45)); }
-body.scan-app .scan-hero-pdf { background: linear-gradient(155deg, #fff0f0 0%, #ffc3c3 100%); }
-body.scan-app .scan-hero-tessera { background: linear-gradient(155deg, #eef6ff 0%, #b9d6ff 100%); }
+.scan-app .scan-hero button { box-shadow: 0 1px 0 rgba(255, 255, 255, .8) inset, 0 16px 34px rgba(60, 50, 140, .18), 0 3px 8px rgba(60, 50, 140, .1); transition: transform .15s; isolation: isolate; }
+.scan-app .scan-hero button::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: radial-gradient(120% 80% at 10% 0%, rgba(255, 255, 255, .75), transparent 55%); pointer-events: none; }
+.scan-app .scan-hero button:active { transform: scale(.98); }
+.scan-app .scan-hero-grande { background: linear-gradient(155deg, #efe9ff 0%, #c9b8ff 55%, #a58cff 100%); }
+.scan-app .scan-hero-grande .scan-hero-icona { color: #fff; opacity: 1; filter: drop-shadow(0 4px 8px rgba(70, 40, 180, .45)); }
+.scan-app .scan-hero-pdf { background: linear-gradient(155deg, #fff0f0 0%, #ffc3c3 100%); }
+.scan-app .scan-hero-tessera { background: linear-gradient(155deg, #eef6ff 0%, #b9d6ff 100%); }
 @media (prefers-color-scheme: dark) {
-  body.scan-app .scan-hero-grande { background: linear-gradient(155deg, #3b2f78, #2a2155); }
-  body.scan-app .scan-hero-pdf { background: linear-gradient(155deg, #5a2a33, #3b1d25); }
-  body.scan-app .scan-hero-tessera { background: linear-gradient(155deg, #1f3c68, #172c4d); }
-  body.scan-app .scan-hero button::before { background: radial-gradient(120% 80% at 10% 0%, rgba(255, 255, 255, .12), transparent 55%); }
+  .scan-app .scan-hero-grande { background: linear-gradient(155deg, #3b2f78, #2a2155); }
+  .scan-app .scan-hero-pdf { background: linear-gradient(155deg, #5a2a33, #3b1d25); }
+  .scan-app .scan-hero-tessera { background: linear-gradient(155deg, #1f3c68, #172c4d); }
+  .scan-app .scan-hero button::before { background: radial-gradient(120% 80% at 10% 0%, rgba(255, 255, 255, .12), transparent 55%); }
 }
 /* icone degli strumenti: piastrelle a gradiente con luce */
-body.scan-app .scan-strumento-icona { width: 44px; height: 44px; border-radius: 14px; background: linear-gradient(180deg, #ffffff, #e9eef8); box-shadow: 0 1px 0 #fff inset, 0 6px 14px rgba(28, 52, 104, .14), 0 1px 2px rgba(28, 52, 104, .1); }
-@media (prefers-color-scheme: dark) { body.scan-app .scan-strumento-icona { background: linear-gradient(180deg, #2f3d5c, #222d46); box-shadow: 0 1px 0 rgba(255, 255, 255, .08) inset, 0 6px 14px rgba(0, 0, 0, .35); } }
-body.scan-app .scan-strumento:active .scan-strumento-icona { transform: translateY(1px); box-shadow: 0 2px 6px rgba(28, 52, 104, .14); }
-body.scan-app .scan-sorgenti { grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: hidden; }
-body.scan-app .scan-sorgenti button + button { border-left: 1px solid var(--vetro-bordo); }
-body.scan-app .scan-fab { box-shadow: var(--rilievo), 0 0 0 6px rgba(47, 116, 234, .14); }
+.scan-app .scan-strumento-icona { width: 44px; height: 44px; border-radius: 14px; background: linear-gradient(180deg, #ffffff, #e9eef8); box-shadow: 0 1px 0 #fff inset, 0 6px 14px rgba(28, 52, 104, .14), 0 1px 2px rgba(28, 52, 104, .1); }
+@media (prefers-color-scheme: dark) { .scan-app .scan-strumento-icona { background: linear-gradient(180deg, #2f3d5c, #222d46); box-shadow: 0 1px 0 rgba(255, 255, 255, .08) inset, 0 6px 14px rgba(0, 0, 0, .35); } }
+.scan-app .scan-strumento:active .scan-strumento-icona { transform: translateY(1px); box-shadow: 0 2px 6px rgba(28, 52, 104, .14); }
+.scan-app .scan-sorgenti { grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: hidden; }
+.scan-app .scan-sorgenti button + button { border-left: 1px solid var(--vetro-bordo); }
+.scan-app .scan-fab { box-shadow: var(--rilievo), 0 0 0 6px rgba(47, 116, 234, .14); }
 /* schede delle pagine scansionate */
-body.scan-app .pp-scansione-pagina { overflow: hidden; }
-body.scan-app .pp-scansione-pagina img { background: linear-gradient(180deg, #eef2f8, #e2e8f2); }
-body.scan-app .pp-scansione-nuova { background: color-mix(in srgb, var(--pp-superficie) 40%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
-body.scan-app .scan-controls .pp-scansione-pagina figcaption .scan-select { background: rgba(255, 255, 255, .78); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, .8); }
-body.scan-app .pp-scan-auto { background: var(--grad-primario); box-shadow: 0 4px 10px rgba(31, 99, 214, .35); }
+.scan-app .pp-scansione-pagina { overflow: hidden; }
+.scan-app .pp-scansione-pagina img { background: linear-gradient(180deg, #eef2f8, #e2e8f2); }
+.scan-app .pp-scansione-nuova { background: color-mix(in srgb, var(--pp-superficie) 40%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.scan-app .scan-controls .pp-scansione-pagina figcaption .scan-select { background: rgba(255, 255, 255, .78); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, .8); }
+.scan-app .pp-scan-auto { background: var(--grad-primario); box-shadow: 0 4px 10px rgba(31, 99, 214, .35); }
 /* gestore PDF dentro lo Scan */
-body.scan-app .pdf-manager { background: var(--sfondo-scan); }
-body.scan-app .pdf-header, body.scan-app .pdf-tools, body.scan-app .pdf-navigation, body.scan-app .pdf-search { background: color-mix(in srgb, var(--pp-superficie) 60%, transparent); -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); border-color: var(--vetro-bordo); }
-body.scan-app .pdf-manager button:not(.pdf-primary):not([aria-pressed=true]):not(.pdf-signature-remove):not(.pdf-signature-resize):not(.pdf-testo-modifica) { background: var(--vetro-forte); border: 1px solid var(--vetro-bordo); box-shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 3px 8px rgba(28, 52, 104, .1); }
-body.scan-app .pdf-manager .pdf-primary, body.scan-app .pdf-manager button[aria-pressed=true] { background: var(--grad-primario); border: 0; box-shadow: var(--rilievo); }
-body.scan-app .pdf-scrim { background: rgba(16, 28, 52, .35); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-body.scan-app .pdf-sheet { background: var(--vetro-forte); -webkit-backdrop-filter: blur(24px) saturate(170%); backdrop-filter: blur(24px) saturate(170%); border: 1px solid var(--vetro-bordo); box-shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 30px 80px rgba(16, 28, 52, .3); }
-@media (prefers-color-scheme: dark) { body.scan-app .pdf-sheet { color: #eef3ff; } }
+.scan-app .pdf-manager { background: var(--sfondo-scan); }
+.scan-app .pdf-header, .scan-app .pdf-tools, .scan-app .pdf-navigation, .scan-app .pdf-search { background: color-mix(in srgb, var(--pp-superficie) 60%, transparent); -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); border-color: var(--vetro-bordo); }
+.scan-app .pdf-manager button:not(.pdf-primary):not([aria-pressed=true]):not(.pdf-signature-remove):not(.pdf-signature-resize):not(.pdf-testo-modifica) { background: var(--vetro-forte); border: 1px solid var(--vetro-bordo); box-shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 3px 8px rgba(28, 52, 104, .1); }
+.scan-app .pdf-manager .pdf-primary, .scan-app .pdf-manager button[aria-pressed=true] { background: var(--grad-primario); border: 0; box-shadow: var(--rilievo); }
+.scan-app .pdf-scrim { background: rgba(16, 28, 52, .35); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.scan-app .pdf-sheet { background: var(--vetro-forte); -webkit-backdrop-filter: blur(24px) saturate(170%); backdrop-filter: blur(24px) saturate(170%); border: 1px solid var(--vetro-bordo); box-shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 30px 80px rgba(16, 28, 52, .3); }
+@media (prefers-color-scheme: dark) { .scan-app .pdf-sheet { color: #eef3ff; } }
 
 /* SCAN-POLIEDRON: finestra «Scegli da Poliedron» (vetro, a tutto schermo). */
 .scan-finestra { position: fixed; inset: 0; z-index: 1500; display: flex; flex-direction: column; background: var(--sfondo-scan, var(--pp-sfondo)); color: var(--pp-inchiostro); padding-top: env(safe-area-inset-top); }

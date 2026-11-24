@@ -5041,3 +5041,9 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Same task/branch/PR. Files: `personal/src/pro.css`, `personal/src/personal.css`, `personal/src/scan/{ScegliPoliedron.jsx,ScanHome.jsx,Fotocamera.jsx}`, `personal/src/lib/indietro.js`, `personal/src/Angoli.jsx`, `personal/src/Aggiungi.jsx`, `personal/src/pdf/GestorePdf.jsx`, `personal/src/Icone.jsx` (IconaCartella), tests `scannerVivo`, visual `scan-vivo`.
 - DB: none (reads only existing tables/RPC under RLS). Tests: see current-task.md. Risk: `backdrop-filter` cost on old phones (degrades to translucent without blur).
 - Next action: PO tries the preview; "Mergia" or more feedback.
+
+## Handoff — PERSONAL-FINESTRE (2026-11-24, Claude Code)
+- Task PERSONAL-FINESTRE; branch `ccr-3ece708c-bx0vaq` from master ec14cc6 (PR #347 merged on "Mergia"). Details and validation in current-task.md.
+- Files: `personal/src/{App.jsx,Desktop.jsx,Finestra.jsx,IconeFinestre.jsx,Barra.jsx,barra.css,Aggiungi.jsx,pro.css}`, `personal/src/lib/{finestre.js,portale.js,indietro.js,barra.js}`, `personal/src/scan/{Scan.jsx,ScanHome.jsx,Fotocamera.jsx,ScegliPoliedron.jsx}`, `personal/src/pdf/{GestorePdf.jsx,useIngressoPdf.js}`, `personal/src/sezioni/documenti/{Esplora.jsx,index.jsx,DocumentoIntero.jsx}`, tests.
+- DB: none. Risks: major UI change in Personal (every page is now a window); `transform` containment changes `position: fixed` inside windows (handled for Esplora ghost/menus; other fixed overlays inside pages now sit in the window). Rollback: revert the PR.
+- Next action: PO tries the preview on phone and computer; "Mergia" or feedback.

@@ -245,3 +245,80 @@ body.pb-trascina .pb-voce:not([data-bersaglio]) { opacity: .45; }
 .pt-voce.errore .pt-barra span, .pt-voce.parziale .pt-barra span { background: #C42B1C; }
 .pt-voce.annullato .pt-barra span { background: var(--pb-secondario); }
 .pt-errore { color: #C42B1C !important; }
+
+/* PERSONAL-FINESTRE (PO 2026-11-24): finestre stile Windows 11 sopra le app, la barra sempre visibile. */
+.pf-desktop { position: fixed; z-index: 40; left: 0; right: 0; top: 0; bottom: calc(var(--pp-dock) + env(safe-area-inset-bottom)); pointer-events: none; }
+body.pp-tastiera .pf-desktop { bottom: 0; }
+.pf-finestra { position: absolute; display: flex; flex-direction: column; pointer-events: auto; overflow: hidden; min-width: 0;
+  background: var(--pp-sfondo); color: var(--pp-inchiostro); border-radius: 10px; border: 1px solid color-mix(in srgb, var(--pp-inchiostro) 14%, transparent);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .6) inset, 0 22px 60px rgba(16, 28, 52, .28), 0 4px 14px rgba(16, 28, 52, .14); animation: pf-apri .16s ease-out; }
+.pf-finestra[hidden] { display: none; }
+.pf-finestra:not(.pf-attiva) { box-shadow: 0 10px 30px rgba(16, 28, 52, .16); }
+.pf-ingrandita { border-radius: 0; border: 0; box-shadow: none; }
+@keyframes pf-apri { from { transform: scale(.97); opacity: .4; } }
+@media (prefers-reduced-motion: reduce) { .pf-finestra { animation: none; } }
+.pf-titolo { flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding-left: 12px; user-select: none; -webkit-user-select: none; touch-action: none;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--pp-superficie) 92%, transparent), color-mix(in srgb, var(--pp-superficie) 70%, transparent));
+  -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%); border-bottom: 1px solid color-mix(in srgb, var(--pp-inchiostro) 9%, transparent); }
+.pf-ingrandita .pf-titolo { box-sizing: content-box; padding-top: env(safe-area-inset-top); }
+.pf-normale .pf-titolo { cursor: move; }
+.pf-finestra:not(.pf-attiva) .pf-titolo { opacity: .82; }
+.pf-icona { display: grid; place-items: center; width: 20px; height: 20px; flex-shrink: 0; color: var(--pp-blu); }
+.pf-icona-pdf { display: grid; place-items: center; border-radius: 4px; background: linear-gradient(180deg, #ff6b6e, #e0353a); color: #fff; font-size: 7px; font-weight: 800; letter-spacing: -.02em; }
+.pf-nome { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-comandi { display: flex; align-self: stretch; }
+.pf-comando { width: 46px; display: grid; place-items: center; border: 0; background: transparent; color: var(--pp-inchiostro); cursor: pointer; transition: background .12s; }
+.pf-comando:hover { background: color-mix(in srgb, var(--pp-inchiostro) 9%, transparent); }
+.pf-comando:active { background: color-mix(in srgb, var(--pp-inchiostro) 15%, transparent); }
+.pf-chiudi:hover, .pf-chiudi:active { background: #c42b1c; color: #fff; }
+.pf-normale .pf-comandi .pf-chiudi { border-top-right-radius: 9px; }
+@media (pointer: coarse) { .pf-comando { width: 48px; } }
+/* corpo: la trasformazione rende i fogli `fixed` relativi alla finestra */
+.pf-corpo { position: relative; flex: 1; min-height: 0; overflow: hidden; transform: translateZ(0); display: flex; flex-direction: column; }
+.pf-scorre { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+/* dentro una finestra le pagine e i fogli «a tutto schermo» occupano la finestra */
+.pf-corpo .pp-pagina, .pf-corpo .pp-app > .pp-pagina { bottom: 0; max-width: none; }
+.pf-corpo .pdf-manager, .pf-corpo .scan-camera, .pf-corpo .scan-finestra, .pf-corpo .pp-documento-intero { position: absolute; inset: 0; z-index: 30; }
+.pf-corpo.pb-sopra { box-shadow: inset 0 0 0 3px var(--pb-accento, #1f6fe5); background: color-mix(in srgb, var(--pb-accento, #1f6fe5) 6%, transparent); }
+.pf-contenuto { min-height: 100%; }
+.pf-modulo { padding-bottom: 16px; }
+.pf-ingrandita .pf-contenuto.pp-pagina-corpo { max-width: 980px; margin: 0 auto; }
+/* bordi per ridimensionare (finestra libera) */
+.pf-bordo { position: absolute; z-index: 3; touch-action: none; }
+.pf-bordo-e { right: -4px; top: 40px; bottom: 16px; width: 10px; cursor: ew-resize; }
+.pf-bordo-o { left: -4px; top: 40px; bottom: 16px; width: 10px; cursor: ew-resize; }
+.pf-bordo-s { bottom: -4px; left: 16px; right: 16px; height: 10px; cursor: ns-resize; }
+.pf-bordo-se { right: -2px; bottom: -2px; width: 26px; height: 26px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 55%, color-mix(in srgb, var(--pp-inchiostro) 28%, transparent) 56% 62%, transparent 63% 72%, color-mix(in srgb, var(--pp-inchiostro) 28%, transparent) 73% 79%, transparent 80%); }
+.pf-bordo-so { left: -2px; bottom: -2px; width: 22px; height: 22px; cursor: nesw-resize; }
+/* barra: finestre aperte e «Mostra desktop» */
+.pb-separatore { width: 1px; height: 24px; margin: 0 4px; background: color-mix(in srgb, currentColor 22%, transparent); flex-shrink: 0; }
+.pb-finestre { display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; max-width: 40vw; }
+.pb-finestre::-webkit-scrollbar { display: none; }
+.pb-finestra { flex-shrink: 0; }
+.pb-finestra.ridotta { opacity: .75; }
+.pb-desktop { width: 10px; align-self: stretch; margin-left: 4px; border: 0; border-left: 1px solid color-mix(in srgb, currentColor 22%, transparent); background: transparent; cursor: pointer; padding: 0; }
+.pb-desktop:hover, .pb-desktop:active { background: color-mix(in srgb, currentColor 10%, transparent); }
+@media (pointer: coarse) { .pb-desktop { width: 14px; } }
+/* Esplora dentro una finestra: occupa tutta la finestra; barra «Aggiungi» quando sceglie per un'altra finestra */
+.pf-scorre:has(.esp) { overflow: hidden; display: flex; flex-direction: column; }
+.pf-scorre:has(.esp) > .pf-contenuto, .pf-ingrandita .pf-contenuto:has(.esp) { flex: 1; min-height: 0; max-width: none; padding: 0; display: flex; flex-direction: column; }
+.pf-scorre:has(.pp-scan) > .pf-contenuto { padding: 0; max-width: none; }
+.esp-scegli { display: flex; align-items: center; gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); flex-shrink: 0;
+  background: color-mix(in srgb, var(--esp-finestra, #f3f3f3) 80%, transparent); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border-top: 1px solid var(--esp-bordo, #e5e5e5); font-size: 13.5px; }
+.esp-scegli span { flex: 1; min-width: 0; color: var(--esp-secondario, #5c5c5c); }
+.esp-scegli button { min-height: 40px; padding: 0 18px; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer; border: 1px solid var(--esp-bordo, #d1d1d1); background: #fff; color: #1a1a1a; }
+.esp-scegli .esp-scegli-ok { border: 0; background: linear-gradient(180deg, #2b7de0, #005fb8); color: #fff; box-shadow: 0 1px 0 rgba(255, 255, 255, .3) inset, 0 4px 12px rgba(0, 95, 184, .3); }
+.esp-scegli .esp-scegli-ok:disabled { opacity: .45; box-shadow: none; }
+.scan-al-desktop { margin-left: auto; align-self: center; font-size: 13px; font-weight: 600; color: var(--scan-accento, var(--pp-blu)); text-decoration: none; padding: 8px 12px; border-radius: 999px; background: var(--vetro, transparent); border: 1px solid var(--vetro-bordo, var(--pp-linea)); }
+.scan-incorporato .pp-testata { display: none; }
+.scan-incorporato.pp-app { min-height: 0; padding-top: 12px; }
+/* telefono: niente angolo «Mostra desktop» (c'è l'icona Home tra le finestre); le icone scorrono se non ci stanno */
+.pb-home { display: none; }
+@media (pointer: coarse), (max-width: 767px) {
+  .pb-barra { grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(40px, 1fr); }
+  .pb-desktop { display: none; }
+  .pb-home { display: grid; }
+  .pb-icone { min-width: 0; max-width: 100%; overflow-x: auto; scrollbar-width: none; justify-content: safe center; }
+  .pb-icone::-webkit-scrollbar { display: none; }
+  .pb-finestre { max-width: none; overflow: visible; }
+}
