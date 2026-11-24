@@ -173,7 +173,9 @@ test('apertura: regola automatica, app predefinita per estensione, mai senza fil
   assert.equal(appAutomatica(pdf), 'anteprima'); assert.equal(appAutomatica(docx), 'drive'); assert.equal(appAutomatica(zip), 'scarica');
   assert.deepEqual(cambiaApp({ pdf: 'drive' }, 'pdf', ''), {});
   assert.deepEqual(cambiaApp({}, 'xml', 'browser'), { xml: 'browser' });
-  assert.equal(APP_APERTURA.length, 6);
+  assert.equal(APP_APERTURA.length, 7);
+  // SCAN-GOOGLE-OFFICE: «Word, Excel, PowerPoint del telefono» = il file passa all'app (come Altra app…)
+  assert.deepEqual(comeAprireCon(docx, { docx: 'office' }), { modo: 'altra' });
 });
 
 test('finestra: snap ai bordi, immagini vicine, zoom 25%–400%', () => {
@@ -212,20 +214,20 @@ test('trasferimenti: uno alla volta con avanzamento, errori per file, Annulla fe
 });
 
 /* ---------- §7 Start ---------- */
-import { normalizzaStart, spostaAggiunta, togliAggiunta, cambiaDock, vociBarra, appTrovate, scadenzeImminenti, voceAttiva as attivaBarra, DOCK_PREDEFINITO } from '../personal/src/lib/barra.js';
+import { cartellaStart, normalizzaStart, spostaAggiunta, togliAggiunta, cambiaDock, vociBarra, appTrovate, scadenzeImminenti, voceAttiva as attivaBarra, DOCK_PREDEFINITO } from '../personal/src/lib/barra.js';
 
 test('Start: aggiunte riordinabili, Rimuovi, Aggiungi al dock; dock di sempre come predefinito', () => {
   const v = normalizzaStart();
   assert.deepEqual(v.dock, DOCK_PREDEFINITO);
   assert.ok(v.aggiunte.length > 10 && v.aggiunte.every((x) => x.tipo === 'app'));
   assert.deepEqual(normalizzaStart({ aggiunte: [{ tipo: 'app', id: 'conti' }, { tipo: 'app', id: 'conti' }, { tipo: 'app', id: 'inventata' }, { tipo: 'cartella', id: 'casa' }], dock: ['agenda', 'conti', 'agenda', 'boh'] }),
-    { aggiunte: [{ tipo: 'app', id: 'conti' }, { tipo: 'cartella', id: 'casa' }, { tipo: 'app', id: 'scan' }], dock: ['agenda', 'conti', 'scan'], versione: 2 });
+    { aggiunte: [{ tipo: 'app', id: 'conti' }, { tipo: 'cartella', id: 'casa' }, { tipo: 'app', id: 'scan' }, { tipo: 'app', id: 'google' }, { tipo: 'app', id: 'office' }], dock: ['agenda', 'conti', 'scan'], versione: 2 });
   // SCAN-APP: impostazioni già salvate con la versione nuova restano come sono (Scan tolto resta tolto)
   assert.deepEqual(normalizzaStart({ aggiunte: [{ tipo: 'app', id: 'conti' }], dock: ['agenda'], versione: 2 }),
     { aggiunte: [{ tipo: 'app', id: 'conti' }], dock: ['agenda'], versione: 2 });
   // impostazioni di prima: Scan entra una volta, dopo Esplora
   assert.deepEqual(normalizzaStart({ aggiunte: [{ tipo: 'app', id: 'esplora' }, { tipo: 'app', id: 'conti' }], dock: ['oggi', 'esplora', 'altro'] }).dock, ['oggi', 'esplora', 'scan', 'altro']);
-  assert.deepEqual(normalizzaStart({ aggiunte: [{ tipo: 'app', id: 'esplora' }, { tipo: 'app', id: 'conti' }], dock: [] }).aggiunte.map((x) => x.id), ['esplora', 'scan', 'conti']);
+  assert.deepEqual(normalizzaStart({ aggiunte: [{ tipo: 'app', id: 'esplora' }, { tipo: 'app', id: 'conti' }], dock: [] }).aggiunte.map((x) => x.id), ['esplora', 'scan', 'google', 'office', 'conti']);
   assert.deepEqual(vociBarra(['scan'])[2], { id: 'scan', nome: 'Scan', azione: { apri: { tipo: 'scan' } } });
   assert.equal(attivaBarra({ vista: 'agenda', pagine: [{ tipo: 'scan' }, { tipo: 'tessera' }] }), 'scan');
   assert.equal(attivaBarra({ vista: 'agenda', pagine: [{ tipo: 'scan' }], dock: ['agenda'] }), 'agenda', 'Scan tolto dal dock: resta accesa la sezione');
@@ -241,6 +243,14 @@ test('Start: aggiunte riordinabili, Rimuovi, Aggiungi al dock; dock di sempre co
   assert.equal(attivaBarra({ vista: 'conti' }), 'altro', 'come prima se non è nel dock');
   assert.deepEqual(appTrovate('cont').map((a) => a.id), ['conti']);
   assert.deepEqual(appTrovate(''), []);
+  // SCAN-GOOGLE-OFFICE: cartelle Google e Office in Start; la ricerca trova anche le app dentro
+  assert.ok(appTrovate('fogli').some((a) => a.id === 'g-fogli'));
+  assert.deepEqual(appTrovate('gmail').map((a) => a.id), ['g-gmail']);
+  assert.ok(appTrovate('word').some((a) => a.id === 'o-word'));
+  assert.deepEqual(appTrovate('google').map((a) => a.id)[0], 'google');
+  assert.deepEqual(cartellaStart('office').voci.filter((v) => v.crea).map((v) => v.crea), ['word', 'excel', 'powerpoint']);
+  assert.ok(cartellaStart('google').voci.filter((v) => v.href).every((v) => /^https:\/\/(docs|drive|mail|calendar)\.google\.com\//.test(v.href)));
+  assert.equal(cartellaStart('boh'), null);
 });
 
 test('Start: Consigliati con le scadenze imminenti dal catalogo (scadute prima), mai i pazienti', () => {

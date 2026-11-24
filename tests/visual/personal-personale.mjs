@@ -48,7 +48,7 @@ try {
     await page.getByText('Ricevuta acquisto').waitFor();
     assert.equal(await page.getByText('Referto paziente').count(), 0, 'niente documenti clinici');
     for (const n of ['Identità', 'Foto', 'Note', 'Pratiche', 'Diario', 'Biblioteca', 'Password', 'Oggi']) assert.ok(await page.locator('.pps-tessera', { hasText: n }).isVisible(), n);
-    assert.match(await page.locator('.pps-scan').getAttribute('href'), /scan\/$/);
+    assert.equal(await page.locator('.pps-scan').evaluate((e) => e.tagName), 'BUTTON', 'SCAN-APP: Scan si apre dentro Personal');
     assert.ok(await page.getByRole('button', { name: 'Impostazioni', exact: true }).isVisible());
     await page.screenshot({ path: `${out}/home-${tema}.png`, fullPage: true });
     await page.getByRole('button', { name: 'Aggiungi' }).click();

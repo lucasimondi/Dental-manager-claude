@@ -145,6 +145,13 @@ body.pb-trascina .pb-voce:not([data-bersaglio]) { opacity: .45; }
 
 /* ===== PR #337 §7: Start ===== */
 .pb-app { position: relative; touch-action: manipulation; }
+.pb-cartella-testa { display: flex; align-items: center; gap: 6px; }
+.pb-cartella-testa h2 { margin: 0; }
+.pb-cartella-indietro { width: 32px; height: 32px; border-radius: 6px; font-size: 22px; line-height: 1; color: var(--pb-testo); }
+.pb-cartella-indietro:hover { background: var(--pb-hover); }
+.pb-cartella-app .pb-nota { margin-top: 10px; }
+.pb-avviso { color: var(--pb-pallino); }
+.pb-app:disabled { opacity: .6; }
 .pb-app.presa { background: var(--pb-hover); outline: 1.5px dashed var(--pb-accento); }
 .pb-app-dock { position: absolute; bottom: 4px; left: 50%; width: 6px; height: 3px; border-radius: 2px; background: var(--pb-accento); transform: translateX(-50%); }
 .pb-icona-piccola { width: 30px; height: 30px; }
@@ -247,3 +254,5 @@ body.pb-trascina .pb-voce:not([data-bersaglio]) { opacity: .45; }
 .pt-voce.errore .pt-barra span, .pt-voce.parziale .pt-barra span { background: #C42B1C; }
 .pt-voce.annullato .pt-barra span { background: var(--pb-secondario); }
 .pt-errore { color: #C42B1C !important; }
+/* SCAN-GOOGLE-OFFICE: nelle cartelle di app i nomi vanno su due righe («Nuova presentazione»). */
+.pb-cartella-app .pb-app-nome { white-space: normal; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }

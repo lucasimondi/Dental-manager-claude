@@ -1491,21 +1491,54 @@ function accessoEsplora_(req) {
 /* ---- Esplora file PR #337 §5: Nuovo Google Doc / Foglio, Cestino dell'app, ripristino di una versione ---- */
 // Nuovo ▸ Documento Google / Foglio Google: il file nasce nella cartella gemella (o in «Archivio personale»
 // per Personale), si registra in archivio (mai inviato a un modello) e, per una cartella mia, entra nella cartella.
+// SCAN-GOOGLE-OFFICE (PO 2026-11-24: «avere dentro poliedron personale anche le app di Google per creare
+// gestire altri file ed aprire da lì (anche office)»): Nuovo ▸ Documento, Foglio, Presentazione, Modulo
+// Google e Documento Word, Foglio Excel, Presentazione PowerPoint. Tutto con il servizio Drive già
+// autorizzato (nessun permesso nuovo). Office: Drive esporta un file Google vuoto appena creato nel
+// formato Office; quella copia temporanea va subito nel Cestino (come copiaInTesto_), mai altri file.
+const NUOVI_FILE_ = {
+  doc: { mime: 'application/vnd.google-apps.document', nome: 'Nuovo documento', tipo: 'Documento' },
+  foglio: { mime: 'application/vnd.google-apps.spreadsheet', nome: 'Nuovo foglio', tipo: 'Foglio di calcolo' },
+  presentazione: { mime: 'application/vnd.google-apps.presentation', nome: 'Nuova presentazione', tipo: 'Presentazione' },
+  modulo: { mime: 'application/vnd.google-apps.form', nome: 'Nuovo modulo', tipo: 'Modulo' },
+  word: { mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', da: 'doc', est: '.docx', nome: 'Nuovo documento', tipo: 'Documento' },
+  excel: { mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', da: 'foglio', est: '.xlsx', nome: 'Nuovo foglio', tipo: 'Foglio di calcolo' },
+  powerpoint: { mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', da: 'presentazione', est: '.pptx', nome: 'Nuova presentazione', tipo: 'Presentazione' },
+};
+
+// File Office vuoto: Drive converte un file Google vuoto appena creato (la copia temporanea va nel Cestino).
+function fileOfficeVuoto_(t) {
+  let tmp = null;
+  try {
+    tmp = Drive.Files.create({ name: 'tmp-nuovo-office', mimeType: NUOVI_FILE_[t.da].mime });
+    const r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(tmp.id) + '/export?mimeType=' + encodeURIComponent(t.mime),
+      { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true });
+    if (r.getResponseCode() !== 200) throw new Error('Conversione in Office non riuscita (' + r.getResponseCode() + ')');
+    return r.getBlob().setContentType(t.mime);
+  } finally {
+    if (tmp) { try { DriveApp.getFileById(tmp.id).setTrashed(true); } catch (e) {} }
+  }
+}
+
 function creaFileEsplora_(req) {
-  const tipo = req.tipo === 'foglio' ? 'foglio' : 'doc';
-  const nome = pulisciNome_(String(req.nome || '')) || (tipo === 'foglio' ? 'Nuovo foglio' : 'Nuovo documento');
+  const tipo = Object.prototype.hasOwnProperty.call(NUOVI_FILE_, req.tipo) ? req.tipo : 'doc';
+  const t = NUOVI_FILE_[tipo];
+  const base = pulisciNome_(String(req.nome || '')).replace(/\.(docx|xlsx|pptx)$/i, '') || t.nome;
+  const nome = t.est ? base + t.est : base;
   const idCartella = UUID_.test(String(req.cartella || '')) ? String(req.cartella) : null;
   const dove = idCartella ? cartellaDriveDi_(idCartella) : cartellaRadice_();
-  const id = tipo === 'foglio' ? SpreadsheetApp.create(nome).getId() : DocumentApp.create(nome).getId();
+  const blob = t.est ? fileOfficeVuoto_(t) : null;
+  const creato = blob ? Drive.Files.create({ name: nome, mimeType: t.mime, parents: [dove.getId()] }, blob) : Drive.Files.create({ name: nome, mimeType: t.mime, parents: [dove.getId()] });
+  const id = creato.id;
   const f = DriveApp.getFileById(id);
-  f.moveTo(dove);
-  const mime = tipo === 'foglio' ? 'application/vnd.google-apps.spreadsheet' : 'application/vnd.google-apps.document';
+  const mime = t.mime;
+  const dimensione = blob ? blob.getBytes().length : 0;
   const ora = new Date();
   const esito = sb_('rpc/registra_documento', { method: 'post', body: { p: {
     hash_sha256: 'gapps:' + id, gmail_message_id: 'creato:' + Utilities.getUuid(), gmail_thread_id: null,
     email_oggetto: null, email_mittente: 'Creato in Esplora file', email_data: ora.toISOString(),
-    nome_file_originale: nome, mime_type: mime, dimensione_byte: 0, drive_file_id: id, drive_url: f.getUrl(),
-    fascicolo: 'altro', tipo_documento: tipo === 'foglio' ? 'Foglio di calcolo' : 'Documento', titolo: nome, riassunto: null,
+    nome_file_originale: nome, mime_type: mime, dimensione_byte: dimensione, drive_file_id: id, drive_url: f.getUrl(),
+    fascicolo: 'altro', tipo_documento: t.tipo, titolo: base, riassunto: null,
     data_documento: Utilities.formatDate(ora, CONFIG.FUSO, 'yyyy-MM-dd'), importo: null, tag: [], azione_richiesta: false,
     azione_descrizione: null, urgenza: null, analisi_contenuto: false, dati_estratti: {}, soggetti: [], scadenze: [], pratica: {},
   } } });
@@ -1513,7 +1546,7 @@ function creaFileEsplora_(req) {
   if (!idDoc) { try { f.setTrashed(true); } catch (e) {} throw new Error('Registrazione non riuscita'); }
   sb_('documenti?id=eq.' + idDoc, { method: 'patch', body: { drive_fissa: true, drive_rinomina: false, drive_cartella: idCartella ? 'cartella:' + idCartella : 'cartella:radice' } });
   if (idCartella) mettiInCartella_(idCartella, idDoc);
-  return { ok: true, id: idDoc, drive_file_id: id, url: f.getUrl(), titolo: nome };
+  return { ok: true, id: idDoc, drive_file_id: id, url: f.getUrl(), titolo: base, mime_type: mime, tipo: tipo };
 }
 
 // Duplica (decisione di Luca del 2026-11-22: «Duplica crea una vera copia del file»): copia del file su Drive
@@ -1909,7 +1942,9 @@ function doPost(e) {
     if (req.azione === 'rinomina_file') return rispostaJson_(rinominaFileEsplora_(req));
     if (req.azione === 'proprieta_file') return rispostaJson_(proprietaEsplora_(req));
     if (req.azione === 'accesso_file') return rispostaJson_(accessoEsplora_(req));
-    if (req.azione === 'crea_file') return rispostaJson_(creaFileEsplora_(req));
+    // SCAN-GOOGLE-OFFICE: 'nuovo_file' (tutti i tipi) — un nome nuovo, così la versione vecchia dello script
+    // risponde «da aggiornare» invece di creare un Documento al posto di una Presentazione.
+    if (req.azione === 'crea_file' || req.azione === 'nuovo_file') return rispostaJson_(creaFileEsplora_(req));
     if (req.azione === 'duplica_file') return rispostaJson_(duplicaFileEsplora_(req));
     if (req.azione === 'ripristina_file') return rispostaJson_(ripristinaFileEsplora_(req.ids));
     if (req.azione === 'ripristina_versione') return rispostaJson_(ripristinaVersioneEsplora_(req));

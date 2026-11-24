@@ -106,6 +106,18 @@ try {
     assert.equal(await page.locator('.pb-app[aria-label="Esplora, 2"] .pb-pallino').textContent(), '2');
     assert.equal(await page.locator('.pb-app[aria-label="Oggi, 1"] .pb-pallino').textContent(), '1');
     await page.screenshot({ path: `${out}/${nome}-start.png` });
+    // SCAN-GOOGLE-OFFICE: cartelle «Google» e «Office» in Start, aperte dentro Start
+    await page.locator('.pb-app[aria-label="Google"]').scrollIntoViewIfNeeded();
+    await page.locator('.pb-app[aria-label="Google"]').click();
+    await page.getByRole('group', { name: 'Cartella Google' }).waitFor();
+    assert.deepEqual(await page.locator('.pb-cartella-app .pb-app-nome').allInnerTexts(), ['Documenti', 'Fogli', 'Presentazioni', 'Moduli', 'Drive', 'Gmail', 'Calendar', 'Nuovo documento', 'Nuovo foglio', 'Nuova presentazione', 'Nuovo modulo']);
+    assert.ok(await dentro(page, '.pb-start'), 'Start con la cartella dentro lo schermo');
+    await page.screenshot({ path: `${out}/${nome}-start-google.png` });
+    await page.getByRole('button', { name: 'Torna ad Aggiunte' }).click();
+    await page.locator('.pb-app[aria-label="Office"]').click();
+    assert.deepEqual(await page.locator('.pb-cartella-app .pb-app-nome').allInnerTexts(), ['Nuovo Word', 'Nuovo Excel', 'Nuovo PowerPoint', 'File Office']);
+    await page.screenshot({ path: `${out}/${nome}-start-office.png` });
+    await page.getByRole('button', { name: 'Torna ad Aggiunte' }).click();
     await page.mouse.click(5, 5);
     await page.getByRole('dialog', { name: 'Start' }).waitFor({ state: 'detached' });
     await start.click(); await page.getByRole('dialog', { name: 'Start' }).waitFor();
