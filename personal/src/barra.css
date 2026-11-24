@@ -302,16 +302,12 @@ body.pp-tastiera .pf-desktop { bottom: 0; }
 /* Esplora dentro una finestra: occupa tutta la finestra; barra «Aggiungi» quando sceglie per un'altra finestra */
 .pf-scorre:has(.esp) { overflow: hidden; display: flex; flex-direction: column; }
 .pf-scorre:has(.esp) > .pf-contenuto, .pf-ingrandita .pf-contenuto:has(.esp) { flex: 1; min-height: 0; max-width: none; padding: 0; display: flex; flex-direction: column; }
-.pf-scorre:has(.pp-scan) > .pf-contenuto { padding: 0; max-width: none; }
 .esp-scegli { display: flex; align-items: center; gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); flex-shrink: 0;
   background: color-mix(in srgb, var(--esp-finestra, #f3f3f3) 80%, transparent); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border-top: 1px solid var(--esp-bordo, #e5e5e5); font-size: 13.5px; }
 .esp-scegli span { flex: 1; min-width: 0; color: var(--esp-secondario, #5c5c5c); }
 .esp-scegli button { min-height: 40px; padding: 0 18px; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer; border: 1px solid var(--esp-bordo, #d1d1d1); background: #fff; color: #1a1a1a; }
 .esp-scegli .esp-scegli-ok { border: 0; background: linear-gradient(180deg, #2b7de0, #005fb8); color: #fff; box-shadow: 0 1px 0 rgba(255, 255, 255, .3) inset, 0 4px 12px rgba(0, 95, 184, .3); }
 .esp-scegli .esp-scegli-ok:disabled { opacity: .45; box-shadow: none; }
-.scan-al-desktop { margin-left: auto; align-self: center; font-size: 13px; font-weight: 600; color: var(--scan-accento, var(--pp-blu)); text-decoration: none; padding: 8px 12px; border-radius: 999px; background: var(--vetro, transparent); border: 1px solid var(--vetro-bordo, var(--pp-linea)); }
-.scan-incorporato .pp-testata { display: none; }
-.scan-incorporato.pp-app { min-height: 0; padding-top: 12px; }
 /* telefono: niente angolo «Mostra desktop» (c'è l'icona Home tra le finestre); le icone scorrono se non ci stanno */
 .pb-home { display: none; }
 @media (pointer: coarse), (max-width: 767px) {

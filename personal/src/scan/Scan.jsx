@@ -19,9 +19,6 @@ import { PaginaPdf } from '../pdf/PaginaPdf.jsx';
 import { ricordaFile } from '../lib/recenti.js';
 import { ScanHome } from './ScanHome.jsx';
 import { CartaIdentita } from './CartaIdentita.jsx';
-import { usePortale, useDocumentiInFinestra } from '../lib/portale.js';
-import { preparaFile, comeFile } from '../lib/condividi.js';
-import { tokenSessione } from '../ui.jsx';
 import { EstraiTesto } from './EstraiTesto.jsx';
 
 // SCAN-HUB (PO 2026-11-12): le pagine proprie di Scan, aperte dalla Home sopra di essa. Le altre
@@ -52,12 +49,7 @@ function useInstalla() {
   return { installata, puo, iphone, installa };
 }
 
-// PERSONAL-FINESTRE (PO 2026-11-24: «devo poterla usare a tutto schermo e dentro il desktop»): con
-// `esterno` (il contesto di Personal) lo Scan vive in una finestra del desktop: le altre app si aprono
-// nel desktop, Esplora fa da «Scegli da Poliedron», la condivisione resta a Personal.
-export function Scan({ email, esterno = null }) {
-  const incorporato = Boolean(esterno);
-  const portale = usePortale();
+export function Scan({ email }) {
   const [pagine, setPagine] = useState([]);
   const [errore, setErrore] = useState(null);
   const [toast, setToast] = useState(null);
@@ -73,7 +65,7 @@ export function Scan({ email, esterno = null }) {
 
   // SCAN-GRAFICA (PO 2026-11-24: «la grafica dello Scan nella prima pagina può andare ma non nelle altre,
   // deve essere coordinata»): il tema dello Scan vale anche per le pagine sopra e per il gestore PDF.
-  useEffect(() => { const el = incorporato ? portale : document.body; el?.classList.add('scan-app'); return () => el?.classList.remove('scan-app'); }, [incorporato, portale]);
+  useEffect(() => { document.body.classList.add('scan-app'); return () => document.body.classList.remove('scan-app'); }, []);
   useEffect(() => { conteggiFascicoli(archivioDb).then(setFascicoli).catch(() => {}); }, [versione]);
   useEffect(() => { leggiImpostazioni(archivioDb).then(setImpostazioni).catch(() => {}); }, []);
   const mostra = useCallback((t, azione = null) => {
@@ -95,22 +87,22 @@ export function Scan({ email, esterno = null }) {
     });
   }, []);
   // Il resto di Personal (sezioni, chat) si apre nell'app Personal.
-  const vai = useCallback((sezione) => { if (esterno) esterno.vai(sezione); else window.location.href = indirizzoPersonal(sezione); }, [esterno]);
+  const vai = useCallback((sezione) => { window.location.href = indirizzoPersonal(sezione); }, []);
   // SCAN-PDF: «Condividi → Scan» (Android) e «Apri con → Scan» (computer) aprono il PDF nel gestore.
   const ricevi = useCallback((p) => {
     if (p.files?.length > 1) apri({ tipo: 'scanner', files: p.files });
     else apri(p);
   }, [apri]);
-  useIngressoPdf(ricevi, setErrore, !incorporato);
+  useIngressoPdf(ricevi, setErrore);
   useEffect(() => {
     const coda = window.launchQueue;
     let daFile = false;
-    if (coda?.setConsumer && !incorporato) coda.setConsumer(async (p) => {
+    if (coda?.setConsumer) coda.setConsumer(async (p) => {
       if (!p?.files?.length) return;
       daFile = true;
       try { ricevi({ tipo: 'pdf', files: await Promise.all(p.files.map((h) => h.getFile())) }); } catch (e) { setErrore(e.message); }
     });
-    if (!incorporato && strumentoDaIndirizzo() === 'pdf') setTimeout(() => { if (!daFile) apri({ tipo: 'pdf' }); }, 0);
+    if (strumentoDaIndirizzo() === 'pdf') setTimeout(() => { if (!daFile) apri({ tipo: 'pdf' }); }, 0);
   }, [apri, ricevi]);
 
   const salvaImp = useCallback(async (nuove) => {
@@ -123,15 +115,9 @@ export function Scan({ email, esterno = null }) {
     // SCAN-HUB: i file creati, condivisi o scaricati restano nei Recenti di questo telefono.
     ricorda: (files) => { ricordaFile(files).then(() => setRecenti((n) => n + 1)).catch(() => {}); },
     apriChat: () => vai('poliedron'),
-    apriFinestra: esterno?.apriFinestra, // nel desktop: Esplora come finestra di scelta
     pagato: () => vai('conti'),
   };
   const sopra = pagine.length > 0;
-  // PERSONAL-FINESTRE: documenti lasciati sulla finestra dello Scan (senza scanner aperto) → scanner con quei file.
-  useDocumentiInFinestra(async (docs) => {
-    try { const t = await tokenSessione(); const files = []; for (const d of docs) files.push(comeFile(await preparaFile(d.drive_file_id, t))); apri({ tipo: 'scanner', files }); }
-    catch (e) { setErrore(e.message || 'Documento non scaricato.'); }
-  }, incorporato && !pagine.some((p) => p.tipo === 'scanner'));
   // SCAN-HUB: dalla griglia della Home allo strumento.
   function strumento(id) {
     if (id === 'scanner') apri({ tipo: 'scanner', fotocamera: true }); // SCAN-VIVO: lo scanner parte dalla fotocamera
@@ -144,12 +130,11 @@ export function Scan({ email, esterno = null }) {
   }
 
   return (
-    <div className={`pp-app pp-scan scan-app${incorporato ? ' scan-incorporato' : ''}`}>
+    <div className="pp-app pp-scan">
       <header className="pp-testata">
         <div className="pp-testata-titoli">
           <a className="pp-brand" href={indirizzoPersonal()} aria-label="Apri Poliedron Personal"><span className="pp-brand-moderno"><img src="/scan-192.png" alt="" width="24" height="24" /></span><span>Poliedron <small>SCAN</small></span></a>
-          {!incorporato && <h1>Scan</h1>}
-          {!incorporato && <a className="scan-al-desktop" href={`${indirizzoPersonal()}${indirizzoPersonal().includes('?') ? '&' : '?'}finestra=scan`}>Apri nel desktop</a>}
+          <h1>Scan</h1>
         </div>
       </header>
       {occupato > 0 && <div className="pp-barra-caricamento" aria-hidden="true" />}

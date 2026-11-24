@@ -5047,3 +5047,8 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Files: `personal/src/{App.jsx,Desktop.jsx,Finestra.jsx,IconeFinestre.jsx,Barra.jsx,barra.css,Aggiungi.jsx,pro.css}`, `personal/src/lib/{finestre.js,portale.js,indietro.js,barra.js}`, `personal/src/scan/{Scan.jsx,ScanHome.jsx,Fotocamera.jsx,ScegliPoliedron.jsx}`, `personal/src/pdf/{GestorePdf.jsx,useIngressoPdf.js}`, `personal/src/sezioni/documenti/{Esplora.jsx,index.jsx,DocumentoIntero.jsx}`, tests.
 - DB: none. Risks: major UI change in Personal (every page is now a window); `transform` containment changes `position: fixed` inside windows (handled for Esplora ghost/menus; other fixed overlays inside pages now sit in the window). Rollback: revert the PR.
 - Next action: PO tries the preview on phone and computer; "Mergia" or feedback.
+
+## Handoff — PERSONAL-FINESTRE scope reduction (2026-11-25, Claude Code)
+- Same task/branch/PR #349. PO: "Scan deve essere Scan e gestore deve essere gestore" → the embedded Scan app is removed from this PR; Start «Scan» opens the scanner page as a window. Files: `personal/src/{App.jsx,Desktop.jsx,barra.css}`, `personal/src/lib/barra.js`, `personal/src/sezioni/documenti/index.jsx`; `scan/Scan.jsx`, `scan/ScanHome.jsx`, `pdf/useIngressoPdf.js`, `pro.css` reverted to master; tests `personalFinestre`, `scannerVivo`, `personalScan`, visual `personal-finestre`.
+- DB: none. Tests: see current-task.md. Rollback: revert the PR.
+- Next action: SCAN-PDF-SEPARATI in its own PR on top of this branch.

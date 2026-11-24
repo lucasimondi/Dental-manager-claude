@@ -6,7 +6,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { elencoRecenti, fileRecente, formatoPeso, gruppoData, svuotaRecenti, togliRecenti } from '../lib/recenti.js';
 import { condividi, scaricaDocumento } from '../lib/condividi.js';
 import { ScegliPoliedron } from './ScegliPoliedron.jsx';
-import { useChiaveFinestra } from '../lib/portale.js';
 import {
   IconaScansiona, IconaFile, IconaTessera, IconaTesto, IconaFotocamera, IconaFoto, IconaDocumenti,
   IconaPortafoglio, IconaCondividi, IconaCestino, IconaGraffetta,
@@ -29,9 +28,6 @@ export function ScanHome({ ctx, versioneRecenti, onStrumento, onFiles, coperta =
   const [menu, setMenu] = useState(null); // id del file con le azioni aperte
   const [svuota, setSvuota] = useState(false);
   const [daPoliedron, setDaPoliedron] = useState(false); // SCAN-POLIEDRON
-  // PERSONAL-FINESTRE: nel desktop «Poliedron» apre Esplora file come finestra di scelta per lo Scan.
-  const miaFinestra = useChiaveFinestra();
-  const scegliDaPoliedron = () => { if (ctx.apriFinestra && miaFinestra != null) ctx.apriFinestra({ tipo: 'esplora', scegliPer: miaFinestra, perNome: 'lo Scan', titolo: 'Scegli da Poliedron · Esplora file' }); else setDaPoliedron(true); };
   const album = useRef(null), daFile = useRef(null), camera = useRef(null);
 
   const carica = useCallback(() => { elencoRecenti().then(setRecenti).catch(() => setRecenti([])); }, []);
@@ -88,7 +84,7 @@ export function ScanHome({ ctx, versioneRecenti, onStrumento, onFiles, coperta =
       <div className="scan-sorgenti">
         <button onClick={() => album.current.click()}><IconaFoto size={20} /> Da album</button>
         <button onClick={() => daFile.current.click()}><IconaFile size={20} /> Da file</button>
-        <button onClick={scegliDaPoliedron}><IconaDocumenti size={20} /> Poliedron</button>
+        <button onClick={() => setDaPoliedron(true)}><IconaDocumenti size={20} /> Poliedron</button>
       </div>
 
       <section className="scan-recenti" aria-label="Recenti">

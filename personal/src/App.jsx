@@ -85,7 +85,7 @@ function Archivio({ email }) {
   const apri = useCallback((p) => { setFoglio(false); apriFinestra(p); }, [apriFinestra]);
   useIngressoPdf(apri, setErrore);
   // AGENDA-ETICHETTE: «Impostazioni di Personal» dalle Impostazioni dello Studio (?sezione=impostazioni).
-  useEffect(() => { if (readSectionLocation() === 'impostazioni') apri({ tipo: 'impostazioni' }); if (new URLSearchParams(location.search).get('finestra') === 'scan') apri({ tipo: 'scan' }); }, [apri]); // PERSONAL-FINESTRE: «Apri nel desktop» dallo Scan
+  useEffect(() => { if (readSectionLocation() === 'impostazioni') apri({ tipo: 'impostazioni' }); }, [apri]);
   // Azioni dei widget Android (nuovo, apri riga, rimanda): solo editor, mai salvataggi automatici.
   const widgetOpened = useRef(false);
   useEffect(() => {

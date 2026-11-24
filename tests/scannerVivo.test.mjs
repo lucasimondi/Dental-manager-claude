@@ -68,7 +68,8 @@ test('scanner: Poliedron tra le fonti (clinici esclusi, solo PDF e foto), Indiet
   const scegli = readFileSync('personal/src/scan/ScegliPoliedron.jsx', 'utf8'), angoli = readFileSync('personal/src/Angoli.jsx', 'utf8');
   const indietro = readFileSync('personal/src/lib/indietro.js', 'utf8'), gestore = readFileSync('personal/src/pdf/GestorePdf.jsx', 'utf8'), cam = readFileSync('personal/src/scan/Fotocamera.jsx', 'utf8');
   // nel desktop «Poliedron» apre Esplora file come finestra di scelta; fuori dal desktop la finestra semplice
-  for (const f of [aggiungi, home]) { assert.match(f, /onClick=\{scegliDaPoliedron\}><IconaDocumenti size=\{20\} \/> Poliedron<\/button>/); assert.match(f, /tipo: 'esplora', scegliPer: miaFinestra/); assert.match(f, /else setDaPoliedron\(true\)/); }
+  assert.match(aggiungi, /onClick=\{scegliDaPoliedron\}><IconaDocumenti size=\{20\} \/> Poliedron<\/button>/); assert.match(aggiungi, /tipo: 'esplora', scegliPer: miaFinestra/); assert.match(aggiungi, /else setDaPoliedron\(true\)/);
+  assert.match(home, /setDaPoliedron\(true\)\}><IconaDocumenti size=\{20\} \/> Poliedron<\/button>/, 'l\'app Scan da sola: finestra semplice');
   assert.match(scegli, /const visibile = \(d\) => d && d\.fascicolo !== CLINICO/);
   assert.match(scegli, /neq\('fascicolo', CLINICO\)/);
   assert.match(scegli, /useIndietro\(true, su\)/);

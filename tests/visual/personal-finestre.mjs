@@ -1,8 +1,8 @@
 // PERSONAL-FINESTRE (PO 2026-11-24) — desktop a finestre stile Windows, dati sintetici, rete finta.
 // Telefono 390×844 (tocchi reali) e computer 1280×800 (mouse): più finestre, icone nella barra
 // (tocco = avanti, di nuovo = riduci), Home / Mostra desktop, Ripristina e Ingrandisci, spostare e
-// ridimensionare, Esplora come «Scegli da Poliedron» per lo Scan, trascinare un documento da Esplora
-// alla finestra dello Scan. Screenshot in tests/visual/results-personal-finestre/.
+// ridimensionare, Esplora come «Scegli da Poliedron» per lo scanner, trascinare un documento da Esplora
+// alla finestra dello scanner (Start → Scan apre lo scanner, non l'app Scan intera). Screenshot in tests/visual/results-personal-finestre/.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
@@ -37,8 +37,8 @@ try {
     // Scan dallo Start: seconda finestra con la sua icona nella barra
     await tocca(barra.getByRole('button', { name: 'Start' }));
     await page.getByRole('dialog', { name: 'Start' }).locator('.pb-app[aria-label^="Scan"]').click();
-    const scan = finestra(page, 'Scan'); await scan.locator('.scan-home').waitFor();
-    assert.equal(await page.locator('.pb-finestre .pb-finestra[aria-label^="Scan"]').count(), 1, 'icona dello Scan nella barra');
+    const scan = finestra(page, 'Scansiona'); await scan.locator('.pp-sorgenti-rapide').waitFor();
+    assert.equal(await page.locator('.pb-finestre .pb-finestra[aria-label^="Scansiona"]').count(), 1, 'icona dello Scan nella barra');
     assert.equal(await page.locator('.pb-finestre .pb-finestra[aria-label^="Esplora"]').count(), 0, 'Esplora usa la sua icona fissata (niente doppioni)');
     assert.ok(!(await largo(page)), 'nessuno sforamento');
     await page.screenshot({ path: `${out}/tel-2-scan.png` });
@@ -52,7 +52,7 @@ try {
     assert.ok(await scan.evaluate((e) => e.hidden), 'Home riduce lo Scan');
     assert.ok(await page.locator('.pp-app > .pp-contenuto').first().isVisible());
     await page.screenshot({ path: `${out}/tel-3-home.png` });
-    await tocca(page.locator('.pb-finestre .pb-finestra[aria-label^="Scan"]'));
+    await tocca(page.locator('.pb-finestre .pb-finestra[aria-label^="Scansiona"]'));
     assert.ok(await scan.isVisible(), 'dalla barra lo Scan torna');
     // Ripristina sul telefono: finestra libera (a scelta), poi di nuovo ingrandita
     await tocca(scan.locator('.pf-titolo').getByRole('button', { name: /^Ripristina/ }));
@@ -60,7 +60,7 @@ try {
     await page.screenshot({ path: `${out}/tel-4-libera.png` });
     await tocca(scan.locator('.pf-titolo').getByRole('button', { name: /^Ingrandisci/ }));
     // «Poliedron» nello Scan: Esplora file come finestra di scelta → Aggiungi → lo scanner riceve il documento
-    await tocca(scan.locator('.scan-sorgenti').getByRole('button', { name: 'Poliedron' }));
+    await tocca(scan.locator('.pp-sorgenti-rapide').getByRole('button', { name: 'Poliedron' }));
     const scegli = finestra(page, 'Scegli da Poliedron'); await scegli.locator('.esp-scegli').waitFor();
     await scegli.locator('.esp-contenuto').waitFor();
     await page.screenshot({ path: `${out}/tel-5-scegli.png` });
@@ -91,7 +91,7 @@ try {
     assert.ok(await esp.evaluate((e) => e.classList.contains('pf-normale')), 'sul computer libera');
     await barra.getByRole('button', { name: 'Start' }).click();
     await page.getByRole('dialog', { name: 'Start' }).locator('.pb-app[aria-label^="Scan"]').click();
-    const scan = finestra(page, 'Scan'); await scan.locator('.scan-home').waitFor();
+    const scan = finestra(page, 'Scansiona'); await scan.locator('.pp-sorgenti-rapide').waitFor();
     // trascina le finestre affiancate dalla barra del titolo e ridimensiona
     // afferra la barra del titolo accanto all'icona e porta l'angolo della finestra in (x, y)
     const porta = async (fin, x, y) => { const b = await fin.boundingBox(); await page.mouse.move(b.x + 60, b.y + 20); await page.mouse.down(); await page.mouse.move(x + 60, y + 20, { steps: 8 }); await page.mouse.up(); };
@@ -105,7 +105,7 @@ try {
     // trascina «Polizza auto» da Esplora alla finestra dello Scan (Scan spostato a destra per lasciarlo vedere)
     await porta(scan, 780, 60);
     const tile = esp.locator('.esp-contenuto [data-elemento][aria-label="Polizza auto"]');
-    const da = await centro(tile), a = await centro(scan.locator('.scan-home'));
+    const da = await centro(tile), a = await centro(scan.locator('.pf-corpo'));
     await page.mouse.move(da.x, da.y); await page.mouse.down(); await page.mouse.move(da.x + 12, da.y + 6, { steps: 3 });
     await page.mouse.move(a.x, a.y, { steps: 14 }); await page.waitForTimeout(150);
     assert.ok(await scan.locator('.pf-corpo').evaluate((e) => e.classList.contains('pb-sopra')), 'la finestra dello Scan si accende sotto il documento');

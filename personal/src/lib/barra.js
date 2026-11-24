@@ -49,7 +49,7 @@ export const AGGIUNTE = [
   { id: 'agenda', nome: 'Agenda', azione: { vai: 'agenda' } },
   { id: 'documenti', nome: 'Documenti', azione: { vai: 'documenti' }, conteggio: 'documenti' },
   { id: 'esplora', nome: 'Esplora', azione: { apri: { tipo: 'esplora' } }, conteggio: 'esplora' },
-  { id: 'scan', nome: 'Scan', azione: { apri: { tipo: 'scan' } } }, // PERSONAL-FINESTRE: lo Scan come finestra del desktop
+  { id: 'scan', nome: 'Scan', azione: { apri: { tipo: 'scansione', opzioni: { destinazione: true } } } }, // PERSONAL-FINESTRE: lo scanner come finestra del desktop
   { id: 'dafare', nome: 'Da fare', azione: { vai: 'dafare' }, conteggio: 'dafare' },
   { id: 'conti', nome: 'Conti', azione: { vai: 'conti' } },
   { id: 'legal', nome: 'Legal', azione: { vai: 'legal' } },

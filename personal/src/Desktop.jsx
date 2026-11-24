@@ -7,8 +7,8 @@ import { IconaFinestra } from './IconeFinestre.jsx';
 import { useIndietro } from './lib/indietro.js';
 import { apriFinestra, attiva, inPrimoPiano, riduci, chiudi, ingrandisciRipristina, mostraDesktop, sposta, toccaIcona, sostituisciIn, riadatta, preferenzaTipo, ricordaTipo } from './lib/finestre.js';
 
-// Finestre che accettano documenti trascinati da un'altra finestra (Esplora → Scan, PDF, Archivia).
-export const ACCETTANO_FILE = new Set(['scansione', 'scan', 'pdf', 'carica']);
+// Finestre che accettano documenti trascinati da un'altra finestra (Esplora → scanner, PDF, Archivia).
+export const ACCETTANO_FILE = new Set(['scansione', 'pdf', 'carica']);
 
 export function useFinestre({ onErrore = () => {} } = {}) {
   const [pagine, setPagine] = useState([]);
