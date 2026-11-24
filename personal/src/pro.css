@@ -191,3 +191,32 @@
 .scan-tessera > .pp-segmenti, .scan-tessera .scan-output-actions { margin-top: 10px; }
 .scan-testo-area { width: 100%; min-height: 260px; padding: 12px; border-radius: 12px; border: 1px solid var(--pp-linea); background: var(--pp-superficie); color: var(--pp-inchiostro); font: inherit; font-size: 15px; line-height: 1.45; resize: vertical; box-sizing: border-box; }
 .scan-faccia-foto .pp-scan-auto { left: auto; top: auto; right: 6px; bottom: 6px; }
+
+/* SCAN-GRAFICA (PO 2026-11-24): le pagine interne dello Scan (scanner, carta d'identità, estrai testo,
+   gestore PDF, archiviazione) usano lo stesso blu e le stesse schede della Home dello Scan, invece del
+   verde di Personal. body.scan-app vale anche per i fogli aperti fuori dall'app (portali). */
+body.scan-app { --pp-blu: #1f6fe5; --pp-blu-chiaro: #e8f0fd; --pp-verde: #1f6fe5; --scan-accento: #1f6fe5; --scan-accento-chiaro: #e8f0fd; }
+@media (prefers-color-scheme: dark) { body.scan-app { --pp-blu: #82b1ff; --pp-blu-chiaro: #1a2a47; --pp-verde: #82b1ff; --scan-accento: #82b1ff; --scan-accento-chiaro: #1a2a47; } }
+body.scan-app input[type=checkbox], body.scan-app input[type=radio], body.scan-app input[type=range] { accent-color: var(--scan-accento); }
+body.scan-app .pp-pagina { background: var(--pp-sfondo); }
+body.scan-app .pp-sorgenti-rapide .pp-bottone { border-radius: 18px; }
+body.scan-app .pp-bottone-chiaro { background: var(--pp-superficie); border: 1px solid var(--pp-linea); box-shadow: var(--pp-ombra); }
+body.scan-app .scan-opzioni { padding: 10px 12px; border-radius: 18px; background: var(--pp-superficie); border: 1px solid var(--pp-linea); }
+/* schede delle pagine scansionate: numero sopra la foto, comandi su una riga */
+body.scan-app .pp-scansione-pagina { border-radius: 18px; border: 1px solid var(--pp-linea); box-shadow: var(--pp-ombra); }
+body.scan-app .pp-scansione-pagina img { background: #eef1f6; }
+body.scan-app .scan-controls .pp-scansione-pagina figcaption { flex-wrap: nowrap; justify-content: space-between; gap: 0; padding: 4px 4px 6px; }
+body.scan-app .scan-controls .pp-scansione-pagina figcaption button { min-width: 0; width: 36px; height: 40px; color: var(--pp-inchiostro); }
+body.scan-app .scan-controls .pp-scansione-pagina figcaption .scan-select { position: absolute; left: 8px; top: 8px; min-height: 30px; padding: 0 10px 0 6px; border-radius: 999px; background: rgba(255, 255, 255, .94); color: #18243b; font-weight: 700; box-shadow: 0 1px 4px rgba(0, 0, 0, .15); margin: 0; }
+body.scan-app .scan-controls .pp-scansione-pagina figcaption .scan-edit { position: static; width: auto; flex: 1; order: 0; color: var(--scan-accento); }
+body.scan-app .pp-scan-auto { left: auto; right: 8px; top: 8px; background: color-mix(in srgb, var(--scan-accento) 92%, transparent); }
+body.scan-app .pp-scansione-nuova { border-radius: 18px; border-color: color-mix(in srgb, var(--scan-accento) 45%, transparent); color: var(--scan-accento); }
+body.scan-app .scan-output-file { border-radius: 18px; background: var(--pp-superficie); }
+/* gestore PDF dentro lo Scan */
+body.scan-app .pdf-manager .pdf-primary, body.scan-app .pdf-manager button[aria-pressed=true], body.scan-app .pdf-link-bottone.pdf-primary { background: var(--scan-accento); border-color: var(--scan-accento); color: #fff; }
+body.scan-app .pdf-manager .pdf-inchiostro.attivo, body.scan-app .pdf-manager .pdf-scelte button.attivo, body.scan-app .pdf-manager .pdf-scelte button[aria-pressed=true] { border-color: var(--scan-accento); box-shadow: inset 0 0 0 1px var(--scan-accento); background: var(--scan-accento-chiaro); color: #17263c; }
+body.scan-app .pdf-manager .pdf-signature { border-color: var(--scan-accento); }
+body.scan-app .pdf-manager .pdf-signature-remove, body.scan-app .pdf-manager .pdf-signature-resize, body.scan-app .pdf-manager .pdf-testo-modifica { background: var(--scan-accento); border-color: var(--scan-accento); }
+body.scan-app .pdf-auto { color: var(--scan-accento); background: var(--scan-accento-chiaro); }
+body.scan-app .pdf-sheet, body.scan-app .pdf-manager .pdf-tools button { border-radius: 18px; }
+body.scan-app .pdf-manager .pdf-tools button { border-radius: 999px; }

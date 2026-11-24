@@ -5029,3 +5029,10 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Unresolved: real-phone comparison with a Bic signature (PO); vector signature in the PDF (PO decision, plan §1.6).
 - Risks: full redraw on every pointer move (cost grows with the number of points; fine for signatures of a few hundred samples).
 - Next action: PO reviews the Vercel preview and says "Mergia"; then PDF-STRUMENTI-2 points 1–3 on a fresh branch from master.
+
+## Handoff — FIRMA-BIRO-2 round 2: firma, testo, timbro, scanner dal vivo, grafica Scan (2026-11-24, Claude Code)
+- Same task/branch/PR #347 (`ccr-3ece708c-bx0vaq`). PO feedback after testing the preview; details in current-task.md.
+- Files: `personal/src/pdf/{biro.js,Firma.jsx,testoPdf.js,EditorTesto.jsx,timbro.js,Timbro.jsx,GestorePdf.jsx,operazioni.js,pdf.css}`, `personal/src/lib/{scannerVivo.js,scansione.js}`, `personal/src/scan/{Fotocamera.jsx,Scan.jsx,ScanHome.jsx}`, `personal/src/Aggiungi.jsx`, `personal/src/{personal.css,pro.css}`, tests (`documentiFirmati`, `pdfTestoTimbro`, `scannerVivo`, visual `personal-pdf`, `personal-pdf-annotazioni`, `scan-vivo`, `personal-scan`).
+- DB: none. Tests: npm test 1963/1963; builds PASS; visual PASS except pre-existing scan-strumenti failure (also on master).
+- Risks: live detection relies on the existing Otsu-based `trovaAngoli` (needs a darker background than the sheet, as before); full redraw per pointer move in the signature pad (finished strokes cached).
+- Next action: PO tries the new preview on the phone (scanner, text, stamp, signature); then "Mergia" or further feedback. PDF-STRUMENTI-2 / Android tasks not started.
