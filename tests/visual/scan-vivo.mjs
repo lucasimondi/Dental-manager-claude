@@ -58,6 +58,39 @@ try {
   assert.ok(carta.h > carta.w, 'foglio verticale raddrizzato');
   await page.screenshot({ path: `${out}/3-elenco.png` });
   assert.ok(!(await page.locator('.scan-camera').count()), 'fotocamera chiusa');
+  // SCAN-LENTE: trascinando un angolo compare la lente lontana dal dito; l'angolo segue lo spostamento.
+  await page.getByRole('button', { name: 'Raddrizza o ritaglia pagina 1' }).click();
+  const ritaglio = page.getByRole('dialog', { name: 'Raddrizza il foglio' }); await ritaglio.waitFor();
+  const angolo = await ritaglio.getByRole('button', { name: 'Angolo in basso a destra' }).boundingBox();
+  const cdp = await context.newCDPSession(page);
+  const tocco = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
+  const x0 = angolo.x + angolo.width / 2 + 12, y0 = angolo.y + angolo.height / 2 + 10;   // preso di lato
+  await tocco('touchStart', x0, y0); for (let i = 1; i <= 6; i++) await tocco('touchMove', x0 - i * 5, y0 - i * 4);
+  const lente = page.locator('.pp-lente'); await lente.waitFor();
+  const lb = await lente.boundingBox(), area = await page.locator('.pp-ritaglio-quadro').boundingBox();
+  assert.ok(lb.y < area.y + area.height / 2 && lb.x < area.x + area.width / 2, 'lente in alto a sinistra, lontana dal dito in basso a destra');
+  await page.screenshot({ path: `${out}/4-lente.png` });
+  await tocco('touchEnd');
+  assert.equal(await lente.count(), 0, 'la lente sparisce al rilascio');
+  const dopo = await ritaglio.getByRole('button', { name: 'Angolo in basso a destra' }).boundingBox();
+  assert.ok(Math.abs((dopo.x - angolo.x) + 30) < 4 && Math.abs((dopo.y - angolo.y) + 24) < 4, `l'angolo segue lo spostamento del dito (${dopo.x - angolo.x}, ${dopo.y - angolo.y})`);
+  await page.goBack(); await ritaglio.waitFor({ state: 'detached' });
+  // SCAN-POLIEDRON e SCAN-INDIETRO: finestra Poliedron, ‹ e Indietro del telefono.
+  await page.locator('.pp-sorgenti-rapide').getByRole('button', { name: 'Poliedron', exact: true }).click();
+  const scegli = page.getByRole('dialog', { name: 'Scegli da Poliedron' }); await scegli.waitFor();
+  await scegli.getByRole('button', { name: /Recenti/ }).click();
+  await scegli.locator('.scan-finestra-testa strong', { hasText: 'Recenti' }).waitFor();
+  await page.screenshot({ path: `${out}/5-poliedron.png` });
+  await page.goBack();
+  await scegli.locator('.scan-finestra-testa strong', { hasText: 'Poliedron' }).waitFor();
+  await scegli.getByRole('button', { name: 'Chiudi' }).click();
+  await scegli.waitFor({ state: 'detached' });
+  assert.equal(await page.locator('.pp-pagina-titolo', { hasText: 'Scanner' }).count(), 1, 'si resta nello scanner');
+  // Indietro del telefono sulla fotocamera: chiude la fotocamera, non lo Scan.
+  await page.locator('.pp-sorgenti-rapide').getByRole('button', { name: /Scatta/ }).click();
+  await page.getByRole('dialog', { name: 'Scanner' }).waitFor();
+  await page.goBack(); await page.locator('.scan-camera').waitFor({ state: 'detached' });
+  assert.equal(await page.locator('.pp-scansione-pagina').count(), 2, 'pagine ancora lì');
   assert.deepEqual(errors, []);
-  console.log('PASS Pixel 7 (fotocamera finta): contorno del foglio, scatto automatico e manuale, pagine raddrizzate e senza ombra.');
+  console.log('PASS Pixel 7 (fotocamera finta): contorno, scatto automatico e manuale, pagine raddrizzate e senza ombra, lente nel ritaglio, finestra Poliedron, Indietro del telefono.');
 } finally { await browser?.close(); server.kill(); }

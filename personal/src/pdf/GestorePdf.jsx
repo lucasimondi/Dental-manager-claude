@@ -13,6 +13,7 @@ import { SalvaArchivio } from './SalvaArchivio.jsx';
 import { CompilaCampi } from './CompilaCampi.jsx';
 import { validaFile, limitaFirma, posizioneFirma, incorporaFirme, organizzaPdf, unisciPdf, riordina, nomeCopia, nomeDocumento, pagineDaIntervallo, condividiCopia, posizioniInserimento, formatoPeso } from './operazioni.js';
 import { distanza } from '../lib/pinchZoom.js';
+import { useIndietro } from '../lib/indietro.js';
 import { tipoFile } from '../lib/pdfUnico.js';
 import { elaboraPagina, creaPdf } from '../lib/scansione.js';
 import { scaricaDocumento } from '../lib/condividi.js';
@@ -86,6 +87,8 @@ export function GestorePdf({ file: initialFile, files: initialFiles, onClose, on
   const closeRef = useRef(onClose); closeRef.current = onClose;
   const requestClose = () => { if (dirtyRef.current) setConfirmClose(true); else closeRef.current(); };
   const requestCloseRef = useRef(requestClose); requestCloseRef.current = requestClose;
+  // SCAN-INDIETRO: Indietro del telefono = Chiudi (se ci sono modifiche chiede conferma e resta aperto).
+  useIndietro(true, () => { if (dirtyRef.current) { setConfirmClose(true); return true; } closeRef.current(); return false; });
   useEffect(() => {
     alive.current = true;
     const app = document.querySelector('.pp-app'), oldFocus = document.activeElement, overflow = document.body.style.overflow;

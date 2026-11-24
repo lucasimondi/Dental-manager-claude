@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { trovaAngoli } from '../lib/prospettiva.js';
 import { smussaAngoli, passoScatto, MESSAGGI_FASE } from '../lib/scannerVivo.js';
 import { IconaFoto, IconaChiudi } from '../Icone.jsx';
+import { useIndietro } from '../lib/indietro.js';
 // SCAN-VIVO (PO 2026-11-24: «non è lo Scan, ma scatta foto, bisogna avere lo Scan forte come quello di
 // Google»). Fotocamera dal vivo a tutto schermo: il contorno del foglio segue l'inquadratura, con
 // «Automatico» scatta da sola quando il foglio è fermo; si scattano più pagine di fila, «Fine» torna
@@ -20,6 +21,7 @@ export function Fotocamera({ onScatto, onFine, onGalleria, onNonDisponibile, pag
   const [auto, setAutoStato] = useState(leggiAuto), autoRef = useRef(auto); autoRef.current = auto;
   const [torcia, setTorcia] = useState(null), [lampo, setLampo] = useState(0), [pronta, setPronta] = useState(false), [rett, setRett] = useState(null);
   const occupata = useRef(false);
+  useIndietro(true, () => { onFine(); }); // SCAN-INDIETRO: il tasto Indietro chiude la fotocamera, non l'app
   const setAuto = (v) => { setAutoStato(v); try { localStorage.setItem(CHIAVE_AUTO, v ? '1' : '0'); } catch { /* facoltativo */ } };
 
   // Riquadro del video mostrato (object-fit: contain) dentro l'area: il contorno SVG ci va sopra.

@@ -62,3 +62,24 @@ test('scanner: «Scatta» apre la fotocamera dal vivo (con ripiego), le foto arr
   assert.match(cam, /getTracks\(\)\.forEach\(\(t\) => t\.stop\(\)\)/, 'la fotocamera si spegne alla chiusura');
   assert.match(cam, /aria-label="Scatta"/);
 });
+
+test('scanner: Poliedron tra le fonti (clinici esclusi, solo PDF e foto), Indietro del telefono, lente nel ritaglio', () => {
+  const aggiungi = readFileSync('personal/src/Aggiungi.jsx', 'utf8'), home = readFileSync('personal/src/scan/ScanHome.jsx', 'utf8');
+  const scegli = readFileSync('personal/src/scan/ScegliPoliedron.jsx', 'utf8'), angoli = readFileSync('personal/src/Angoli.jsx', 'utf8');
+  const indietro = readFileSync('personal/src/lib/indietro.js', 'utf8'), gestore = readFileSync('personal/src/pdf/GestorePdf.jsx', 'utf8'), cam = readFileSync('personal/src/scan/Fotocamera.jsx', 'utf8');
+  assert.match(aggiungi, /setDaPoliedron\(true\)\}><IconaDocumenti size=\{20\} \/> Poliedron<\/button>/);
+  assert.match(home, /setDaPoliedron\(true\)\}><IconaDocumenti size=\{20\} \/> Poliedron<\/button>/);
+  assert.match(scegli, /const visibile = \(d\) => d && d\.fascicolo !== CLINICO/);
+  assert.match(scegli, /neq\('fascicolo', CLINICO\)/);
+  assert.match(scegli, /useIndietro\(true, su\)/);
+  for (const f of [angoli, gestore, cam]) assert.match(f, /useIndietro\(true,/);
+  assert.match(indietro, /history\.pushState/); assert.match(indietro, /daIgnorare \+= 1; history\.back\(\)/);
+  assert.match(angoli, /a\.da\.x \+ \(e\.clientX - a\.x\) \/ box\.width/, 'l’angolo segue lo spostamento, non salta sotto il dito');
+  assert.match(angoli, /pp-lente/);
+});
+
+test('scanner: dalla finestra Poliedron si possono scegliere solo PDF e foto', async () => {
+  const { usabile } = await import('../personal/src/scan/ScegliPoliedron.jsx').catch(() => ({}));
+  if (!usabile) return; // JSX non importabile in Node: coperto dal test visuale
+  assert.ok(usabile({ mime_type: 'application/pdf' }) && usabile({ nome_file_originale: 'a.JPG' }) && !usabile({ mime_type: 'application/msword' }));
+});

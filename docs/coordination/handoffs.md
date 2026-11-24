@@ -5036,3 +5036,8 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - DB: none. Tests: npm test 1963/1963; builds PASS; visual PASS except pre-existing scan-strumenti failure (also on master).
 - Risks: live detection relies on the existing Otsu-based `trovaAngoli` (needs a darker background than the sheet, as before); full redraw per pointer move in the signature pad (finished strokes cached).
 - Next action: PO tries the new preview on the phone (scanner, text, stamp, signature); then "Mergia" or further feedback. PDF-STRUMENTI-2 / Android tasks not started.
+
+## Handoff — PR #347 round 3: grafica pro, Poliedron tra le fonti, Indietro, lente nel ritaglio (2026-11-24, Claude Code)
+- Same task/branch/PR. Files: `personal/src/pro.css`, `personal/src/personal.css`, `personal/src/scan/{ScegliPoliedron.jsx,ScanHome.jsx,Fotocamera.jsx}`, `personal/src/lib/indietro.js`, `personal/src/Angoli.jsx`, `personal/src/Aggiungi.jsx`, `personal/src/pdf/GestorePdf.jsx`, `personal/src/Icone.jsx` (IconaCartella), tests `scannerVivo`, visual `scan-vivo`.
+- DB: none (reads only existing tables/RPC under RLS). Tests: see current-task.md. Risk: `backdrop-filter` cost on old phones (degrades to translucent without blur).
+- Next action: PO tries the preview; "Mergia" or more feedback.

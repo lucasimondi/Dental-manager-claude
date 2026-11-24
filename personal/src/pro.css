@@ -220,3 +220,119 @@ body.scan-app .pdf-manager .pdf-signature-remove, body.scan-app .pdf-manager .pd
 body.scan-app .pdf-auto { color: var(--scan-accento); background: var(--scan-accento-chiaro); }
 body.scan-app .pdf-sheet, body.scan-app .pdf-manager .pdf-tools button { border-radius: 18px; }
 body.scan-app .pdf-manager .pdf-tools button { border-radius: 999px; }
+
+/* SCAN-PRO (PO 2026-11-24: «la grafica ed i tasti devono essere più professionali, con trasparenze,
+   opacità, gradienti, tridimensionalità»). Linguaggio unico per lo Scan: sfondo a gradiente morbido,
+   superfici di vetro smerigliato (trasparenza + sfocatura + bordo luminoso), pulsanti in rilievo con
+   gradiente, luce in alto e ombra colorata, stati premuti che "affondano". Valido su Home, pagine
+   interne, fogli e gestore PDF (body.scan-app). */
+body.scan-app {
+  --vetro: rgba(255, 255, 255, .62); --vetro-forte: rgba(255, 255, 255, .82); --vetro-bordo: rgba(255, 255, 255, .75);
+  --vetro-ombra: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 12px 32px rgba(28, 52, 104, .13), 0 2px 6px rgba(28, 52, 104, .08);
+  --rilievo: 0 1px 0 rgba(255, 255, 255, .45) inset, 0 -2px 0 rgba(0, 0, 0, .12) inset, 0 10px 22px rgba(31, 99, 214, .34), 0 2px 4px rgba(31, 99, 214, .25);
+  --grad-primario: linear-gradient(180deg, #5b9bff 0%, #2f74ea 48%, #1c5ad0 100%);
+  --sfondo-scan: radial-gradient(120% 70% at 0% 0%, #e9e3ff 0%, transparent 55%), radial-gradient(90% 60% at 100% 10%, #dcebff 0%, transparent 60%), radial-gradient(100% 70% at 50% 110%, #ffe6ee 0%, transparent 60%), #f4f6fb;
+}
+@media (prefers-color-scheme: dark) { body.scan-app {
+  --vetro: rgba(30, 40, 62, .58); --vetro-forte: rgba(34, 46, 70, .82); --vetro-bordo: rgba(255, 255, 255, .1);
+  --vetro-ombra: 0 1px 0 rgba(255, 255, 255, .06) inset, 0 14px 34px rgba(0, 0, 0, .45), 0 2px 6px rgba(0, 0, 0, .3);
+  --rilievo: 0 1px 0 rgba(255, 255, 255, .25) inset, 0 -2px 0 rgba(0, 0, 0, .25) inset, 0 10px 24px rgba(40, 110, 255, .35);
+  --grad-primario: linear-gradient(180deg, #6aa5ff 0%, #3a7cf0 50%, #2458c8 100%);
+  --sfondo-scan: radial-gradient(120% 70% at 0% 0%, #2a2350 0%, transparent 55%), radial-gradient(90% 60% at 100% 10%, #142a4d 0%, transparent 60%), radial-gradient(100% 70% at 50% 110%, #3a1d33 0%, transparent 60%), #0e1422;
+} }
+body.scan-app, body.scan-app .pp-app.pp-scan, body.scan-app .pp-pagina { background: var(--sfondo-scan); background-attachment: fixed; }
+/* superfici di vetro */
+body.scan-app .scan-griglia, body.scan-app .scan-sorgenti, body.scan-app .scan-opzioni, body.scan-app .pp-scansione-pagina, body.scan-app .scan-output-file,
+body.scan-app .pp-bottone-chiaro, body.scan-app .pp-segmenti, body.scan-app .scan-finestra-cerca, body.scan-app .scan-voce {
+  background: var(--vetro); -webkit-backdrop-filter: blur(18px) saturate(170%); backdrop-filter: blur(18px) saturate(170%);
+  border: 1px solid var(--vetro-bordo); box-shadow: var(--vetro-ombra);
+}
+body.scan-app .pp-testata, body.scan-app .pp-pagina-barra { background: color-mix(in srgb, var(--pp-superficie) 55%, transparent); -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); border-bottom: 1px solid var(--vetro-bordo); box-shadow: 0 6px 18px rgba(28, 52, 104, .06); }
+/* pulsanti in rilievo */
+body.scan-app .pp-bottone:not(.pp-bottone-chiaro), body.scan-app .scan-vetro-primario, body.scan-app .scan-fab {
+  background: var(--grad-primario); color: #fff; border: 0; box-shadow: var(--rilievo); text-shadow: 0 1px 1px rgba(0, 0, 0, .18);
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s;
+}
+body.scan-app .pp-bottone:not(.pp-bottone-chiaro):active, body.scan-app .scan-vetro-primario:active, body.scan-app .scan-fab:active { transform: translateY(1px) scale(.985); box-shadow: 0 1px 0 rgba(255, 255, 255, .3) inset, 0 4px 10px rgba(31, 99, 214, .3); filter: brightness(.97); }
+body.scan-app .pp-bottone:disabled { filter: grayscale(.5); opacity: .5; box-shadow: none; }
+body.scan-app .pp-bottone-chiaro { color: var(--scan-accento); transition: transform .12s, box-shadow .12s; }
+body.scan-app .pp-bottone-chiaro:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(255, 255, 255, .7) inset, 0 4px 12px rgba(28, 52, 104, .1); }
+body.scan-app .pp-sorgenti-rapide { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+body.scan-app .pp-sorgenti-rapide .pp-bottone { min-height: 72px; font-size: 13px; }
+body.scan-app .pp-sorgenti-rapide .pp-icona-contenuto, body.scan-app .scan-sorgenti .pp-icona-contenuto { filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .15)); }
+/* segmenti: binario di vetro, cursore in rilievo */
+body.scan-app .pp-segmenti { padding: 4px; border-radius: 14px; }
+body.scan-app .pp-segmenti button { border-radius: 10px; }
+body.scan-app .pp-segmenti button.attivo { background: linear-gradient(180deg, #fff, #f1f5fd); box-shadow: 0 1px 0 #fff inset, 0 4px 12px rgba(28, 52, 104, .16), 0 1px 2px rgba(28, 52, 104, .12); color: var(--scan-accento); }
+@media (prefers-color-scheme: dark) { body.scan-app .pp-segmenti button.attivo { background: linear-gradient(180deg, #34456a, #27365a); color: #fff; } }
+/* Home: riquadri grandi tridimensionali con riflesso */
+body.scan-app .scan-hero button { box-shadow: 0 1px 0 rgba(255, 255, 255, .8) inset, 0 16px 34px rgba(60, 50, 140, .18), 0 3px 8px rgba(60, 50, 140, .1); transition: transform .15s; isolation: isolate; }
+body.scan-app .scan-hero button::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: radial-gradient(120% 80% at 10% 0%, rgba(255, 255, 255, .75), transparent 55%); pointer-events: none; }
+body.scan-app .scan-hero button:active { transform: scale(.98); }
+body.scan-app .scan-hero-grande { background: linear-gradient(155deg, #efe9ff 0%, #c9b8ff 55%, #a58cff 100%); }
+body.scan-app .scan-hero-grande .scan-hero-icona { color: #fff; opacity: 1; filter: drop-shadow(0 4px 8px rgba(70, 40, 180, .45)); }
+body.scan-app .scan-hero-pdf { background: linear-gradient(155deg, #fff0f0 0%, #ffc3c3 100%); }
+body.scan-app .scan-hero-tessera { background: linear-gradient(155deg, #eef6ff 0%, #b9d6ff 100%); }
+@media (prefers-color-scheme: dark) {
+  body.scan-app .scan-hero-grande { background: linear-gradient(155deg, #3b2f78, #2a2155); }
+  body.scan-app .scan-hero-pdf { background: linear-gradient(155deg, #5a2a33, #3b1d25); }
+  body.scan-app .scan-hero-tessera { background: linear-gradient(155deg, #1f3c68, #172c4d); }
+  body.scan-app .scan-hero button::before { background: radial-gradient(120% 80% at 10% 0%, rgba(255, 255, 255, .12), transparent 55%); }
+}
+/* icone degli strumenti: piastrelle a gradiente con luce */
+body.scan-app .scan-strumento-icona { width: 44px; height: 44px; border-radius: 14px; background: linear-gradient(180deg, #ffffff, #e9eef8); box-shadow: 0 1px 0 #fff inset, 0 6px 14px rgba(28, 52, 104, .14), 0 1px 2px rgba(28, 52, 104, .1); }
+@media (prefers-color-scheme: dark) { body.scan-app .scan-strumento-icona { background: linear-gradient(180deg, #2f3d5c, #222d46); box-shadow: 0 1px 0 rgba(255, 255, 255, .08) inset, 0 6px 14px rgba(0, 0, 0, .35); } }
+body.scan-app .scan-strumento:active .scan-strumento-icona { transform: translateY(1px); box-shadow: 0 2px 6px rgba(28, 52, 104, .14); }
+body.scan-app .scan-sorgenti { grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: hidden; }
+body.scan-app .scan-sorgenti button + button { border-left: 1px solid var(--vetro-bordo); }
+body.scan-app .scan-fab { box-shadow: var(--rilievo), 0 0 0 6px rgba(47, 116, 234, .14); }
+/* schede delle pagine scansionate */
+body.scan-app .pp-scansione-pagina { overflow: hidden; }
+body.scan-app .pp-scansione-pagina img { background: linear-gradient(180deg, #eef2f8, #e2e8f2); }
+body.scan-app .pp-scansione-nuova { background: color-mix(in srgb, var(--pp-superficie) 40%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+body.scan-app .scan-controls .pp-scansione-pagina figcaption .scan-select { background: rgba(255, 255, 255, .78); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, .8); }
+body.scan-app .pp-scan-auto { background: var(--grad-primario); box-shadow: 0 4px 10px rgba(31, 99, 214, .35); }
+/* gestore PDF dentro lo Scan */
+body.scan-app .pdf-manager { background: var(--sfondo-scan); }
+body.scan-app .pdf-header, body.scan-app .pdf-tools, body.scan-app .pdf-navigation, body.scan-app .pdf-search { background: color-mix(in srgb, var(--pp-superficie) 60%, transparent); -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); border-color: var(--vetro-bordo); }
+body.scan-app .pdf-manager button:not(.pdf-primary):not([aria-pressed=true]):not(.pdf-signature-remove):not(.pdf-signature-resize):not(.pdf-testo-modifica) { background: var(--vetro-forte); border: 1px solid var(--vetro-bordo); box-shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 3px 8px rgba(28, 52, 104, .1); }
+body.scan-app .pdf-manager .pdf-primary, body.scan-app .pdf-manager button[aria-pressed=true] { background: var(--grad-primario); border: 0; box-shadow: var(--rilievo); }
+body.scan-app .pdf-scrim { background: rgba(16, 28, 52, .35); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+body.scan-app .pdf-sheet { background: var(--vetro-forte); -webkit-backdrop-filter: blur(24px) saturate(170%); backdrop-filter: blur(24px) saturate(170%); border: 1px solid var(--vetro-bordo); box-shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 30px 80px rgba(16, 28, 52, .3); }
+@media (prefers-color-scheme: dark) { body.scan-app .pdf-sheet { color: #eef3ff; } }
+
+/* SCAN-POLIEDRON: finestra «Scegli da Poliedron» (vetro, a tutto schermo). */
+.scan-finestra { position: fixed; inset: 0; z-index: 1500; display: flex; flex-direction: column; background: var(--sfondo-scan, var(--pp-sfondo)); color: var(--pp-inchiostro); padding-top: env(safe-area-inset-top); }
+.scan-finestra-testa { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: color-mix(in srgb, var(--pp-superficie) 55%, transparent); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border-bottom: 1px solid var(--vetro-bordo, var(--pp-linea)); }
+.scan-finestra-testa > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.scan-finestra-testa small { font-size: 12px; color: var(--pp-grigio); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scan-finestra-testa strong { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scan-vetro-tondo { width: 44px; height: 44px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--vetro-bordo, var(--pp-linea)); background: var(--vetro-forte, var(--pp-superficie)); color: var(--pp-inchiostro); box-shadow: var(--vetro-ombra, var(--pp-ombra)); cursor: pointer; }
+.scan-finestra-annulla { border: 0; background: transparent; color: var(--scan-accento, var(--pp-blu)); font: inherit; font-weight: 650; min-height: 44px; padding: 0 6px; cursor: pointer; }
+.scan-finestra-cerca { display: flex; align-items: center; gap: 8px; margin: 12px 14px 4px; padding: 0 12px; border-radius: 14px; color: var(--pp-grigio); }
+.scan-finestra-cerca input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; min-height: 44px; color: var(--pp-inchiostro); outline: none; }
+.scan-finestra-corpo { flex: 1; min-height: 0; overflow: auto; padding: 8px 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.scan-voce { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 60px; padding: 8px 12px; border-radius: 16px; font: inherit; color: var(--pp-inchiostro); text-align: left; cursor: pointer; transition: transform .1s; }
+.scan-voce:active { transform: scale(.99); }
+.scan-voce > span:nth-child(2) { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.scan-voce strong { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scan-voce small { font-size: 12.5px; color: var(--pp-grigio); }
+.scan-voce:disabled { opacity: .5; cursor: default; }
+.scan-voce.scelta { border-color: var(--scan-accento, var(--pp-blu)); box-shadow: 0 0 0 2px var(--scan-accento, var(--pp-blu)), var(--vetro-ombra, var(--pp-ombra)); }
+.scan-voce-icona { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; color: #c78a12; background: linear-gradient(180deg, #fff6dc, #ffe4a3); box-shadow: 0 1px 0 #fff inset, 0 4px 10px rgba(199, 138, 18, .2); }
+.scan-voce-icona.recenti { color: var(--scan-accento, var(--pp-blu)); background: linear-gradient(180deg, #eef4ff, #d6e5ff); box-shadow: 0 1px 0 #fff inset, 0 4px 10px rgba(31, 99, 214, .18); }
+.scan-voce-tipo { flex-shrink: 0; display: grid; place-items: center; width: 40px; height: 48px; border-radius: 9px; background: linear-gradient(180deg, #8a94a6, #667085); color: #fff; font-size: 11px; font-weight: 800; box-shadow: 0 1px 0 rgba(255, 255, 255, .35) inset, 0 4px 10px rgba(0, 0, 0, .15); }
+.scan-voce-tipo.pdf { background: linear-gradient(180deg, #ff6b6e, #e0353a); }
+.scan-voce-spunta { width: 26px; height: 26px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; border: 2px solid var(--pp-linea); color: #fff; font-weight: 800; font-size: 14px; }
+.scan-voce.scelta .scan-voce-spunta { background: var(--grad-primario, var(--pp-blu)); border-color: transparent; }
+.scan-finestra-nota { color: var(--pp-grigio); text-align: center; padding: 18px 0; }
+.scan-finestra-piede { display: flex; align-items: center; gap: 12px; padding: 12px 14px calc(12px + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--pp-superficie) 60%, transparent); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border-top: 1px solid var(--vetro-bordo, var(--pp-linea)); }
+.scan-finestra-piede span { flex: 1; min-width: 0; font-size: 14px; color: var(--pp-grigio); }
+.scan-vetro-primario { min-height: 48px; padding: 0 26px; border-radius: 14px; border: 0; background: var(--grad-primario, var(--pp-blu)); color: #fff; font: inherit; font-weight: 700; box-shadow: var(--rilievo, var(--pp-ombra)); cursor: pointer; }
+.scan-vetro-primario:disabled { opacity: .45; box-shadow: none; }
+/* fotocamera: comandi in vetro scuro, scatto in rilievo */
+.scan-camera-tondo, .scan-camera-auto { background: rgba(255, 255, 255, .14); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(255, 255, 255, .18) !important; box-shadow: 0 1px 0 rgba(255, 255, 255, .2) inset, 0 6px 16px rgba(0, 0, 0, .35); }
+.scan-camera-auto button[aria-checked=true] { background: linear-gradient(180deg, #fff, #e6ebf3); box-shadow: 0 2px 8px rgba(0, 0, 0, .3); }
+.scan-camera-scatto span { background: radial-gradient(circle at 35% 30%, #fff 0%, #f1f3f7 55%, #d6dbe4 100%); box-shadow: 0 1px 0 #fff inset, 0 4px 10px rgba(0, 0, 0, .4); }
+.scan-camera-comandi { background: linear-gradient(180deg, transparent, rgba(0, 0, 0, .55)); }
+.scan-camera-messaggio { background: rgba(20, 24, 32, .55); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, .15); }

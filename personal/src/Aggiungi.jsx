@@ -9,10 +9,11 @@ import { inviaCon, scaricaDocumento } from './lib/condividi.js';
 import { Segmenti } from './ui.jsx';
 import { Angoli } from './Angoli.jsx';
 import { Fotocamera, fotocameraDisponibile } from './scan/Fotocamera.jsx';
+import { ScegliPoliedron } from './scan/ScegliPoliedron.jsx';
 import { eScan, indirizzoScan } from './lib/scan.js';
 import {
   IconaFotocamera, IconaFile, IconaPortafoglio, IconaCalendario, IconaEuro, IconaChiudi, IconaScansiona, IconaFoto,
-  IconaNuvola, IconaRuota, IconaCestino, IconaTaglia, IconaEmail, IconaChat, IconaNote, IconaLucchetto, IconaIndietro,
+  IconaNuvola, IconaRuota, IconaDocumenti, IconaCestino, IconaTaglia, IconaEmail, IconaChat, IconaNote, IconaLucchetto, IconaIndietro,
 } from './Icone.jsx';
 
 // DOCK-PER-TE passo 3 (PO 2026-11-08): + → Per te con Documento, Spesa, Foto, Nota e Password;
@@ -120,6 +121,7 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
   // se non si può usare, la fotocamera del telefono come prima. Le foto arrivano in coda.
   const [camera, setCamera] = useState(() => Boolean(opzioni.fotocamera && !initialFiles?.length && fotocameraDisponibile()));
   const attesa = useRef([]);
+  const [daPoliedron, setDaPoliedron] = useState(false); // SCAN-POLIEDRON: scegli dall'archivio
   const apriScatto = () => { if (fotocameraDisponibile()) setCamera(true); else scatto.current.click(); };
   const altriFile = useRef(null);
   const titolo = nome.trim() || opzioni.descrizione || `Documento ${new Date().toLocaleDateString('it-IT')}`;
@@ -257,6 +259,7 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
         <button className="pp-bottone" onClick={apriScatto}><IconaFotocamera size={20} /> Scatta</button>
         <button className="pp-bottone pp-bottone-chiaro" onClick={() => galleria.current.click()}><IconaFoto size={20} /> Foto</button>
         <button className="pp-bottone pp-bottone-chiaro" onClick={() => altriFile.current.click()}><IconaFile size={20} /> PDF e file</button>
+        <button className="pp-bottone pp-bottone-chiaro" onClick={() => setDaPoliedron(true)}><IconaDocumenti size={20} /> Poliedron</button>
       </div>
       {pagine.length === 0 && <p className="pp-riga-meta pp-spiegazione">Scatta le pagine: inquadra il foglio su un piano scuro, lo scanner lo riconosce e scatta da solo quando sei fermo. Ombre tolte, foglio raddrizzato; tocca ✂ per sistemare gli angoli.</p>}
       <div className="scan-opzioni">
@@ -313,6 +316,7 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
       {lavoro && !pagine.length && <p className="pp-riga-meta"><span className="pp-rotella" /> {lavoro}</p>}
       <button className="pp-testo-link" onClick={() => sostituisci({ tipo: 'pdf' })}>Solo firmare o modificare un PDF, senza archiviarlo</button>
       {!eScan() && <a className="pp-testo-link" href={indirizzoScan()} target="_blank" rel="noreferrer">Metti «Scan» sulla schermata Home</a>}
+      {daPoliedron && <ScegliPoliedron onChiudi={() => setDaPoliedron(false)} onScegli={(files) => { setDaPoliedron(false); aggiungi(files); }} />}
       {camera && <Fotocamera pagine={pagine.filter((p) => p.tipo === 'foto').length + attesa.current.length + (lavoro && camera ? 1 : 0)} miniatura={[...pagine].reverse().find((p) => p.tipo === 'foto')?.url}
         onScatto={(file) => aggiungi([file])} onFine={() => setCamera(false)} onGalleria={() => { setCamera(false); galleria.current.click(); }}
         onNonDisponibile={() => { setCamera(false); mostra('Fotocamera dal vivo non disponibile: uso quella del telefono.'); scatto.current.click(); }} />}
