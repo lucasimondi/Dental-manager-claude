@@ -1,6 +1,7 @@
 // SCAN-APP: dalla griglia della Home di Scan allo strumento (stessa regola nell'app Scan e in Personal).
 export function apriStrumentoScan(id, { apri, vai }) {
-  if (id === 'scanner' || id === 'unisci') apri({ tipo: 'scanner' });
+  if (id === 'scanner') apri({ tipo: 'scanner', fotocamera: true }); // SCAN-VIVO: lo scanner parte dalla fotocamera
+  else if (id === 'unisci') apri({ tipo: 'scanner' });
   else if (id === 'tessera' || id === 'testo') apri({ tipo: id });
   else if (id === 'pdf') apri({ tipo: 'pdf' });
   else if (id === 'firma' || id === 'comprimi' || id === 'pagine') apri({ tipo: 'pdfStrumento', strumento: id });

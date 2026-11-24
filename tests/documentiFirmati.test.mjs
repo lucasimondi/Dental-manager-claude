@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { INCHIOSTRI, larghezzaTratto, opacitaTratto, pressioneUtile, tocchi, granelli, casuale, smorza } from '../personal/src/pdf/biro.js';
+import { INCHIOSTRI, PUNTA, pressioneUtile, pressioneDaVelocita, larghezzaDaPressione, densitaDaPressione, densita, tracce, gocce, nuovoTratto, aggiungiPunto, chiudiTratto, larghezze, contorno, salti, trama, riquadro, casuale, smorza } from '../personal/src/pdf/biro.js';
 import { titoloIniziale, conFirmato } from '../personal/src/pdf/titoloFirmato.js';
 import { caricaDocumento, suggerisciTitolo, bozzaConAllegato, daEmail } from '../personal/src/lib/archivio.js';
 
@@ -20,58 +20,117 @@ const indice = readFileSync('personal/src/sezioni/documenti/index.jsx', 'utf8');
 
 /* ---------- biro ---------- */
 
-test('biro: piano e premuto → tratto più largo e più scuro; veloce → più sottile e più chiaro', () => {
-  assert.ok(larghezzaTratto(0, 0.5) > larghezzaTratto(2.5, 0.5));
-  assert.ok(larghezzaTratto(0.5, 1) > larghezzaTratto(0.5, 0.1));
-  assert.ok(opacitaTratto(0, 0.5) > opacitaTratto(2.5, 0.5));
-  for (const v of [0, 0.3, 1, 3, 50]) for (const p of [0, 0.5, 1]) {
-    const w = larghezzaTratto(v, p);
-    assert.ok(w >= 1.7 * 0.55 * 0.7 - 1e-9 && w <= 1.7 * 1.3 * 1.35 + 1e-9, `larghezza ${w}`);
-    const a = opacitaTratto(v, p);
-    assert.ok(a >= 0.35 && a <= 0.97, `opacità ${a}`);
-  }
+// FIRMA-BIRO-2 (piano PO 2026-11-24): tratto vettoriale con pressione dalla velocità, attacco, coda,
+// salti d'inchiostro e grana della carta, tutto ripetibile con seme fisso.
+// Un tratto sintetico: n campioni in linea retta a passo costante (px) ogni dt ms.
+const traccia = (n, passo, dt, { pressione = null, x0 = 10, y0 = 50 } = {}) => {
+  const s = nuovoTratto({ x: x0, y: y0, t: 0, pressione });
+  for (let i = 1; i <= n; i++) aggiungiPunto(s, { x: x0 + i * passo, y: y0 + Math.sin(i / 3) * 4, t: i * dt, pressione });
+  return s;
+};
+
+test('biro: pressione dal dito ricavata dalla velocità con curva a coseno (lento = 1, ≥ 1,6 px/ms = 0,28)', () => {
+  assert.equal(pressioneDaVelocita(0), 1);
+  assert.ok(Math.abs(pressioneDaVelocita(1.6) - 0.28) < 1e-9);
+  assert.ok(Math.abs(pressioneDaVelocita(9) - 0.28) < 1e-9);
+  assert.ok(Math.abs(pressioneDaVelocita(0.8) - 0.64) < 1e-9, 'a metà corsa: metà della discesa');
+  let prima = 2; for (const v of [0, 0.2, 0.5, 0.9, 1.3, 1.6]) { const p = pressioneDaVelocita(v); assert.ok(p <= prima); prima = p; }
+  assert.ok(Math.abs(pressioneUtile({ pointerType: 'pen', pressure: 0.5 }) - Math.pow(0.5, 0.75)) < 1e-9, 'penna: p^0,75');
+  assert.equal(pressioneUtile({ pointerType: 'pen', pressure: 0 }, 0), 1, 'penna senza pressione → come il dito');
+  assert.equal(pressioneUtile({ pointerType: 'touch', pressure: 1 }, 0), 1);
+  assert.ok(Math.abs(pressioneUtile({ pointerType: 'touch', pressure: 1 }, 5) - 0.28) < 1e-9, 'col dito la pressure del browser è ignorata');
+  assert.ok(Math.abs(larghezzaDaPressione(1) - PUNTA * 1.1) < 1e-9 && Math.abs(larghezzaDaPressione(0) - PUNTA * 0.82) < 1e-9, 'FIRMA-BIRO-3: riga quasi costante');
+  assert.equal(densitaDaPressione(1), 1); assert.equal(densitaDaPressione(0), 0.5);
   assert.equal(smorza(null, 2), 2);
   assert.equal(smorza(0, 2, 0.5), 1);
 });
 
-test('biro: la pressione conta solo con la penna; col dito resta media', () => {
-  assert.equal(pressioneUtile({ pointerType: 'pen', pressure: 0.9 }), 0.9);
-  assert.equal(pressioneUtile({ pointerType: 'pen', pressure: 0 }), 0.5);
-  assert.equal(pressioneUtile({ pointerType: 'touch', pressure: 1 }), 0.5);
-  assert.equal(pressioneUtile({ pointerType: 'mouse', pressure: 0.5 }), 0.5);
+test('biro: spessore quasi costante (la sfera), è la densità a cambiare: lento carico, veloce chiaro; stabilizzazione 55%', () => {
+  const lento = traccia(30, 2, 40), veloce = traccia(30, 40, 10);
+  const media = (s, k) => s.punti.slice(8).reduce((t, p) => t + p[k], 0) / (s.punti.length - 8);
+  assert.ok(media(lento, 'w') > media(veloce, 'w') && media(lento, 'w') < media(veloce, 'w') * 1.45, `${media(lento, 'w')} vs ${media(veloce, 'w')}`);
+  assert.ok(media(lento, 'd') > 0.95 && media(veloce, 'd') < 0.7, `densità ${media(lento, 'd')} vs ${media(veloce, 'd')}`);
+  assert.ok(lento.punti.every((p) => p.w >= PUNTA * 0.82 * 0.9 && p.w <= PUNTA * 1.1 * 1.09), 'tremolio piccolo');
+  const s = nuovoTratto({ x: 0, y: 0, t: 0 });
+  aggiungiPunto(s, { x: 100, y: 0, t: 50 });
+  assert.ok(Math.abs(s.punti[1].x - 55) < 1e-9, 'il punto si sposta del 55% verso quello reale');
+  aggiungiPunto(s, { x: 55.5, y: 0, t: 60 });
+  assert.equal(s.punti.length, 2, 'micro-spostamenti scartati');
+  const penna = traccia(20, 3, 16, { pressione: 1 }), leggera = traccia(20, 3, 16, { pressione: 0.1 });
+  assert.ok(penna.punti.at(-1).w > leggera.punti.at(-1).w * 1.15 && penna.punti.at(-1).d > leggera.punti.at(-1).d + 0.3, 'con la penna conta la pressione reale');
 });
 
-test('biro: tocchi fitti lungo il tratto, con grana e qualche microvuoto solo dove si va veloce', () => {
-  const rnd = casuale(7);
-  const lento = tocchi({ x0: 0, y0: 0, w0: 2, a0: 0.95, x1: 10, y1: 0, w1: 2, a1: 0.95 }, rnd);
-  assert.ok(lento.length >= 10 / (2 * 0.3) - 1, 'almeno un tocco ogni 0.3 della larghezza');
-  assert.ok(lento.every((t) => t.r === 1 && t.a > 0.2 && t.a < 0.95), 'lento: nessun vuoto, tocchi leggeri che sovrapposti fanno il tratto');
-  const copertura = (k) => 1 - lento.slice(0, 4).reduce((p, t) => p * (1 - t.a), 1);
-  assert.ok(copertura() > 0.75, 'tre-quattro tocchi sovrapposti ≈ inchiostro pieno');
-  assert.ok(new Set(lento.map((t) => t.a.toFixed(3))).size > 3, 'opacità non uniforme (grana)');
-  const veloce = tocchi({ x0: 0, y0: 0, w0: 1, a0: 0.4, x1: 400, y1: 0, w1: 1, a1: 0.4 }, casuale(3));
-  const vuoti = veloce.filter((t) => t.a === 0).length;
-  assert.ok(vuoti > 0 && vuoti < veloce.length * 0.3, `veloce: qualche vuoto (${vuoti}/${veloce.length})`);
-  assert.deepEqual(tocchi({ x0: 0, y0: 0, w0: 1, a0: 1, x1: 3, y1: 4, w1: 1, a1: 1 }, casuale(1)), tocchi({ x0: 0, y0: 0, w0: 1, a0: 1, x1: 3, y1: 4, w1: 1, a1: 1 }, casuale(1)), 'ripetibile col seme');
+test('biro: densità a gruppi (niente sovrapposizioni), tracce della sfera spezzate se veloce, gocce dove si ferma o gira', () => {
+  assert.equal(densita(traccia(30, 2, 40).punti).length, 0, 'lento: inchiostro pieno');
+  const g = densita(traccia(30, 40, 10).punti);
+  assert.ok(g.length >= 1 && g.every((x) => x.a > 0 && x.a <= 0.45 && x.punti.length >= 2));
+  const tv = tracce(traccia(30, 40, 10, {})), tl = tracce(traccia(30, 2, 40));
+  assert.equal(tv.length, 2); assert.equal(tl.length, 2);
+  const vuoto = (t) => t.trattini.filter((_, i) => i % 2).reduce((a, b) => a + b, 0) / t.trattini.reduce((a, b) => a + b, 0);
+  assert.ok(vuoto(tv[0]) > vuoto(tl[0]), 'veloce: tracce più spezzate');
+  assert.ok(tv[0].a > tl[0].a);
+  assert.deepEqual(tracce(traccia(30, 40, 10)), tracce(traccia(30, 40, 10)), 'ripetibile col seme');
+  const angolo = nuovoTratto({ x: 0, y: 0, t: 0 });
+  for (let i = 1; i <= 20; i++) aggiungiPunto(angolo, { x: i * 4, y: 0, t: i * 30 });
+  for (let i = 1; i <= 20; i++) aggiungiPunto(angolo, { x: 80, y: i * 4, t: 600 + i * 30 });
+  assert.ok(gocce(angolo).length >= 1, 'goccia alla curva stretta');
+  const dritta = nuovoTratto({ x: 0, y: 0, t: 0 });
+  for (let i = 1; i <= 30; i++) aggiungiPunto(dritta, { x: i * 5, y: i, t: i * 16 });
+  assert.equal(gocce(dritta).length, 0, 'riga dritta e scorrevole: nessuna goccia');
 });
 
-test('biro: grana della sfera — puntini minuscoli e leggeri nel riquadro del tratto, con un tetto', () => {
-  const g = granelli({ x0: 10, y0: 20, x1: 60, y1: 40 }, casuale(5));
-  assert.equal(g.length, Math.round(50 * 20 * 0.12));
-  assert.ok(g.every((p) => p.x >= 10 && p.x <= 60 && p.y >= 20 && p.y <= 40 && p.r < 0.5 && p.a > 0.1 && p.a < 0.45));
-  assert.equal(granelli({ x0: 0, y0: 0, x1: 1000, y1: 1000 }).length, 5000);
-  assert.match(firma, /globalCompositeOperation = 'destination-out'/);
+test('biro: attacco dal 62% e coda assottigliata fino al 20% quando il gesto finale è veloce', () => {
+  const s = traccia(30, 2, 40);
+  const grezze = s.punti.map((p) => p.w);
+  const aperto = larghezze(s);
+  assert.ok(Math.abs(aperto[0] / grezze[0] - (0.62 + 0.38 * Math.sin(Math.PI / 12))) < 1e-9);
+  assert.ok(aperto[0] / grezze[0] < aperto[4] / grezze[4] && aperto[4] / grezze[4] < 1);
+  assert.equal(aperto[10], grezze[10], 'in mezzo nessuna modifica');
+  assert.equal(aperto.at(-1), grezze.at(-1), 'tratto ancora aperto: niente coda');
+  const lento = larghezze(chiudiTratto(traccia(30, 2, 40))), veloce = larghezze(chiudiTratto(traccia(30, 40, 10)));
+  const sLento = traccia(30, 2, 40), sVeloce = traccia(30, 40, 10);
+  const rapportoLento = lento.at(-1) / sLento.punti.at(-1).w, rapportoVeloce = veloce.at(-1) / sVeloce.punti.at(-1).w;
+  assert.ok(Math.abs(rapportoVeloce - 0.2) < 1e-9, `coda veloce ${rapportoVeloce}`);
+  assert.ok(rapportoLento > 0.6 && rapportoLento <= 0.75, `coda lenta ${rapportoLento}`);
+  assert.equal(lento[lento.length - 9], sLento.punti[sLento.punti.length - 9].w, 'solo gli ultimi 8 punti');
 });
 
-test('firma: inchiostro Bic nero o blu ricordato, tratto a tocchi, goccia all\'appoggio, data nello stesso colore', () => {
+test('biro: poligono pieno (bordi a metà larghezza lungo le normali), salti solo sui segmenti veloci', () => {
+  const punti = [{ x: 0, y: 0, w: 2, v: 0 }, { x: 10, y: 0, w: 4, v: 0 }, { x: 20, y: 0, w: 2, v: 0 }];
+  const { L, R } = contorno(punti, punti.map((p) => p.w));
+  assert.deepEqual(L.map((p) => Math.abs(p.y)), [1, 2, 1]);
+  assert.deepEqual(R.map((p) => Math.abs(p.y)), [1, 2, 1]);
+  assert.ok(L.every((p, i) => Math.sign(p.y) === -Math.sign(R[i].y)), 'bordi sui due lati');
+  assert.equal(salti(traccia(30, 2, 40).punti).length, 0, 'lento: inchiostro pieno');
+  const k = salti(traccia(30, 40, 10).punti);
+  assert.ok(k.length > 10 && k.every((x) => x.a > 0 && x.a <= 0.28 + 1e-9 && x.larghezza < PUNTA * 0.5));
+});
+
+test('biro: grana della carta 96×96 ripetibile col seme, riquadro dell\'inchiostro', () => {
+  const a = trama(casuale(17)), b = trama(casuale(17)), c = trama(casuale(18));
+  assert.equal(a.length, 96 * 96);
+  assert.deepEqual(a, b, 'stesso seme, stessa grana');
+  assert.notDeepEqual(a, c);
+  const marcati = a.filter((x) => x >= 200).length / a.length, vuoti = a.filter((x) => x === 0).length / a.length;
+  assert.ok(marcati > 0.04 && marcati < 0.1 && vuoti > 0.55 && vuoti < 0.75, `${marcati} ${vuoti}`);
+  assert.equal(riquadro([]), null);
+  const r = riquadro([{ punti: [{ x: 10, y: 20, w: 2 }, { x: 30, y: 5, w: 1 }] }]);
+  assert.deepEqual(r, { x0: 8, y0: 4, x1: 31, y1: 22 });
+});
+
+test('firma: Bic nera o blu ricordata, tratti vettoriali su livello opaco a 0,95, salti e grana tolti, data nello stesso colore', () => {
   assert.deepEqual(Object.keys(INCHIOSTRI), ['nero', 'blu']);
   assert.match(firma, /role="radiogroup" aria-label="Colore della biro"/);
   assert.match(firma, /personal-pdf-inchiostro-v1/);
-  assert.match(firma, /tocchi\(\{ x0: prima\.x/);
-  assert.match(firma, /r: w \* 0\.62/);
+  assert.match(firma, /globalCompositeOperation = 'destination-out'/);
+  assert.match(firma, /quadraticCurveTo/);
+  assert.match(firma, /globalAlpha = OPACITA_LIVELLO;/);
+  assert.match(firma, /globalAlpha = OPACITA_TRATTO; dx\.drawImage/, 'ogni tratto sovrapposto: incroci più scuri');
+  assert.match(firma, /aggiungiPunto\(s, campione\(ev\)\)/);
+  assert.match(firma, /Annulla tratto/);
   assert.match(firma, /pngTesto\(testoOggi\(\), \{ colore \}\)/);
   assert.match(firma, /onUsa\(await ricolora\(png, colore\)/, 'anche la firma salvata esce nel colore scelto');
-  assert.doesNotMatch(firma, /ctx\.stroke\(\)/, 'niente più linea uniforme');
+  assert.doesNotMatch(firma, /tocchi\(/, 'niente più tratto a tocchi sovrapposti (perline)');
 });
 
 /* ---------- foglio di salvataggio ---------- */
@@ -93,7 +152,7 @@ test('foglio: titolo «… firmato» modificabile, suggerimento, Documenti firma
   assert.match(salva, /Altro \(facoltativo\): categoria, persona, tipo, tag/);
   assert.match(salva, /if \(clinico \|\| !testoPdf\) return undefined;/, 'mai il suggerimento per i pazienti');
   assert.match(salva, /Si crea solo una bozza in Gmail: la invii tu\./);
-  assert.match(gestore, /if \(tipo !== 'data'\) firmatoRef\.current = true;/);
+  assert.match(gestore, /if \(tipo === 'firma' \|\| tipo === 'sigla'\) firmatoRef\.current = true;/);
   assert.match(gestore, /'Salva firmato nell’archivio'/);
 });
 

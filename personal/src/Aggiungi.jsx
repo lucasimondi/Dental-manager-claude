@@ -8,10 +8,12 @@ import { validaFile, MAX_PDF_BYTES } from './pdf/filePdf.js';
 import { inviaCon, scaricaDocumento } from './lib/condividi.js';
 import { Segmenti } from './ui.jsx';
 import { Angoli } from './Angoli.jsx';
+import { Fotocamera, fotocameraDisponibile } from './scan/Fotocamera.jsx';
+import { ScegliPoliedron } from './scan/ScegliPoliedron.jsx';
 import { eScan, indirizzoScan } from './lib/scan.js';
 import {
   IconaFotocamera, IconaFile, IconaPortafoglio, IconaCalendario, IconaEuro, IconaChiudi, IconaScansiona, IconaFoto,
-  IconaNuvola, IconaRuota, IconaCestino, IconaTaglia, IconaEmail, IconaChat, IconaNote, IconaLucchetto, IconaIndietro,
+  IconaNuvola, IconaRuota, IconaDocumenti, IconaCestino, IconaTaglia, IconaEmail, IconaChat, IconaNote, IconaLucchetto, IconaIndietro,
 } from './Icone.jsx';
 
 // DOCK-PER-TE passo 3 (PO 2026-11-08): + → Per te con Documento, Spesa, Foto, Nota e Password;
@@ -115,6 +117,12 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
   const [pronto, setPronto] = useState(null); // { chiave, file } PDF già pronto (iOS vuole il file prima del tocco)
   const scatto = useRef(null);
   const galleria = useRef(null);
+  // SCAN-VIVO: «Scatta» apre la fotocamera dal vivo (contorno del foglio, scatto automatico, più pagine);
+  // se non si può usare, la fotocamera del telefono come prima. Le foto arrivano in coda.
+  const [camera, setCamera] = useState(() => Boolean(opzioni.fotocamera && !initialFiles?.length && fotocameraDisponibile()));
+  const attesa = useRef([]);
+  const [daPoliedron, setDaPoliedron] = useState(false); // SCAN-POLIEDRON: scegli dall'archivio
+  const apriScatto = () => { if (fotocameraDisponibile()) setCamera(true); else scatto.current.click(); };
   const altriFile = useRef(null);
   const titolo = nome.trim() || opzioni.descrizione || `Documento ${new Date().toLocaleDateString('it-IT')}`;
   const selezionate = pagine.filter(p => !esclusi.includes(p.id));
@@ -149,7 +157,8 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
 
   const aggiungi = async (files) => {
     const elenco = [...(files || [])];
-    if (!elenco.length || inCorso.current) return;
+    if (!elenco.length) return;
+    if (inCorso.current) { attesa.current.push(...elenco); return; }
     const altri = elenco.filter((f) => tipoFile(f) === 'altro');
     if (altri.length) {
       // Word, Excel e simili non diventano PDF: si archiviano così come sono.
@@ -169,14 +178,19 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
         prossimoId += 1;
         if (t === 'pdf') nuove.push({ id: prossimoId, tipo: 'pdf', file });
         else if (t === 'immagine') {
-          const r = await elaboraPagina(file, { modo, angoli: auto ? 'auto' : null, peso });
+          // SCAN-VIVO: la foto dalla fotocamera dal vivo porta gli angoli già trovati nell'inquadratura.
+          const r = await elaboraPagina(file, { modo, angoli: file.angoliScan || (auto ? 'auto' : null), peso });
           nuove.push({ id: prossimoId, tipo: 'foto', file, rotazione: 0, ritaglio: null, ...r, rilevati: r.angoli });
         }
       }
       setPagine((p) => [...p, ...nuove]);
     } catch (e) { mostra(e.message || 'File non leggibile'); }
-    finally { inCorso.current = false; setLavoro(null); }
+    finally {
+      inCorso.current = false; setLavoro(null);
+      if (attesa.current.length) { const altri = attesa.current.splice(0); setTimeout(() => aggiungiRef.current(altri), 0); }
+    }
   };
+  const aggiungiRef = useRef(aggiungi); aggiungiRef.current = aggiungi;
   useEffect(() => {
     if (initialFiles?.length && ricevuti.current !== initialFiles) { ricevuti.current = initialFiles; void aggiungi(initialFiles); }
   }, [initialFiles]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -242,11 +256,12 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
       <input ref={galleria} type="file" accept="image/*,.heic,.heif" multiple hidden onChange={(e) => { aggiungi(e.target.files); e.target.value = ''; }} />
       <input ref={altriFile} type="file" accept="application/pdf,image/*,.heic,.heif,.doc,.docx,.xls,.xlsx,.odt,.ods,.txt,.rtf" multiple hidden onChange={(e) => { aggiungi(e.target.files); e.target.value = ''; }} />
       <fieldset disabled={!!lavoro} className="scan-controls"><div className="pp-sorgenti-rapide">
-        <button className="pp-bottone" onClick={() => scatto.current.click()}><IconaFotocamera size={20} /> Scatta</button>
+        <button className="pp-bottone" onClick={apriScatto}><IconaFotocamera size={20} /> Scatta</button>
         <button className="pp-bottone pp-bottone-chiaro" onClick={() => galleria.current.click()}><IconaFoto size={20} /> Foto</button>
         <button className="pp-bottone pp-bottone-chiaro" onClick={() => altriFile.current.click()}><IconaFile size={20} /> PDF e file</button>
+        <button className="pp-bottone pp-bottone-chiaro" onClick={() => setDaPoliedron(true)}><IconaDocumenti size={20} /> Poliedron</button>
       </div>
-      {pagine.length === 0 && <p className="pp-riga-meta pp-spiegazione">Scatta le pagine (dall'alto, su un piano scuro) o scegli foto e PDF: diventano un solo PDF. Il foglio si raddrizza da solo; tocca ✂ per sistemare gli angoli.</p>}
+      {pagine.length === 0 && <p className="pp-riga-meta pp-spiegazione">Scatta le pagine: inquadra il foglio su un piano scuro, lo scanner lo riconosce e scatta da solo quando sei fermo. Ombre tolte, foglio raddrizzato; tocca ✂ per sistemare gli angoli.</p>}
       <div className="scan-opzioni">
         <label><input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} /> Raddrizza automatico</label>
         <label><input type="checkbox" checked={leggero} onChange={(e) => setLeggero(e.target.checked)} /> PDF leggero</label>
@@ -270,7 +285,7 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
               </figcaption>
             </figure>
           ))}
-          <button className="pp-scansione-nuova" onClick={() => scatto.current.click()}>
+          <button className="pp-scansione-nuova" onClick={apriScatto}>
             <IconaFotocamera size={30} /><span>Scatta un'altra pagina</span>
           </button>
         </div>
@@ -301,6 +316,10 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
       {lavoro && !pagine.length && <p className="pp-riga-meta"><span className="pp-rotella" /> {lavoro}</p>}
       <button className="pp-testo-link" onClick={() => sostituisci({ tipo: 'pdf' })}>Solo firmare o modificare un PDF, senza archiviarlo</button>
       {!eScan() && <a className="pp-testo-link" href={indirizzoScan()} target="_blank" rel="noreferrer">Metti «Scan» sulla schermata Home</a>}
+      {daPoliedron && <ScegliPoliedron onChiudi={() => setDaPoliedron(false)} onScegli={(files) => { setDaPoliedron(false); aggiungi(files); }} />}
+      {camera && <Fotocamera pagine={pagine.filter((p) => p.tipo === 'foto').length + attesa.current.length + (lavoro && camera ? 1 : 0)} miniatura={[...pagine].reverse().find((p) => p.tipo === 'foto')?.url}
+        onScatto={(file) => aggiungi([file])} onFine={() => setCamera(false)} onGalleria={() => { setCamera(false); galleria.current.click(); }}
+        onNonDisponibile={() => { setCamera(false); mostra('Fotocamera dal vivo non disponibile: uso quella del telefono.'); scatto.current.click(); }} />}
       {taglia && <Angoli src={taglia.url} iniziale={pagine[taglia.i]?.angoli} automatici={taglia.automatici} onFatto={q => modificaFoto(() => raddrizzaPagina(q))} onAnnulla={() => setTaglia(null)} />}
     </>
   );

@@ -5030,3 +5030,23 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Unresolved/risks: script not published (Nuovo shows «script da aggiornare» until then); Google Form creation via Drive API not tried live; on phones ≤ 440 px the bar buttons are 36 px wide (8 icons); Office editing without OneDrive is in Google Office mode or the phone apps (PO choice).
 - Rollback: revert the branch commits; script: redeploy the previous web app version.
 - Next exact action: Luca tries the preview on the phone; «Pubblica» for the script; «Mergia» for the PR.
+## Handoff — FIRMA-BIRO-2 (2026-11-24, Claude Code)
+- Task FIRMA-BIRO-2; previous agent: none (new task from the PO plan on Drive «piano-poliedron-documenti-android.md»); branch `ccr-3ece708c-bx0vaq` from master 494aeac.
+- Objective: more realistic ballpoint stroke (plan §1). Completed: see current-task.md FIRMA-BIRO-2.
+- Files: `personal/src/pdf/biro.js`, `personal/src/pdf/Firma.jsx`, `tests/documentiFirmati.test.mjs`, `tests/visual/personal-pdf.mjs`, coordination docs.
+- DB changes: none. Tests: npm test 1949/1949 PASS; build:personal PASS; visual personal-pdf PASS (Pixel 7).
+- Unresolved: real-phone comparison with a Bic signature (PO); vector signature in the PDF (PO decision, plan §1.6).
+- Risks: full redraw on every pointer move (cost grows with the number of points; fine for signatures of a few hundred samples).
+- Next action: PO reviews the Vercel preview and says "Mergia"; then PDF-STRUMENTI-2 points 1–3 on a fresh branch from master.
+
+## Handoff — FIRMA-BIRO-2 round 2: firma, testo, timbro, scanner dal vivo, grafica Scan (2026-11-24, Claude Code)
+- Same task/branch/PR #347 (`ccr-3ece708c-bx0vaq`). PO feedback after testing the preview; details in current-task.md.
+- Files: `personal/src/pdf/{biro.js,Firma.jsx,testoPdf.js,EditorTesto.jsx,timbro.js,Timbro.jsx,GestorePdf.jsx,operazioni.js,pdf.css}`, `personal/src/lib/{scannerVivo.js,scansione.js}`, `personal/src/scan/{Fotocamera.jsx,Scan.jsx,ScanHome.jsx}`, `personal/src/Aggiungi.jsx`, `personal/src/{personal.css,pro.css}`, tests (`documentiFirmati`, `pdfTestoTimbro`, `scannerVivo`, visual `personal-pdf`, `personal-pdf-annotazioni`, `scan-vivo`, `personal-scan`).
+- DB: none. Tests: npm test 1963/1963; builds PASS; visual PASS except pre-existing scan-strumenti failure (also on master).
+- Risks: live detection relies on the existing Otsu-based `trovaAngoli` (needs a darker background than the sheet, as before); full redraw per pointer move in the signature pad (finished strokes cached).
+- Next action: PO tries the new preview on the phone (scanner, text, stamp, signature); then "Mergia" or further feedback. PDF-STRUMENTI-2 / Android tasks not started.
+
+## Handoff — PR #347 round 3: grafica pro, Poliedron tra le fonti, Indietro, lente nel ritaglio (2026-11-24, Claude Code)
+- Same task/branch/PR. Files: `personal/src/pro.css`, `personal/src/personal.css`, `personal/src/scan/{ScegliPoliedron.jsx,ScanHome.jsx,Fotocamera.jsx}`, `personal/src/lib/indietro.js`, `personal/src/Angoli.jsx`, `personal/src/Aggiungi.jsx`, `personal/src/pdf/GestorePdf.jsx`, `personal/src/Icone.jsx` (IconaCartella), tests `scannerVivo`, visual `scan-vivo`.
+- DB: none (reads only existing tables/RPC under RLS). Tests: see current-task.md. Risk: `backdrop-filter` cost on old phones (degrades to translucent without blur).
+- Next action: PO tries the preview; "Mergia" or more feedback.

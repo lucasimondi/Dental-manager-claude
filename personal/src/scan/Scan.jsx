@@ -54,6 +54,9 @@ export function Scan({ email }) {
   const timer = useRef(null);
   const { installata, puo, iphone, installa } = useInstalla();
 
+  // SCAN-GRAFICA (PO 2026-11-24: «la grafica dello Scan nella prima pagina può andare ma non nelle altre,
+  // deve essere coordinata»): il tema dello Scan vale anche per le pagine sopra e per il gestore PDF.
+  useEffect(() => { document.body.classList.add('scan-app'); return () => document.body.classList.remove('scan-app'); }, []);
   useEffect(() => { conteggiFascicoli(archivioDb).then(setFascicoli).catch(() => {}); }, [versione]);
   useEffect(() => { leggiImpostazioni(archivioDb).then(setImpostazioni).catch(() => {}); }, []);
   const mostra = useCallback((t, azione = null) => {
