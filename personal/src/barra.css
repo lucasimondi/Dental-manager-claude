@@ -98,7 +98,9 @@ body.pb-trascina .pb-voce:not([data-bersaglio]) { opacity: .45; }
   .pb-campanella { display: grid; }
   .pb-campanella .pb-pallino { top: -6px; right: -8px; }
 }
-@media (max-width: 380px) { .pb-icone { gap: 2px; } }
+/* SCAN-APP: con Scan nel dock le icone sono 8; sui telefoni stretti pulsanti 36 px (icona sempre 24 px,
+   altezza 40) e spazio 2 px, così restano centrate fra i due lati della barra. */
+@media (max-width: 440px) { .pb-icone { gap: 2px; } .pb-icone .pb-voce { width: 36px; } }
 
 /* Start */
 .pb-velo { position: fixed; inset: 0; z-index: 44; background: transparent; }

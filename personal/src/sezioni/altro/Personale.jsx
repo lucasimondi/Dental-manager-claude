@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { archivioDb } from '../../lib/supabasePersonal.js';
 import { documentiRecenti } from '../../lib/archivio.js';
 import { caricaDaFare, riepilogo } from '../../lib/daFare.js';
-import { indirizzoScan } from '../../lib/scan.js';
 import { ICONE_ALTRO } from '../../../../shared/altro/AltroPage.jsx';
 import { saluto, dataBreve } from '../../ui.jsx';
 import { PER_TE } from './index.jsx';
@@ -122,11 +121,12 @@ export function VistaPersonale({ ctx }) {
             </button>
           </div>
 
-          <a className="pps-scan" href={indirizzoScan()}>
+          {/* SCAN-APP: Scan si apre come app dentro Personal (come dalla barra) */}
+          <button type="button" className="pps-scan" onClick={() => apri({ tipo: 'scan' })}>
             <Icona d={SCAN} tono="vetro" />
             <span><strong>Scan</strong><span>Scansiona, firma, invia</span></span>
             <i aria-hidden="true">›</i>
-          </a>
+          </button>
 
           <section aria-label="Il tuo spazio">
             <h2 className="pps-titoletto">Il tuo spazio</h2>

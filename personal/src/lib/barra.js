@@ -14,6 +14,10 @@ export const VOCI_BARRA = [
   { id: 'altro', nome: 'Personale', vista: 'altro' },
 ];
 const VISTE_BARRA = new Set(VOCI_BARRA.filter((v) => v.vista).map((v) => v.id));
+// SCAN-APP (PO 2026-11-24): app che si aprono come pagine sopra la sezione (Esplora file, Scan):
+// tipo di pagina → icona della barra che si accende.
+const PAGINE_APP = { esplora: 'esplora', scan: 'scan', scanner: 'scan', tessera: 'scan', testo: 'scan', pdfStrumento: 'scan' };
+export const appDellaPagina = (p) => (p ? PAGINE_APP[p.tipo] || null : null);
 
 /**
  * Quale icona è attiva. Start aperto vince; poi Esplora se è la pagina in cima; poi la vista.
@@ -21,7 +25,8 @@ const VISTE_BARRA = new Set(VOCI_BARRA.filter((v) => v.vista).map((v) => v.id));
  */
 export function voceAttiva({ vista, pagine = [], start = false, dock = null }) {
   if (start) return start === 'cerca' ? 'cerca' : 'start';
-  if (pagine.length && pagine[pagine.length - 1]?.tipo === 'esplora') return 'esplora';
+  const inCima = appDellaPagina(pagine[pagine.length - 1]);
+  if (inCima === 'esplora' || (inCima === 'scan' && (dock || DOCK_PREDEFINITO).includes('scan'))) return inCima;
   if (VISTE_BARRA.has(vista)) return vista;
   if (dock?.includes(vista)) return vista; // PR #337 §7: un'app fissata nel dock si accende lei
   return 'altro';
@@ -35,7 +40,7 @@ export function vociAperte({ vista, pagine = [], start = false, dock = null }) {
   const fuori = new Set();
   const attiva = voceAttiva({ vista, pagine, start, dock });
   if (pagine.length) fuori.add(VISTE_BARRA.has(vista) || dock?.includes(vista) ? vista : 'altro');
-  if (pagine.some((p) => p.tipo === 'esplora')) fuori.add('esplora');
+  for (const p of pagine) { const a = appDellaPagina(p); if (a) fuori.add(a); }
   fuori.delete(attiva);
   return fuori;
 }
@@ -49,6 +54,7 @@ export const AGGIUNTE = [
   { id: 'agenda', nome: 'Agenda', azione: { vai: 'agenda' } },
   { id: 'documenti', nome: 'Documenti', azione: { vai: 'documenti' }, conteggio: 'documenti' },
   { id: 'esplora', nome: 'Esplora', azione: { apri: { tipo: 'esplora' } }, conteggio: 'esplora' },
+  { id: 'scan', nome: 'Scan', azione: { apri: { tipo: 'scan' } } }, // SCAN-APP
   { id: 'dafare', nome: 'Da fare', azione: { vai: 'dafare' }, conteggio: 'dafare' },
   { id: 'conti', nome: 'Conti', azione: { vai: 'conti' } },
   { id: 'legal', nome: 'Legal', azione: { vai: 'legal' } },
@@ -107,8 +113,19 @@ export const accettaFile = (id) => Object.prototype.hasOwnProperty.call(APP_PER_
 // «Aggiunte»: app (dalle AGGIUNTE) e cartelle fissate di Esplora, nell'ordine scelto da Luca.
 // Dock: dopo Start e Cerca, le app fissate (predefinite quelle di sempre). Tutto in impostazioni_app
 // (chiave `start_personal`), uguale su ogni dispositivo.
-export const DOCK_PREDEFINITO = ['oggi', 'agenda', 'esplora', 'poliedron', 'altro'];
+// SCAN-APP (PO 2026-11-24): Scan nel dock dopo Esplora file.
+export const DOCK_PREDEFINITO = ['oggi', 'agenda', 'esplora', 'scan', 'poliedron', 'altro'];
 const APP_DOCK = { oggi: VOCI_BARRA[2], agenda: VOCI_BARRA[3], esplora: VOCI_BARRA[4], poliedron: VOCI_BARRA[5], altro: VOCI_BARRA[6] };
+// Versione delle impostazioni di Start: chi le aveva salvate prima di Scan (versione assente) trova
+// Scan aggiunto una volta (nel dock dopo Esplora e in Start); poi se lo toglie resta tolto.
+export const VERSIONE_START = 2;
+const conScan = (lista, dopo, voce) => {
+  if (lista.some((x) => (x?.id ?? x) === 'scan')) return lista;
+  const i = lista.findIndex((x) => (x?.id ?? x) === dopo);
+  const n = [...lista];
+  n.splice(i < 0 ? n.length : i + 1, 0, voce);
+  return n;
+};
 const chiaveAggiunta = (x) => `${x.tipo}:${x.id}`;
 
 export function normalizzaStart(v = {}) {
@@ -118,8 +135,13 @@ export function normalizzaStart(v = {}) {
     : AGGIUNTE.map((a) => ({ tipo: 'app', id: a.id }));
   const visti = new Set();
   const uniche = aggiunte.filter((x) => { const k = chiaveAggiunta(x); if (visti.has(k)) return false; visti.add(k); return true; });
-  const dock = Array.isArray(v?.dock) ? v.dock.filter((id) => app.has(id) || APP_DOCK[id]).filter((id, i, l) => l.indexOf(id) === i).slice(0, 10) : DOCK_PREDEFINITO;
-  return { aggiunte: uniche, dock };
+  let dock = Array.isArray(v?.dock) ? v.dock.filter((id) => app.has(id) || APP_DOCK[id]).filter((id, i, l) => l.indexOf(id) === i).slice(0, 10) : DOCK_PREDEFINITO;
+  let finali = uniche;
+  if (!(Number(v?.versione) >= VERSIONE_START)) {
+    if (Array.isArray(v?.dock)) dock = conScan(dock, 'esplora', 'scan').slice(0, 10);
+    if (Array.isArray(v?.aggiunte)) finali = conScan(uniche, 'esplora', { tipo: 'app', id: 'scan' });
+  }
+  return { aggiunte: finali, dock, versione: VERSIONE_START };
 }
 export function spostaAggiunta(lista, da, a) {
   if (da === a || da < 0 || da >= lista.length) return lista;

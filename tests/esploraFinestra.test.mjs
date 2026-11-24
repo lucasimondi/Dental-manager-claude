@@ -219,7 +219,16 @@ test('Start: aggiunte riordinabili, Rimuovi, Aggiungi al dock; dock di sempre co
   assert.deepEqual(v.dock, DOCK_PREDEFINITO);
   assert.ok(v.aggiunte.length > 10 && v.aggiunte.every((x) => x.tipo === 'app'));
   assert.deepEqual(normalizzaStart({ aggiunte: [{ tipo: 'app', id: 'conti' }, { tipo: 'app', id: 'conti' }, { tipo: 'app', id: 'inventata' }, { tipo: 'cartella', id: 'casa' }], dock: ['agenda', 'conti', 'agenda', 'boh'] }),
-    { aggiunte: [{ tipo: 'app', id: 'conti' }, { tipo: 'cartella', id: 'casa' }], dock: ['agenda', 'conti'] });
+    { aggiunte: [{ tipo: 'app', id: 'conti' }, { tipo: 'cartella', id: 'casa' }, { tipo: 'app', id: 'scan' }], dock: ['agenda', 'conti', 'scan'], versione: 2 });
+  // SCAN-APP: impostazioni già salvate con la versione nuova restano come sono (Scan tolto resta tolto)
+  assert.deepEqual(normalizzaStart({ aggiunte: [{ tipo: 'app', id: 'conti' }], dock: ['agenda'], versione: 2 }),
+    { aggiunte: [{ tipo: 'app', id: 'conti' }], dock: ['agenda'], versione: 2 });
+  // impostazioni di prima: Scan entra una volta, dopo Esplora
+  assert.deepEqual(normalizzaStart({ aggiunte: [{ tipo: 'app', id: 'esplora' }, { tipo: 'app', id: 'conti' }], dock: ['oggi', 'esplora', 'altro'] }).dock, ['oggi', 'esplora', 'scan', 'altro']);
+  assert.deepEqual(normalizzaStart({ aggiunte: [{ tipo: 'app', id: 'esplora' }, { tipo: 'app', id: 'conti' }], dock: [] }).aggiunte.map((x) => x.id), ['esplora', 'scan', 'conti']);
+  assert.deepEqual(vociBarra(['scan'])[2], { id: 'scan', nome: 'Scan', azione: { apri: { tipo: 'scan' } } });
+  assert.equal(attivaBarra({ vista: 'agenda', pagine: [{ tipo: 'scan' }, { tipo: 'tessera' }] }), 'scan');
+  assert.equal(attivaBarra({ vista: 'agenda', pagine: [{ tipo: 'scan' }], dock: ['agenda'] }), 'agenda', 'Scan tolto dal dock: resta accesa la sezione');
   const l = [{ tipo: 'app', id: 'a' }, { tipo: 'app', id: 'b' }, { tipo: 'app', id: 'c' }];
   assert.deepEqual(spostaAggiunta(l, 0, 2).map((x) => x.id), ['b', 'c', 'a']);
   assert.deepEqual(spostaAggiunta(l, 2, 0).map((x) => x.id), ['c', 'a', 'b']);

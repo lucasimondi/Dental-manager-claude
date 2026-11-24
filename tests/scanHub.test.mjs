@@ -58,7 +58,7 @@ test('Estrai testo: paragraphs and lines kept, low-confidence words dropped', ()
   assert.equal(testoDaBlocchi([]), '');
 });
 test('Scan opens on its Home with tools, recents and camera; everything stays on the device', () => {
-  const scan = readFileSync('personal/src/scan/Scan.jsx', 'utf8');
+  const scan = readFileSync('personal/src/scan/Scan.jsx', 'utf8') + readFileSync('personal/src/scan/pagineScan.jsx', 'utf8');
   assert.match(scan, /<ScanHome /); assert.match(scan, /ricordaFile/);
   for (const t of ['scanner', 'tessera', 'testo', 'pdfStrumento']) assert.match(scan, new RegExp(`${t}: \\{`));
   const home = readFileSync('personal/src/scan/ScanHome.jsx', 'utf8');

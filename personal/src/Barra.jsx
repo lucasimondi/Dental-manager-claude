@@ -26,7 +26,7 @@ import { titoloDoc } from './ui.jsx';
 import { IconaDock } from './IconeDock.jsx';
 import {
   IconaOggi, IconaChat, IconaPerTe, IconaCerca, IconaDocumenti, IconaEuro, IconaPratiche, IconaPortafoglio, IconaNote,
-  IconaLucchetto, IconaFoto, IconaImpostazioni, IconaEsci, IconaCalendario,
+  IconaLucchetto, IconaFoto, IconaImpostazioni, IconaEsci, IconaCalendario, IconaScansiona,
 } from './Icone.jsx';
 import gemmaPoliedron from '../../src/assets/icon-poliedra-gem.png';
 import './barra.css';
@@ -34,7 +34,7 @@ import './barra.css';
 const ICONE_START = {
   oggi: IconaOggi, agenda: IconaCalendario, documenti: IconaDocumenti, dafare: IconaPerTe, conti: IconaEuro, legal: IconaPratiche,
   pratiche: IconaPratiche, personali: IconaPortafoglio, diario: IconaNote, note: IconaNote, password: IconaLucchetto, foto: IconaFoto,
-  concordato: IconaPratiche, studio: (p) => <IconaDock n="brief" s={p.size} />, impostazioni: IconaImpostazioni,
+  concordato: IconaPratiche, scan: IconaScansiona, studio: (p) => <IconaDock n="brief" s={p.size} />, impostazioni: IconaImpostazioni,
 };
 const Numero = ({ n, classe = '' }) => { const t = etichettaNumero(n); return t ? <span className={`pb-pallino ${classe}`} aria-hidden="true">{t}</span> : null; };
 

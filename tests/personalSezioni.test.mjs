@@ -12,7 +12,7 @@ const sorgenti = fileDi(RADICE).filter((f) => /\.(jsx?|mjs)$/.test(f));
 const leggi = (f) => readFileSync(f, 'utf8');
 
 test('sezioni: una cartella con index.jsx per ogni sezione, tutte nel registro', () => {
-  assert.deepEqual(cartelle.sort(), ['agenda', 'altro', 'concordato', 'conti', 'dafare', 'diario', 'didattica', 'documenti', 'foto', 'impostazioni', 'legal', 'note', 'oggi', 'password', 'personali', 'poliedron', 'riordino']);
+  assert.deepEqual(cartelle.sort(), ['agenda', 'altro', 'concordato', 'conti', 'dafare', 'diario', 'didattica', 'documenti', 'foto', 'impostazioni', 'legal', 'note', 'oggi', 'password', 'personali', 'poliedron', 'riordino', 'scan']);
   const registro = leggi(join(SEZIONI, 'index.js'));
   for (const c of cartelle) {
     const indice = leggi(join(SEZIONI, c, 'index.jsx'));
@@ -41,16 +41,16 @@ test('sezioni: una sezione usa le altre solo attraverso il loro index.jsx', () =
 });
 
 test('sezioni: ogni pagina aperta è registrata in una sola sezione', () => {
-  const registrate = cartelle.flatMap((c) => [...leggi(join(SEZIONI, c, 'index.jsx')).matchAll(/^ {4}'?([\w-]+)'?: \{/gm)].map((m) => m[1]));
+  const registrate = cartelle.flatMap((c) => [...leggi(join(SEZIONI, c, 'index.jsx')).matchAll(/^ {4}'?([\w-]+)'?: (?:\{|pg\()/gm)].map((m) => m[1]));
   assert.equal(new Set(registrate).size, registrate.length, `tipo di pagina doppio: ${registrate}`);
   // apri({ tipo }), sostituisci({ tipo }) e le voci del + in App.jsx (una per riga).
   const aperte = new Set(sorgenti.flatMap((f) => [...leggi(f).matchAll(/(?:(?:apri|sostituisci)\(|^ +\w+: )\{ tipo: '([\w-]+)'/gm)].map((m) => m[1])));
   assert.ok(aperte.size >= 12, `trovate ${aperte.size} pagine`);
-  // SCAN-HUB: le pagine proprie di Scan sono registrate in PAGINE_SCAN (scan/Scan.jsx).
-  const scan = leggi('personal/src/scan/Scan.jsx');
-  const diScan = [...scan.slice(scan.indexOf('const PAGINE_SCAN'), scan.indexOf('const paginaScan')).matchAll(/^ {2}(\w+): \{/gm)].map((m) => m[1]);
+  // SCAN-APP: le pagine proprie di Scan (PAGINE_SCAN in scan/pagineScan.jsx) sono registrate anche nella
+  // sezione «scan» di Personal, così Scan si apre come app dentro Personal.
+  const scan = leggi('personal/src/scan/pagineScan.jsx');
+  const diScan = [...scan.matchAll(/^ {2}(\w+): \{/gm)].map((m) => m[1]);
   assert.ok(diScan.length >= 4, `pagine di Scan: ${diScan}`);
-  for (const tipo of diScan) assert.ok(!registrate.includes(tipo), `pagina di Scan '${tipo}' già registrata in una sezione`);
-  registrate.push(...diScan);
+  for (const tipo of diScan) assert.ok(registrate.includes(tipo), `pagina di Scan '${tipo}' non registrata nella sezione scan`);
   for (const tipo of aperte) assert.ok(registrate.includes(tipo), `pagina '${tipo}' aperta ma non registrata in nessuna sezione`);
 });

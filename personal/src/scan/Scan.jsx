@@ -6,7 +6,6 @@
 // SCAN-HUB (PO 2026-11-12): Scan si apre su una Home (ScanHome) con scanner, strumenti e Recenti;
 // lo scanner è una pagina sopra la Home (archiviare lascia lo scanner aperto sotto).
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PaginaScansione } from '../Aggiungi.jsx';
 import { Pagina } from '../Pagina.jsx';
 import { archivioDb } from '../lib/supabasePersonal.js';
 import { conteggiFascicoli } from '../lib/archivio.js';
@@ -15,20 +14,12 @@ import { IMPOSTAZIONI_PREDEFINITE, leggiImpostazioni, salvaImpostazioni } from '
 import { indirizzoPersonal, strumentoDaIndirizzo } from '../lib/scan.js';
 import { pagina, titoloPagina, eModulo } from '../sezioni/index.js';
 import { useIngressoPdf } from '../pdf/useIngressoPdf.js';
-import { PaginaPdf } from '../pdf/PaginaPdf.jsx';
 import { ricordaFile } from '../lib/recenti.js';
 import { ScanHome } from './ScanHome.jsx';
-import { CartaIdentita } from './CartaIdentita.jsx';
-import { EstraiTesto } from './EstraiTesto.jsx';
+import { PAGINE_SCAN } from './pagineScan.jsx';
+import { apriStrumentoScan } from './strumenti.js';
 
-// SCAN-HUB (PO 2026-11-12): le pagine proprie di Scan, aperte dalla Home sopra di essa. Le altre
-// (archiviazione, gestore PDF) sono quelle di Personal (sezioni/index.js).
-const PAGINE_SCAN = {
-  scanner: { titolo: 'Scanner', modulo: true, render: (p, { ctx }) => <PaginaScansione files={p.files} ctx={ctx} sostituisci={ctx.apri} opzioni={{ destinazione: true }} /> },
-  tessera: { titolo: "Carta d'identità", modulo: true, render: (p, { ctx }) => <CartaIdentita ctx={ctx} sostituisci={ctx.apri} /> },
-  testo: { titolo: 'Estrai testo', modulo: true, render: (p, { ctx }) => <EstraiTesto ctx={ctx} /> },
-  pdfStrumento: { titolo: 'Gestore PDF', modulo: true, render: (p, { ctx, chiudi, sostituisci }) => <PaginaPdf strumento={p.strumento} file={p.file} ctx={ctx} chiudi={chiudi} sostituisci={sostituisci} /> },
-};
+// SCAN-HUB (PO 2026-11-12): le pagine proprie di Scan (scan/pagineScan.jsx, condivise con Personal).
 const paginaScan = (tipo) => PAGINE_SCAN[tipo] || pagina(tipo);
 const titoloScan = (p) => p.titolo || (PAGINE_SCAN[p.tipo] ? PAGINE_SCAN[p.tipo].titolo : titoloPagina(p));
 
@@ -116,14 +107,7 @@ export function Scan({ email }) {
   };
   const sopra = pagine.length > 0;
   // SCAN-HUB: dalla griglia della Home allo strumento.
-  function strumento(id) {
-    if (id === 'scanner' || id === 'unisci') apri({ tipo: 'scanner' });
-    else if (id === 'tessera' || id === 'testo') apri({ tipo: id });
-    else if (id === 'pdf') apri({ tipo: 'pdf' });
-    else if (id === 'firma' || id === 'comprimi' || id === 'pagine') apri({ tipo: 'pdfStrumento', strumento: id });
-    else if (id === 'archivio') vai('documenti');
-    else if (id === 'personali') vai('personali');
-  }
+  const strumento = (id) => apriStrumentoScan(id, { apri, vai });
 
   return (
     <div className="pp-app pp-scan">
