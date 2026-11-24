@@ -5020,3 +5020,12 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Tables `categorie` / `piano_riordino` exist (migration applied); the plan is in Luca's Drive as private `poliedra-piano-riordino.json`; Code.gs `importa_piano` loads it (version 30 created, deployment still @29: publishing was blocked by the permission classifier, needs Luca's OK).
 - Screen Personale → «Riordino». Nothing moved or renamed on Drive. Phase 3 (execution in batches of 100 with `log_spostamenti` and «Annulla lotto») only after Luca approves rows.
 - Known weak spot: «12 Lavoro e professione/Studio Cuneo» still collects some documents of other subjects (bank, legal, housing); 99 at 9.7% (target 5%).
+
+## Handoff — FIRMA-BIRO-2 (2026-11-24, Claude Code)
+- Task FIRMA-BIRO-2; previous agent: none (new task from the PO plan on Drive «piano-poliedron-documenti-android.md»); branch `ccr-3ece708c-bx0vaq` from master 494aeac.
+- Objective: more realistic ballpoint stroke (plan §1). Completed: see current-task.md FIRMA-BIRO-2.
+- Files: `personal/src/pdf/biro.js`, `personal/src/pdf/Firma.jsx`, `tests/documentiFirmati.test.mjs`, `tests/visual/personal-pdf.mjs`, coordination docs.
+- DB changes: none. Tests: npm test 1949/1949 PASS; build:personal PASS; visual personal-pdf PASS (Pixel 7).
+- Unresolved: real-phone comparison with a Bic signature (PO); vector signature in the PDF (PO decision, plan §1.6).
+- Risks: full redraw on every pointer move (cost grows with the number of points; fine for signatures of a few hundred samples).
+- Next action: PO reviews the Vercel preview and says "Mergia"; then PDF-STRUMENTI-2 points 1–3 on a fresh branch from master.
