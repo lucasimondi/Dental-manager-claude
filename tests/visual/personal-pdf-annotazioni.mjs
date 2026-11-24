@@ -67,6 +67,25 @@ try {
   const b3 = await box.boundingBox();
   assert.ok(b3.width > b2.width * 1.2 && b3.height > b2.height * 1.2, 'più grande con ↘');
   await page.screenshot({ path: `${out}/testo-pagina.png` });
+  // PDF-TIMBRO: configurazione, anteprima, tre forme, impronta irregolare sulla pagina.
+  await page.getByRole('button', { name: 'Timbro', exact: true }).click();
+  const timbro = page.getByRole('dialog', { name: 'Timbro' });
+  await timbro.getByLabel('Riga 1 del timbro').fill('STUDIO DENTISTICO');
+  await timbro.getByLabel('Riga 2 del timbro').fill('Dott. Mario Rossi');
+  await timbro.getByLabel('Riga 3 del timbro').fill('Via Roma 1 - Torino');
+  for (const forma of ['Tondo', 'Ovale', 'Rettangolare']) {
+    await timbro.getByRole('radio', { name: forma }).click();
+    await page.waitForTimeout(150);
+    await timbro.getByRole('img', { name: 'Anteprima del timbro' }).screenshot({ path: `${out}/timbro-${forma.toLowerCase()}.png` });
+  }
+  await timbro.getByRole('radio', { name: 'Rosso' }).click();
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'pannello timbro senza sforamenti');
+  await page.screenshot({ path: `${out}/timbro-pannello.png` });
+  await timbro.getByRole('button', { name: 'Timbra sulla pagina' }).click();
+  const timbrato = page.locator('.pdf-signature:not(.pdf-testo) img'); await timbrato.waitFor();
+  const alfa = await timbrato.evaluate(async (img) => { await img.decode(); const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; const x = c.getContext('2d'); x.drawImage(img, 0, 0); const d = x.getImageData(0, 0, c.width, c.height).data; const v = new Set(); let rosso = 0, n = 0; for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 20) { n++; v.add(d[i + 3] >> 4); if (d[i] > d[i + 2] * 2) rosso++; } return { n, livelli: v.size, rosso: rosso / n }; });
+  assert.ok(alfa.n > 2000 && alfa.livelli >= 8 && alfa.rosso > 0.9, `impronta rossa irregolare ${JSON.stringify(alfa)}`);
+  await page.locator('.pdf-signature:not(.pdf-testo) .pdf-signature-remove').click();
   // Signature with proportions
   await page.getByRole('button', { name: 'Firma', exact: true }).click();
   const pad = await page.getByLabel('Spazio firma').boundingBox();

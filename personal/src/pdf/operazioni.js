@@ -159,7 +159,7 @@ export function formatoPeso(byte) {
 // SCAN-PDF-MANAGER (PO 2026-11-11: «Firma salvata») — dove compaiono firma, sigla e data.
 // `proporzione` = altezza/larghezza dell'immagine; `aspetto(n)` = larghezza/altezza della pagina n.
 export const testoOggi = (d = new Date()) => d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
-const POSTI = { firma: { width: .34, x: .5, y: .72 }, sigla: { width: .16, destra: .06, basso: .05 }, data: { width: .22, x: .08, y: .72 } };
+const POSTI = { firma: { width: .34, x: .5, y: .72 }, sigla: { width: .16, destra: .06, basso: .05 }, data: { width: .22, x: .08, y: .72 }, timbro: { width: .3, destra: .08, basso: .1 } };
 export function posizioniInserimento({ tipo = 'firma', tutte = false, pagina = 1, pagine = 1, proporzione = .3, aspetto = () => 210 / 297 }) {
   const posto = POSTI[tipo] || POSTI.firma;
   const numeri = tutte ? Array.from({ length: pagine }, (_, i) => i + 1) : [pagina];

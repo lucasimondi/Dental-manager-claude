@@ -73,3 +73,5 @@
 .pdf-manager .pdf-testo .pdf-signature-remove{top:-38px;right:-10px}
 .pdf-manager .pdf-testo .pdf-testo-modifica{top:-38px;left:-10px}
 .pdf-manager .pdf-testo .pdf-signature-resize{bottom:-38px;right:-10px}
+.pdf-timbro-anteprima{width:100%;height:auto;aspect-ratio:2/1;border:1px dashed #b4c4d1;border-radius:10px;background:#fffefb}
+.pdf-timbro .pdf-scelte input{width:100%}
