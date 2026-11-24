@@ -15,6 +15,7 @@ export const IconaPiu = (p) => <Svg {...p} tipo="piu"><path d="M12 5v14M5 12h14"
 export const IconaCerca = (p) => <Svg {...p} tipo="cerca"><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" /></Svg>;
 export const IconaChiudi = (p) => <Svg {...p} tipo="chiudi"><path d="M6 6l12 12M18 6 6 18" /></Svg>;
 export const IconaIndietro = (p) => <Svg {...p} tipo="indietro"><path d="M15 5l-7 7 7 7" /></Svg>;
+export const IconaCartella = (p) => <Svg {...p} tipo="cartella"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" /></Svg>;
 export const IconaFreccia = (p) => <Svg {...p} tipo="freccia"><path d="M9 5l7 7-7 7" /></Svg>;
 export const IconaApri = (p) => <Svg {...p} tipo="apri"><path d="M14 4h6v6" /><path d="M20 4 11 13" /><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></Svg>;
 export const IconaEmail = (p) => <Svg {...p} tipo="email"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></Svg>;

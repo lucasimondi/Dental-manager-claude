@@ -45,8 +45,57 @@ export function livelli(px, quota = 0.02) {
   return { basso, alto };
 }
 
-export function migliora(px, modo) {
+// SCAN-VIVO (PO 2026-11-24: scan «forte come quello di Google»): via le ombre e la luce non uniforme.
+// Lo sfondo (la carta) si stima a celle con un valore alto per canale (85° percentile di un campione),
+// si leviga e si ingrandisce in modo continuo; ogni pixel viene diviso per lo sfondo, così la carta
+// diventa bianca in tutta la pagina e l'ombra della mano o del telefono sparisce, il testo resta.
+export function sfondoCarta(px, larghezza, altezza, celle = 40) {
+  const lato = Math.max(4, Math.ceil(Math.max(larghezza, altezza) / celle));
+  const cw = Math.ceil(larghezza / lato), ch = Math.ceil(altezza / lato);
+  const bg = new Float32Array(cw * ch * 3);
+  const passo = Math.max(1, Math.floor(lato / 8));
+  const valori = [[], [], []];
+  for (let cy = 0; cy < ch; cy++) for (let cx = 0; cx < cw; cx++) {
+    valori[0].length = valori[1].length = valori[2].length = 0;
+    for (let y = cy * lato; y < Math.min(altezza, (cy + 1) * lato); y += passo) for (let x = cx * lato; x < Math.min(larghezza, (cx + 1) * lato); x += passo) {
+      const i = (y * larghezza + x) * 4; valori[0].push(px[i]); valori[1].push(px[i + 1]); valori[2].push(px[i + 2]);
+    }
+    for (let c = 0; c < 3; c++) { const v = valori[c].sort((a, b) => a - b); bg[(cy * cw + cx) * 3 + c] = v[Math.min(v.length - 1, Math.floor(v.length * 0.85))] || 255; }
+  }
+  // levigatura: due passate 3×3
+  for (let k = 0; k < 2; k++) {
+    const copia = bg.slice();
+    for (let cy = 0; cy < ch; cy++) for (let cx = 0; cx < cw; cx++) for (let c = 0; c < 3; c++) {
+      let s = 0, n = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const x = cx + dx, y = cy + dy; if (x >= 0 && y >= 0 && x < cw && y < ch) { s += copia[(y * cw + x) * 3 + c]; n++; } }
+      bg[(cy * cw + cx) * 3 + c] = s / n;
+    }
+  }
+  return { bg, cw, ch, lato };
+}
+
+export function togliOmbre(px, larghezza, altezza) {
+  if (!larghezza || !altezza) return px;
+  const { bg, cw, ch, lato } = sfondoCarta(px, larghezza, altezza);
+  for (let y = 0; y < altezza; y++) {
+    const fy = Math.min(ch - 1, Math.max(0, (y + 0.5) / lato - 0.5)), y0 = Math.floor(fy), y1 = Math.min(ch - 1, y0 + 1), ty = fy - y0;
+    for (let x = 0; x < larghezza; x++) {
+      const fx = Math.min(cw - 1, Math.max(0, (x + 0.5) / lato - 0.5)), x0 = Math.floor(fx), x1 = Math.min(cw - 1, x0 + 1), tx = fx - x0;
+      const i = (y * larghezza + x) * 4;
+      for (let c = 0; c < 3; c++) {
+        const a = bg[(y0 * cw + x0) * 3 + c] * (1 - tx) + bg[(y0 * cw + x1) * 3 + c] * tx;
+        const b = bg[(y1 * cw + x0) * 3 + c] * (1 - tx) + bg[(y1 * cw + x1) * 3 + c] * tx;
+        const sfondo = Math.max(24, a * (1 - ty) + b * ty);
+        px[i + c] = Math.min(255, (px[i + c] * 255) / sfondo);
+      }
+    }
+  }
+  return px;
+}
+
+export function migliora(px, modo, larghezza = 0, altezza = 0) {
   if (modo === 'originale') return px;
+  togliOmbre(px, larghezza, altezza);
   const { basso, alto } = livelli(px);
   const k = 255 / (alto - basso);
   const tira = (v) => Math.max(0, Math.min(255, (v - basso) * k));
@@ -105,7 +154,7 @@ export async function elaboraPagina(file, { modo = 'documento', rotazione = 0, r
   if (modo !== 'originale') {
     const ct = tela.getContext('2d', { willReadFrequently: true });
     const dati = ct.getImageData(0, 0, tela.width, tela.height);
-    migliora(dati.data, modo);
+    migliora(dati.data, modo, tela.width, tela.height);
     ct.putImageData(dati, 0, 0);
   }
   if (Math.max(tela.width, tela.height) > lato) {

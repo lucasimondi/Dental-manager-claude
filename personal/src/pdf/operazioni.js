@@ -1,5 +1,6 @@
 // Pure PDF geometry and byte transformations. No network, storage or original writes.
-import { PDFDocument, StandardFonts, degrees } from 'pdf-lib';
+import { PDFDocument, StandardFonts, degrees, rgb } from 'pdf-lib';
+import { CARATTERI, COLORI_TESTO, normalizzaStile, caratterePdf, righe, coloreRgb, posizioniRighe, testoScrivibile } from './testoPdf.js';
 
 export { MAX_PDF_BYTES, validaFile } from './filePdf.js';
 export function schermoPdf({ x, y }, [a, b, c, d, e, f]) {
@@ -51,10 +52,22 @@ export async function organizzaPdf(bytes, pages) {
   copies.forEach((page, i) => { page.setRotation(degrees((page.getRotation().angle + pages[i].rotation) % 360)); out.addPage(page); });
   return out.save();
 }
+// PDF-TESTO: gli elementi con `testo` diventano testo vero (carattere standard, colore, righe).
 export async function incorporaFirme(bytes, signatures) {
   if (!signatures.length) return bytes;
   const pdf = await apri(bytes);
+  const fonts = {};
   for (const signature of signatures) {
+    if (signature.testo) {
+      const stile = normalizzaStile(signature.stile), nome = caratterePdf(stile);
+      const font = fonts[nome] || (fonts[nome] = await pdf.embedFont(StandardFonts[nome]));
+      const r = righe(signature.testo), { r: red, g, b } = coloreRgb(COLORI_TESTO[stile.colore]);
+      const page = pdf.getPage(signature.page - 1);
+      posizioniRighe(signature.position, r.length, CARATTERI[stile.carattere].base).forEach((p, i) => {
+        if (r[i]) page.drawText(testoScrivibile(r[i], (ch) => font.encodeText(ch)), { x: p.x, y: p.y, size: p.size, font, color: rgb(red, g, b), rotate: degrees(signature.position.rotation || 0) });
+      });
+      continue;
+    }
     const image = await pdf.embedPng(signature.png);
     const { rotation, ...rect } = signature.position;
     pdf.getPage(signature.page - 1).drawImage(image, { ...rect, rotate: degrees(rotation) });
@@ -146,7 +159,7 @@ export function formatoPeso(byte) {
 // SCAN-PDF-MANAGER (PO 2026-11-11: «Firma salvata») — dove compaiono firma, sigla e data.
 // `proporzione` = altezza/larghezza dell'immagine; `aspetto(n)` = larghezza/altezza della pagina n.
 export const testoOggi = (d = new Date()) => d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
-const POSTI = { firma: { width: .34, x: .5, y: .72 }, sigla: { width: .16, destra: .06, basso: .05 }, data: { width: .22, x: .08, y: .72 } };
+const POSTI = { firma: { width: .34, x: .5, y: .72 }, sigla: { width: .16, destra: .06, basso: .05 }, data: { width: .22, x: .08, y: .72 }, timbro: { width: .3, destra: .08, basso: .1 } };
 export function posizioniInserimento({ tipo = 'firma', tutte = false, pagina = 1, pagine = 1, proporzione = .3, aspetto = () => 210 / 297 }) {
   const posto = POSTI[tipo] || POSTI.firma;
   const numeri = tutte ? Array.from({ length: pagine }, (_, i) => i + 1) : [pagina];

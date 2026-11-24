@@ -6,37 +6,61 @@ import { EventBus, PDFViewer, PDFLinkService, PDFFindController } from 'pdfjs-pe
 import 'pdfjs-personal/web/pdf_viewer.css';
 import './pdf.css';
 import { Firma } from './Firma.jsx';
+import { EditorTesto } from './EditorTesto.jsx';
+import { Timbro } from './Timbro.jsx';
+import { COLORI_TESTO, CARATTERI, normalizzaStile, fontCss, righe, riquadroTesto, limitaPosizione, grandezzaDaLarghezza } from './testoPdf.js';
 import { SalvaArchivio } from './SalvaArchivio.jsx';
 import { CompilaCampi } from './CompilaCampi.jsx';
 import { validaFile, limitaFirma, posizioneFirma, incorporaFirme, organizzaPdf, unisciPdf, riordina, nomeCopia, nomeDocumento, pagineDaIntervallo, condividiCopia, posizioniInserimento, formatoPeso } from './operazioni.js';
 import { distanza } from '../lib/pinchZoom.js';
+import { useIndietro } from '../lib/indietro.js';
 import { tipoFile } from '../lib/pdfUnico.js';
 import { elaboraPagina, creaPdf } from '../lib/scansione.js';
 import { scaricaDocumento } from '../lib/condividi.js';
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 const misuraImmagine = src => new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve({ width: img.naturalWidth || 1, height: img.naturalHeight || 1 }); img.onerror = () => reject(new Error('Firma non leggibile.')); img.src = src; });
-const MODES = [['Leggi', pdfjs.AnnotationEditorType.NONE], ['Testo', pdfjs.AnnotationEditorType.FREETEXT], ['Disegno', pdfjs.AnnotationEditorType.INK], ['Evidenzia', pdfjs.AnnotationEditorType.HIGHLIGHT]];
+// PDF-TESTO (PO 2026-11-24): «Testo» non usa più l'editor di PDF.js (difficile da spostare, senza scelte):
+// è un elemento come la firma, con carattere, colore e grandezza, scritto nel PDF come testo vero.
+const MODES = [['Leggi', pdfjs.AnnotationEditorType.NONE], ['Disegno', pdfjs.AnnotationEditorType.INK], ['Evidenzia', pdfjs.AnnotationEditorType.HIGHLIGHT]];
+// Larghezza di una riga a grandezza 1 (pt), con la stessa famiglia metrica del PDF (Arial = Helvetica…).
+let tela = null;
+export const misuraRiga = (riga, stile) => { tela = tela || document.createElement('canvas').getContext('2d'); tela.font = fontCss(stile, 100); return tela.measureText(riga).width / 100; };
+const pagina_pt = pv => ({ w: pv.viewport.width / pv.viewport.scale, h: pv.viewport.height / pv.viewport.scale });
 
-function FirmaPagina({ signature, pageView, onChange, onRemove, editable }) {
+function FirmaPagina({ signature, pageView, onChange, onRemove, onEdit, editable }) {
   const gesture = useRef(null);
   // Keep React-owned DOM in its own host: PDF.js may replace page children on zoom.
   const [host] = useState(() => { const el = document.createElement('div'); el.className = 'pdf-signature-host'; return el; });
   useLayoutEffect(() => { if (host.parentNode !== pageView.div) pageView.div.appendChild(host); });
   useEffect(() => () => host.remove(), [host]);
-  const start = (e, resize) => { if (!editable) return; e.stopPropagation(); e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); gesture.current = { x: e.clientX, y: e.clientY, resize, original: signature }; };
+  const testo = signature.testo != null;
+  const start = (e, resize) => { if (!editable) return; e.stopPropagation(); e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); gesture.current = { x: e.clientX, y: e.clientY, resize, original: signature, mosso: false }; };
   const move = e => {
     const g = gesture.current; if (!g) return; e.stopPropagation();
+    if (Math.hypot(e.clientX - g.x, e.clientY - g.y) > 6) g.mosso = true;
+    if (!g.mosso) return;
     const r = pageView.div.getBoundingClientRect(), dx = (e.clientX - g.x) / r.width, dy = (e.clientY - g.y) / r.height;
     const s = g.original;
+    if (testo) {
+      // PDF-TESTO: ↘ cambia la grandezza (il riquadro segue il testo), trascinare sposta.
+      if (!g.resize) return onChange(limitaPosizione({ ...s, x: s.x + dx, y: s.y + dy }));
+      const stile = { ...s.stile, grandezza: grandezzaDaLarghezza(s.stile, s.width, s.width + dx) };
+      return onChange(limitaPosizione({ ...s, stile, ...riquadroTesto(s.testo, stile, pagina_pt(pageView), misuraRiga) }));
+    }
     onChange(limitaFirma(g.resize ? { ...s, width: s.width + dx, height: s.height + dy } : { ...s, x: s.x + dx, y: s.y + dy }));
   };
-  const stop = e => { e.stopPropagation(); gesture.current = null; };
-  return createPortal(<div className="pdf-signature" style={{ left: `${signature.x * 100}%`, top: `${signature.y * 100}%`, width: `${signature.width * 100}%`, height: `${signature.height * 100}%`, pointerEvents: editable ? 'auto' : 'none' }}
+  // Un tocco senza trascinare su un testo lo apre per modificarlo.
+  const stop = e => { e.stopPropagation(); const g = gesture.current; gesture.current = null; if (g && !g.mosso && !g.resize && testo && e.type === 'pointerup') onEdit?.(); };
+  const altezzaPx = pageView.viewport.height * signature.height;
+  return createPortal(<div className={`pdf-signature${testo ? ' pdf-testo' : ''}`} style={{ left: `${signature.x * 100}%`, top: `${signature.y * 100}%`, width: `${signature.width * 100}%`, height: `${signature.height * 100}%`, pointerEvents: editable ? 'auto' : 'none', ...(editable ? {} : { borderColor: 'transparent' }) }}
     onPointerDown={e => start(e, false)} onPointerMove={move} onPointerUp={stop} onPointerCancel={stop}>
-    <img src={signature.png} alt="Firma posizionata" draggable="false" />
-    {editable && <><button className="pdf-signature-remove" aria-label="Rimuovi firma dalla pagina" onPointerDown={e => e.stopPropagation()} onClick={onRemove}>×</button>
-    <button className="pdf-signature-resize" aria-label="Ridimensiona firma" onPointerDown={e => start(e, true)} onPointerMove={move} onPointerUp={stop} onPointerCancel={stop}>↘</button></>}
+    {testo
+      ? <div className="pdf-testo-righe" role="img" aria-label={`Testo: ${signature.testo}`} style={{ font: fontCss(normalizzaStile(signature.stile), altezzaPx / (righe(signature.testo).length * 1.2)), lineHeight: 1.2, color: COLORI_TESTO[normalizzaStile(signature.stile).colore] }}>{signature.testo}</div>
+      : <img src={signature.png} alt="Firma posizionata" draggable="false" />}
+    {editable && <><button className="pdf-signature-remove" aria-label={testo ? 'Rimuovi testo dalla pagina' : 'Rimuovi firma dalla pagina'} onPointerDown={e => e.stopPropagation()} onClick={onRemove}>×</button>
+    {testo && <button className="pdf-testo-modifica" aria-label="Modifica testo" onPointerDown={e => e.stopPropagation()} onClick={onEdit}>✎</button>}
+    <button className="pdf-signature-resize" aria-label={testo ? 'Cambia grandezza del testo' : 'Ridimensiona firma'} onPointerDown={e => start(e, true)} onPointerMove={move} onPointerUp={stop} onPointerCancel={stop}>↘</button></>}
   </div>, host);
 }
 
@@ -57,10 +81,14 @@ export function GestorePdf({ file: initialFile, files: initialFiles, onClose, on
   // DOCUMENTI-FIRMATI: firmato in questa sessione (firma o sigla) → titolo «… firmato», cartella Documenti firmati.
   const firmatoRef = useRef(false), [salvaArchivio, setSalvaArchivio] = useState(null);
   const [compila, setCompila] = useState(false);
+  const [timbroAperto, setTimbroAperto] = useState(false); // PDF-TIMBRO
+  const [testoAperto, setTestoAperto] = useState(null); // PDF-TESTO: null | {} nuovo | elemento da modificare
   const markDirty = () => { dirtyRef.current = true; setExportFile(null); };
   const closeRef = useRef(onClose); closeRef.current = onClose;
   const requestClose = () => { if (dirtyRef.current) setConfirmClose(true); else closeRef.current(); };
   const requestCloseRef = useRef(requestClose); requestCloseRef.current = requestClose;
+  // SCAN-INDIETRO: Indietro del telefono = Chiudi (se ci sono modifiche chiede conferma e resta aperto).
+  useIndietro(true, () => { if (dirtyRef.current) { setConfirmClose(true); return true; } closeRef.current(); return false; });
   useEffect(() => {
     alive.current = true;
     const app = document.querySelector('.pp-app'), oldFocus = document.activeElement, overflow = document.body.style.overflow;
@@ -119,9 +147,16 @@ export function GestorePdf({ file: initialFile, files: initialFiles, onClose, on
     el.addEventListener('touchstart', start, { passive: true }); el.addEventListener('touchmove', move, { passive: false }); el.addEventListener('touchend', end); el.addEventListener('touchcancel', end);
     return () => { el.removeEventListener('touchstart', start); el.removeEventListener('touchmove', move); el.removeEventListener('touchend', end); el.removeEventListener('touchcancel', end); };
   }, []);
-  const selectMode = value => { const rt = runtime.current; rt.viewer.annotationEditorMode = { mode: value }; setMode(value);
-    // Readable default on phone: 14 pt free text instead of PDF.js' 10 pt.
-    if (value === pdfjs.AnnotationEditorType.FREETEXT) rt.bus.dispatch('switchannotationeditorparams', { source: rt.viewer, type: pdfjs.AnnotationEditorParamsType.FREETEXT_SIZE, value: 14 }); };
+  const selectMode = value => { const rt = runtime.current; rt.viewer.annotationEditorMode = { mode: value }; setMode(value); };
+  // PDF-TESTO: nuovo testo al centro della pagina corrente (in alto), oppure modifica di quello toccato.
+  const applicaTesto = ({ testo, stile }) => {
+    const aperto = testoAperto; setTestoAperto(null);
+    const n = aperto?.page || page, pv = runtime.current?.viewer.getPageView(n - 1); if (!pv) return;
+    const misure = riquadroTesto(testo, normalizzaStile(stile), pagina_pt(pv), misuraRiga);
+    if (aperto?.id) setSignatures(all => all.map(x => x.id === aperto.id ? limitaPosizione({ ...x, testo, stile, ...misure }) : x));
+    else { setSignatures(all => [...all, limitaPosizione({ id: crypto.randomUUID(), page: n, testo, stile, ...misure, x: (1 - misure.width) / 2, y: .3 })]); setMessage('Trascina il testo dove serve. ↘ cambia la grandezza, ✎ o un tocco lo modifica.'); }
+    markDirty();
+  };
   async function bytesWithEdits() {
     const rt = runtime.current; if (!rt?.doc) throw new Error('Attendi il caricamento del PDF.');
     selectMode(pdfjs.AnnotationEditorType.NONE); document.activeElement?.blur();
@@ -150,11 +185,11 @@ export function GestorePdf({ file: initialFile, files: initialFiles, onClose, on
     setMessage(`PDF compresso: da ${formatoPeso(r.prima)} a ${formatoPeso(r.dopo)}. Per renderlo di nuovo ricercabile usa «Testo (OCR)».`);
     return r.bytes;
   })); };
-  const inserisci = (png, { tipo = 'firma', tutte = false } = {}) => { setSignatureOpen(false); void run('', async () => {
+  const inserisci = (png, { tipo = 'firma', tutte = false } = {}) => { setSignatureOpen(false); setTimbroAperto(false); void run('', async () => {
     const size = await misuraImmagine(png), viewer = runtime.current?.viewer;
     const aspetto = n => { const v = viewer?.getPageView(n - 1)?.viewport; return v ? v.width / v.height : 210 / 297; };
     const nuove = posizioniInserimento({ tipo, tutte, pagina: page, pagine: count, proporzione: size.height / size.width, aspetto }).map(p => ({ ...p, id: crypto.randomUUID(), png }));
-    setSignatures(all => [...all, ...nuove]); markDirty(); if (tipo !== 'data') firmatoRef.current = true;
+    setSignatures(all => [...all, ...nuove]); markDirty(); if (tipo === 'firma' || tipo === 'sigla') firmatoRef.current = true;
     setMessage(nuove.length > 1 ? `Inserita su ${nuove.length} pagine. Trascinala per spostarla su una pagina.` : 'Trascina dove serve. Usa l’angolo ↘ per ridimensionare.');
   }); };
   // DOCK-PER-TE passo 2: dal documento si arriva già con lo strumento scelto (Firma, Modifica, Pagine).
@@ -163,7 +198,7 @@ export function GestorePdf({ file: initialFile, files: initialFiles, onClose, on
     if (!ready || strumentoUsato.current || !strumento) return;
     strumentoUsato.current = true;
     if (strumento === 'firma') setSignatureOpen(true);
-    else if (strumento === 'modifica') selectMode(pdfjs.AnnotationEditorType.FREETEXT);
+    else if (strumento === 'modifica') setTestoAperto({});
     else if (strumento === 'compila') setCompila(true);
     else if (strumento === 'comprimi') setCompress(true); // SCAN-HUB: «Comprimi PDF» dalla Home di Scan
     else if (strumento === 'pagine') setOrganize(Array.from({ length: count }, (_, index) => ({ index, rotation: 0 })));
@@ -216,11 +251,13 @@ export function GestorePdf({ file: initialFile, files: initialFiles, onClose, on
     <main className="pdf-stage"><div className="pdf-scroll" ref={container} onInput={markDirty}><div className="pdfViewer" ref={pagesElement} /></div>
       {!source && <div className="pdf-empty"><h1>I tuoi PDF, qui.</h1><p>Apri, compila, firma e organizza. Il documento resta sul dispositivo finché scegli di condividerlo o archiviarlo.</p><button className="pdf-primary" disabled={!!busy} onClick={() => chooser.current.click()}>Apri PDF o foto</button><p>Puoi scegliere più foto per creare un PDF.</p></div>}
     </main>
-    <div className="pdf-tools" aria-label="Strumenti PDF"><button disabled={!editing} onClick={() => setRename(name.replace(/\.pdf$/i, ''))}>Rinomina</button>{MODES.slice(0, 1).map(([label, value]) => <button key={value} disabled={!editing} aria-pressed={mode === value} onClick={() => selectMode(value)}>{label}</button>)}<button disabled={!editing} onClick={() => { selectMode(0); setSignatureOpen(true); }}>Firma</button><button disabled={!editing} onClick={() => { selectMode(0); setCompila(true); }}>Compila</button>{MODES.slice(1).map(([label, value]) => <button key={value} disabled={!editing} aria-pressed={mode === value} onClick={() => selectMode(value)}>{label}</button>)}<button disabled={!editing} onClick={() => { runtime.current.bus.dispatch('editingaction', { source: runtime.current.viewer, name: 'undo' }); markDirty(); }}>Annulla</button><button disabled={!editing} onClick={() => setOrganize(Array.from({ length: count }, (_, index) => ({ index, rotation: 0 })))}>Pagine</button><button disabled={!editing} onClick={ocr}>Testo (OCR)</button><button disabled={!editing} onClick={() => setCompress(true)}>Comprimi</button>{history.length > 0 && <button disabled={!editing} onClick={() => { setSource(history.at(-1)); setHistory(h => h.slice(0, -1)); setSignatures([]); markDirty(); setMessage('Ultima modifica annullata.'); }}>Ripristina prima</button>}</div>
-    {ready && signatures.map(s => { const pv = runtime.current?.viewer.getPageView(s.page - 1); return pv && <FirmaPagina key={s.id} signature={s} pageView={pv} editable={mode === 0 && !busy && !exportFile} onChange={next => { setSignatures(all => all.map(x => x.id === s.id ? next : x)); markDirty(); }} onRemove={() => { setSignatures(all => all.filter(x => x.id !== s.id)); markDirty(); }} />; })}
+    <div className="pdf-tools" aria-label="Strumenti PDF"><button disabled={!editing} onClick={() => setRename(name.replace(/\.pdf$/i, ''))}>Rinomina</button>{MODES.slice(0, 1).map(([label, value]) => <button key={value} disabled={!editing} aria-pressed={mode === value} onClick={() => selectMode(value)}>{label}</button>)}<button disabled={!editing} onClick={() => { selectMode(0); setTestoAperto({}); }}>Testo</button><button disabled={!editing} onClick={() => { selectMode(0); setSignatureOpen(true); }}>Firma</button><button disabled={!editing} onClick={() => { selectMode(0); setTimbroAperto(true); }}>Timbro</button><button disabled={!editing} onClick={() => { selectMode(0); setCompila(true); }}>Compila</button>{MODES.slice(1).map(([label, value]) => <button key={value} disabled={!editing} aria-pressed={mode === value} onClick={() => selectMode(value)}>{label}</button>)}<button disabled={!editing} onClick={() => { runtime.current.bus.dispatch('editingaction', { source: runtime.current.viewer, name: 'undo' }); markDirty(); }}>Annulla</button><button disabled={!editing} onClick={() => setOrganize(Array.from({ length: count }, (_, index) => ({ index, rotation: 0 })))}>Pagine</button><button disabled={!editing} onClick={ocr}>Testo (OCR)</button><button disabled={!editing} onClick={() => setCompress(true)}>Comprimi</button>{history.length > 0 && <button disabled={!editing} onClick={() => { setSource(history.at(-1)); setHistory(h => h.slice(0, -1)); setSignatures([]); markDirty(); setMessage('Ultima modifica annullata.'); }}>Ripristina prima</button>}</div>
+    {ready && signatures.map(s => { const pv = runtime.current?.viewer.getPageView(s.page - 1); return pv && <FirmaPagina key={s.id} signature={s} pageView={pv} editable={mode === 0 && !busy && !exportFile} onChange={next => { setSignatures(all => all.map(x => x.id === s.id ? next : x)); markDirty(); }} onRemove={() => { setSignatures(all => all.filter(x => x.id !== s.id)); markDirty(); }} onEdit={() => setTestoAperto(s)} />; })}
     <input ref={chooser} type="file" accept="application/pdf,image/*" multiple hidden onChange={e => { const files = [...e.target.files]; e.target.value = ''; void run('Preparo il documento…', () => importFiles(files)); }} />
     <input ref={merger} type="file" accept="application/pdf" multiple hidden onChange={e => { const files = [...e.target.files]; e.target.value = ''; if (!files.length) return; void run('Unisco i PDF…', async () => { files.forEach(validaFile); if (files.reduce((n,f) => n + f.size, source.length) > 40*1024*1024) throw new Error('Il totale supera 40 MB.'); const bytes = await bytesWithEdits(); await replaceWith(await unisciPdf([bytes, ...await Promise.all(files.map(f => f.arrayBuffer()))])); }); }} />
     {(busy || error || message) && <div className="pdf-status" role={error ? 'alert' : 'status'}>{busy || error || message}{!busy && <button aria-label="Chiudi avviso" onClick={() => { setMessage(''); setError(''); }}>×</button>}</div>}
+    {testoAperto && <div className="pdf-scrim"><EditorTesto iniziale={testoAperto} onApplica={applicaTesto} onChiudi={() => setTestoAperto(null)} onElimina={() => { const id = testoAperto.id; setTestoAperto(null); setSignatures(all => all.filter(x => x.id !== id)); markDirty(); }} /></div>}
+    {timbroAperto && <div className="pdf-scrim"><Timbro pagine={count} onChiudi={() => setTimbroAperto(false)} onUsa={inserisci} /></div>}
     {signatureOpen && <div className="pdf-scrim"><Firma pagine={count} onChiudi={() => setSignatureOpen(false)} onUsa={inserisci} /></div>}
     {exportFile && !salvaArchivio && <div className="pdf-scrim"><section className="pdf-sheet" role="dialog" aria-label="Salva copia PDF"><h2>Condividi o salva</h2><p>{exportFile.name} <span className="pdf-peso">· {formatoPeso(exportFile.size)}</span></p><p>L’originale resta intatto. Scegli dove salvare questa versione.</p><button disabled={!!busy} className="pdf-primary" onClick={() => run('Condivisione…', async () => { const result = await condividiCopia(exportFile); if (result === 'non_disponibile') throw new Error('Condivisione file non disponibile: usa Scarica.'); if (result === 'condiviso') { onEsporta?.(exportFile); if (!exportPartial) dirtyRef.current = false; setMessage('Copia condivisa.'); } })}>Condividi PDF</button><button onClick={() => { scaricaDocumento(exportFile); onEsporta?.(exportFile); setMessage('Download avviato. Verifica il file nei download del telefono.'); }}>Scarica PDF</button>{onSave && <button disabled={!!busy} className="pdf-primary" onClick={() => { onSave(exportFile); dirtyRef.current = false; }}>Usa questa copia in Scan</button>}{(onArchive || ctx) && <button disabled={!!busy} className={firmatoRef.current ? 'pdf-primary' : ''} onClick={archive}>{firmatoRef.current ? 'Salva firmato nell’archivio' : 'Salva nell’archivio come nuovo file'}</button>}<button onClick={() => setExportFile(null)}>Torna al documento</button></section></div>}
     {compila && ready && runtime.current?.doc && <div className="pdf-scrim"><CompilaCampi doc={runtime.current.doc} persona={ctx?.impostazioni?.persone?.[0]} onApplica={inserisciCampi} onChiudi={() => setCompila(false)} /></div>}

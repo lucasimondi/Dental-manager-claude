@@ -25,6 +25,14 @@ try{
  await page.getByRole('button',{name:'Firma',exact:true}).click();
  const pad=await page.getByLabel('Spazio firma').boundingBox();assert.ok(pad);
  await page.mouse.move(pad.x+20,pad.y+80);await page.mouse.down();for(let i=0;i<8;i++)await page.mouse.move(pad.x+20+i*22,pad.y+80+(i%2?30:-20));await page.mouse.up();
+ // FIRMA-BIRO-2: tratto vettoriale con grana (alfa variabile), «Annulla tratto» toglie l'ultimo, nessuno sforamento.
+ const inchiostro=()=>page.evaluate(()=>{const c=document.querySelector('.pdf-pad'),d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let n=0;const a=new Set();for(let i=3;i<d.length;i+=4)if(d[i]){n++;a.add(d[i]);}return{n,livelli:a.size};});
+ const primo=await inchiostro();assert.ok(primo.n>500,`inchiostro sul pad ${primo.n}`);assert.ok(primo.livelli>8,`sfumature e grana ${primo.livelli}`);
+ await page.mouse.move(pad.x+40,pad.y+150);await page.mouse.down();for(let i=0;i<30;i++)await page.mouse.move(pad.x+40+i*3,pad.y+150-i);for(let i=0;i<6;i++)await page.mouse.move(pad.x+130+i*40,pad.y+120+(i%2?20:-20));await page.mouse.up();
+ assert.ok((await inchiostro()).n>primo.n,'secondo tratto disegnato');
+ await page.locator('.pdf-pad').screenshot({path:`${out}/firma-biro.png`});
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'nessuno sforamento orizzontale');
+ await page.getByRole('button',{name:'Annulla tratto'}).click();assert.equal((await inchiostro()).n,primo.n,'annulla solo l’ultimo tratto');
  await page.getByRole('button',{name:'Usa questa firma'}).click();await page.locator('.pdf-signature').waitFor();
  const sig=await page.locator('.pdf-signature').boundingBox();await page.mouse.move(sig.x+20,sig.y+20);await page.mouse.down();await page.mouse.move(sig.x+45,sig.y+65,{steps:5});await page.mouse.up();
  await page.getByLabel('Numero pagina').fill('12');await page.locator('.pdfViewer .page[data-page-number="12"] canvas').waitFor();
