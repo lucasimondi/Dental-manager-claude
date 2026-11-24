@@ -10,24 +10,31 @@
 // - effetto biro: inchiostro che salta al centro dei segmenti veloci e grana della carta (trama 96×96),
 //   entrambi in 'destination-out', con generatore casuale a seme (test ripetibili);
 // - stabilizzazione: ogni punto si sposta del 55% verso quello reale.
+// FIRMA-BIRO-3 (PO 2026-11-24: «la firma deve essere ancora più veritiera, così è troppo finta»):
+// la biro vera ha uno spessore quasi costante; cambia la DENSITÀ dell'inchiostro. Quindi larghezza
+// stretta (82–110% della punta, con un lieve tremolio), densità dalla pressione (piano = carico,
+// veloce = chiaro), tracce sottili della sfera lungo il tratto che si interrompono quando si corre,
+// gocce d'inchiostro dove la penna si ferma o gira stretta, tratti semitrasparenti che si scuriscono
+// dove si incrociano, bordo appena morbido.
 // Qui solo funzioni pure; il disegno su canvas è in Firma.jsx.
 
 export const INCHIOSTRI = {
-  nero: { nome: 'Biro nera', colore: '#1b1c22' },   // Bic Cristal nera: nero leggermente freddo
-  blu: { nome: 'Biro blu', colore: '#1f3a93' },     // Bic Cristal blu
+  nero: { nome: 'Biro nera', colore: '#15161b' },   // Bic Cristal nera: nero leggermente freddo
+  blu: { nome: 'Biro blu', colore: '#182b85' },     // Bic Cristal blu
 };
 export const INCHIOSTRO_PREDEFINITO = 'blu';
 
 // Punta in px CSS (sfera da 1 mm vista sul telefono) e costanti del modello.
-export const PUNTA = 2.2;
+export const PUNTA = 1.75;
 export const STABILIZZA = 0.55;
 export const V_VELOCE = 1.6;          // px/ms: da qui in su la pressione dal dito è al minimo
 export const PRESSIONE_MINIMA = 0.28;
-export const ATTACCO = { punti: 5, da: 0.62 };
+export const ATTACCO = { punti: 5, da: 0.62 };  // (FIRMA-BIRO-3: invariato, la sfera appoggia stretta)
 export const CODA = { punti: 8, minimo: 0.2 };
 export const OPACITA_LIVELLO = 0.95;
+export const OPACITA_TRATTO = 0.9;      // un tratto sopra l'altro: l'incrocio è più scuro
 export const SALTO_MAX = 0.28;
-export const GRANA = { lato: 96, opacita: 0.22 };
+export const GRANA = { lato: 96, opacita: 0.16 };
 
 const limita = (x, a, b) => Math.max(a, Math.min(b, x));
 
@@ -44,8 +51,10 @@ export function pressioneUtile(evento, velocita = 0) {
   return pressioneDaVelocita(velocita);
 }
 
-// Larghezza voluta per una pressione 0..1: 38% della punta a vuoto, 120% premendo a fondo.
-export const larghezzaDaPressione = (pressione, base = PUNTA) => base * (0.38 + 0.82 * limita(pressione, 0, 1));
+// Larghezza voluta per una pressione 0..1: la sfera lascia quasi sempre la stessa riga (82–110%).
+export const larghezzaDaPressione = (pressione, base = PUNTA) => base * (0.82 + 0.28 * limita(pressione, 0, 1));
+// Densità dell'inchiostro 0..1: veloce/leggero 0,5 (riga chiara), piano/premuto 1 (riga carica).
+export const densitaDaPressione = (pressione) => 0.5 + 0.5 * limita(pressione, 0, 1);
 
 // Velocità/larghezza smorzate (evita scatti fra un evento e l'altro).
 export const smorza = (prima, adesso, quanto = 0.35) => (prima == null ? adesso : prima + (adesso - prima) * quanto);
@@ -57,9 +66,10 @@ export function casuale(seme = 1) {
 }
 
 // Nuovo tratto dal primo campione p = {x, y, t, pressione?} (pressione solo con la penna, altrimenti null).
-export function nuovoTratto(p, base = PUNTA) {
-  const w = base * 0.9;
-  return { punti: [{ x: p.x, y: p.y, w, v: 0 }], grezzo: p, v: 0, w, base, finito: false, vFine: 0 };
+// seme: per il tremolio della larghezza e le tracce (ogni tratto il suo, ripetibile).
+export function nuovoTratto(p, base = PUNTA, seme = 1) {
+  const w = base * 0.95;
+  return { punti: [{ x: p.x, y: p.y, w, v: 0, d: 1, l: 0 }], grezzo: p, v: 0, w, d: 1, base, seme, finito: false, vFine: 0 };
 }
 
 // Aggiunge un campione al tratto (muta e restituisce il tratto). Stabilizzazione al 55%, velocità
@@ -75,7 +85,10 @@ export function aggiungiPunto(s, p) {
   s.grezzo = p;
   const pressione = p.pressione != null ? Math.pow(limita(p.pressione, 0.05, 1), 0.75) : pressioneDaVelocita(s.v);
   s.w = s.w * 0.62 + larghezzaDaPressione(pressione, s.base) * 0.38;
-  s.punti.push({ x, y, w: s.w, v: s.v });
+  s.d = s.d * 0.6 + densitaDaPressione(pressione) * 0.4;
+  const l = ultimo.l + Math.hypot(x - ultimo.x, y - ultimo.y);          // lunghezza percorsa
+  const tremolio = 1 + 0.05 * Math.sin(l / 7 + s.seme) + 0.03 * Math.sin(l / 2.3 + s.seme * 3);
+  s.punti.push({ x, y, w: s.w * tremolio, v: s.v, d: s.d, l });
   return s;
 }
 
@@ -111,6 +124,19 @@ export function contorno(punti, ws) {
   return { L, R };
 }
 
+// Inchiostro meno carico: tratti consecutivi raggruppati per livello di densità (6 livelli), da togliere
+// in 'destination-out' con un solo tracciato per gruppo (niente sovrapposizioni dentro il gruppo).
+// Restituisce [{ a, punti }] con a = quanto inchiostro togliere (0 = pieno).
+export function densita(punti, livelli = 6) {
+  const gruppi = [];
+  for (let i = 1; i < punti.length; i++) {
+    const a = Math.round((1 - limita((punti[i].d + punti[i - 1].d) / 2, 0, 1)) * 2 * livelli) / (2 * livelli) * 0.9;
+    const g = gruppi[gruppi.length - 1];
+    if (g && g.a === a) g.punti.push(punti[i]); else gruppi.push({ a, punti: [punti[i - 1], punti[i]] });
+  }
+  return gruppi.filter((g) => g.a > 0.01);
+}
+
 // Inchiostro che salta: sui segmenti veloci una linea sottile al centro, tolta fino a SALTO_MAX.
 export function salti(punti) {
   const fuori = [];
@@ -118,6 +144,40 @@ export function salti(punti) {
     const k = limita(punti[i].v / 1.8, 0, 1);
     if (k < 0.35) continue;
     fuori.push({ x0: punti[i - 1].x, y0: punti[i - 1].y, x1: punti[i].x, y1: punti[i].y, larghezza: punti[i].w * 0.32, a: SALTO_MAX * k });
+  }
+  return fuori;
+}
+
+// Tracce della sfera: due righine parallele al tratto (a ±28% della larghezza) un po' più chiare,
+// spezzate a trattini irregolari tanto più quanto si va veloce. Restituisce [{ punti, lato, a, trattini }]:
+// punti = linea spostata lungo la normale, trattini = schema [pieno, vuoto, …] in px (seme del tratto).
+export function tracce(s) {
+  const P = s.punti, n = P.length; if (n < 3) return [];
+  const rnd = casuale(s.seme * 7919 + 1);
+  const vMedia = P.reduce((t, p) => t + p.v, 0) / n;
+  const k = limita(vMedia / 1.6, 0, 1);
+  return [-0.28, 0.3].map((lato) => {
+    const punti = P.map((p, i) => {
+      const a = P[Math.max(0, i - 1)], b = P[Math.min(n - 1, i + 1)];
+      let nx = -(b.y - a.y), ny = b.x - a.x; const len = Math.hypot(nx, ny) || 1; nx /= len; ny /= len;
+      return { x: p.x + nx * p.w * lato, y: p.y + ny * p.w * lato };
+    });
+    const trattini = Array.from({ length: 12 }, (_, i) => (i % 2 ? 1 + rnd() * 6 * k : 6 + rnd() * 30 * (1 - k * 0.7)));
+    return { punti, lato, a: 0.16 + 0.22 * k, trattini, larghezza: s.base * 0.17 };
+  });
+}
+
+// Gocce d'inchiostro: dove la penna si ferma (velocità minima) o gira stretta, la sfera rilascia un
+// filo d'inchiostro in più (cerchio poco più largo della riga). Mai più di una ogni 12 px.
+export function gocce(s) {
+  const P = s.punti, n = P.length, fuori = [];
+  let ultima = -Infinity;
+  for (let i = 1; i < n - 1; i++) {
+    const a = P[Math.max(0, i - 3)], p = P[i], b = P[Math.min(n - 1, i + 3)];   // direzione su ±3 punti
+    const ax = p.x - a.x, ay = p.y - a.y, bx = b.x - p.x, by = b.y - p.y;
+    const coseno = (ax * bx + ay * by) / ((Math.hypot(ax, ay) * Math.hypot(bx, by)) || 1);
+    const ferma = p.v < 0.06 && p.v <= P[i - 1].v && p.v <= P[i + 1].v;
+    if ((coseno < 0.35 || ferma) && p.l - ultima > 12) { fuori.push({ x: p.x, y: p.y, r: p.w * 0.62, a: ferma ? 0.55 : 0.4 }); ultima = p.l; }
   }
   return fuori;
 }

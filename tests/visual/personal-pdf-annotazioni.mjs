@@ -30,11 +30,43 @@ try {
   await page.mouse.move(p1.x + 60, p1.y + 200); await page.mouse.down();
   for (let i = 0; i < 10; i++) await page.mouse.move(p1.x + 60 + i * 18, p1.y + 200 + (i % 2 ? 25 : -10));
   await page.mouse.up();
-  // Free text
+  // PDF-TESTO: pannello con carattere/colore/grandezza, trascinamento con un dito, tocco per modificare.
   await page.getByRole('button', { name: 'Testo', exact: true }).click();
-  await page.mouse.click(p1.x + 80, p1.y + 320);
-  await page.keyboard.type('Nota di prova');
-  await page.getByRole('button', { name: 'Leggi', exact: true }).click();
+  const foglio = page.getByRole('dialog', { name: 'Aggiungi testo' });
+  await foglio.getByLabel('Testo da inserire').fill('Nota di prova');
+  await foglio.getByRole('radio', { name: 'Classico' }).click();
+  await foglio.getByRole('radio', { name: 'Rosso' }).click();
+  for (let i = 0; i < 4; i++) await foglio.getByRole('button', { name: 'Più grande' }).click();
+  await foglio.getByRole('button', { name: 'Grassetto' }).click();
+  assert.equal(await foglio.getByLabel('Grandezza in punti').textContent(), '18 pt');
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'pannello testo senza sforamenti');
+  await page.screenshot({ path: `${out}/testo-pannello.png` });
+  await foglio.getByRole('button', { name: 'Inserisci nella pagina' }).click();
+  const box = page.locator('.pdf-testo'); await box.waitFor();
+  const b0 = await box.boundingBox();
+  assert.match(await box.locator('.pdf-testo-righe').evaluate(el => getComputedStyle(el).fontFamily), /Times/);
+  assert.equal(await box.locator('.pdf-testo-righe').evaluate(el => getComputedStyle(el).color), 'rgb(179, 38, 30)');
+  // trascinamento con un dito (tocchi reali)
+  const cdp = await context.newCDPSession(page);
+  const tocco = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
+  await tocco('touchStart', b0.x + b0.width / 2, b0.y + b0.height / 2);
+  for (let i = 1; i <= 8; i++) await tocco('touchMove', b0.x + b0.width / 2 - i * 8, b0.y + b0.height / 2 + i * 15);
+  await tocco('touchEnd');
+  const b1 = await box.boundingBox();
+  assert.ok(Math.abs(b1.y - b0.y - 120) < 8 && Math.abs(b1.x - b0.x + 64) < 8, `testo spostato col dito (${b0.x},${b0.y} → ${b1.x},${b1.y})`);
+  // un tocco lo riapre; cambio testo
+  await tocco('touchStart', b1.x + b1.width / 2, b1.y + b1.height / 2); await tocco('touchEnd');
+  const modifica = page.getByRole('dialog', { name: 'Modifica testo' }); await modifica.waitFor();
+  await modifica.getByLabel('Testo da inserire').fill('Nota di prova\nseconda riga');
+  await modifica.getByRole('button', { name: 'Applica' }).click();
+  const b2 = await box.boundingBox();
+  assert.ok(b2.height > b1.height * 1.8, 'due righe');
+  // ↘ ingrandisce
+  const maniglia = await page.getByRole('button', { name: 'Cambia grandezza del testo' }).boundingBox();
+  await tocco('touchStart', maniglia.x + 16, maniglia.y + 16); for (let i = 1; i <= 5; i++) await tocco('touchMove', maniglia.x + 16 + i * 10, maniglia.y + 16); await tocco('touchEnd');
+  const b3 = await box.boundingBox();
+  assert.ok(b3.width > b2.width * 1.2 && b3.height > b2.height * 1.2, 'più grande con ↘');
+  await page.screenshot({ path: `${out}/testo-pagina.png` });
   // Signature with proportions
   await page.getByRole('button', { name: 'Firma', exact: true }).click();
   const pad = await page.getByLabel('Spazio firma').boundingBox();
@@ -43,8 +75,8 @@ try {
   await page.mouse.up();
   await page.screenshot({ path: `${out}/firma.png` });
   await page.getByRole('button', { name: 'Usa questa firma' }).click();
-  await page.locator('.pdf-signature').waitFor();
-  const sig = await page.locator('.pdf-signature').boundingBox();
+  await page.locator('.pdf-signature:not(.pdf-testo)').waitFor();
+  const sig = await page.locator('.pdf-signature:not(.pdf-testo)').boundingBox();
   assert.ok(sig.width / sig.height > 2 && sig.width / sig.height < 6, `signature keeps its proportions (${sig.width}x${sig.height})`);
   await page.screenshot({ path: `${out}/firma-posizionata.png` });
   await page.getByRole('button', { name: 'Salva / Invia', exact: true }).click();
@@ -54,12 +86,19 @@ try {
   const result = await PDFDocument.load(bytes);
   const annots = result.getPage(0).node.Annots()?.asArray().map(a => result.context.lookup(a).get(PDFName.of('Subtype'))?.toString()) || [];
   assert.ok(annots.includes('/Ink'), `ink annotation saved (${annots})`);
-  assert.ok(annots.includes('/FreeText'), `free text annotation saved (${annots})`);
+  const fonts = result.getPage(0).node.Resources().lookup(PDFName.of('Font'));
+  const nomi = fonts.keys().map(k => fonts.lookup(k).get(PDFName.of('BaseFont')).toString());
+  assert.ok(nomi.includes('/Times-Bold'), `testo vero in Times grassetto (${nomi})`);
+  const { inflateSync } = await import('node:zlib');
+  const contenuto = result.getPage(0).node.Contents(); const flussi = contenuto.asArray ? contenuto.asArray().map(r => result.context.lookup(r)) : [contenuto];
+  const testo = flussi.map(f => { try { return inflateSync(Buffer.from(f.getContents())).toString('latin1'); } catch { return Buffer.from(f.getContents()).toString('latin1'); } }).join('\n');
+  const hex = t => Buffer.from(t, 'latin1').toString('hex').toUpperCase();
+  assert.ok(testo.toUpperCase().includes(hex('Nota di prova')) && testo.toUpperCase().includes(hex('seconda riga')), 'le due righe sono nel PDF come testo');
   // DOCK-PER-TE passo 2: «Pagine» dal documento apre subito l'organizzazione delle pagine.
   await page.goto('http://127.0.0.1:5176/tests/visual/personal-pdf.html?strumento=pagine');
   await page.locator('input[type=file]').first().setInputFiles({ name: 'pagine-fittizio.pdf', mimeType: 'application/pdf', buffer: input });
   await page.getByRole('dialog', { name: 'Organizza pagine' }).waitFor();
   assert.equal(await page.getByRole('dialog', { name: 'Organizza pagine' }).locator('.pdf-row').count(), 3);
   assert.deepEqual(errors, []);
-  console.log('PASS Pixel 7: ink, free text and proportional signature saved in the copy; tools bar at the bottom; Pagine opens directly.');
+  console.log('PASS Pixel 7: ink, real text (font/colour/size, finger drag, tap to edit) and proportional signature saved in the copy; tools bar at the bottom; Pagine opens directly.');
 } finally { await browser?.close(); server.kill(); }

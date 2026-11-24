@@ -1,5 +1,6 @@
 // Pure PDF geometry and byte transformations. No network, storage or original writes.
-import { PDFDocument, StandardFonts, degrees } from 'pdf-lib';
+import { PDFDocument, StandardFonts, degrees, rgb } from 'pdf-lib';
+import { CARATTERI, COLORI_TESTO, normalizzaStile, caratterePdf, righe, coloreRgb, posizioniRighe, testoScrivibile } from './testoPdf.js';
 
 export { MAX_PDF_BYTES, validaFile } from './filePdf.js';
 export function schermoPdf({ x, y }, [a, b, c, d, e, f]) {
@@ -51,10 +52,22 @@ export async function organizzaPdf(bytes, pages) {
   copies.forEach((page, i) => { page.setRotation(degrees((page.getRotation().angle + pages[i].rotation) % 360)); out.addPage(page); });
   return out.save();
 }
+// PDF-TESTO: gli elementi con `testo` diventano testo vero (carattere standard, colore, righe).
 export async function incorporaFirme(bytes, signatures) {
   if (!signatures.length) return bytes;
   const pdf = await apri(bytes);
+  const fonts = {};
   for (const signature of signatures) {
+    if (signature.testo) {
+      const stile = normalizzaStile(signature.stile), nome = caratterePdf(stile);
+      const font = fonts[nome] || (fonts[nome] = await pdf.embedFont(StandardFonts[nome]));
+      const r = righe(signature.testo), { r: red, g, b } = coloreRgb(COLORI_TESTO[stile.colore]);
+      const page = pdf.getPage(signature.page - 1);
+      posizioniRighe(signature.position, r.length, CARATTERI[stile.carattere].base).forEach((p, i) => {
+        if (r[i]) page.drawText(testoScrivibile(r[i], (ch) => font.encodeText(ch)), { x: p.x, y: p.y, size: p.size, font, color: rgb(red, g, b), rotate: degrees(signature.position.rotation || 0) });
+      });
+      continue;
+    }
     const image = await pdf.embedPng(signature.png);
     const { rotation, ...rect } = signature.position;
     pdf.getPage(signature.page - 1).drawImage(image, { ...rect, rotate: degrees(rotation) });

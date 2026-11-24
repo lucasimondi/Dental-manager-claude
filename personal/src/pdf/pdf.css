@@ -53,3 +53,23 @@
 .pdf-persona{align-items:flex-start}.pdf-persona>span{flex:1;min-width:0;display:grid}.pdf-persona small{color:#536778;overflow-wrap:anywhere}
 .pdf-ruolo{font-style:normal;font-size:11px;font-weight:600;color:#185b82;background:#e6f0f7;border-radius:999px;padding:2px 8px;align-self:center}
 .pdf-persone .pdf-row input{flex:1;min-width:0}
+/* PDF-TESTO e TIMBRO (PO 2026-11-24): pannelli con scelte a pulsanti, testo sulla pagina come la firma. */
+.pdf-manager textarea{font:inherit;padding:10px;border:1px solid #b4c4d1;border-radius:10px;background:#fff;color:#17263c;resize:vertical;min-height:72px;width:100%}
+.pdf-scelte{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;min-width:0}
+.pdf-scelte legend{font-size:13px;font-weight:600;color:#536778;padding:0;margin-bottom:6px}
+.pdf-scelte-righe{display:flex;flex-wrap:wrap;gap:6px}
+.pdf-scelte-righe button{flex:1 1 0;min-width:0}
+.pdf-manager .pdf-scelte button.attivo,.pdf-manager .pdf-scelte button[aria-pressed=true]{border-color:#185b82;box-shadow:inset 0 0 0 1px #185b82;background:#eaf3f9;color:#17263c}
+.pdf-colori{display:flex;gap:8px;flex-wrap:wrap}
+.pdf-manager .pdf-colori button{width:44px;height:44px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.pdf-colori button span{width:24px;height:24px;border-radius:50%;display:block}
+.pdf-grandezza{display:flex;align-items:center;gap:6px}
+.pdf-grandezza input[type=range]{flex:1;min-width:0;padding:0;border:0;min-height:44px}
+.pdf-grandezza output{min-width:48px;text-align:right;font-variant-numeric:tabular-nums;color:#17263c}
+.pdf-anteprima-testo{border:1px dashed #b4c4d1;border-radius:10px;padding:10px;background:#fffefb;white-space:pre-wrap;overflow-wrap:anywhere;max-height:120px;overflow:auto;line-height:1.2}
+.pdf-signature.pdf-testo{border-style:dashed;border-color:#185b8299;background:transparent}
+.pdf-testo-righe{white-space:pre;line-height:1.2;padding:0 .1em;pointer-events:none;user-select:none}
+.pdf-manager .pdf-testo-modifica{position:absolute;top:-16px;left:-16px;padding:0;width:32px;height:32px;min-height:32px;border-radius:50%;background:#185b82;color:#fff;font-size:14px}
+.pdf-manager .pdf-testo .pdf-signature-remove{top:-38px;right:-10px}
+.pdf-manager .pdf-testo .pdf-testo-modifica{top:-38px;left:-10px}
+.pdf-manager .pdf-testo .pdf-signature-resize{bottom:-38px;right:-10px}

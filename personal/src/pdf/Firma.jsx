@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { ritaglioFirma, testoOggi } from './operazioni.js';
-import { INCHIOSTRI, INCHIOSTRO_PREDEFINITO, OPACITA_LIVELLO, GRANA, casuale, nuovoTratto, aggiungiPunto, chiudiTratto, larghezze, contorno, salti, trama, riquadro, ricolora } from './biro.js';
+import { INCHIOSTRI, INCHIOSTRO_PREDEFINITO, OPACITA_LIVELLO, OPACITA_TRATTO, GRANA, casuale, nuovoTratto, aggiungiPunto, chiudiTratto, larghezze, contorno, salti, tracce, gocce, trama, riquadro, ricolora } from './biro.js';
 // FIRMA-BIRO (PO 2026-11-17) + FIRMA-BIRO-2 (piano PO 2026-11-24): inchiostro Bic nero o blu ricordato
 // sul telefono; ogni tratto è conservato come campioni {x, y, w, v} e ridisegnato dal vettore come
 // poligono pieno a larghezza variabile (attacco, coda, pressione dalla velocità col dito o reale con la
 // penna) su un livello opaco, poi salti d'inchiostro e grana della carta, composto a 0,95 sul pad.
+// FIRMA-BIRO-3: ogni tratto sul suo livello (densità, tracce della sfera, gocce) e poi sovrapposto a 0,9,
+// così gli incroci si scuriscono come l'inchiostro vero; i tratti finiti restano in una cache.
 // Pointer/canvas technique reused from PadFirma; isolated from Studio imports.
 // PNG cropped to the drawn ink, so the signature placed on the page has no empty margins.
 // SCAN-PDF-MANAGER (PO 2026-11-11: «Firma salvata»): firma e sigla ricordate separatamente sul
@@ -51,7 +53,7 @@ function motivoGrana(ctx) {
 }
 
 export function Firma({ onUsa, onChiudi, pagine = 1 }) {
-  const canvas = useRef(null), livello = useRef(null), tratti = useRef([]), attuale = useRef(null);
+  const canvas = useRef(null), livello = useRef(null), tratto = useRef(null), mappa = useRef(null), finiti = useRef({ c: null, n: 0 }), tratti = useRef([]), attuale = useRef(null);
   const [inchiostro, setInchiostroStato] = useState(() => (INCHIOSTRI[leggi(CHIAVE_INCHIOSTRO)] ? leggi(CHIAVE_INCHIOSTRO) : INCHIOSTRO_PREDEFINITO));
   const colore = INCHIOSTRI[inchiostro].colore;
   const setInchiostro = (k) => { setInchiostroStato(k); try { localStorage.setItem(CHIAVE_INCHIOSTRO, k); } catch { /* facoltativo */ } };
@@ -60,32 +62,72 @@ export function Firma({ onUsa, onChiudi, pagine = 1 }) {
   const [saved, setSaved] = useState(() => ({ firma: leggi(CHIAVI.firma), sigla: leggi(CHIAVI.sigla) }));
   const [error, setError] = useState('');
   const salvata = saved[tipo];
-  // Ridisegno completo dal vettore: tratti pieni sul livello, poi salti e grana tolti, composto a 0,95.
-  const ridisegna = () => {
-    const c = canvas.current, lv = livello.current; if (!c || !lv) return;
-    const dpr = c.width / (c.clientWidth || 1), lx = lv.getContext('2d');
+  // Densità continua: mappa in grigi (ogni segmento col suo grigio, 'lighten' = massimo, quindi
+  // nessuna giuntura visibile), poi l'alfa del tratto viene moltiplicata per la mappa, solo nel riquadro.
+  const applicaDensita = (tx, s, dpr) => {
+    const b = riquadro([s]); if (!b) return;
+    const x0 = Math.max(0, Math.floor(b.x0 * dpr) - 2), y0 = Math.max(0, Math.floor(b.y0 * dpr) - 2);
+    const w = Math.min(tx.canvas.width - x0, Math.ceil((b.x1 - b.x0) * dpr) + 4), h = Math.min(tx.canvas.height - y0, Math.ceil((b.y1 - b.y0) * dpr) + 4);
+    if (w <= 0 || h <= 0) return;
+    const m = mappa.current; if (m.width < w || m.height < h) { m.width = Math.max(m.width, w); m.height = Math.max(m.height, h); }
+    const mx = m.getContext('2d', { willReadFrequently: true });
+    mx.setTransform(1, 0, 0, 1, 0, 0); mx.globalCompositeOperation = 'source-over'; mx.fillStyle = '#000'; mx.fillRect(0, 0, w, h);
+    mx.setTransform(dpr, 0, 0, dpr, -x0, -y0); mx.globalCompositeOperation = 'lighten'; mx.lineCap = 'round'; mx.lineJoin = 'round';
+    const P = s.punti, wMax = Math.max(...P.map((p) => p.w)) * 1.7;
+    mx.lineWidth = wMax;
+    if (P.length === 1) { mx.fillStyle = '#fff'; mx.beginPath(); mx.arc(P[0].x, P[0].y, wMax, 0, Math.PI * 2); mx.fill(); }
+    for (let i = 1; i < P.length; i++) { const g = Math.round(255 * Math.min(1, (P[i].d + P[i - 1].d) / 2)); mx.strokeStyle = `rgb(${g},${g},${g})`; mx.beginPath(); mx.moveTo(P[i - 1].x, P[i - 1].y); mx.lineTo(P[i].x, P[i].y); mx.stroke(); }
+    const dati = tx.getImageData(x0, y0, w, h), d = mx.getImageData(0, 0, w, h).data, px = dati.data;
+    for (let i = 3; i < px.length; i += 4) if (px[i]) px[i] = px[i] * d[i - 3] / 255;
+    tx.putImageData(dati, x0, y0);
+  };
+  // Un tratto sul suo livello: poligono pieno + gocce, poi tolti densità, salti e tracce; sovrapposto a 0,9.
+  const tracciaLinea = (ctx, pts) => { ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke(); };
+  const componiTratto = (dest, s, dpr) => {
+    const t = tratto.current, tx = t.getContext('2d', { willReadFrequently: true });
+    tx.setTransform(1, 0, 0, 1, 0, 0); tx.globalCompositeOperation = 'source-over'; tx.globalAlpha = 1; tx.setLineDash([]);
+    tx.clearRect(0, 0, t.width, t.height);
+    tx.setTransform(dpr, 0, 0, dpr, 0, 0); tx.fillStyle = colore;
+    disegnaTratto(tx, s);
+    for (const g of gocce(s)) { tx.globalAlpha = 1; tx.beginPath(); tx.arc(g.x, g.y, g.r, 0, Math.PI * 2); tx.fill(); }
+    applicaDensita(tx, s, dpr);
+    tx.globalCompositeOperation = 'destination-out'; tx.strokeStyle = '#000'; tx.lineJoin = 'round';
+    tx.lineCap = 'round';
+    for (const k of salti(s.punti)) { tx.globalAlpha = k.a; tx.lineWidth = k.larghezza; tx.beginPath(); tx.moveTo(k.x0, k.y0); tx.lineTo(k.x1, k.y1); tx.stroke(); }
+    for (const k of tracce(s)) { tx.globalAlpha = k.a; tx.lineWidth = k.larghezza; tx.setLineDash(k.trattini); tracciaLinea(tx, k.punti); }
+    tx.setLineDash([]); tx.globalAlpha = 1; tx.globalCompositeOperation = 'source-over';
+    const dx = dest.getContext('2d');
+    dx.setTransform(1, 0, 0, 1, 0, 0); dx.globalAlpha = OPACITA_TRATTO; dx.drawImage(t, 0, 0); dx.globalAlpha = 1;
+  };
+  // Ridisegno: i tratti finiti vengono dalla cache, si aggiunge quello in corso; poi grana della carta
+  // e bordo appena morbido, composto a 0,95 sul pad.
+  const ridisegna = (tutto = false) => {
+    const c = canvas.current, lv = livello.current, fatti = finiti.current; if (!c || !lv) return;
+    const dpr = c.width / (c.clientWidth || 1);
+    const chiusi = tratti.current.filter((s) => s.finito);
+    if (tutto || fatti.n > chiusi.length) { fatti.c.getContext('2d').clearRect(0, 0, lv.width, lv.height); fatti.n = 0; }
+    for (; fatti.n < chiusi.length; fatti.n++) componiTratto(fatti.c, chiusi[fatti.n], dpr);
+    const lx = lv.getContext('2d');
     lx.setTransform(1, 0, 0, 1, 0, 0); lx.globalCompositeOperation = 'source-over'; lx.globalAlpha = 1;
-    lx.clearRect(0, 0, lv.width, lv.height);
-    lx.setTransform(dpr, 0, 0, dpr, 0, 0); lx.fillStyle = colore;
-    for (const s of tratti.current) disegnaTratto(lx, s);
-    lx.globalCompositeOperation = 'destination-out'; lx.strokeStyle = '#000'; lx.lineCap = 'round';
-    for (const s of tratti.current) for (const k of salti(s.punti)) { lx.globalAlpha = k.a; lx.lineWidth = k.larghezza; lx.beginPath(); lx.moveTo(k.x0, k.y0); lx.lineTo(k.x1, k.y1); lx.stroke(); }
-    lx.setTransform(1, 0, 0, 1, 0, 0); lx.globalAlpha = GRANA.opacita; lx.fillStyle = motivoGrana(lx); lx.fillRect(0, 0, lv.width, lv.height);
+    lx.clearRect(0, 0, lv.width, lv.height); lx.drawImage(fatti.c, 0, 0);
+    for (const s of tratti.current) if (!s.finito) componiTratto(lv, s, dpr);
+    lx.globalCompositeOperation = 'destination-out'; lx.globalAlpha = GRANA.opacita; lx.fillStyle = motivoGrana(lx); lx.fillRect(0, 0, lv.width, lv.height);
     lx.globalAlpha = 1; lx.globalCompositeOperation = 'source-over';
     const ctx = c.getContext('2d');
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, c.width, c.height);
-    ctx.globalAlpha = OPACITA_LIVELLO; ctx.drawImage(lv, 0, 0); ctx.globalAlpha = 1;
+    ctx.globalAlpha = OPACITA_LIVELLO; ctx.filter = `blur(${(0.18 * dpr).toFixed(2)}px)`; ctx.drawImage(lv, 0, 0); ctx.filter = 'none'; ctx.globalAlpha = 1;
   };
-  const pulisci = () => { tratti.current = []; attuale.current = null; ridisegna(); setDrawn(false); };
-  const annullaTratto = () => { tratti.current.pop(); attuale.current = null; ridisegna(); setDrawn(tratti.current.length > 0); };
+  const pulisci = () => { tratti.current = []; attuale.current = null; ridisegna(true); setDrawn(false); };
+  const annullaTratto = () => { tratti.current.pop(); attuale.current = null; ridisegna(true); setDrawn(tratti.current.length > 0); };
   useEffect(() => {
     // Almeno 2× (3× sui telefoni che lo hanno): la firma resta nitida quando si ingrandisce il PDF.
     const c = canvas.current, dpr = Math.max(2, Math.min(devicePixelRatio || 1, 3));
     c.width = Math.round(c.clientWidth * dpr); c.height = 200 * dpr;
-    const lv = document.createElement('canvas'); lv.width = c.width; lv.height = c.height; livello.current = lv;
+    const nuovo = () => { const x = document.createElement('canvas'); x.width = c.width; x.height = c.height; return x; };
+    livello.current = nuovo(); tratto.current = nuovo(); mappa.current = document.createElement('canvas'); finiti.current = { c: nuovo(), n: 0 };
   }, []);
   // Cambiare inchiostro a metà firma ridisegna tutto nel nuovo colore (stessa grana, stesso tratto).
-  useEffect(() => { ridisegna(); }, [colore]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { ridisegna(true); }, [colore]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { pulisci(); setTutte(tipo === 'sigla' && pagine > 1); setError(''); }, [tipo]); // eslint-disable-line react-hooks/exhaustive-deps
   const campione = (ev) => {
     const r = canvas.current.getBoundingClientRect(), p = Number(ev.pressure);
@@ -119,7 +161,7 @@ export function Firma({ onUsa, onChiudi, pagine = 1 }) {
     <canvas ref={canvas} aria-label={`Spazio ${nome}`} className="pdf-pad"
       onPointerDown={e => {
         e.currentTarget.setPointerCapture(e.pointerId);
-        const s = nuovoTratto(campione(e.nativeEvent)); attuale.current = s; tratti.current.push(s);
+        const s = nuovoTratto(campione(e.nativeEvent), undefined, tratti.current.length + 1); attuale.current = s; tratti.current.push(s);
         ridisegna(); setDrawn(true);
       }}
       onPointerMove={e => {

@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { INCHIOSTRI, PUNTA, pressioneUtile, pressioneDaVelocita, larghezzaDaPressione, nuovoTratto, aggiungiPunto, chiudiTratto, larghezze, contorno, salti, trama, riquadro, casuale, smorza } from '../personal/src/pdf/biro.js';
+import { INCHIOSTRI, PUNTA, pressioneUtile, pressioneDaVelocita, larghezzaDaPressione, densitaDaPressione, densita, tracce, gocce, nuovoTratto, aggiungiPunto, chiudiTratto, larghezze, contorno, salti, trama, riquadro, casuale, smorza } from '../personal/src/pdf/biro.js';
 import { titoloIniziale, conFirmato } from '../personal/src/pdf/titoloFirmato.js';
 import { caricaDocumento, suggerisciTitolo, bozzaConAllegato, daEmail } from '../personal/src/lib/archivio.js';
 
@@ -39,23 +39,44 @@ test('biro: pressione dal dito ricavata dalla velocità con curva a coseno (lent
   assert.equal(pressioneUtile({ pointerType: 'pen', pressure: 0 }, 0), 1, 'penna senza pressione → come il dito');
   assert.equal(pressioneUtile({ pointerType: 'touch', pressure: 1 }, 0), 1);
   assert.ok(Math.abs(pressioneUtile({ pointerType: 'touch', pressure: 1 }, 5) - 0.28) < 1e-9, 'col dito la pressure del browser è ignorata');
-  assert.ok(Math.abs(larghezzaDaPressione(1) - PUNTA * 1.2) < 1e-9 && Math.abs(larghezzaDaPressione(0) - PUNTA * 0.38) < 1e-9);
+  assert.ok(Math.abs(larghezzaDaPressione(1) - PUNTA * 1.1) < 1e-9 && Math.abs(larghezzaDaPressione(0) - PUNTA * 0.82) < 1e-9, 'FIRMA-BIRO-3: riga quasi costante');
+  assert.equal(densitaDaPressione(1), 1); assert.equal(densitaDaPressione(0), 0.5);
   assert.equal(smorza(null, 2), 2);
   assert.equal(smorza(0, 2, 0.5), 1);
 });
 
-test('biro: lento → tratto largo, veloce → sottile; stabilizzazione al 55% verso il punto reale', () => {
+test('biro: spessore quasi costante (la sfera), è la densità a cambiare: lento carico, veloce chiaro; stabilizzazione 55%', () => {
   const lento = traccia(30, 2, 40), veloce = traccia(30, 40, 10);
-  const media = (s) => s.punti.slice(8).reduce((t, p) => t + p.w, 0) / (s.punti.length - 8);
-  assert.ok(media(lento) > media(veloce) * 1.8, `${media(lento)} vs ${media(veloce)}`);
-  assert.ok(media(veloce) >= PUNTA * 0.38 - 1e-9 && media(lento) <= PUNTA * 1.2 + 1e-9);
+  const media = (s, k) => s.punti.slice(8).reduce((t, p) => t + p[k], 0) / (s.punti.length - 8);
+  assert.ok(media(lento, 'w') > media(veloce, 'w') && media(lento, 'w') < media(veloce, 'w') * 1.45, `${media(lento, 'w')} vs ${media(veloce, 'w')}`);
+  assert.ok(media(lento, 'd') > 0.95 && media(veloce, 'd') < 0.7, `densità ${media(lento, 'd')} vs ${media(veloce, 'd')}`);
+  assert.ok(lento.punti.every((p) => p.w >= PUNTA * 0.82 * 0.9 && p.w <= PUNTA * 1.1 * 1.09), 'tremolio piccolo');
   const s = nuovoTratto({ x: 0, y: 0, t: 0 });
   aggiungiPunto(s, { x: 100, y: 0, t: 50 });
   assert.ok(Math.abs(s.punti[1].x - 55) < 1e-9, 'il punto si sposta del 55% verso quello reale');
   aggiungiPunto(s, { x: 55.5, y: 0, t: 60 });
   assert.equal(s.punti.length, 2, 'micro-spostamenti scartati');
   const penna = traccia(20, 3, 16, { pressione: 1 }), leggera = traccia(20, 3, 16, { pressione: 0.1 });
-  assert.ok(penna.punti.at(-1).w > leggera.punti.at(-1).w * 1.8, 'con la penna conta la pressione reale');
+  assert.ok(penna.punti.at(-1).w > leggera.punti.at(-1).w * 1.15 && penna.punti.at(-1).d > leggera.punti.at(-1).d + 0.3, 'con la penna conta la pressione reale');
+});
+
+test('biro: densità a gruppi (niente sovrapposizioni), tracce della sfera spezzate se veloce, gocce dove si ferma o gira', () => {
+  assert.equal(densita(traccia(30, 2, 40).punti).length, 0, 'lento: inchiostro pieno');
+  const g = densita(traccia(30, 40, 10).punti);
+  assert.ok(g.length >= 1 && g.every((x) => x.a > 0 && x.a <= 0.45 && x.punti.length >= 2));
+  const tv = tracce(traccia(30, 40, 10, {})), tl = tracce(traccia(30, 2, 40));
+  assert.equal(tv.length, 2); assert.equal(tl.length, 2);
+  const vuoto = (t) => t.trattini.filter((_, i) => i % 2).reduce((a, b) => a + b, 0) / t.trattini.reduce((a, b) => a + b, 0);
+  assert.ok(vuoto(tv[0]) > vuoto(tl[0]), 'veloce: tracce più spezzate');
+  assert.ok(tv[0].a > tl[0].a);
+  assert.deepEqual(tracce(traccia(30, 40, 10)), tracce(traccia(30, 40, 10)), 'ripetibile col seme');
+  const angolo = nuovoTratto({ x: 0, y: 0, t: 0 });
+  for (let i = 1; i <= 20; i++) aggiungiPunto(angolo, { x: i * 4, y: 0, t: i * 30 });
+  for (let i = 1; i <= 20; i++) aggiungiPunto(angolo, { x: 80, y: i * 4, t: 600 + i * 30 });
+  assert.ok(gocce(angolo).length >= 1, 'goccia alla curva stretta');
+  const dritta = nuovoTratto({ x: 0, y: 0, t: 0 });
+  for (let i = 1; i <= 30; i++) aggiungiPunto(dritta, { x: i * 5, y: i, t: i * 16 });
+  assert.equal(gocce(dritta).length, 0, 'riga dritta e scorrevole: nessuna goccia');
 });
 
 test('biro: attacco dal 62% e coda assottigliata fino al 20% quando il gesto finale è veloce', () => {
@@ -103,7 +124,8 @@ test('firma: Bic nera o blu ricordata, tratti vettoriali su livello opaco a 0,95
   assert.match(firma, /personal-pdf-inchiostro-v1/);
   assert.match(firma, /globalCompositeOperation = 'destination-out'/);
   assert.match(firma, /quadraticCurveTo/);
-  assert.match(firma, /globalAlpha = OPACITA_LIVELLO; ctx\.drawImage\(lv, 0, 0\)/);
+  assert.match(firma, /globalAlpha = OPACITA_LIVELLO;/);
+  assert.match(firma, /globalAlpha = OPACITA_TRATTO; dx\.drawImage/, 'ogni tratto sovrapposto: incroci più scuri');
   assert.match(firma, /aggiungiPunto\(s, campione\(ev\)\)/);
   assert.match(firma, /Annulla tratto/);
   assert.match(firma, /pngTesto\(testoOggi\(\), \{ colore \}\)/);
