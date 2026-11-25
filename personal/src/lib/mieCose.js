@@ -249,3 +249,49 @@ export async function scadenzeHome(db, oggi = new Date()) {
   }
   return per;
 }
+
+/* ---------- documenti e allegati (PO 2026-11-25: "inserimenti Scan o file di assicurazione e del libretto") ---------- */
+// Un documento dell'archivio si collega a una scheda con il tag `cosa:<id>` (più `allegato:<tipo>` per dire cos'è):
+// niente nuove colonne, i documenti restano dove sono su Drive e nell'archivio. Mai i documenti dei pazienti.
+export const TIPI_ALLEGATO = {
+  auto: ['Assicurazione', 'Libretto', 'Bollo', 'Revisione', 'Tagliando', 'Multa', 'Altro'],
+  casa: ['Contratto / atto', 'Catasto', 'Bolletta', 'Assicurazione', 'Manutenzione', 'Altro'],
+  salute: ['Referto', 'Ricetta', 'Tessera sanitaria', 'Vaccino', 'Altro'],
+};
+export const FASCICOLO_ALLEGATI = { auto: 'veicoli', casa: 'immobili', salute: 'sanitario_famiglia' };
+export const tagCosa = (id) => `cosa:${id}`;
+const tagTipo = (tipo) => `allegato:${pulito(tipo).toLowerCase()}`;
+export const tipoAllegato = (doc, idAmbito) => {
+  const t = (doc.tag || []).find((x) => x.startsWith('allegato:'))?.slice(9);
+  return (TIPI_ALLEGATO[idAmbito] || []).find((x) => x.toLowerCase() === t) || (t ? t[0].toUpperCase() + t.slice(1) : null);
+};
+// I nuovi tag di un documento quando si collega (o si scollega) da una scheda; gli altri tag restano.
+export function tagAllegato(tag = [], id, tipo, dentro = true) {
+  const altri = (tag || []).filter((t) => t !== tagCosa(id) && !(dentro && tipo && t.startsWith('allegato:')));
+  return dentro ? [...altri, tagCosa(id), ...(tipo ? [tagTipo(tipo)] : [])] : altri;
+}
+// Valori della scheda che servono a trovare documenti già in archivio (targa, polizza, telaio, POD, PDR).
+const CHIAVI_RICERCA = /^(targa|numero polizza|telaio( \(vin\))?|pod|pdr|sigla iscrizione|codice utenza acqua)$/i;
+export const chiaviRicerca = (s) => [...new Set((s.campi || []).filter((c) => CHIAVI_RICERCA.test(pulito(c.etichetta)))
+  .map((c) => pulito(c.valore).replace(/[^\p{L}\d]/gu, '')).filter((v) => v.length >= 5))];
+
+const CAMPI_ALLEGATO = 'id, titolo, fascicolo, tipo_documento, data_documento, email_data, creato_il, drive_url, drive_file_id, mime_type, tag, importo, ente';
+const ordinaDoc = (d) => [...d].sort((a, b) => String(b.data_documento || b.email_data || b.creato_il || '').localeCompare(String(a.data_documento || a.email_data || a.creato_il || '')));
+export async function allegatiDi(db, id) {
+  return ordinaDoc(esito(await db.from('documenti').select(CAMPI_ALLEGATO).contains('tag', [tagCosa(id)]).limit(200))
+    .filter((d) => d.fascicolo !== 'clinico_pazienti'));
+}
+// Documenti già in archivio che parlano di questa cosa (nel titolo c'è la targa, la polizza, il POD…), non ancora collegati.
+export async function suggeriti(db, s, collegati = []) {
+  const chiavi = chiaviRicerca(s);
+  if (!chiavi.length) return [];
+  const righe = esito(await db.from('documenti').select(CAMPI_ALLEGATO).or(chiavi.map((k) => `titolo.ilike.*${k}*`).join(',')).limit(40));
+  const gia = new Set(collegati.map((d) => d.id));
+  return ordinaDoc(righe.filter((d) => d.fascicolo !== 'clinico_pazienti' && !gia.has(d.id) && !(d.tag || []).includes(tagCosa(s.id)))).slice(0, 8);
+}
+export async function collega(db, doc, id, tipo, dentro = true) {
+  if (doc.fascicolo === 'clinico_pazienti') throw new Error('Documento non collegabile');
+  const riga = esito(await db.from('documenti').select('id, tag, fascicolo').eq('id', doc.id).single());
+  if (riga.fascicolo === 'clinico_pazienti') throw new Error('Documento non collegabile');
+  return esito(await db.from('documenti').update({ tag: tagAllegato(riga.tag, id, tipo, dentro) }).eq('id', doc.id).select('id, tag').single());
+}

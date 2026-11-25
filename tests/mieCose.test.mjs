@@ -119,3 +119,17 @@ test('app a sé: il service worker dello Studio non risponde su /auto/, /casa/, 
   assert.match(cfg.match(/navigateFallbackDenylist: \[(.*)\]/)[1], /\(auto\|casa\|salute\)/);
   assert.match(cfg, /\/\^\\\/\(auto\|casa\|salute\)\(\\\/\|\$\)\/\.test\(url\.pathname\)/);
 });
+
+test('documenti della scheda: tag cosa/allegato, chiavi per trovarli in archivio', async () => {
+  const { tagAllegato, chiaviRicerca, tipoAllegato, TIPI_ALLEGATO, FASCICOLO_ALLEGATI } = await import('../personal/src/lib/mieCose.js');
+  assert.deepEqual(tagAllegato(['x', 'allegato:bollo'], 'v1', 'Libretto'), ['x', 'cosa:v1', 'allegato:libretto']);
+  assert.deepEqual(tagAllegato(['x', 'cosa:v1', 'allegato:libretto'], 'v1', null, false), ['x', 'allegato:libretto']);
+  assert.equal(tipoAllegato({ tag: ['cosa:v1', 'allegato:assicurazione'] }, 'auto'), 'Assicurazione');
+  assert.ok(TIPI_ALLEGATO.auto.includes('Libretto') && TIPI_ALLEGATO.auto.includes('Assicurazione'));
+  assert.equal(FASCICOLO_ALLEGATI.auto, 'veicoli');
+  const s = { campi: [{ etichetta: 'Targa', valore: 'AA 000 AA' }, { etichetta: 'Numero polizza', valore: 'P-12345' }, { etichetta: 'Km attuali', valore: '100000' }, { etichetta: 'POD', valore: '' }] };
+  assert.deepEqual(chiaviRicerca(s), ['AA000AA', 'P12345']);
+  const vista = readFileSync('personal/src/cose/Allegati.jsx', 'utf8') + readFileSync('personal/src/lib/mieCose.js', 'utf8');
+  assert.match(vista, /clinico_pazienti/, 'i documenti dei pazienti non si collegano');
+  assert.doesNotMatch(vista, /\.delete\(/);
+});

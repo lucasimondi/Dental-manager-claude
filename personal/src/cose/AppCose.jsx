@@ -10,6 +10,7 @@ import {
 } from '../lib/mieCose.js';
 import { Conferma, Vuoto } from '../ui.jsx';
 import { IconaApp } from './IconeCose.jsx';
+import { Allegati } from './Allegati.jsx';
 import './cose.css';
 
 const ATTESA = 700;
@@ -120,7 +121,7 @@ export function AppCose({ ambito: idAmbito, ctx, aParte = false }) {
       <button type="button" className="pp-md-linguetta-piu" onClick={() => vaiA('nuova')}>+ Aggiungi</button>
     </div>
     <div className="pp-md-striscia" ref={striscia} onScroll={alloScorrere}>
-      {visibili.map((s) => <Scheda key={s.id} s={s} a={a} cambia={(p, subito) => cambia(s.id, p, subito)} archivia={() => archivia(s.id)} mostra={ctx.mostra} />)}
+      {visibili.map((s) => <Scheda key={s.id} s={s} a={a} ctx={ctx} aParte={aParte} cambia={(p, subito) => cambia(s.id, p, subito)} archivia={() => archivia(s.id)} mostra={ctx.mostra} />)}
       {!visibili.length && cerca && <div className="pp-md-scheda pp-md-vuota">Nessuna scheda contiene «{cerca}».</div>}
       <div className="pp-md-scheda pp-md-nuova" data-scheda="nuova">
         <strong>{schede.length ? 'Aggiungi' : `Inizia: aggiungi ${idAmbito === 'auto' ? 'il tuo primo veicolo' : idAmbito === 'casa' ? 'la tua casa' : 'una persona'}`}</strong>
@@ -206,7 +207,7 @@ function Registro({ s, a: app, cambia, modifica }) {
   </section>;
 }
 
-function Scheda({ s, a, cambia, archivia, mostra }) {
+function Scheda({ s, a, ctx, aParte, cambia, archivia, mostra }) {
   const [modifica, setModifica] = useState(Boolean(s._nuova)), [chiedi, setChiedi] = useState(false);
   const campi = s.campi || [], persone = s.persone || [];
   const metti = (i, patch) => cambia({ campi: campi.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
@@ -243,6 +244,8 @@ function Scheda({ s, a, cambia, archivia, mostra }) {
         {modifica && <button type="button" className="pp-md-piu" onClick={() => cambia({ campi: [...campi, { gruppo: g, etichetta: '', valore: '', tipo: 'testo' }] })}>+ Aggiungi campo</button>}
       </section>;
     })}
+
+    <Allegati s={s} a={a} ctx={ctx} aParte={aParte} modifica={modifica} />
 
     <Registro s={s} a={a} cambia={cambia} modifica={modifica} />
 

@@ -290,6 +290,9 @@ body.pp-tastiera .pf-desktop { bottom: 0; }
 .pf-corpo .pdf-manager, .pf-corpo .scan-camera, .pf-corpo .scan-finestra, .pf-corpo .pp-documento-intero { position: absolute; inset: 0; z-index: 30; }
 .pf-corpo.pb-sopra { box-shadow: inset 0 0 0 3px var(--pb-accento, #1f6fe5); background: color-mix(in srgb, var(--pb-accento, #1f6fe5) 6%, transparent); }
 .pf-contenuto { min-height: 100%; }
+/* PO 2026-11-25 «non scrolla»: il corpo della pagina dentro una finestra non deve essere un secondo contenitore che
+   scorre (overflow + overscroll-behavior: contain fermavano il dito su telefono). Scorre solo .pf-scorre. */
+.pf-contenuto.pp-pagina-corpo:not(:has(.esp)) { overflow: visible; overscroll-behavior: auto; }
 .pf-modulo { padding-bottom: 16px; }
 .pf-ingrandita .pf-contenuto.pp-pagina-corpo { max-width: 980px; margin: 0 auto; }
 /* bordi per ridimensionare (finestra libera) */

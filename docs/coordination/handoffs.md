@@ -4,6 +4,7 @@
 - TASK: APP-AUTO-CASA-SALUTE. BRANCH: `ccr-f99036ef-v0b9t6` from `master@da34001`. OBJECTIVE: Auto e motori, Casa, Salute as Personal apps (Home, Start, sections) and as standalone Home-screen apps.
 - FILES: `personal/src/lib/mieCose.js`, `personal/src/lib/appCose.js`, `personal/src/cose/{AppCose,AppSola,IconeCose}.jsx`, `cose.css`, `personal/src/sezioni/{auto,casa,salute}/index.jsx`, registry, Barra/Start, Personale Home, `IconeFinestre.jsx`, `App.jsx`, `main.jsx`, `personal/index.html`, `vercel.json`, `vite.config.js`, `public/{auto,casa,salute}*`, `scripts/icone-app-cose*.mjs`, `shared/altro/AltroPage.jsx` (2 icon paths), tests.
 - DATABASE: migration `20261125150000_mie_cose.sql` APPLIED (PO "Vai"); 5 seed cards inserted in the DB only (Punto, Multe e pedaggi, via Piccona 35, studio Galileo Ferraris — not owned, Salute Luca). TESTS: 2000/2000, builds PASS, visual PASS.
+- FOLLOW-UP same day: documents per card (Scan / Fotografa / Allega file / link from archive, tags `cosa:<id>`), phone window scroll fix (all windows), `personal-finestre-scorre.mjs`. Tests 2001/2001.
 - NEXT ACTION: PO review of the PR → merge → Vercel deploy → install the three apps on the phone Home and verify.
 
 ## 2026-11-23 — CLAUDE — POL-AI-GEMINI step 1 release + fix

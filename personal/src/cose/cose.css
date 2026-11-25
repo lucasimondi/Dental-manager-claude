@@ -70,3 +70,20 @@
 .pp-ac-sola-toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 18px); transform: translateX(-50%); padding: 10px 16px; border-radius: 12px; background: #101828; color: #fff; font-size: 13.5px; box-shadow: var(--pp-ombra-alta); max-width: calc(100% - 32px); }
 
 @media (min-width: 900px) { .pp-ac-scheda { flex-basis: 400px; } }
+
+/* Documenti della scheda (Scan, foto, file; collegati dall'archivio). */
+.pp-ac-allegati h4 span { text-transform: none; letter-spacing: 0; color: var(--ac); }
+.pp-ac-doc { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 4px 0; }
+.pp-ac-doc-apri { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 6px 0; background: none; color: var(--pp-inchiostro); text-align: left; font: inherit; }
+.pp-ac-doc-icona { flex: none; display: grid; place-items: center; width: 34px; height: 40px; border-radius: 6px; background: var(--pp-blu-chiaro); color: var(--pp-blu); font-size: 10px; font-weight: 800; letter-spacing: .03em; }
+.pp-ac-doc-icona.pdf { background: color-mix(in srgb, #d92d20 13%, transparent); color: #b42318; }
+.pp-ac-doc-testo { display: grid; min-width: 0; }
+.pp-ac-doc-testo strong { font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.pp-ac-doc-testo span { font-size: 12px; color: var(--pp-grigio); }
+.pp-ac-tipi { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 0 4px; }
+.pp-ac-tipi button { padding: 5px 10px; border-radius: 999px; border: 1px solid var(--pp-linea); background: var(--pp-sfondo); color: var(--pp-inchiostro); font: inherit; font-size: 12.5px; }
+.pp-ac-tipi button.scelto { border-color: var(--ac); background: color-mix(in srgb, var(--ac) 14%, transparent); color: var(--ac); font-weight: 700; }
+.pp-ac-carica { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 6px; }
+.pp-ac-carica .pp-bottone { padding-inline: 8px; font-size: 13.5px; }
+.pp-ac-proposti { display: grid; gap: 2px; margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: var(--pp-sfondo); }
+.pp-ac-proposti-titolo { font-size: 12px; font-weight: 700; color: var(--ac); }

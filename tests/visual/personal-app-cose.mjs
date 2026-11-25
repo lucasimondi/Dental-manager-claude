@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 const out = 'tests/visual/results-personal-app-cose'; await mkdir(out, { recursive: true });
 const C = (gruppo, etichetta, valore, tipo = 'testo', avviso = false) => ({ gruppo, etichetta, valore, tipo, avviso });
 const tra = (g) => new Date(Date.now() + g * 86400000).toISOString().slice(0, 10);
+const DOC = (id, titolo, tag) => ({ id, titolo, fascicolo: 'veicoli', data_documento: '2026-10-12', mime_type: 'application/pdf', tag, drive_url: 'https://drive.google.com/file/d/x/view' });
 const COSE = {
   auto: [
     { id: 'v1', ambito: 'auto', tipo: 'auto', nome: 'Utilitaria di prova', descrizione: 'Grigia', colore: 'ambra', ordine: 0, foto: null,
@@ -47,6 +48,12 @@ try {
         if (u.pathname.endsWith('/mie_cose') && req.method() === 'PATCH') return route.fulfill({ json: { id: 'x', modificato_il: new Date().toISOString() } });
         if (u.pathname.endsWith('/mie_cose') && req.method() === 'POST') return route.fulfill({ status: 201, json: { id: 'nuova', ...body } });
         if (u.pathname.endsWith('/mie_cose')) { const a = u.searchParams.get('ambito')?.replace('eq.', ''); return route.fulfill({ json: COSE[a] || [] }); }
+        if (u.pathname.endsWith('/documenti')) {
+          if (req.method() === 'PATCH') return route.fulfill({ json: { id: 'd9', ...body } });
+          if (u.searchParams.get('tag')?.startsWith('cs.')) return route.fulfill({ json: u.searchParams.get('tag').includes('v1') ? [DOC('d1', 'Certificato assicurazione – Utilitaria AA000AA', ['cosa:v1', 'allegato:assicurazione'])] : [] });
+          if (u.searchParams.get('or')) return route.fulfill({ json: [DOC('d9', 'Libretto di circolazione AA000AA', [])] });
+          if (u.searchParams.get('id')) return route.fulfill({ json: { id: 'd9', tag: ['vecchio'], fascicolo: 'veicoli' } });
+        }
         return route.fulfill({ json: [] });
       }
       return route.abort();
@@ -65,7 +72,7 @@ try {
     let patch = scritture.findLast((w) => w.metodo === 'PATCH' && w.q.includes('v1'));
     assert.ok(patch && patch.body.campi[7].valore === tra(300), `${nome}: la data della revisione si salva`);
     // foto
-    await page.locator('[data-scheda="v1"] input[type=file]').setInputFiles(`${out}/foto.png`); await page.waitForTimeout(1000);
+    await page.locator('[data-scheda="v1"] .pp-ac-foto input[type=file]').setInputFiles(`${out}/foto.png`); await page.waitForTimeout(1000);
     patch = scritture.findLast((w) => w.metodo === 'PATCH' && w.body?.foto);
     assert.ok(patch && /^data:image\/jpeg;base64,/.test(patch.body.foto), `${nome}: la foto si salva ridotta in JPEG`);
     assert.ok(await page.locator('[data-scheda="v1"] .pp-ac-foto img').isVisible(), `${nome}: la foto si vede`);
@@ -81,6 +88,18 @@ try {
     assert.equal(patch.body.campi.find((c) => c.etichetta === 'Km ultimo tagliando').valore, '100200');
     await page.locator('[data-scheda="v1"]').scrollIntoViewIfNeeded();
     await page.screenshot({ path: `${out}/${nome}-auto-dopo.png`, fullPage: true });
+    // documenti della scheda: collegato, suggerito dall'archivio (per targa), Scan con la scheda nelle opzioni
+    const v1 = page.locator('[data-scheda="v1"]');
+    assert.ok(await v1.getByText('Certificato assicurazione – Utilitaria AA000AA').isVisible(), `${nome}: documento collegato visibile`);
+    await v1.getByRole('radio', { name: 'Libretto' }).click();
+    await v1.getByRole('button', { name: 'Collega' }).click(); await page.waitForTimeout(700);
+    const lega = scritture.findLast((w) => w.metodo === 'PATCH' && w.q.includes('d9'));
+    assert.deepEqual(lega?.body?.tag, ['vecchio', 'cosa:v1', 'allegato:libretto'], `${nome}: il libretto si collega con i tag`);
+    await v1.getByRole('button', { name: 'Scan' }).click();
+    const sc = await page.evaluate(() => window.acTest.aperte.at(-1));
+    assert.equal(sc.tipo, 'scansione'); assert.deepEqual(sc.opzioni.cosa, { id: 'v1', tipo: 'Libretto' }); assert.equal(sc.opzioni.fascicolo, 'veicoli');
+    await v1.locator('.pp-ac-allegati').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `${out}/${nome}-documenti.png` });
     // documenti → pagina «cosa» di Personal
     await page.getByRole('button', { name: 'Documenti' }).click();
     assert.deepEqual(await page.evaluate(() => window.acTest.aperte.at(-1)), { tipo: 'cosa', id: 'auto' });
