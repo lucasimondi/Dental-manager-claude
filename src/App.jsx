@@ -943,7 +943,7 @@ export default function App() {
                 autoOpenNew={autoOpenNew === 'paz'} onAutoOpenNewHandled={() => setAutoOpenNew(null)}
               />
             )}
-            {page === 'preventivi' && <Preventivi patients={patients} plans={plans} pricelist={pricelist} si={studioInfo} onSave={savePatientEntry} autoOpenNew={autoOpenNew === 'preventivi'} onAutoOpenNewHandled={()=>setAutoOpenNew(null)} />}
+            {page === 'preventivi' && <Preventivi patients={patients} plans={plans} setPlans={setPlansSync} pricelist={pricelist} si={studioInfo} onSave={savePatientEntry} autoOpenNew={autoOpenNew === 'preventivi'} onAutoOpenNewHandled={()=>setAutoOpenNew(null)} />}
             {page === 'piani' && (
               <Piani
                 patients={patients} plans={plans} setPlans={setPlansSync} payments={payments} setPayments={setPaymentsSync}

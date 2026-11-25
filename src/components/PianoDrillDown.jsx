@@ -4,6 +4,7 @@ import { C, fmt, fmtD, today, SCADENZA_PRESET, addMesi, rilevaRichiamo } from '.
 import { markTreatmentItemCompleted, isTreatmentPlanCompleted, planTotals, paidOnPlan, removeTreatmentItem, treatmentItemRemovalMessage, updateTreatmentItem } from '../lib/domain/treatmentPlanService.js';
 import IncassoModal from './IncassoModal.jsx';
 import PdfView from './PdfView.jsx';
+import AvvisoPreventivo, { useAvvisoPreventivo } from './AvvisoPreventivo.jsx';
 
 const calcTot = planTotals;
 
@@ -26,7 +27,7 @@ const prossimaDataMascherina = (orto) => {
    Cancella/Modifica/Accetta/Non accetta/Incassato. Click a name to drill
    into that plan's clean prestazioni list: Eseguito/Modifica/Elimina/
    Incassato per row. */
-export default function PianoDrillDown({ plans, patients = [], setPlans, payments = [], setPayments, pricelist = [], si, features, initialAddTreatment = false }) {
+export default function PianoDrillDown({ plans, patients = [], setPlans, payments = [], setPayments, pricelist = [], si, features, initialAddTreatment = false, quoteClient }) {
   const entryPlans = plans.filter(plan => ['attivo', 'accettato'].includes(plan.stato));
   const initialPlanId = initialAddTreatment && entryPlans.length === 1 ? entryPlans[0].id : null;
   const [expandedId, setExpandedId] = useState(initialPlanId);
@@ -42,6 +43,9 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
   const [confermaVoce, setConfermaVoce] = useState(null); // { planId, index, messaggio } — conferma nella pagina
   const [incassoPrefill, setIncassoPrefill] = useState(null);
   const [pdfPlan, setPdfPlan] = useState(null);
+  const avvisoPrev = useAvvisoPreventivo(quoteClient);
+  const avvisoQui = (chiave) => <AvvisoPreventivo avviso={avvisoPrev.avviso} chiave={chiave} onConferma={avvisoPrev.conferma} onAnnulla={avvisoPrev.annulla} />;
+  const pianoDa = (id) => plans.find((pl) => String(pl.id) === String(id));
 
   const patientOf = (plan) => patients.find((p) => p.id === plan.pazienteId);
 
@@ -55,8 +59,12 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
   const openEditPlan = (plan) => { setEditForm({ titolo: plan.titolo, data: plan.data, sconto: plan.sconto || 0, scontoTipo: plan.scontoTipo || 'pct', scadenzaPagamento: plan.scadenzaPagamento || '' }); setEditPlanId(plan.id); };
   const saveEditPlan = () => {
     if (!editForm?.titolo) return;
-    setPlans((current) => current.map((pl) => (pl.id === editPlanId ? { ...pl, ...editForm } : pl)));
-    setEditPlanId(null);
+    const prima = pianoDa(editPlanId), id = editPlanId;
+    // PREVENTIVI-LINEARI: cambiare lo sconto rende non valido un preventivo dell'intero piano già preparato.
+    avvisoPrev.chiedi({ chiave: `piano:${id}`, prima, dopo: prima && { ...prima, ...editForm }, applica: () => {
+      setPlans((current) => current.map((pl) => (pl.id === id ? { ...pl, ...editForm } : pl)));
+      setEditPlanId(null);
+    } });
   };
   const setScadenzaPiano = (planId, data) => setPlans((current) => current.map((pl) => (pl.id === planId ? { ...pl, scadenzaPagamento: data } : pl)));
 
@@ -116,23 +124,33 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
     const { planId, index } = confermaVoce || {};
     setConfermaVoce(null);
     if (planId == null) return;
-    setPlans((current) => current.map((candidate) => (String(candidate.id) !== String(planId) ? candidate : removeTreatmentItem(candidate, index))));
+    const prima = pianoDa(planId);
+    avvisoPrev.chiedi({ chiave: `voce:${planId}:${index}`, prima, dopo: prima && removeTreatmentItem(prima, index), applica: () => {
+      setPlans((current) => current.map((candidate) => (String(candidate.id) !== String(planId) ? candidate : removeTreatmentItem(candidate, index))));
+    } });
   };
 
   const openEditVoce = (plan, index) => { const v = plan.voci[index]; setEditVoceForm({ prestazione: v.prestazione, dente: v.dente || '', prezzo: String(v.prezzo) }); setEditingVoce({ planId: plan.id, index }); };
   const saveEditVoce = () => {
     if (!editVoceForm.prestazione.trim()) return;
-    setPlans((current) => current.map((pl) => (pl.id === editingVoce.planId ? updateTreatmentItem(pl, editingVoce.index, editVoceForm) : pl)));
-    setEditingVoce(null);
+    const { planId, index } = editingVoce, form = editVoceForm, prima = pianoDa(planId);
+    const dopo = prima && updateTreatmentItem(prima, index, form), voce = dopo?.voci?.[index], vecchia = prima?.voci?.[index];
+    const altraCura = voce && vecchia && (voce.prestazione !== vecchia.prestazione || String(voce.dente || '') !== String(vecchia.dente || ''));
+    avvisoPrev.chiedi({ chiave: `voce:${planId}:${index}`, prima, dopo, plans, pazienteId: prima?.pazienteId, nuove: altraCura ? [voce] : [], escludi: [{ pianoId: planId, indice: index }], applica: () => {
+      setPlans((current) => current.map((pl) => (pl.id === planId ? updateTreatmentItem(pl, index, form) : pl)));
+      setEditingVoce(null);
+    } });
   };
 
   const addItemToPlan = (planId) => {
     if (!newVoce.prestazione.trim()) return;
-    setPlans((current) => current.map((pl) => (String(pl.id) === String(planId) ? {
-      ...pl, voci: [...(pl.voci || []), { prestazione: newVoce.prestazione.trim(), dente: newVoce.dente.trim(), prezzo: Number(newVoce.prezzo) || 0, eseguita: false, incassata: false }],
-    } : pl)));
-    setNewVoce({ prestazione: '', dente: '', prezzo: '' });
-    setAddingVoceFor(null);
+    const voce = { prestazione: newVoce.prestazione.trim(), dente: newVoce.dente.trim(), prezzo: Number(newVoce.prezzo) || 0, eseguita: false, incassata: false };
+    // PREVENTIVI-LINEARI: la stessa cura già preventivata e non eseguita non si aggiunge due volte in silenzio.
+    avvisoPrev.chiedi({ chiave: `nuova:${planId}`, plans, pazienteId: pianoDa(planId)?.pazienteId, nuove: [voce], applica: () => {
+      setPlans((current) => current.map((pl) => (String(pl.id) === String(planId) ? { ...pl, voci: [...(pl.voci || []), voce] } : pl)));
+      setNewVoce({ prestazione: '', dente: '', prezzo: '' });
+      setAddingVoceFor(null);
+    } });
   };
 
   const avviaConsegnaOrto = (planId, data) => setPlans((current) => current.map((pl) => {
@@ -273,6 +291,7 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
                   // sfondo distinto, numero progressivo.
                   return (
                     <div key={i} style={{ background: v.eseguita ? C.sucL : C.sur, border: `1px solid ${v.eseguita ? C.suc + '40' : C.brd}`, borderLeft: `4px solid ${v.eseguita ? C.suc : C.war}`, borderRadius: 9, padding: '10px 12px', marginBottom: 8 }}>
+                      {avvisoQui(`voce:${pl.id}:${i}`)}
                       {isEditing ? (
                         <div className="plan-inline-editor">
                           <Fld label="Prestazione"><Inp value={editVoceForm.prestazione} onChange={(e) => setEditVoceForm((f) => ({ ...f, prestazione: e.target.value }))} /></Fld>
@@ -280,7 +299,7 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
                             <Fld label="Dente (opzionale)"><Inp value={editVoceForm.dente} onChange={(e) => setEditVoceForm((f) => ({ ...f, dente: e.target.value }))} /></Fld>
                             <Fld label="Prezzo €"><Inp type="number" min="0" step="0.01" inputMode="decimal" value={editVoceForm.prezzo} onChange={(e) => setEditVoceForm((f) => ({ ...f, prezzo: e.target.value }))} /></Fld>
                           </div>
-                          <div className="plan-inline-editor__actions"><Btn ch="Annulla" v="sec" sz="sm" onClick={() => setEditingVoce(null)} /><Btn ch="Salva" sz="sm" onClick={saveEditVoce} /></div>
+                          <div className="plan-inline-editor__actions"><Btn ch="Annulla" v="sec" sz="sm" onClick={() => { avvisoPrev.annulla(); setEditingVoce(null); }} /><Btn ch="Salva" sz="sm" onClick={saveEditVoce} /></div>
                         </div>
                       ) : (
                         <>
@@ -336,7 +355,8 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
                     <Fld label="Prestazione"><Inp value={newVoce.prestazione} onChange={(e) => setNewVoce((v) => ({ ...v, prestazione: e.target.value }))} placeholder="Descrizione prestazione" /></Fld>
                     <div className="plan-inline-editor__grid"><Fld label="Dente (opzionale)"><Inp value={newVoce.dente} onChange={(e) => setNewVoce((v) => ({ ...v, dente: e.target.value }))} /></Fld><Fld label="Prezzo €"><Inp type="number" min="0" step="0.01" inputMode="decimal" value={newVoce.prezzo} onChange={(e) => setNewVoce((v) => ({ ...v, prezzo: e.target.value }))} /></Fld></div>
                     <Fld label="Dal listino"><Sel value="" onChange={(e) => { const item = pricelist.find((entry) => entry.nome === e.target.value); if (item) setNewVoce({ prestazione: item.nome, dente: '', prezzo: String(item.prezzo) }); }}><option value="">Seleziona…</option>{pricelist.map((item) => <option key={item.id} value={item.nome}>{item.nome} — {fmt(item.prezzo)}</option>)}</Sel></Fld>
-                    <div className="plan-inline-editor__actions"><Btn ch="Annulla" v="sec" sz="sm" onClick={() => setAddingVoceFor(null)} /><Btn ch="Aggiungi" sz="sm" onClick={() => addItemToPlan(pl.id)} /></div>
+                    <div className="plan-inline-editor__actions"><Btn ch="Annulla" v="sec" sz="sm" onClick={() => { avvisoPrev.annulla(); setAddingVoceFor(null); }} /><Btn ch="Aggiungi" sz="sm" onClick={() => addItemToPlan(pl.id)} /></div>
+                    {avvisoQui(`nuova:${pl.id}`)}
                   </div>
                 ) : <button type="button" className="plan-add-item" onClick={() => { setAddingVoceFor(pl.id); setNewVoce({ prestazione: '', dente: '', prezzo: '' }); }}>+ Aggiungi prestazione</button>}
               </div>
@@ -359,7 +379,8 @@ export default function PianoDrillDown({ plans, patients = [], setPlans, payment
             </div>
             <Fld label="Sconto"><Inp type="number" min="0" value={editForm.sconto} onChange={(e) => setEditForm((f) => ({ ...f, sconto: e.target.value }))} /></Fld>
           </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}><Btn ch="Annulla" v="sec" onClick={() => setEditPlanId(null)} full /><Btn ch="Salva" onClick={saveEditPlan} full /></div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}><Btn ch="Annulla" v="sec" onClick={() => { avvisoPrev.annulla(); setEditPlanId(null); }} full /><Btn ch="Salva" onClick={saveEditPlan} full /></div>
+          {editPlanId != null && avvisoQui(`piano:${editPlanId}`)}
         </Modal>
       )}
 

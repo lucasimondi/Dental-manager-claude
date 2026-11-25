@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AvvisoPreventivo, { useAvvisoPreventivo } from './AvvisoPreventivo.jsx';
 import EmbeddedForm from './EmbeddedForm.jsx';
 import { Btn, Crd, Fld, Inp, Sel, Modal, Toast, Bdg, Ic, StatCard, SelettorePaziente, PageHeader, EmptyState } from './ui';
 import { C, uid, fmt, today, SCADENZA_PRESET, addMesi } from '../lib/utils';
@@ -109,14 +110,18 @@ export default function Piani({ patients, plans, setPlans, payments = [], setPay
     setSelectedDenti([]);
   };
 
+  const avvisoPrev = useAvvisoPreventivo();
   const save = () => {
     if (embedded && String(form.pazienteId) !== String(initPatId)) return;
     if (!form.pazienteId || !form.titolo || !form.voci.length) return;
-    setPlans((p) => [...p, { ...form, id: uid(), pazienteId: Number(form.pazienteId) }]);
-    setModal(false);
-    clearFormDraft();
-    setToast('Piano salvato ✓');
-    onSaved?.();
+    // PREVENTIVI-LINEARI: un nuovo piano con cure già preventivate e non eseguite lo dice prima di salvare.
+    avvisoPrev.chiedi({ plans, pazienteId: form.pazienteId, nuove: form.voci, applica: () => {
+      setPlans((p) => [...p, { ...form, id: uid(), pazienteId: Number(form.pazienteId) }]);
+      setModal(false);
+      clearFormDraft();
+      setToast('Piano salvato ✓');
+      onSaved?.();
+    } });
   };
 
   const selPr = (nome) => { const item = pricelist.find((p) => p.nome === nome); setNv((v) => ({ ...v, prestazione: nome, prezzo: item ? item.prezzo : v.prezzo })); };
@@ -399,6 +404,7 @@ export default function Piani({ patients, plans, setPlans, payments = [], setPay
           )}
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn ch="Annulla" v="sec" onClick={() => { setModal(false); onCancel?.(); }} full />
+            <AvvisoPreventivo avviso={avvisoPrev.avviso} onConferma={avvisoPrev.conferma} onAnnulla={avvisoPrev.annulla} />
             <Btn ch="Salva piano" onClick={save} dis={!form.pazienteId || !form.titolo || !form.voci.length} full />
           </div>
         </PlanFrame>

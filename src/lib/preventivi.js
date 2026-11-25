@@ -54,4 +54,12 @@ export async function archiveQuoteRow(client, id, archived) {
   const { data, error } = await client.from('preventivi').update({ archiviato: archived }).eq('studio_id', studioId).eq('id', id).select('id').single();
   if (error || !data) throw new Error('Archiviazione non riuscita. Riprova.');
 }
+// PREVENTIVI-LINEARI: i preventivi emessi (non archiviati) di un piano, per avvisare prima di
+// cambiare una voce già preventivata. Solo lettura.
+export async function preventiviEmessiPiano(client, pianoId) {
+  const { studioId } = await quoteIdentity(client);
+  const { data, error } = await client.from('preventivi').select('id,piano_id,numero,data,plan_snapshot,archiviato').eq('studio_id', studioId).eq('piano_id', pianoId).eq('archiviato', false);
+  if (error) throw new Error('Non riesco a leggere i preventivi già preparati per questo piano.');
+  return data || [];
+}
 export function quoteTotal(row) { return totaliPreventivo(row.plan_snapshot).totale; }

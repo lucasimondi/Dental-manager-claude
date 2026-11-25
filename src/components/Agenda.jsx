@@ -698,7 +698,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     setModal(true);
   };
 
-  const [bookingSaving,setBookingSaving] = useState(false),[bookingUncertain,setBookingUncertain] = useState(false),[bookingError,setBookingError] = useState('');
+  const [bookingSaving,setBookingSaving] = useState(false),[bookingUncertain,setBookingUncertain] = useState(false),[bookingError,setBookingError] = useState(''),[bookingGiaPreventivata,setBookingGiaPreventivata] = useState(false);
   const bookingLock = useRef(false);
   const bookingPlans = plans.filter(p=>String(p.pazienteId)===String(form.pazienteId) && ['attivo','accettato'].includes(p.stato));
   const chiudiModalApp = () => { if(bookingLock.current)return;setModal(false); clearFormDraft(); };
@@ -850,17 +850,17 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
     return out;
   };
 
-  const save = async () => {
+  const save = async (confermaGiaPreventivate = false) => {
     if (!form.pazienteId || bookingLock.current || bookingUncertain) return;
     let bookingSkipped = 0;
     const hasTreatment = [form.bookingDescription,form.bookingPrice,form.bookingTooth].some(v=>String(v ?? '').trim());
     if (hasTreatment) {
       if (!onSaveBookingTreatment) {setBookingError('Salvataggio prestazioni non disponibile.');return;}
-      bookingLock.current=true;setBookingSaving(true);setBookingError('');
+      bookingLock.current=true;setBookingSaving(true);setBookingError('');setBookingGiaPreventivata(false);
       try {
-        const result = await onSaveBookingTreatment({patientId:form.pazienteId,row:{description:form.bookingDescription || '',price:form.bookingPrice ?? '',tooth:form.bookingTooth || ''},planId:form.bookingPlanId || 'auto'});
+        const result = await onSaveBookingTreatment({patientId:form.pazienteId,row:{description:form.bookingDescription || '',price:form.bookingPrice ?? '',tooth:form.bookingTooth || '',confermaGiaPreventivate:confermaGiaPreventivate === true},planId:form.bookingPlanId || 'auto'});
         bookingSkipped = result?.skipped || 0;
-      } catch(error) {setBookingError(error.message);setBookingUncertain(!!error.writesStarted);return;}
+      } catch(error) {setBookingError(error.message);setBookingUncertain(!!error.writesStarted);setBookingGiaPreventivata(error.code === 'GIA_PREVENTIVATE');return;}
       finally {bookingLock.current=false;setBookingSaving(false);}
     }
     // form.operatoreId/poltronaId sono persistiti in localStorage (bozza) e possono
@@ -1537,7 +1537,7 @@ export default function Agenda({ patients, setPatients, appointments, setAppoint
             </Fld>
           )}
           </fieldset>
-          {bookingError && <p role="alert" className="appointment-save-error">{bookingError}{bookingUncertain && ' Verifica il piano prima di riaprire la prenotazione.'}</p>}
+          {bookingError && <p role="alert" className="appointment-save-error" style={{ whiteSpace: 'pre-line' }}>{bookingError}{bookingUncertain && ' Verifica il piano prima di riaprire la prenotazione.'}</p>}{bookingGiaPreventivata && <button type="button" className="appointment-save-anyway" disabled={bookingSaving} onClick={() => save(true)}>Aggiungi comunque e salva</button>}
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             {editApp && <Btn ch="Elimina" v="dan" dis={bookingSaving} onClick={() => { del(editApp.id); clearFormDraft(); setModal(false); }} />}
             <Btn ch="Annulla" v="sec" onClick={chiudiModalApp} full />

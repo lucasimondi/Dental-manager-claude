@@ -3,6 +3,7 @@
 // distruttive e univoche si eseguono direttamente; conflitti/duplicati
 // fermano il flusso e richiedono conferma o chiarimento.
 import { studioToday } from './confirmation.js';
+import { giaPreventivate, messaggioGiaPreventivate } from '../_shared/preventivoValidita.js';
 
 export const PIANI_WRITES = new Set(['crea_piano_cura','imposta_stato_piano','segna_prestazione_eseguita','aggiungi_prestazione_piano']);
 
@@ -113,13 +114,16 @@ export async function preparePiani(client,name,input={},studioId,observed){
     if(!['pct','valore'].includes(scontoTipo)||(scontoTipo==='pct'&&sconto>100)) throw new Error('Sconto non valido.');
     const data=input.data??studioToday(); if(!validaData(data)) throw new Error('Data del piano non valida.');
     const scadenza=input.scadenza_pagamento||''; if(scadenza&&!validaData(scadenza)) throw new Error('Scadenza pagamento non valida.');
-    const {data:simili,error:es}=await client.from('plans').select('id, titolo, data, stato').eq('studio_id',studioId).eq('paziente_id',paz.id).eq('titolo',titolo).limit(3);
+    // PREVENTIVI-LINEARI: tutti i piani del paziente, per il titolo uguale e per le cure già preventivate.
+    const {data:pianiPaz,error:es}=await client.from('plans').select('id, titolo, data, stato, voci, paziente_id').eq('studio_id',studioId).eq('paziente_id',paz.id).limit(500);
     if(es) throw new Error('Non riesco a verificare i piani esistenti. Nessuna modifica eseguita.');
+    const simili=(pianiPaz||[]).filter((p)=>p.titolo===titolo);
+    const doppie=giaPreventivate(pianiPaz||[],paz.id,voci);
     const t=totale(voci,sconto,scontoTipo);
     const dati={paziente_id:paz.id,titolo,data,voci,stato:'attivo',sconto,sconto_tipo:scontoTipo,scadenza_pagamento:scadenza||null};
     const righe=voci.map((v,i)=>`${i+1}. ${v.prestazione}${v.dente?` — dente ${v.dente}`:''}: ${euro(v.prezzo)}`);
     const corpo=[`Paziente: ${chi}`,`Piano: ${titolo}`,...righe,`Subtotale: ${euro(t.sub)}`,sconto?`Sconto: ${scontoTipo==='pct'?sconto+'%':euro(sconto)}`:null,`Totale: ${euro(t.finale)}`,scadenza?`Scadenza pagamento: ${scadenza}`:null].filter(Boolean).join('\n');
-    const avviso=simili?.length?`Attenzione: ${chi} ha già un piano chiamato “${titolo}”.`:null;
+    const avviso=[simili.length&&!doppie.length?`Attenzione: ${chi} ha già un piano chiamato “${titolo}”.`:'',doppie.length?`Attenzione: ${messaggioGiaPreventivate(doppie)}`:''].filter(Boolean).join('\n')||null;
     return {dati,avviso,paziente:{id:paz.id,nome:paz.nome,cognome:paz.cognome},summary:`Crea piano di cura\n${corpo}${avviso?`\n${avviso}`:''}`,done:`Piano di cura e preventivo creati (in Preventivi e nella scheda del paziente, in attesa)\n${corpo}`};
   }
 
@@ -131,13 +135,17 @@ export async function preparePiani(client,name,input={},studioId,observed){
     if(!prestazione) throw new Error('Prestazione mancante.');
     const prezzo=numeroEuro(input.prezzo);
     const dente=input.dente?String(input.dente).trim().slice(0,30):'';
-    const duplicata=(plan.voci||[]).find((v)=>String(v.prestazione||'').trim().toLocaleLowerCase('it-IT')===prestazione.toLocaleLowerCase('it-IT') && String(v.dente||'')===dente);
+    // PREVENTIVI-LINEARI: stessa cura sullo stesso dente in un piano aperto del paziente, anche con un nome diverso.
+    const {data:pianiPaz,error:es}=await client.from('plans').select('id, titolo, data, stato, voci, paziente_id').eq('studio_id',studioId).eq('paziente_id',paz.id).limit(500);
+    if(es) throw new Error('Non riesco a verificare i piani esistenti. Nessuna modifica eseguita.');
+    const altri=(Array.isArray(pianiPaz)?pianiPaz:[]).filter((p)=>String(p.id)!==String(plan.id));
+    const doppie=giaPreventivate([{...plan,paziente_id:paz.id},...altri],paz.id,[{prestazione,dente,prezzo}]);
     const nuova={prestazione,dente,prezzo,eseguita:false,incassata:false};
     const nuove=[...(plan.voci||[]),nuova];
     const corpo=`Paziente: ${chi}\nPiano: ${plan.titolo}\nPrestazione: ${prestazione}${dente?` — dente ${dente}`:''}\nPrezzo: ${euro(prezzo)}`;
     return {
       dati:{piano_id:plan.id,voci:nuove}, before:{voci:plan.voci||[]},
-      avviso:duplicata?`Attenzione: nel piano “${plan.titolo}” esiste già “${prestazione}”${dente?` sul dente ${dente}`:''}.`:null,
+      avviso:doppie.length?`Attenzione: ${messaggioGiaPreventivate(doppie)}`:null,
       summary:`Aggiungi prestazione\n${corpo}`, done:`Prestazione aggiunta\n${corpo}`,
     };
   }
