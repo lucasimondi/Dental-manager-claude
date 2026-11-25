@@ -5080,3 +5080,7 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - DB: table `miei_dati` created in production (additive, owner RLS) and 6 cards inserted from archive data. Tests: npm test 1993/1993, build:personal PASS, visual PASS.
 - Risks: values typed in quick succession on two cards save separately (per-card debounce); data extracted from documents may be outdated (notes say what to verify).
 - Next action: PO checks the data in the preview and fills the empty fields; "Mergia" or feedback.
+
+## 2026-11-25 — POL-VITA-ORDINA revisione dei 380 dubbi (Claude Code)
+- Branch `ccr-0048318b-bd5a9c`. Solo dati (Supabase `archivio-documenti`): 7 categorie nuove, 374 righe di `piano_riordino` riclassificate (233 approvate, 91 proposte, 50 restano in «99» come Senza contenuto o Possibili clinici; 6 righe lasciate in Dubbi). Dettagli: `docs/architecture/pol-vita-ordina.md` § Revisione dei 380 dubbi.
+- Drive non toccato. EXACT NEXT ACTION: Luca guarda le 91 righe gialle in «Riordino» e lancia «Sposta i prossimi 100» (≈ 3 lotti, compresi i 60 duplicati).

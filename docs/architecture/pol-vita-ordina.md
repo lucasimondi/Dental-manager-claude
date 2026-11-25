@@ -188,6 +188,13 @@ Su indicazione di Luca («Fallo tu senza api») la classificazione l'ha fatta Cl
   - 347 cartelle di destinazione, al massimo 4 livelli;
   - confidenza: 1.789 righe a 0,85 o più, 4.881 fra 0,60 e 0,85.
 
+### Revisione dei 380 dubbi (2026-11-25, Claude Code; Luca: «Sì, rivedi tu i 380 dubbi»)
+- Letti uno per uno (titolo, mittente, oggetto, inizio del testo; mai file clinici aperti). Righe aggiornate in `piano_riordino` con `motivo = 'revisione dei dubbi (Claude Code, 2026-11-25)'`.
+- Cartelle nuove in `categorie`: 01/Anna Simondi, 06/Multe, 06/Officine e riparazioni, 08/Famiglia/Assistenza anziani, 12/Letture e articoli, 12/Società e progetti/Proposte e opportunità, 99/Senza contenuto.
+- Esito: 324 righe hanno una cartella vera; **233 approvate** (confidenza ≥ 0,70, su delega di Luca come nella revisione del 22/11), **91 proposte** (0,60–0,69, gialle in «Riordino», da confermare).
+- Restano in «99», non si spostano: 30 «Senza contenuto» (scansioni vuote, file illeggibili, spam, file di collaudo), 20 nuovi «Possibili documenti clinici» (prescrizioni di laboratorio, referti, ricette e certificati di terzi; totale 40), 6 «Dubbi» (foto e deleghe di terzi senza contesto).
+- Nessun file spostato o rinominato su Drive: lo spostamento parte da «Sposta i prossimi 100» nell'app (anche i 60 duplicati approvati).
+
 ## Fase 3 — esecuzione su Drive (2026-11-22)
 - **Migrazione** `20261122200000_pol_vita_ordina_esecuzione.sql`, già applicata, additiva:
   - `cartelle_mie.categoria_id`: le cartelle della tassonomia sono cartelle dell'app con la loro gemella su Drive, quindi lo stesso albero 1:1;
