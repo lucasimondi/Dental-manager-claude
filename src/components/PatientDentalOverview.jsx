@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { DENTAL_QUADRANTS, DENTAL_SELECTION_GROUPS, dentalEntryTeeth, patientDentalOverview, toggleDentalGroup } from '../lib/patientDentalOverview.js';
 import { fmt, fmtD } from '../lib/utils';
 import { markTreatmentItemCompleted, paidOnPlan, removeTreatmentItem, treatmentItemRemovalMessage, updateTreatmentItem } from '../lib/domain/treatmentPlanService.js';
+import AvvisoPreventivo, { useAvvisoPreventivo } from './AvvisoPreventivo.jsx';
 import './PatientDentalOverview.css';
 
 function ToothGlyph({ tooth }) {
@@ -19,6 +20,7 @@ export default function PatientDentalOverview({ patientId, plans, payments, onAd
   // selezionabili tutte insieme o una ad una e con un tasto si genera"): ogni riga si spunta da sola
   // (mai gruppi che ne spuntano altre), «Tutte» spunta quelle in vista; «Modifica» cambia nome, dente e prezzo.
   const [picked,setPicked] = useState([]), [modifica,setModifica] = useState(null), [azioni,setAzioni] = useState(null);
+  const avvisoPrev = useAvvisoPreventivo();
   const canAdd = typeof onAddTreatment === 'function', canQuote = typeof onCreateQuote === 'function';
   // PO 2026-11-10: toccando un dente con prestazioni da fare si vedono subito quelle, ognuna col tasto «Eseguito».
   const toggle = d => { if (!selected.includes(d) && model.teeth[d]?.pending > 0) setFilter('pending'); setSelected(s => s.includes(d) ? s.filter(t=>t!==d) : [...s,d].sort((a,b)=>a-b)); };
@@ -36,16 +38,25 @@ export default function PatientDentalOverview({ patientId, plans, payments, onAd
   const chiediElimina = row => { const plan = voceDi(row); if (plan) { setModifica(null); setConferma({ key: row.key, messaggio: treatmentItemRemovalMessage(plan, row.itemIndex, paidOnPlan(payments, plan.id)) }); } };
   const elimina = row => {
     setConferma(null);
-    if (!voceDi(row)) return;
-    setPlans?.(cur => cur.map(p => String(p.id) === String(row.planId) ? removeTreatmentItem(p, row.itemIndex) : p));
-    setPicked([]); // gli indici delle voci successive cambiano: la spunta riparte da zero
+    const prima = voceDi(row);
+    if (!prima) return;
+    // PREVENTIVI-LINEARI: se la voce è in un preventivo già preparato, prima lo si dice.
+    avvisoPrev.chiedi({ chiave: row.key, prima, dopo: removeTreatmentItem(prima, row.itemIndex), applica: () => {
+      setPlans?.(cur => cur.map(p => String(p.id) === String(row.planId) ? removeTreatmentItem(p, row.itemIndex) : p));
+      setPicked([]); // gli indici delle voci successive cambiano: la spunta riparte da zero
+    } });
   };
   const apriModifica = row => { setConferma(null); setModifica({ key: row.key, prestazione: row.name, dente: row.dente || '', prezzo: String(row.price) }); };
   const salvaModifica = row => {
-    if (!modifica?.prestazione.trim() || !voceDi(row)) return;
+    const prima = voceDi(row);
+    if (!modifica?.prestazione.trim() || !prima) return;
     const { prestazione, dente, prezzo } = modifica;
-    setPlans?.(cur => cur.map(p => String(p.id) === String(row.planId) ? updateTreatmentItem(p, row.itemIndex, { prestazione, dente, prezzo }) : p));
-    setModifica(null);
+    const dopo = updateTreatmentItem(prima, row.itemIndex, { prestazione, dente, prezzo }), voce = dopo.voci[row.itemIndex], vecchia = prima.voci[row.itemIndex];
+    const altraCura = voce.prestazione !== vecchia.prestazione || String(voce.dente || '') !== String(vecchia.dente || '');
+    avvisoPrev.chiedi({ chiave: row.key, prima, dopo, plans, pazienteId: patientId, nuove: altraCura ? [voce] : [], escludi: [{ pianoId: prima.id, indice: row.itemIndex }], applica: () => {
+      setPlans?.(cur => cur.map(p => String(p.id) === String(row.planId) ? updateTreatmentItem(p, row.itemIndex, { prestazione, dente, prezzo }) : p));
+      setModifica(null);
+    } });
   };
   const open = handler => handler?.({tooth:dentalEntryTeeth(selected)});
   const tutte = [...model.pending.map(r => ({ ...r, kind: 'pending' })), ...model.done.map(r => ({ ...r, kind: 'done' }))];
@@ -78,6 +89,7 @@ export default function PatientDentalOverview({ patientId, plans, payments, onAd
   };
   const renderRow = row => {
         const etichetta = `${row.name}${row.site !== 'Generale' ? ` sul ${row.site}` : ''}`, on = picked.includes(row.key);
+        if (avvisoPrev.avviso?.chiave === row.key) return <li key={row.key} className="patient-dental-edit" role="group" aria-label={`Avviso su ${etichetta}`}><AvvisoPreventivo avviso={avvisoPrev.avviso} onConferma={avvisoPrev.conferma} onAnnulla={avvisoPrev.annulla} /></li>;
         if (conferma?.key === row.key) return <li key={row.key} className="patient-dental-confirm" role="alertdialog" aria-label={`Cancellare ${etichetta}?`}><div><strong>Cancellare «{etichetta}»?</strong><small>{conferma.messaggio === 'Rimuovere questa prestazione dal piano?' ? row.planTitle : conferma.messaggio}</small></div><button type="button" className="patient-dental-confirm-no" onClick={()=>setConferma(null)}>Annulla</button><button type="button" className="patient-dental-confirm-yes" onClick={()=>elimina(row)}>Cancella</button></li>;
         if (modifica?.key === row.key) return <li key={row.key} className="patient-dental-edit" role="group" aria-label={`Modifica ${etichetta}`}>
           <div className="patient-dental-edit-fields">

@@ -418,7 +418,7 @@ export default function SchedaPaz({ paz, plans, payments, appointments, si, onCl
           </div>
         )}
 
-        {tab === 'preventivi' && <Preventivi patient={paz} plans={plans} si={si} />}
+        {tab === 'preventivi' && <Preventivi patient={paz} plans={plans} setPlans={setPlans} si={si} />}
         {tab === 'piani' && renderPianiSection()}
 
         {tab === 'paga' && renderPagamentiSection()}

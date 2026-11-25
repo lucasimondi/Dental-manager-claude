@@ -10,13 +10,15 @@ import { patientEntryViewport } from '../lib/patientEntryPresentation.js';
 import './PatientPlanEntry.css';
 import QuoteDeliveryActions from './QuoteDeliveryActions.jsx';
 import { preparePatientEntry } from '../lib/appointmentEntry.js';
-import { archivePreventivo, quoteRequestId } from '../lib/preventivi.js';
+import { archivePreventivo, quoteRequestId, preventiviEmessiPiano } from '../lib/preventivi.js';
+import { applicaVociAlPiano, preventiviResiNonValidi } from '../lib/domain/preventivoValidita.js';
+import { updateTreatmentItem } from '../lib/domain/treatmentPlanService.js';
 import { supabase } from '../lib/supabase.js';
 import { dentalEntryTeeth } from '../lib/patientDentalOverview.js';
 import { expandRowsPerTooth, isMultiToothRow, rowsByTooth, toothList } from '../lib/patientToothEntry.js';
 
 const blankRow = () => ({ description: '', price: '', tooth: '' });
-export default function PatientPlanEntry({ patient, mode, initialTooth = '', plans = [], pricelist = [], si, onSave, onClose, documentClient = supabase, sourcePlan, sourceRefs = null, sourcePlans: refPlans = [], onUpdateSourcePrices }) {
+export default function PatientPlanEntry({ patient, mode, initialTooth = '', plans = [], pricelist = [], si, onSave, onClose, documentClient = supabase, sourcePlan, sourceRefs = null, sourcePlans: refPlans = [], onUpdateSourcePrices, onUpdateSourcePlan }) {
   const quote = mode === 'quote';
   const seedTeeth = dentalEntryTeeth(initialTooth), fromChart = !!seedTeeth;
   const eligible = plans.filter(p => String(p.pazienteId) === String(patient.id) && ['attivo', 'accettato'].includes(p.stato));
@@ -37,7 +39,8 @@ export default function PatientPlanEntry({ patient, mode, initialTooth = '', pla
   const [discount, setDiscount] = useState(selection ? '' : sourcePlan?.sconto || ''), [discountType, setDiscountType] = useState(sourcePlan?.scontoTipo === 'pct' || !sourcePlan?.scontoTipo ? 'pct' : 'eur');
   const [title, setTitle] = useState(selection && multiPlan ? 'Preventivo' : sourcePlan?.titolo || (quote ? 'Preventivo' : 'Prestazioni occasionali'));
   const [saving, setSaving] = useState(false), [uncertain, setUncertain] = useState(false);
-  const [error, setError] = useState(''), [success, setSuccess] = useState(null);
+  const [error, setError] = useState(''), [success, setSuccess] = useState(null), [giaPreventivate, setGiaPreventivate] = useState(false);
+  const confermaDoppie = useRef(false);
   const [pdf, setPdf] = useState(null), [typing, setTyping] = useState(false);
   const [viewport, setViewport] = useState(() => patientEntryViewport(window.visualViewport, window.innerHeight));
   const locked = useRef(false), shellRef = useRef(null), scrollRef = useRef(null), titleRef = useRef(null), inputRef = useRef(null), errorRef = useRef(null);
@@ -103,9 +106,9 @@ export default function PatientPlanEntry({ patient, mode, initialTooth = '', pla
     if (success) return success;
     if (locked.current || uncertain) return;
     if (!rowCount) { setError('Inserisci almeno una prestazione.'); return; }
-    locked.current = true; setSaving(true); setError('');
+    locked.current = true; setSaving(true); setError(''); setGiaPreventivate(false);
     try {
-      const draft = { items: quote ? [] : savedRows, quoteItems: quote ? savedRows : [], planId, planTitle: title, quoteTitle: title, amount: '', quoteDiscount: discount, quoteDiscountType: discountType, implantPreset: !si?.vertical || si.vertical === 'dentistico' };
+      const draft = { items: quote ? [] : savedRows, quoteItems: quote ? savedRows : [], planId, planTitle: title, quoteTitle: title, amount: '', quoteDiscount: discount, quoteDiscountType: discountType, implantPreset: !si?.vertical || si.vertical === 'dentistico', confermaGiaPreventivate: confermaDoppie.current };
       let result;
       if (quote && sourceId) {
         const source = sourcePlans.find(p=>String(p.id)===sourceId && String(p.pazienteId)===String(patient.id));
@@ -113,14 +116,36 @@ export default function PatientPlanEntry({ patient, mode, initialTooth = '', pla
         const proposed = preparePatientEntry({ patient, plans: [], draft }).quote;
         if (!proposed) throw new Error('Inserisci almeno una prestazione.');
         const documentPlan = {...proposed,id:source.id};
-        let pricesUpdated = 0;
+        let pricesUpdated = 0, planUpdated = 0, superati = [];
+        // PREVENTIVI-LINEARI: i preventivi già preparati che questa nuova versione rende non più validi.
+        const superatiDa = async (prima, dopo) => { try { return preventiviResiNonValidi(await preventiviEmessiPiano(documentClient, prima.id), prima, dopo); } catch { return []; } };
         if (selection && onUpdateSourcePrices) {
           const changes = rows.filter(r => Number.isInteger(r.sourceIndex) && voceRef({ planId: r.sourcePlanId, index: r.sourceIndex }))
             .map(r => { const v = voceRef({ planId: r.sourcePlanId, index: r.sourceIndex }); return { planId: r.sourcePlanId, index: r.sourceIndex, prezzo: Number(r.price) || 0, prestazione: v.prestazione || 'Prestazione', prima: Number(v.prezzo) || 0 }; })
             .filter(c => c.prezzo !== c.prima);
-          if (changes.length) { onUpdateSourcePrices(changes); pricesUpdated = changes.length; }
+          if (changes.length) {
+            for (const id of new Set(changes.map(c => String(c.planId)))) {
+              const prima = refPlans.find(p => String(p.id) === id); if (!prima) continue;
+              const dopo = changes.filter(c => String(c.planId) === id).reduce((pl, c) => updateTreatmentItem(pl, c.index, { prezzo: c.prezzo }), prima);
+              superati.push(...await superatiDa(prima, dopo));
+            }
+            onUpdateSourcePrices(changes); pricesUpdated = changes.length;
+          }
+        } else if (!selection && onUpdateSourcePlan) {
+          // «Modifica / nuova versione»: quello che va nel documento diventa il piano, senza un piano doppio.
+          const prima = plans.find(p => String(p.id) === String(source.id) && String(p.pazienteId) === String(patient.id));
+          if (prima) {
+            const applied = applicaVociAlPiano(prima, proposed.voci);
+            const tutte = applied.piano.voci.every(v => v.eseguita || proposed.voci.some(r => r.prestazione === v.prestazione && String(r.dente || '') === String(v.dente || '')));
+            const dopo = tutte ? { ...applied.piano, sconto: proposed.sconto, scontoTipo: proposed.scontoTipo } : applied.piano;
+            const scontoCambiato = tutte && (Number(prima.sconto) || 0) !== (Number(proposed.sconto) || 0);
+            if (applied.cambiate || applied.aggiunte || scontoCambiato) {
+              superati = await superatiDa(prima, dopo);
+              onUpdateSourcePlan(dopo); planUpdated = applied.cambiate + applied.aggiunte + (scontoCambiato ? 1 : 0);
+            }
+          }
         }
-        result = { quoteId: source.id, savedPlans: [documentPlan], documentOnly: true, pricesUpdated };
+        result = { quoteId: source.id, savedPlans: [documentPlan], documentOnly: true, pricesUpdated, planUpdated, superati };
       } else result = await onSave(draft);
       inputRef.current?.blur(); setTyping(false);
       const savedPlans = result.savedPlans?.length ? result.savedPlans : [result.savedPlan || plans.find(p => String(p.id) === String(result.treatmentId))].filter(Boolean);
@@ -132,9 +157,9 @@ export default function PatientPlanEntry({ patient, mode, initialTooth = '', pla
       titleRef.current?.focus({ preventScroll: true });
       return next;
     } catch (e) {
-      setUncertain(!!e.writesStarted);
+      setUncertain(!!e.writesStarted); setGiaPreventivate(e.code === 'GIA_PREVENTIVATE');
       setError(e.writesStarted ? `${e.completed || 0} operazioni confermate. ${e.message} Verifica il piano prima di riprovare.` : e.message);
-    } finally { locked.current = false; setSaving(false); }
+    } finally { locked.current = false; confermaDoppie.current = false; setSaving(false); }
   };
   const prepareDocument = async () => {
     documentLock.current = true;
@@ -172,7 +197,8 @@ export default function PatientPlanEntry({ patient, mode, initialTooth = '', pla
         <button type="button" className="patient-entry-close" aria-label="Chiudi" disabled={saving} onClick={close}><Ic n="x" s={20} c="currentColor" /></button>
       </header>
       <div className="patient-entry-scroll" ref={scrollRef} onFocusCapture={event => { if (event.target.matches('input,textarea')) { inputRef.current = event.target; setTyping(true); } }} onBlurCapture={event => { if (event.target === inputRef.current && !event.relatedTarget?.matches('input,textarea')) setTyping(false); }}>
-        {success ? <div className="patient-entry-success" role="status"><div className="patient-entry-success-icon"><Ic n="ok" s={28} c="currentColor" /></div><span>OPERAZIONE COMPLETATA</span><h3>{quote ? archivedDone ? 'Preventivo archiviato' : 'Voci salvate · prepara il documento' : 'Prestazioni salvate'}</h3><p>{success.skipped ? `${success.skipped} prestazioni erano già presenti nel piano e non sono state duplicate.` : success.documentOnly ? success.pricesUpdated ? `Documento preparato dal piano. ${success.pricesUpdated === 1 ? 'Il prezzo cambiato è aggiornato' : `I ${success.pricesUpdated} prezzi cambiati sono aggiornati`} anche nelle prestazioni.` : 'Documento preparato dal piano. Il piano clinico non è stato modificato.' : 'Le voci sono ora nella scheda del paziente.'}</p>
+        {success ? <div className="patient-entry-success" role="status"><div className="patient-entry-success-icon"><Ic n="ok" s={28} c="currentColor" /></div><span>OPERAZIONE COMPLETATA</span><h3>{quote ? archivedDone ? 'Preventivo archiviato' : 'Voci salvate · prepara il documento' : 'Prestazioni salvate'}</h3><p>{success.skipped ? `${success.skipped} prestazioni erano già presenti nel piano e non sono state duplicate.` : success.documentOnly ? success.planUpdated ? `Piano aggiornato con questa versione (${success.planUpdated === 1 ? '1 voce' : `${success.planUpdated} voci`}): nessun piano doppio.` : success.pricesUpdated ? `Documento preparato dal piano. ${success.pricesUpdated === 1 ? 'Il prezzo cambiato è aggiornato' : `I ${success.pricesUpdated} prezzi cambiati sono aggiornati`} anche nelle prestazioni.` : 'Documento preparato dal piano. Il piano clinico non è stato modificato.' : 'Le voci sono ora nella scheda del paziente.'}</p>
+          {success.superati?.length > 0 && <p role="alert" className="patient-entry-warning">{success.superati.length === 1 ? `Il preventivo N° ${success.superati[0].numero} preparato prima non è più valido: invia questo al suo posto.` : `I preventivi ${success.superati.map(q => `N° ${q.numero}`).join(', ')} preparati prima non sono più validi: invia questo al loro posto.`}</p>}
           {documentPlan && <>
             {success.savedPlans.length > 1 && <label className="patient-entry-option-field">Piano per il preventivo<select value={pdfPlanId} onChange={e=>setPdfPlanId(e.target.value)}>{success.savedPlans.map(p=><option key={p.id} value={p.id}>{p.titolo}</option>)}</select></label>}
             {!quote && scopeChoices}
@@ -208,7 +234,8 @@ export default function PatientPlanEntry({ patient, mode, initialTooth = '', pla
             </div></details>
           </fieldset>
         </>}
-        {error && <p ref={errorRef} tabIndex={-1} role="alert" className="patient-entry-error">{error}</p>}
+        {error && <p ref={errorRef} tabIndex={-1} role="alert" className="patient-entry-error" style={{ whiteSpace: 'pre-line' }}>{error}</p>}
+        {giaPreventivate && !success && <button type="button" className="patient-entry-anyway" disabled={saving} onClick={() => { confermaDoppie.current = true; setError(''); setGiaPreventivate(false); (quote ? prepareDocument() : save()).catch(e => setError(e.message)); }}>Aggiungi comunque</button>}
         <footer className="patient-entry-footer">
           {!success && <div className="patient-entry-summary"><span>{rowCount} {rowCount === 1 ? 'prestazione' : 'prestazioni'}<small>{quote ? 'Totale preventivo' : 'Totale nuove voci'}</small></span><strong>{euroIt(total)}</strong></div>}
           {(quote || success) && <QuoteDeliveryActions key={`${quoteScope}:${pdfPlanId && success?.savedPlans.length > 1 ? pdfPlanId : ''}`} disabled={saving || uncertain} prepare={prepareDocument} onPreview={setPdf} onBusyChange={busy=>{deliveryLock.current=busy;}} />}

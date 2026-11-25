@@ -71,7 +71,7 @@ export default function AppointmentWorkspace({ patient, appointment, plans = [],
   const assignment = planAssignmentForPatient(plans.filter(Boolean), patient?.id);
   const [draft,setDraft] = useState(() => ({ items:[blankRow()], planId:eligible.length === 1 ? String(eligible[0].id) : eligible.length ? '' : 'new', planTitle:'Prestazioni occasionali', amount:'', method:'Contanti', paymentPlanId:'context', paymentNote:'', quoteTitle:'Preventivo', quoteItems:[blankRow()] }));
   const [quoteEditor,setQuoteEditor] = useState(false);
-  const [medicalOpen,setMedicalOpen] = useState(false),[saving,setSaving] = useState(false),[uncertain,setUncertain] = useState(false),[message,setMessage] = useState(''),[error,setError] = useState('');
+  const [medicalOpen,setMedicalOpen] = useState(false),[saving,setSaving] = useState(false),[uncertain,setUncertain] = useState(false),[message,setMessage] = useState(''),[error,setError] = useState(''),[giaPreventivate,setGiaPreventivate] = useState(false);
   const [documentsOpen,setDocumentsOpen] = useState(false), [documentsReload,setDocumentsReload] = useState(0);
   const locked = useRef(false), listId = useId();
   const documentsRef = useRef(null), quoteRef = useRef(null), medicalRef = useRef(null), paymentRef = useRef(null);
@@ -82,20 +82,20 @@ export default function AppointmentWorkspace({ patient, appointment, plans = [],
     ref.current.querySelector('summary')?.focus({ preventScroll: true });
   };
   useEffect(() => lockPageScroll(), []);
-  const patch = value => { setDraft(v => ({ ...v,...value })); setMessage(''); setError(''); };
+  const patch = value => { setDraft(v => ({ ...v,...value })); setMessage(''); setError(''); setGiaPreventivate(false); };
   const dentist = !si?.vertical || si.vertical === 'dentistico';
   const hasImplant = dentist && [...draft.items,...draft.quoteItems].some(r=>isImplantQuoteRequest(r.description));
   const hasTreatment = draft.items.some(r=>r.description.trim() && !(dentist && isImplantQuoteRequest(r.description)));
   if (!patient?.id || String(appointment?.pazienteId) !== String(patient.id)) return null;
-  const save = async close => {
+  const save = async (close, confermaGiaPreventivate = false) => {
     if (locked.current || uncertain) return;
-    locked.current = true; setSaving(true); onBusyChange(true); setError(''); setMessage('');
+    locked.current = true; setSaving(true); onBusyChange(true); setError(''); setMessage(''); setGiaPreventivate(false);
     try {
-      const result = await onSave({...draft, implantPreset:dentist});
+      const result = await onSave({...draft, implantPreset:dentist, confermaGiaPreventivate});
       setDraft(v => ({ ...v, items:[blankRow()], ...(result.treatmentId ? {planId:String(result.treatmentId)} : {}), quoteItems:[blankRow()], amount:'', paymentNote:'', paymentPlanId:'context' }));
       if (close) onClose(); else setMessage(result.skipped ? `Salvato. ${result.skipped} prestazioni già presenti nel piano: non duplicate.` : result.completed ? 'Dati salvati.' : 'Nessun dato da salvare.');
     } catch(e) {
-      setUncertain(!!e.writesStarted);
+      setUncertain(!!e.writesStarted); setGiaPreventivate(e.code === 'GIA_PREVENTIVATE');
       setError(e.writesStarted ? `${e.completed || 0} operazioni confermate. ${e.message} Verifica i dati salvati prima di ripetere: nessun nuovo invio automatico.` : e.message);
     } finally { locked.current=false;setSaving(false);onBusyChange(false); }
   };
@@ -117,7 +117,7 @@ export default function AppointmentWorkspace({ patient, appointment, plans = [],
       <details ref={medicalRef} className="appointment-form-section" onToggle={e=>{if(e.currentTarget.open)setMedicalOpen(true)}}><summary><span>Ricetta e documenti</span><small>Compila qui</small></summary><div className="appointment-section-fields">{medicalOpen && <Suspense fallback={<p role="status">Caricamento campi documento…</p>}><DocMedico onDocumentSaved={()=>setDocumentsReload(v=>v+1)} paz={patient} si={si} initialType="ricetta" embedded renderInline={api=><MedicalFields api={api} patient={patient} />} /></Suspense>}</div></details>
       <details ref={quoteRef} className="appointment-form-section"><summary><span>Preventivo</span><small>Manuale o listino</small></summary><div className="appointment-section-fields"><Field label="Titolo preventivo"><input value={draft.quoteTitle} onChange={e=>patch({quoteTitle:e.target.value})} /></Field><EntryRows rows={draft.quoteItems} onChange={quoteItems=>patch({quoteItems})} listId={listId} pricelist={pricelist} dentist={dentist} name="Voce preventivo" /></div></details>
     </fieldset>
-    {error && <p className="appointment-save-error" role="alert">{error}</p>}{message && <p role="status">{message}</p>}
+    {error && <p className="appointment-save-error" role="alert" style={{ whiteSpace: 'pre-line' }}>{error}</p>}{giaPreventivate && <button type="button" className="appointment-save-anyway" disabled={saving} onClick={()=>save(false,true)}>Aggiungi comunque</button>}{message && <p role="status">{message}</p>}
     {quoteEditor && <Suspense fallback={<p role="status">Apertura preventivo…</p>}><PatientPlanEntry patient={patient} mode="quote" plans={plans} pricelist={pricelist} si={si} documentClient={documentClient} onSave={onSave} onClose={()=>{setQuoteEditor(false);setDocumentsReload(v=>v+1);}} /></Suspense>}
     <div className="appointment-save-bar"><button type="button" className="appointment-secondary-button" disabled={saving || uncertain} onClick={()=>save(false)}>{saving?'Salvataggio…':'Salva'}</button><button type="button" className="appointment-primary-button" disabled={saving || uncertain} onClick={()=>save(true)}>Salva e chiudi</button></div>
   </section>;

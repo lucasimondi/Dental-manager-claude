@@ -26,3 +26,12 @@ test('empty plans are refused',async()=>{await assert.rejects(()=>preparePiani(c
 test('invalid discounts are refused',async()=>{await assert.rejects(()=>preparePiani(client(),'crea_piano_cura',{...input,sconto:101},'studio',observed),/Sconto/)});
 test('duplicate title produces warning',async()=>{const p=await preparePiani(client({similar:[{id:1,titolo:input.titolo}]}),'crea_piano_cura',input,'studio',observed);assert.match(p.avviso,/già un piano/)});
 test('execute writes only the confirmed proposal',async()=>{const prepared=await preparePiani(client(),'crea_piano_cura',input,'studio',observed);const out=await executePiani(client(),{id:'claim',studioId:'studio',userId:'user',piani:prepared});assert.deepEqual(out.changed,['plans']);assert.equal(out.records.plans[0]?.titolo ?? out.records.plans[0]?.data?.titolo ?? input.titolo,input.titolo)});
+
+// PREVENTIVI-LINEARI (PO 2026-11-25): un nuovo preventivo con cure già preventivate in un altro piano aperto chiede conferma.
+test('new plan with cures already quoted in another open plan produces a warning',async()=>{
+  const aperto={id:41,titolo:'Preventivo',data:'2026-11-25',stato:'attivo',paziente_id:7,voci:[{prestazione:'Impianto osteointegrato',dente:'16',prezzo:900,eseguita:false}]};
+  const p=await preparePiani(client({similar:[aperto]}),'crea_piano_cura',input,'studio',observed);
+  assert.match(p.avviso,/Impianto sul 16: già in «Preventivo» del 25\/11\/2026/);
+  const fatto=await preparePiani(client({similar:[{...aperto,voci:[{...aperto.voci[0],eseguita:true}]}]}),'crea_piano_cura',input,'studio',observed);
+  assert.equal(fatto.avviso,null);
+});

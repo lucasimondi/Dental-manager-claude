@@ -19,7 +19,7 @@ test('updateTreatmentItem changes only the given fields of one voce and keeps th
 });
 
 test('Piani «Modifica» and Denti e cure «Modifica» use the same shared rule', () => {
-  assert.match(read('../src/components/PianoDrillDown.jsx'), /updateTreatmentItem\(pl, editingVoce\.index, editVoceForm\)/);
+  assert.match(read('../src/components/PianoDrillDown.jsx'), /updateTreatmentItem\(pl, index, form\)/);
   const overview = read('../src/components/PatientDentalOverview.jsx');
   assert.match(overview, /updateTreatmentItem\(p, row\.itemIndex, \{ prestazione, dente, prezzo \}\)/);
   assert.match(overview, /className="patient-dental-edit-button"/);

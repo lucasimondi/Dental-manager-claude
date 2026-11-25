@@ -36,3 +36,9 @@
 .patient-entry-panel.is-quote .patient-entry-success h3 { font-size:21px; }
 .patient-entry-panel.is-quote .patient-entry-saved-summary { margin:15px 0 0; padding:14px; }
 .patient-entry-panel.is-quote .patient-entry-footer > .patient-entry-footer-actions .patient-entry-save { background:#fff; color:#4d6a81; border-color:#d6e2eb; box-shadow:none; font-size:12px; }
+
+/* PREVENTIVI-LINEARI: validità del preventivo rispetto al piano di oggi. */
+.quote-validity{margin:6px 0 0;font-size:12px;line-height:1.35}
+.quote-validity.is-valid{color:#1f7a4d}
+.quote-validity.is-stale{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:10px;background:#fdecea;color:#8a1c12}
+.quote-validity.is-stale strong{font-size:12px;letter-spacing:.02em;text-transform:uppercase}
