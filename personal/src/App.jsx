@@ -26,6 +26,8 @@ import { differito } from './Differito.jsx';
 const FoglioAggiungi = differito(() => import('./Aggiungi.jsx'), 'FoglioAggiungi');
 const Scan = differito(() => import('./scan/Scan.jsx'), 'Scan'); // SCAN-HOME: l'app «Scan» della Home
 import { eScan } from './lib/scan.js';
+import { appCosaDaIndirizzo } from './lib/appCose.js';
+const AppSola = differito(() => import('./cose/AppSola.jsx'), 'AppSola'); // APP-AUTO-CASA-SALUTE: app a sé
 import { INGRESSI, PAGINE_AGGIUNGI, LIVELLI_AGGIUNGI, voceDaIndirizzo } from './lib/ingressi.js';
 import { Accesso, NuovaPassword } from './Accesso.jsx';
 import { sezione, pagina, titoloPagina } from './sezioni/index.js';
@@ -183,5 +185,6 @@ export default function App() {
   if (sessione === undefined) return null;
   if (recupero && sessione) return <NuovaPassword onFatto={() => setRecupero(false)} />;
   if (!sessione) return <Accesso />;
+  if (appCosaDaIndirizzo()) return <AppSola id={appCosaDaIndirizzo()} />;
   return eScan() ? <Scan email={sessione.user?.email} /> : <Archivio email={sessione.user?.email} />;
 }

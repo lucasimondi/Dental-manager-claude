@@ -33,12 +33,14 @@ import {
 import gemmaPoliedron from '../../src/assets/icon-poliedra-gem.png';
 import './barra.css';
 import { IconaFinestra } from './IconeFinestre.jsx';
+import { IconaApp as IconaAppCosa } from './cose/IconeCose.jsx'; // APP-AUTO-CASA-SALUTE
 import { titoloPagina } from './sezioni/index.js';
 
 const ICONE_START = {
   oggi: IconaOggi, agenda: IconaCalendario, documenti: IconaDocumenti, dafare: IconaPerTe, conti: IconaEuro, legal: IconaPratiche,
   pratiche: IconaPratiche, personali: IconaPortafoglio, diario: IconaNote, note: IconaNote, password: IconaLucchetto, foto: IconaFoto,
   concordato: IconaPratiche, dati: IconaPortafoglio, scan: IconaScansiona,
+  auto: (p) => <IconaAppCosa ambito="auto" size={p.size + 2} />, casa: (p) => <IconaAppCosa ambito="casa" size={p.size + 2} />, salute: (p) => <IconaAppCosa ambito="salute" size={p.size + 2} />,
   google: (p) => <IconaApp tipo="google" size={p.size + 2} />, office: (p) => <IconaApp tipo="office" size={p.size + 2} />, studio: (p) => <IconaDock n="brief" s={p.size} />, impostazioni: IconaImpostazioni,
 };
 const Numero = ({ n, classe = '' }) => { const t = etichettaNumero(n); return t ? <span className={`pb-pallino ${classe}`} aria-hidden="true">{t}</span> : null; };

@@ -198,3 +198,12 @@
 }
 @media (min-width: 720px) { .pp-schede.pp-dock { width: 390px; } }
 @media (prefers-reduced-motion: reduce) { .pp-schede.pp-dock .pp-scheda { transition: none; } }
+
+/* APP-AUTO-CASA-SALUTE: Home Personale: le tre app in evidenza. */
+.pps-app { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.pps-app-voce { display: grid; justify-items: start; align-content: start; gap: 6px; padding: 12px; border: 1px solid var(--pp-linea); border-radius: 18px; background: var(--pp-superficie); box-shadow: var(--pps-ombra); color: var(--pp-inchiostro); text-align: left; font: inherit; cursor: pointer; min-width: 0; }
+.pps-app-voce svg { border-radius: 11px; }
+.pps-app-voce strong { font-size: 14px; }
+.pps-app-voce span { font-size: 11.5px; color: var(--pp-grigio); line-height: 1.3; overflow-wrap: anywhere; }
+.pps-app-voce span.presto { color: var(--pp-ambra); font-weight: 600; }
+.pps-app-voce span.scaduta { color: var(--pp-rosso); font-weight: 600; }

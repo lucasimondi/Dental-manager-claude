@@ -11,6 +11,11 @@ import { saluto, dataBreve } from '../../ui.jsx';
 import { PER_TE } from './index.jsx';
 import { caricaCartellePratiche } from '../../lib/praticheCartelle.js';
 import { GrigliaPratiche } from '../documenti/index.jsx';
+// APP-AUTO-CASA-SALUTE: le tre app in evidenza, con la prossima scadenza.
+import { scadenzeHome, testoScadenza, AMBITI } from '../../lib/mieCose.js';
+import { IconaApp } from '../../cose/IconeCose.jsx';
+
+const APP_COSE = [['auto', 'auto'], ['casa', 'casa'], ['salute', 'saluteApp']];
 
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const SCAN = 'M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16';
@@ -58,7 +63,10 @@ export function VistaPersonale({ ctx }) {
     return () => { vivo = false; clearTimeout(timer); };
   }, [cerca, versione]);
 
-  const apriSezione = (id) => (id === 'personali' ? vai('documenti', 'personali') : vai(id));
+  const appCosa = Object.fromEntries(APP_COSE);
+  const apriSezione = (id) => (id === 'personali' ? vai('documenti', 'personali') : appCosa[id] ? apri({ tipo: appCosa[id] }) : vai(id));
+  const [cose, setCose] = useState(null);
+  useEffect(() => { let vivo = true; scadenzeHome(archivioDb).then((r) => { if (vivo) setCose(r); }).catch(() => { if (vivo) setCose(undefined); }); return () => { vivo = false; }; }, [versione]);
   const trovate = useMemo(() => (cerca ? PER_TE.filter(([, nome, , , sotto]) => norm(`${nome} ${sotto || ''}`).includes(norm(cerca))) : []), [cerca]);
 
   return (
@@ -127,6 +135,20 @@ export function VistaPersonale({ ctx }) {
             <span><strong>Scan</strong><span>Scansiona, firma, invia</span></span>
             <i aria-hidden="true">›</i>
           </button>
+
+          <section aria-label="Le tue app">
+            <h2 className="pps-titoletto">Le tue app</h2>
+            <div className="pps-app">
+              {APP_COSE.map(([id, pagina]) => {
+                const r = cose?.[id], p = r?.prossima;
+                return <button key={id} type="button" className="pps-app-voce" onClick={() => apri({ tipo: pagina })}>
+                  <IconaApp ambito={id} size={38} />
+                  <strong>{AMBITI[id].breve}</strong>
+                  <span className={p && p.stato !== 'ok' ? p.stato : ''}>{p ? `${p.voce}: ${testoScadenza(p).split(' · ').pop()}` : r?.n ? `${r.n} ${r.n === 1 ? 'scheda' : 'schede'}` : AMBITI[id].sotto.split(',')[0]}</span>
+                </button>;
+              })}
+            </div>
+          </section>
 
           <section aria-label="Il tuo spazio">
             <h2 className="pps-titoletto">Il tuo spazio</h2>

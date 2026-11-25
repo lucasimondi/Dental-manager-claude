@@ -1,5 +1,11 @@
 # Handoffs
 
+## 2026-11-25 — CLAUDE — APP-AUTO-CASA-SALUTE
+- TASK: APP-AUTO-CASA-SALUTE. BRANCH: `ccr-f99036ef-v0b9t6` from `master@da34001`. OBJECTIVE: Auto e motori, Casa, Salute as Personal apps (Home, Start, sections) and as standalone Home-screen apps.
+- FILES: `personal/src/lib/mieCose.js`, `personal/src/lib/appCose.js`, `personal/src/cose/{AppCose,AppSola,IconeCose}.jsx`, `cose.css`, `personal/src/sezioni/{auto,casa,salute}/index.jsx`, registry, Barra/Start, Personale Home, `IconeFinestre.jsx`, `App.jsx`, `main.jsx`, `personal/index.html`, `vercel.json`, `vite.config.js`, `public/{auto,casa,salute}*`, `scripts/icone-app-cose*.mjs`, `shared/altro/AltroPage.jsx` (2 icon paths), tests.
+- DATABASE: migration `20261125150000_mie_cose.sql` in repo, NOT applied (MCP confirmation unanswered). TESTS: 2000/2000, builds PASS, visual PASS.
+- NEXT ACTION: PO confirms → apply migration with the Supabase MCP → insert seed cards from archive documents → PR.
+
 ## 2026-11-23 — CLAUDE — POL-AI-GEMINI step 1 release + fix
 - Deploys after #277 and #343 had failed (Supabase CLI asks for confirmation): PR #344 adds `--yes`; manual dispatch → production `agente-assistente` v51, 26/26 files identical to master.
 - First real call: Gemini 404 NOT_FOUND on `gemini-2.5-flash` (retired). Fix: default `gemini-flash-latest`, 404 = `model_not_found` and lets Claude/OpenAI answer. Immediate workaround without deploy: secret `GEMINI_MODEL=gemini-flash-latest`.
