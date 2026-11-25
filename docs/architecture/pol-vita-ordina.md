@@ -193,7 +193,7 @@ Su indicazione di Luca («Fallo tu senza api») la classificazione l'ha fatta Cl
 - Cartelle nuove in `categorie`: 01/Anna Simondi, 06/Multe, 06/Officine e riparazioni, 08/Famiglia/Assistenza anziani, 12/Letture e articoli, 12/Società e progetti/Proposte e opportunità, 99/Senza contenuto.
 - Esito: 324 righe hanno una cartella vera; **233 approvate** (confidenza ≥ 0,70, su delega di Luca come nella revisione del 22/11), **91 proposte** (0,60–0,69, gialle in «Riordino», da confermare).
 - Restano in «99», non si spostano: 30 «Senza contenuto» (scansioni vuote, file illeggibili, spam, file di collaudo), 20 nuovi «Possibili documenti clinici» (prescrizioni di laboratorio, referti, ricette e certificati di terzi; totale 40), 6 «Dubbi» (foto e deleghe di terzi senza contesto).
-- Nessun file spostato o rinominato su Drive: lo spostamento parte da «Sposta i prossimi 100» nell'app (anche i 60 duplicati approvati).
+- Nessun file spostato o rinominato su Drive: lo spostamento parte da «Sposta i prossimi 100» nell'app. I 60 duplicati approvati restano in «99»: `esegui_lotto` prende solo righe fuori da «99».
 
 ## Fase 3 — esecuzione su Drive (2026-11-22)
 - **Migrazione** `20261122200000_pol_vita_ordina_esecuzione.sql`, già applicata, additiva:
