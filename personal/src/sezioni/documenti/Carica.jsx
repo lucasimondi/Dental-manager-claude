@@ -4,6 +4,7 @@ import { archivioDb } from '../../lib/supabasePersonal.js';
 import { caricaDocumento, pagamentoDaDocumento } from '../../lib/archivio.js';
 import { catalogaFoto } from '../../lib/foto.js';
 import { mettiInSalute } from '../../lib/salute.js';
+import { collega } from '../../lib/mieCose.js';
 import { preparaFile as preparaCaricamento } from '../../lib/file.js';
 import { tokenSessione } from '../../ui.jsx';
 import { IconaFotocamera, IconaFile, IconaScansiona } from '../../Icone.jsx';
@@ -52,6 +53,8 @@ export function PaginaCarica({ opzioni, file: fileIniziale, ctx, sostituisci }) 
         await archivioDb.from('documenti').update({ tag: [...new Set([...(d?.tag || []), ...tag])] }).eq('id', r.id);
         ricordaTipoETag(null, tag);
       }
+      // APP-AUTO-CASA-SALUTE: da una scheda di Auto, Casa o Salute il documento resta collegato a quella scheda.
+      if (r.id && opzioni.cosa?.id) await collega(archivioDb, { id: r.id }, opzioni.cosa.id, opzioni.cosa.tipo).catch(() => {});
       // Da La mia salute: il documento resta lì anche se la lettura cambia categoria.
       if (r.id && opzioni.salute) await mettiInSalute(archivioDb, r.id).catch(() => {});
       aggiorna();

@@ -1,0 +1,30 @@
+{
+  "name": "Poliedron Salute",
+  "short_name": "Salute",
+  "description": "Salute: medico, tessera sanitaria, allergie, controlli, visite ed esami",
+  "id": "/poliedron/salute/",
+  "start_url": "/poliedron/salute/",
+  "scope": "/poliedron/salute/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f2f4f7",
+  "theme_color": "#A3194B",
+  "icons": [
+    {
+      "src": "/salute-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/salute-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/salute-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

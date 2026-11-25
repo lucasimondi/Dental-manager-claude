@@ -11,9 +11,11 @@ import App from './App.jsx';
 import { isPersonalConsentPath } from './lib/oauthConsent.js';
 import OAuthConsent from './OAuthConsent.jsx';
 import { eScan, identitaScan } from './lib/scan.js';
+import { appCosaDaIndirizzo, identitaAppCosa } from './lib/appCose.js';
 
 const consenso = isPersonalConsentPath(window.location.pathname);
 if (eScan()) identitaScan(); // SCAN-HOME: nome, icona e manifest propri per l'installazione sulla Home
+if (appCosaDaIndirizzo()) identitaAppCosa(appCosaDaIndirizzo()); // APP-AUTO-CASA-SALUTE: idem per Auto, Casa, Salute
 if (!consenso) void registraIngresso().catch(() => { /* File picker remains available without service workers. */ });
 if (!consenso) applicaAspetto(document.documentElement, leggiAspetto(storageAspetto()));
 createRoot(document.getElementById('root')).render(<React.StrictMode>{consenso ? <OAuthConsent /> : <AspettoProvider><App /></AspettoProvider>}</React.StrictMode>);

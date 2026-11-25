@@ -41,6 +41,54 @@
       "destination": "/personal/index.html"
     },
     {
+      "source": "/poliedron/auto",
+      "destination": "/personal/index.html"
+    },
+    {
+      "source": "/poliedron/auto/",
+      "destination": "/personal/index.html"
+    },
+    {
+      "source": "/auto",
+      "destination": "/personal/index.html"
+    },
+    {
+      "source": "/auto/",
+      "destination": "/personal/index.html"
+    },
+    {
+      "source": "/poliedron/casa",
+      "destination": "/personal/index.html"
+    },
+    {
+      "source": "/poliedron/casa/",
+      "destination": "/personal/index.html"
+    },
+    {
+      "source": "/casa",
+      "destination": "/personal/index.html"
+    },
+    {
+      "source": "/casa/",
+      "destination": "/personal/index.html"
+    },
+    {
+      "source": "/poliedron/salute",
+      "destination": "/personal/index.html"
+    },
+    {
+      "source": "/poliedron/salute/",
+      "destination": "/personal/index.html"
+    },
+    {
+      "source": "/salute",
+      "destination": "/personal/index.html"
+    },
+    {
+      "source": "/salute/",
+      "destination": "/personal/index.html"
+    },
+    {
       "source": "/poliedron/archivio",
       "destination": "/archivio/index.html"
     },

@@ -68,6 +68,10 @@ export const AGGIUNTE = [
   { id: 'foto', nome: 'Foto', azione: { vai: 'foto' } },
   { id: 'concordato', nome: 'Concordato', azione: { vai: 'concordato' } },
   { id: 'dati', nome: 'I miei dati', azione: { vai: 'dati' } }, // MIEI-DATI
+  // APP-AUTO-CASA-SALUTE: si aprono come app (finestra), come Scan.
+  { id: 'auto', nome: 'Auto e motori', azione: { apri: { tipo: 'auto' } } },
+  { id: 'casa', nome: 'Casa', azione: { apri: { tipo: 'casa' } } },
+  { id: 'salute', nome: 'Salute', azione: { apri: { tipo: 'saluteApp' } } },
   { id: 'studio', nome: 'Studio', azione: { href: 'studio' } },
   { id: 'impostazioni', nome: 'Impostazioni', azione: { apri: { tipo: 'impostazioni' } } },
 ];
