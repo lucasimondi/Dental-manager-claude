@@ -7,6 +7,13 @@
 - FOLLOW-UP same day: documents per card (Scan / Fotografa / Allega file / link from archive, tags `cosa:<id>`), phone window scroll fix (all windows), `personal-finestre-scorre.mjs`. Tests 2001/2001.
 - NEXT ACTION: PO review of the PR → merge → Vercel deploy → install the three apps on the phone Home and verify.
 
+## 2026-11-25 — CLAUDE — PREVENTIVI-LINEARI
+- TASK: PREVENTIVI-LINEARI. BRANCH: `ccr-fd0f37d7-v2c4tn` from `master@da34001`. Details in `current-task.md`.
+- FILES: `supabase/functions/_shared/preventivoValidita.js` (new), `src/lib/domain/preventivoValidita.js` (new), `src/components/AvvisoPreventivo.jsx` (new), `src/lib/{appointmentEntry,preventivi}.js`, `src/components/{PatientPlanEntry,Preventivi,PianoDrillDown,PatientDentalOverview,Piani,AppointmentWorkspace,Agenda,PatientWorkspaceBoundary,SchedaPaz}.jsx`, `src/components/Preventivi.css`, `src/App.jsx`, `supabase/functions/agente-assistente/piani.js`, tests (`preventiviLineari` new; `agentePiani`, `agentePianiGestione`, `preventivoDaPrestazioni` updated), visual `tests/visual/preventivi-lineari.*`.
+- DATABASE: none. TESTS: 2002/2002; build + build:personal OK; visual PASS.
+- RISKS: «same cure» is a word heuristic (e.g. «Corona» vs «Corona provvisoria» on one tooth asks too); it only warns, never blocks.
+- NEXT: PO «Mergia»; deploy `agente-assistente`; PO decides what to do with the real patient's plans 41/42 (duplicated items).
+
 ## 2026-11-23 — CLAUDE — POL-AI-GEMINI step 1 release + fix
 - Deploys after #277 and #343 had failed (Supabase CLI asks for confirmation): PR #344 adds `--yes`; manual dispatch → production `agente-assistente` v51, 26/26 files identical to master.
 - First real call: Gemini 404 NOT_FOUND on `gemini-2.5-flash` (retired). Fix: default `gemini-flash-latest`, 404 = `model_not_found` and lets Claude/OpenAI answer. Immediate workaround without deploy: secret `GEMINI_MODEL=gemini-flash-latest`.

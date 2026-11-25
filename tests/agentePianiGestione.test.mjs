@@ -46,5 +46,13 @@ test('adding an unambiguous treatment item prepares an app-compatible append',as
 });
 test('possible duplicate treatment item is flagged and never silently appended',async()=>{
   const p=await preparePiani(db(plan),'aggiungi_prestazione_piano',{paziente_id:7,piano_id:22,prestazione:'Otturazione',dente:'16',prezzo:120},'s',observed);
-  assert.match(p.avviso,/esiste già/);
+  assert.match(p.avviso,/già preventivata[\s\S]*Otturazione sul 16/);
+});
+
+// PREVENTIVI-LINEARI: la stessa cura con un altro nome sullo stesso dente è segnalata, non aggiunta in silenzio.
+test('same cure with a different name on the same tooth is flagged',async()=>{
+  const p=await preparePiani(db(plan),'aggiungi_prestazione_piano',{paziente_id:7,piano_id:22,prestazione:'Otturazione composita',dente:'16',prezzo:130},'s',observed);
+  assert.match(p.avviso,/Otturazione composita sul 16: già in «Piano 2026»/);
+  const altra=await preparePiani(db(plan),'aggiungi_prestazione_piano',{paziente_id:7,piano_id:22,prestazione:'Corona',dente:'16',prezzo:300},'s',observed);
+  assert.equal(altra.avviso,null);
 });

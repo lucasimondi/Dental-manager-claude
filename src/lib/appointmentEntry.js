@@ -3,6 +3,19 @@ import { planAssignmentForPatient } from './domain/incassiActions.js';
 import { normalizza } from './ricercaPazienti.js';
 import { today } from './utils.js';
 import { expandImplantQuotes } from './domain/implantQuote.js';
+import { giaPreventivate, messaggioGiaPreventivate } from './domain/preventivoValidita.js';
+
+// PREVENTIVI-LINEARI: una cura già preventivata e non eseguita non entra una seconda volta in
+// silenzio. Errore con codice: l'interfaccia mostra l'elenco e «Salva comunque».
+export const GIA_PREVENTIVATE = 'GIA_PREVENTIVATE';
+function fermaSeGiaPreventivate(plans, patientId, voci, confermato) {
+  if (confermato || !voci.length) return;
+  const trovate = giaPreventivate(plans, patientId, voci);
+  if (!trovate.length) return;
+  const error = new Error(messaggioGiaPreventivate(trovate));
+  error.code = GIA_PREVENTIVATE; error.trovate = trovate;
+  throw error;
+}
 
 const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(k => [k, canonical(value[k])])) : value;
 const touched = row => [row.description, row.price, row.tooth].some(v => String(v || '').trim());
@@ -30,8 +43,8 @@ export function preparePatientTreatment({ patient, plans, items, planId, title }
     if (!duplicate) added.push(item);
   }
   const skipped = items.length - added.length;
-  if (!plan) return {kind:'insert',plan:buildNewPlan({pazienteId:patient.id,titolo:title?.trim() || 'Prestazioni occasionali',voci:added}),skipped};
-  return {kind:added.length ? 'update' : 'existing',plan:added.length ? {...plan,voci:[...existing,...added]} : plan,skipped};
+  if (!plan) return {kind:'insert',plan:buildNewPlan({pazienteId:patient.id,titolo:title?.trim() || 'Prestazioni occasionali',voci:added}),skipped,added};
+  return {kind:added.length ? 'update' : 'existing',plan:added.length ? {...plan,voci:[...existing,...added]} : plan,skipped,added};
 }
 
 // Booking adds a plan item independently of the existing appointment sync adapter.
@@ -42,6 +55,7 @@ export async function persistBookingTreatment({db, patientId, row, planId, onApp
     const [patient,plans] = await Promise.all([db.getById('dm_p',patientId),db.getAll('dm_pl',{throwOnError:true})]);
     if (!patient || String(patient.id) !== String(patientId)) throw new Error('Paziente non ancora verificato sul server. Attendi il salvataggio e riprova.');
     const prepared = preparePatientTreatment({patient,plans,items,planId});
+    if (prepared) fermaSeGiaPreventivate(plans, patient.id, prepared.added, row.confermaGiaPreventivate);
     if (!prepared || prepared.kind === 'existing') return {skipped:prepared?.skipped || 0};
     writesStarted = true;
     const {id,...payload} = prepared.plan;
@@ -50,7 +64,7 @@ export async function persistBookingTreatment({db, patientId, row, planId, onApp
     else { await db.update('dm_pl',id,payload); saved = await db.getById('dm_pl',id); }
     if (!saved?.id || String(saved.pazienteId) !== String(patientId) || JSON.stringify(canonical(saved.voci)) !== JSON.stringify(canonical(prepared.plan.voci))) throw new Error('Salvataggio prestazione non confermato. Verifica il piano prima di riprovare.');
     onApplied(saved); return {skipped:prepared.skipped,planId:saved.id};
-  } catch(cause) { const error = new Error(cause.message);error.writesStarted=writesStarted;throw error; }
+  } catch(cause) { const error = new Error(cause.message);error.writesStarted=writesStarted;if(cause.code)error.code=cause.code;throw error; }
 }
 
 export function prepareAppointmentEntry({ patient, appointment, plans, draft }) {
@@ -70,6 +84,7 @@ export function preparePatientEntry({ patient, plans, draft }) {
     if (!Number.isFinite(discount) || discount < 0 || !['pct','eur'].includes(type) || (type === 'pct' && discount > 100)) throw new Error('Inserisci uno sconto valido (0–100%).');
     quote = { ...buildNewPlan({ pazienteId: patient.id, titolo: draft.quoteTitle?.trim() || 'Preventivo', voci: quoteItems }), sconto: discount, scontoTipo: type };
   }
+  fermaSeGiaPreventivate(patientPlans, patient.id, [...(treatment?.added || []), ...(quote?.voci || [])], draft.confermaGiaPreventivate);
   let payment = null;
   if (String(draft.amount || '').trim()) {
     const amount = Number(draft.amount);
@@ -146,6 +161,6 @@ async function persistEntry({ db, patient, appointment, draft, onApplied }) {
     return { completed, treatmentId, quoteId, savedPlans, skipped:prepared.treatment?.skipped || 0 };
   } catch (cause) {
     const error = new Error(cause.message || 'Salvataggio non riuscito.');
-    error.writesStarted = writesStarted; error.completed = completed; throw error;
+    error.writesStarted = writesStarted; error.completed = completed; if (cause.code) error.code = cause.code; throw error;
   }
 }
