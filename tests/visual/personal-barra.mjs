@@ -41,7 +41,7 @@ try {
       const r = document.querySelector('nav.pb-barra').getBoundingClientRect();
       const ic = document.querySelector('.pb-icone').getBoundingClientRect();
       const sis = document.querySelector('.pb-sistema').getBoundingClientRect();
-      const voci = [...document.querySelectorAll('.pb-voce')].map((e) => { const b = e.getBoundingClientRect(); return { w: b.width, h: b.height, label: e.getAttribute('aria-label'), raggio: getComputedStyle(e).borderRadius }; });
+      const voci = [...document.querySelectorAll('.pb-voce')].filter((e) => e.offsetWidth > 0).map((e) => { const b = e.getBoundingClientRect(); return { w: b.width, h: b.height, label: e.getAttribute('aria-label'), raggio: getComputedStyle(e).borderRadius }; });
       const stile = getComputedStyle(document.querySelector('nav.pb-barra'));
       return { h: r.height, bottom: innerHeight - r.bottom, w: r.width, vw: innerWidth, centro: ic.left + ic.width / 2, icDestra: ic.right, sisSinistra: sis.left, sisVisibile: sis.width > 0, voci, filtro: stile.backdropFilter || stile.webkitBackdropFilter, gap: getComputedStyle(document.querySelector('.pb-icone')).columnGap };
     });
@@ -50,7 +50,7 @@ try {
     assert.equal(g.w, g.vw);
     assert.equal(g.filtro, 'blur(30px) saturate(1.5)');
     assert.equal(g.gap, g.vw <= 440 ? '2px' : '4px');
-    assert.deepEqual(g.voci.map((v) => v.label), ['Start', 'Cerca', 'Oggi, 1 urgenti', 'Agenda', 'Esplora file, 2 da gestire', 'Scan', 'Assistente', 'Personale']);
+    assert.deepEqual(g.voci.map((v) => v.label), [...(g.vw <= 440 ? ['Start'] : ['Start', 'Cerca']), 'Visualizzazione attività', 'Oggi, 1 urgenti', 'Agenda', 'Esplora file, 2 da gestire', 'Scan', 'Assistente', 'Personale']);
     for (const v of g.voci) { assert.equal(v.w, g.vw <= 440 ? 36 : 40); assert.equal(v.h, 40); assert.equal(v.raggio, '6px'); }
     assert.ok(Math.abs(g.centro - g.vw / 2) < 2, `icone centrate (${g.centro} su ${g.vw})`);
     assert.equal(g.sisVisibile, true, 'area di sistema (su mobile solo la campanella)');

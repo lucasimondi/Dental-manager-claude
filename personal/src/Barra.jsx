@@ -5,7 +5,7 @@
 // Start sale dal basso: ricerca reale dell'archivio, «Aggiunte» (sezioni con pallino), «Consigliati»
 // (file recenti del telefono, poi ultimi documenti), account ed Esci. Si chiude con un tocco fuori,
 // con Indietro (Android / browser), con Esc o toccando di nuovo il logo.
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { archivioDb } from './lib/supabasePersonal.js';
 import { documentiRecenti, documentiDaGestire, cercaDocumenti, scadenzeAperte } from './lib/archivio.js';
 import { contaDaFare } from './lib/daFare.js';
@@ -101,7 +101,7 @@ function IconaVoce({ id }) {
   return Icona ? <Icona size={24} /> : <IconaPerTe size={24} />;
 }
 
-export function BarraApplicazioni({ vista, pagine, finestre = [], inPrimo = null, onFinestra, onDesktop, conteggi = {}, email, vai, apri, onEsci, onCentro, centroAperto = false }) {
+export function BarraApplicazioni({ vista, pagine, finestre = [], inPrimo = null, onFinestra, onDesktop, onVista, vistaAperta = false, nScrivanie = 1, conteggi = {}, email, vai, apri, onEsci, onCentro, centroAperto = false }) {
   const [start, setStart] = useState(false); // false | 'start' | 'cerca'
   const [cartellaIniziale, setCartellaIniziale] = useState(null); // SCAN-GOOGLE-OFFICE: Google/Office fissati nel dock
   const [impStart, setImpStart] = useState(() => normalizzaStart());
@@ -193,6 +193,11 @@ export function BarraApplicazioni({ vista, pagine, finestre = [], inPrimo = null
     else if (azione.href) window.location.assign(sectionDestination(azione.href, azione.href));
   };
 
+  const bottoneVista = onVista && <button type="button" className={`pb-voce pb-attivita${vistaAperta ? ' attiva' : ''}`} aria-label={`Visualizzazione attività${nScrivanie > 1 ? `, ${nScrivanie} scrivanie` : ''}`} title="Visualizzazione attività" aria-pressed={vistaAperta}
+            onClick={() => { if (start) chiudi(); onVista(); }}>
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="3.5" y="5" width="11" height="9" rx="1.6" fill="none" stroke="currentColor" strokeWidth="1.5" /><rect x="9.5" y="10" width="11" height="9" rx="1.6" fill="color-mix(in srgb, currentColor 18%, transparent)" stroke="currentColor" strokeWidth="1.5" /></svg>
+            {nScrivanie > 1 && <span className="pb-pallino pb-scrivanie" aria-hidden="true">{nScrivanie}</span>}
+          </button>;
   return (
     <>
       <PannelloTrasferimenti />
@@ -206,8 +211,8 @@ export function BarraApplicazioni({ vista, pagine, finestre = [], inPrimo = null
           {voci.map((v) => {
             const n = badgeBarra(v.id, conteggi);
             const etichetta = n ? `${v.nome}, ${n} ${v.id === 'oggi' ? 'urgenti' : 'da gestire'}` : v.nome;
-            return (
-              <button key={v.id} type="button" className={`pb-voce${(finestraDi(v) ? !start && inPrimo === finestraDi(v).chiave : attiva === v.id) ? ' attiva' : ''}${aperte.has(v.id) || (finestraDi(v) && (start || inPrimo !== finestraDi(v).chiave)) ? ' aperta' : ''}`} onClick={() => tocca(v)}
+            return (<Fragment key={v.id}>
+              <button type="button" className={`pb-voce${(finestraDi(v) ? !start && inPrimo === finestraDi(v).chiave : attiva === v.id) ? ' attiva' : ''}${aperte.has(v.id) || (finestraDi(v) && (start || inPrimo !== finestraDi(v).chiave)) ? ' aperta' : ''}`} onClick={() => tocca(v)}
                 aria-label={etichetta} title={accettaFile(v.id) ? `${v.nome} · trascina qui un file: ${APP_PER_FILE[v.id].toLowerCase()}` : v.nome}
                 aria-current={attiva === v.id && v.id !== 'start' && v.id !== 'cerca' ? 'page' : undefined}
                 aria-expanded={v.id === 'start' || v.id === 'cerca' ? start === v.id : undefined}
@@ -215,7 +220,8 @@ export function BarraApplicazioni({ vista, pagine, finestre = [], inPrimo = null
                 <IconaVoce id={v.id} />
                 <Numero n={n} />
               </button>
-            );
+              {v.id === 'cerca' && bottoneVista /* come Windows 11: subito dopo Cerca */}
+            </Fragment>);
           })}
           {/* PERSONAL-FINESTRE: una icona per ogni finestra aperta (tocco = in primo piano, di nuovo = riduci). */}
           {altreFinestre.length > 0 && <span className="pb-separatore" aria-hidden="true" />}

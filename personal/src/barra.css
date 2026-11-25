@@ -292,13 +292,6 @@ body.pp-tastiera .pf-desktop { bottom: 0; }
 .pf-contenuto { min-height: 100%; }
 .pf-modulo { padding-bottom: 16px; }
 .pf-ingrandita .pf-contenuto.pp-pagina-corpo { max-width: 980px; margin: 0 auto; }
-/* bordi per ridimensionare (finestra libera) */
-.pf-bordo { position: absolute; z-index: 3; touch-action: none; }
-.pf-bordo-e { right: -4px; top: 40px; bottom: 16px; width: 10px; cursor: ew-resize; }
-.pf-bordo-o { left: -4px; top: 40px; bottom: 16px; width: 10px; cursor: ew-resize; }
-.pf-bordo-s { bottom: -4px; left: 16px; right: 16px; height: 10px; cursor: ns-resize; }
-.pf-bordo-se { right: -2px; bottom: -2px; width: 26px; height: 26px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 55%, color-mix(in srgb, var(--pp-inchiostro) 28%, transparent) 56% 62%, transparent 63% 72%, color-mix(in srgb, var(--pp-inchiostro) 28%, transparent) 73% 79%, transparent 80%); }
-.pf-bordo-so { left: -2px; bottom: -2px; width: 22px; height: 22px; cursor: nesw-resize; }
 /* barra: finestre aperte e «Mostra desktop» */
 .pb-separatore { width: 1px; height: 24px; margin: 0 4px; background: color-mix(in srgb, currentColor 22%, transparent); flex-shrink: 0; }
 .pb-finestre { display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; max-width: 40vw; }
@@ -329,3 +322,119 @@ body.pp-tastiera .pf-desktop { bottom: 0; }
 }
 /* SCAN-GOOGLE-OFFICE: nelle cartelle di app i nomi vanno su due righe («Nuova presentazione»). */
 .pb-cartella-app .pb-app-nome { white-space: normal; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* PERSONAL-MULTITASK (PO 2026-11-25): «come Windows 11, un sistema operativo per il telefono». */
+/* finestre più rifinite: bordo sottile luminoso, ombra a strati, angoli 8 px, accento sulla finestra attiva */
+.pf-finestra { border-radius: 8px; border-color: color-mix(in srgb, var(--pp-inchiostro) 16%, transparent); transition: box-shadow .15s; }
+.pf-finestra.pf-attiva { box-shadow: 0 0 0 1px color-mix(in srgb, #0067c0 28%, transparent), 0 26px 64px rgba(0, 0, 0, .28), 0 6px 16px rgba(0, 0, 0, .14); }
+.pf-agganciata { border-radius: 0; box-shadow: 0 0 0 1px color-mix(in srgb, var(--pp-inchiostro) 14%, transparent); }
+.pf-titolo { background: linear-gradient(180deg, color-mix(in srgb, var(--pp-superficie) 86%, #dbe7f6), color-mix(in srgb, var(--pp-superficie) 72%, #e9eef6)); }
+.pf-attiva .pf-titolo { background: linear-gradient(180deg, color-mix(in srgb, var(--pp-superficie) 80%, #cfe0f6), color-mix(in srgb, var(--pp-superficie) 64%, #dde8f7)); }
+@media (prefers-color-scheme: dark) { .pf-titolo, .pf-attiva .pf-titolo { background: linear-gradient(180deg, #2a3346, #222a3b); } }
+.pf-ingrandita.pf-finestra { animation: pf-ingrandisci .16s ease-out; }
+@keyframes pf-ingrandisci { from { transform: scale(.985); opacity: .7; } }
+/* otto maniglie per ridimensionare: sottili col mouse, larghe col dito */
+.pf-bordo { position: absolute; z-index: 4; touch-action: none; --m: 8px; --a: 18px; }
+@media (pointer: coarse) { .pf-bordo { --m: 16px; --a: 30px; } }
+.pf-bordo-n { top: calc(var(--m) / -2); left: var(--a); right: var(--a); height: var(--m); cursor: ns-resize; }
+.pf-bordo-s { bottom: calc(var(--m) / -2); left: var(--a); right: var(--a); height: var(--m); cursor: ns-resize; }
+.pf-bordo-e { right: calc(var(--m) / -2); top: var(--a); bottom: var(--a); width: var(--m); cursor: ew-resize; }
+.pf-bordo-o { left: calc(var(--m) / -2); top: var(--a); bottom: var(--a); width: var(--m); cursor: ew-resize; }
+.pf-bordo-ne, .pf-bordo-no, .pf-bordo-se, .pf-bordo-so { width: var(--a); height: var(--a); }
+.pf-bordo-ne { top: calc(var(--m) / -2); right: calc(var(--m) / -2); cursor: nesw-resize; }
+.pf-bordo-no { top: calc(var(--m) / -2); left: calc(var(--m) / -2); cursor: nwse-resize; }
+.pf-bordo-so { bottom: calc(var(--m) / -2); left: calc(var(--m) / -2); cursor: nesw-resize; }
+.pf-bordo-se { bottom: calc(var(--m) / -2); right: calc(var(--m) / -2); cursor: nwse-resize; }
+/* l'angolo in basso a destra si vede (puntini), come le app di Windows sul tablet */
+.pf-bordo-se::after { content: ''; position: absolute; right: calc(var(--m) / 2 + 3px); bottom: calc(var(--m) / 2 + 3px); width: 10px; height: 10px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--pp-inchiostro) 45%, transparent) 1.2px, transparent 1.6px) 0 0 / 4px 4px; mask: linear-gradient(135deg, transparent 50%, #000 50%); -webkit-mask: linear-gradient(135deg, transparent 50%, #000 50%); }
+/* anteprima dell'aggancio mentre si trascina (vetro azzurro) */
+.pf-anteprima-snap { position: absolute; z-index: 9000; border-radius: 10px; pointer-events: none; background: color-mix(in srgb, #4ea5ff 22%, transparent);
+  border: 1px solid color-mix(in srgb, #ffffff 70%, transparent); box-shadow: inset 0 0 0 1px rgba(0, 103, 192, .35), 0 12px 40px rgba(0, 0, 0, .18); -webkit-backdrop-filter: blur(14px) saturate(160%); backdrop-filter: blur(14px) saturate(160%); transition: all .14s ease-out; }
+/* divisore comune tra due finestre affiancate */
+.pf-divisore { position: absolute; z-index: 9001; pointer-events: auto; touch-action: none; display: grid; place-items: center; }
+.pf-divisore.verticale { width: 16px; cursor: col-resize; }
+.pf-divisore.orizzontale { height: 16px; cursor: row-resize; }
+.pf-divisore span { border-radius: 999px; background: rgba(255, 255, 255, .92); box-shadow: 0 2px 8px rgba(0, 0, 0, .3), 0 0 0 1px rgba(0, 0, 0, .1); }
+.pf-divisore.verticale span { width: 5px; height: 48px; } .pf-divisore.orizzontale span { width: 48px; height: 5px; }
+/* schemi di affiancamento (Snap layouts) */
+.pf-velo-schemi { position: absolute; inset: 0; z-index: 9100; pointer-events: auto; }
+.pf-schemi { position: absolute; z-index: 9101; pointer-events: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; border-radius: 10px;
+  background: color-mix(in srgb, var(--pp-superficie) 82%, transparent); -webkit-backdrop-filter: blur(30px) saturate(170%); backdrop-filter: blur(30px) saturate(170%);
+  border: 1px solid color-mix(in srgb, var(--pp-inchiostro) 12%, transparent); box-shadow: 0 16px 48px rgba(0, 0, 0, .25); animation: pf-apri .12s ease-out; }
+.pf-schema { position: relative; height: 62px; border-radius: 6px; }
+.pf-schema button { position: absolute; box-sizing: border-box; border: 2px solid color-mix(in srgb, var(--pp-superficie) 100%, transparent); border-radius: 5px; padding: 0; cursor: pointer;
+  background: color-mix(in srgb, var(--pp-inchiostro) 14%, transparent); transition: background .1s; }
+.pf-schema button:hover, .pf-schema button:focus-visible, .pf-schema button:active { background: #0067c0; outline: none; }
+/* Snap assist: le altre finestre nella zona libera */
+.pf-assist { position: absolute; z-index: 9050; pointer-events: auto; display: flex; flex-direction: column; border-radius: 10px; overflow: hidden;
+  background: color-mix(in srgb, var(--pp-superficie) 55%, transparent); -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid color-mix(in srgb, #ffffff 60%, transparent); box-shadow: 0 16px 48px rgba(0, 0, 0, .22); animation: pf-apri .14s ease-out; }
+.pf-assist-testa { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; font-size: 13px; font-weight: 600; color: var(--pp-grigio); }
+.pf-assist-testa button { border: 0; background: transparent; font-size: 20px; width: 36px; height: 36px; border-radius: 6px; cursor: pointer; color: inherit; }
+.pf-assist-griglia { flex: 1; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; padding: 4px 12px 12px; align-content: start; }
+.pf-assist-scheda { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 96px; padding: 10px; border-radius: 8px; cursor: pointer; font: inherit; font-size: 13px; color: var(--pp-inchiostro);
+  border: 1px solid color-mix(in srgb, var(--pp-inchiostro) 12%, transparent); background: color-mix(in srgb, var(--pp-superficie) 88%, transparent); box-shadow: 0 2px 8px rgba(0, 0, 0, .08); }
+.pf-assist-scheda:hover, .pf-assist-scheda:active { outline: 2px solid #0067c0; }
+.pf-assist-icona { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 12px; background: color-mix(in srgb, #0067c0 10%, transparent); color: #0067c0; }
+/* avviso «Desktop 2» al cambio di scrivania */
+.pf-avviso-scrivania { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); z-index: 9200; padding: 14px 26px; border-radius: 12px; font-size: 18px; font-weight: 600; color: #fff;
+  background: rgba(20, 24, 32, .62); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); box-shadow: 0 16px 40px rgba(0, 0, 0, .3); animation: pf-apri .16s ease-out; pointer-events: none; }
+/* barra: Visualizzazione attività */
+.pb-attivita { position: relative; }
+.pb-scrivanie { top: 2px; right: 2px; background: #0067c0; }
+
+/* Visualizzazione attività (Task View) con sfondi stile Windows 11 per ogni scrivania */
+.pv-sfondo-bloom { --pv-sfondo: radial-gradient(60% 70% at 70% 40%, #a8d2ff 0%, transparent 60%), radial-gradient(50% 60% at 40% 65%, #5b8cff 0%, transparent 65%), radial-gradient(80% 80% at 30% 20%, #d6e8ff 0%, transparent 70%), linear-gradient(160deg, #eaf3ff, #b8d4f8); }
+.pv-sfondo-aurora { --pv-sfondo: radial-gradient(60% 60% at 25% 30%, #7ee3c8 0%, transparent 60%), radial-gradient(60% 70% at 75% 70%, #6b7cff 0%, transparent 60%), linear-gradient(160deg, #12233d, #0b1424); }
+.pv-sfondo-tramonto { --pv-sfondo: radial-gradient(70% 60% at 70% 30%, #ffb38a 0%, transparent 60%), radial-gradient(60% 60% at 30% 70%, #ff6f91 0%, transparent 60%), linear-gradient(160deg, #ffe3c7, #f7a4b6); }
+.pv-sfondo-laguna { --pv-sfondo: radial-gradient(60% 60% at 30% 40%, #66e0e6 0%, transparent 60%), radial-gradient(60% 60% at 75% 65%, #2d8cff 0%, transparent 60%), linear-gradient(160deg, #e2fbff, #8fd3ef); }
+.pv-sfondo-grafite { --pv-sfondo: radial-gradient(60% 60% at 30% 30%, #5d6b82 0%, transparent 60%), radial-gradient(60% 60% at 75% 70%, #2f3a4d 0%, transparent 60%), linear-gradient(160deg, #222a37, #10151e); }
+.pv-vista { position: absolute; inset: 0; z-index: 9500; pointer-events: auto; display: flex; flex-direction: column; overflow: hidden; color: #10151e; animation: pv-entra .18s ease-out;
+  background: linear-gradient(rgba(255, 255, 255, .28), rgba(255, 255, 255, .12)), var(--pv-sfondo); }
+.pv-vista::before { content: ''; position: absolute; inset: 0; -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); pointer-events: none; }
+@keyframes pv-entra { from { opacity: 0; transform: scale(1.02); } }
+.pv-finestre { position: relative; flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(46%, 260px), 1fr)); gap: 16px; padding: 22px 16px 12px; align-content: start; }
+.pv-vuoto { grid-column: 1 / -1; text-align: center; margin-top: 18vh; font-size: 15px; font-weight: 600; color: rgba(16, 21, 30, .7); }
+.pv-scheda { position: relative; display: flex; flex-direction: column; border-radius: 10px; overflow: visible; touch-action: none; user-select: none; -webkit-user-select: none;
+  background: color-mix(in srgb, #ffffff 82%, transparent); -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, .8); box-shadow: 0 10px 30px rgba(0, 0, 0, .18), 0 2px 6px rgba(0, 0, 0, .1); transition: transform .12s, box-shadow .12s; animation: pv-scheda .2s ease-out both; }
+@keyframes pv-scheda { from { opacity: 0; transform: translateY(10px) scale(.97); } }
+.pv-scheda:hover { box-shadow: 0 0 0 2px #0067c0, 0 14px 36px rgba(0, 0, 0, .22); }
+.pv-scheda.presa { opacity: .4; }
+.pv-scheda.ridotta { opacity: .86; }
+.pv-scheda-testa { display: flex; align-items: center; gap: 8px; padding: 6px 4px 6px 10px; font-size: 12.5px; font-weight: 600; }
+.pv-scheda-testa span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv-scheda-testa button { width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; font-size: 18px; cursor: pointer; color: inherit; }
+.pv-scheda-testa .pv-chiudi:hover, .pv-scheda-testa .pv-chiudi:active { background: #c42b1c; color: #fff; }
+.pv-scheda-corpo { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; aspect-ratio: 16 / 10; margin: 0 8px 8px; border-radius: 6px; border: 0; cursor: pointer; font: inherit; color: #44506a;
+  background: linear-gradient(160deg, #f6f9ff, #e4ecf8); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .06); }
+.pv-scheda-icona { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 16px; color: #0067c0; background: #fff; box-shadow: 0 6px 16px rgba(0, 60, 140, .16); }
+.pv-scheda-stato { font-size: 12px; }
+.pv-menu { position: absolute; z-index: 3; right: 8px; top: 40px; min-width: 180px; display: flex; flex-direction: column; padding: 6px; border-radius: 8px;
+  background: color-mix(in srgb, #ffffff 92%, transparent); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); box-shadow: 0 12px 36px rgba(0, 0, 0, .25); border: 1px solid rgba(0, 0, 0, .08); }
+.pv-menu strong { font-size: 12px; color: #5c6370; padding: 6px 8px; }
+.pv-menu button { text-align: left; border: 0; background: transparent; min-height: 40px; padding: 0 10px; border-radius: 5px; font: inherit; font-size: 14px; cursor: pointer; color: #10151e; }
+.pv-menu button:hover, .pv-menu button:active { background: rgba(0, 103, 192, .1); }
+.pv-scrivanie { position: relative; flex-shrink: 0; display: flex; gap: 12px; padding: 12px 16px 14px; overflow-x: auto; scrollbar-width: none; align-items: flex-end;
+  background: color-mix(in srgb, #ffffff 45%, transparent); -webkit-backdrop-filter: blur(30px) saturate(160%); backdrop-filter: blur(30px) saturate(160%); border-top: 1px solid rgba(255, 255, 255, .7); }
+.pv-scrivanie::-webkit-scrollbar { display: none; }
+.pv-scrivania { position: relative; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.pv-scrivania-anteprima { width: 112px; height: 66px; border-radius: 8px; border: 2px solid rgba(255, 255, 255, .85); cursor: pointer; background: var(--pv-sfondo); box-shadow: 0 6px 16px rgba(0, 0, 0, .18);
+  display: flex; flex-wrap: wrap; align-content: flex-start; gap: 4px; padding: 6px; transition: transform .12s, box-shadow .12s; }
+.pv-scrivania.scelta .pv-scrivania-anteprima { border-color: #0067c0; box-shadow: 0 0 0 2px #0067c0, 0 8px 20px rgba(0, 0, 0, .22); }
+.pv-scrivania.sopra .pv-scrivania-anteprima { transform: scale(1.08); box-shadow: 0 0 0 3px #0067c0, 0 10px 26px rgba(0, 0, 0, .3); }
+.pv-mini { display: grid; place-items: center; width: 22px; height: 16px; border-radius: 3px; background: rgba(255, 255, 255, .9); color: #0067c0; box-shadow: 0 1px 3px rgba(0, 0, 0, .2); }
+.pv-scrivania-nome { font-size: 12.5px; font-weight: 600; max-width: 112px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv-rinomina { width: 112px; font: inherit; font-size: 12.5px; padding: 3px 6px; border-radius: 5px; border: 1px solid #0067c0; }
+.pv-scrivania-chiudi { position: absolute; top: -8px; right: -8px; width: 26px; height: 26px; border-radius: 50%; border: 0; cursor: pointer; background: rgba(32, 32, 32, .8); color: #fff; font-size: 15px; line-height: 1; box-shadow: 0 2px 6px rgba(0, 0, 0, .3); }
+.pv-nuova { flex-shrink: 0; width: 112px; height: 66px; margin-bottom: 23px; border-radius: 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border: 2px dashed rgba(16, 21, 30, .3); background: rgba(255, 255, 255, .45); color: #10151e; font: inherit; }
+.pv-nuova span { font-size: 26px; line-height: 1; } .pv-nuova small { font-size: 11.5px; font-weight: 600; }
+.pv-fantasma { position: fixed; z-index: 9600; transform: translate(-50%, -60%); display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; pointer-events: none;
+  background: rgba(255, 255, 255, .95); box-shadow: 0 12px 30px rgba(0, 0, 0, .3); font-size: 13px; font-weight: 600; color: #10151e; }
+.pv-sfondo-aurora.pv-vista, .pv-sfondo-grafite.pv-vista { color: #fff; }
+.pv-sfondo-aurora .pv-vuoto, .pv-sfondo-grafite .pv-vuoto { color: rgba(255, 255, 255, .8); }
+@media (prefers-reduced-motion: reduce) { .pv-vista, .pv-scheda, .pf-anteprima-snap { animation: none; transition: none; } }
+/* telefono stretto: la ricerca resta nello Start (come Windows 11 tablet), così c'è posto per le attività */
+@media (max-width: 440px) { .pb-icone > .pb-voce[aria-label="Cerca"] { display: none; } }

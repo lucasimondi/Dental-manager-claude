@@ -5072,3 +5072,9 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - DB changes: none. Tests: npm test 1981/1981 PASS; build:personal PASS; visual scan-vivo, scan-hub, personal-scan PASS.
 - Unresolved: real-phone check with real documents. Risks: full search cost on slow phones (~3–5× desktop) only while the sheet is not yet found; tracking keeps it fast afterwards.
 - Next action: PO tries the preview on the phone; "Mergia" or feedback (ideally a photo where it still fails).
+
+## Handoff — PERSONAL-MULTITASK (2026-11-25, Claude Code)
+- Task PERSONAL-MULTITASK; branch `ccr-3ece708c-bx0vaq` from master 72e7f26. Details and validation in current-task.md.
+- Files: `personal/src/{Finestra.jsx,Desktop.jsx,VistaAttivita.jsx,App.jsx,Barra.jsx,barra.css}`, `personal/src/lib/multitasking.js`, tests `personalMultitask`, `personalFinestre`, `personaleHome`, visual `personal-multitask`, `personal-barra`, `personal-esplora-win11`.
+- DB: none. Risks: pointer gestures on old WebViews; Task View cards show icons, not live thumbnails.
+- Next action: PO tries the preview; "Mergia" or feedback.

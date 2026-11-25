@@ -85,11 +85,11 @@ try {
       await tessera(page, 'Rogito casa').waitFor();
 
       // Dettagli ed Elenco
-      await page.getByRole('button', { name: /^Visualizza/ }).tap();
+      await page.locator('.esp').getByRole('button', { name: /^Visualizza/ }).tap();
       await page.waitForTimeout(500); await voce(page, 'Dettagli').tap();
       await page.locator('.esp-dettagli').waitFor();
       await foto(page, '06-dettagli');
-      await page.getByRole('button', { name: /^Visualizza/ }).tap();
+      await page.locator('.esp').getByRole('button', { name: /^Visualizza/ }).tap();
       await page.waitForTimeout(500); await voce(page, 'Elenco').tap();
       await page.locator('.esp-elenco').waitFor();
       const h = await page.locator('.esp-riga-bottone').first().evaluate((e) => e.getBoundingClientRect().height);
@@ -115,7 +115,7 @@ try {
       await page.locator('.esp-foglio-menu').waitFor({ state: 'detached' });
 
       // riquadro di anteprima (bottom sheet) sul file selezionato
-      await page.getByRole('button', { name: /^Visualizza/ }).tap();
+      await page.locator('.esp').getByRole('button', { name: /^Visualizza/ }).tap();
       await page.waitForTimeout(500); await voce(page, 'Riquadro di anteprima').tap();
       await page.locator('.esp-riquadro-foglio').waitFor(); await page.waitForTimeout(600);
       assert.ok(await dentro(page, '.esp-riquadro-foglio'));

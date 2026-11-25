@@ -68,7 +68,7 @@ test('desktop: App usa le finestre, barra con le finestre aperte e «Mostra desk
   assert.match(barra, /if \(f && onFinestra\)/, 'l\'app già aperta viene avanti invece di aprirne un\'altra');
   for (const n of ['Riduci a icona', 'Ingrandisci', 'Ripristina', 'Chiudi']) assert.match(fin, new RegExp(n));
   assert.match(fin, /data-bersaglio=\{accetta \? `finestra:\$\{f\.chiave\}`/);
-  assert.match(desk, /useIndietro\(visibili\.length > 0, \(\) => \{[^}]*riduci\(st, a\.chiave\)/);
+  assert.match(desk, /useIndietro\(visibili\.length > 0 \|\| vista,/); assert.match(desk, /const n = riduci\(st, a\.chiave\)/, 'Indietro riduce la finestra in primo piano (o chiude la Visualizzazione attività)');
   assert.match(desk, /ACCETTANO_FILE = new Set\(\['scansione', 'pdf', 'carica', 'scanner'\]\)/);
 });
 

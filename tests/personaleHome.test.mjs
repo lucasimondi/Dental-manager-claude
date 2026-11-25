@@ -84,7 +84,7 @@ test('PERSONAL-ESPLORA-WIN11 fase 3: barra stile Windows 11 al posto del dock (m
   assert.match(css, /env\(safe-area-inset-bottom\)/);
   const app = read('personal/src/App.jsx');
   assert.doesNotMatch(app, /pp-schede pp-dock/);
-  assert.match(app, /<BarraApplicazioni vista=\{vista\} pagine=\{visibili\} finestre=\{pagine\}/);
+  assert.match(app, /<BarraApplicazioni vista=\{vista\} pagine=\{visibili\} finestre=\{fs\.mie\}/);
   // l'icona del calendario resta quella di Studio
   const ic = read('src/components/ui/Ic.jsx'), mie = read('personal/src/IconeDock.jsx');
   for (const d of ['M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16']) { assert.ok(ic.includes(d)); assert.ok(mie.includes(d)); }
