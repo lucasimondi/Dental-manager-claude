@@ -18,7 +18,7 @@ const OGGI_DOC = 'M6 3h9l4 4v14H6zM15 3v4h4';
 
 // Il tuo spazio: [sezione, nome, icona, tono]. «Identità» = Documenti › Documenti personali.
 const SPAZIO = [
-  ['personali', 'Identità', 'personali', 'verde'], ['foto', 'Foto', 'foto', 'cielo'], ['note', 'Note', 'nota', 'ambra'],
+  ['personali', 'Identità', 'personali', 'verde'], ['dati', 'I miei dati', 'pdf', 'blu'], ['foto', 'Foto', 'foto', 'cielo'], ['note', 'Note', 'nota', 'ambra'],
   ['legal', 'Pratiche', 'pratiche', 'viola'], ['concordato', 'Concordato', 'controllo', 'ambra'], ['diario', 'Diario', 'diario', 'blu'], ['didattica', 'Biblioteca', 'biblioteca', 'smeraldo'],
   ['password', 'Password', 'password', 'oro'], ['oggi', 'Oggi', 'oggi', 'lilla'], ['riordino', 'Riordino', 'documenti', 'blu'],
 ];

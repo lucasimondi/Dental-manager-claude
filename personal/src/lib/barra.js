@@ -67,6 +67,7 @@ export const AGGIUNTE = [
   { id: 'password', nome: 'Password', azione: { vai: 'password' } },
   { id: 'foto', nome: 'Foto', azione: { vai: 'foto' } },
   { id: 'concordato', nome: 'Concordato', azione: { vai: 'concordato' } },
+  { id: 'dati', nome: 'I miei dati', azione: { vai: 'dati' } }, // MIEI-DATI
   { id: 'studio', nome: 'Studio', azione: { href: 'studio' } },
   { id: 'impostazioni', nome: 'Impostazioni', azione: { apri: { tipo: 'impostazioni' } } },
 ];

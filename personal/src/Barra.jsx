@@ -38,7 +38,7 @@ import { titoloPagina } from './sezioni/index.js';
 const ICONE_START = {
   oggi: IconaOggi, agenda: IconaCalendario, documenti: IconaDocumenti, dafare: IconaPerTe, conti: IconaEuro, legal: IconaPratiche,
   pratiche: IconaPratiche, personali: IconaPortafoglio, diario: IconaNote, note: IconaNote, password: IconaLucchetto, foto: IconaFoto,
-  concordato: IconaPratiche, scan: IconaScansiona,
+  concordato: IconaPratiche, dati: IconaPortafoglio, scan: IconaScansiona,
   google: (p) => <IconaApp tipo="google" size={p.size + 2} />, office: (p) => <IconaApp tipo="office" size={p.size + 2} />, studio: (p) => <IconaDock n="brief" s={p.size} />, impostazioni: IconaImpostazioni,
 };
 const Numero = ({ n, classe = '' }) => { const t = etichettaNumero(n); return t ? <span className={`pb-pallino ${classe}`} aria-hidden="true">{t}</span> : null; };
