@@ -12,7 +12,8 @@ import { useIndietro } from '../lib/indietro.js';
 // (permesso negato, browser vecchio) si torna alla fotocamera del telefono (onNonDisponibile).
 const CHIAVE_AUTO = 'scan-scatto-automatico-v1';
 const leggiAuto = () => { try { return localStorage.getItem(CHIAVE_AUTO) !== '0'; } catch { return true; } };
-const LATO_ANALISI = 320;
+const LATO_ANALISI = 480;
+const TIENI_MS = 450; // SCAN-BORDI: un fotogramma perso non fa sparire il contorno
 
 export const fotocameraDisponibile = () => Boolean(globalThis.navigator?.mediaDevices?.getUserMedia);
 
@@ -21,7 +22,7 @@ export function Fotocamera({ onScatto, onFine, onGalleria, onNonDisponibile, pag
   const [angoli, setAngoli] = useState(null), [fase, setFase] = useState('cerca'), [avanzamento, setAvanzamento] = useState(0);
   const [auto, setAutoStato] = useState(leggiAuto), autoRef = useRef(auto); autoRef.current = auto;
   const [torcia, setTorcia] = useState(null), [lampo, setLampo] = useState(0), [pronta, setPronta] = useState(false), [rett, setRett] = useState(null);
-  const occupata = useRef(false);
+  const occupata = useRef(false), grezzo = useRef({ q: null, t: -Infinity });
   const portale = usePortale();
   useIndietro(true, () => { onFine(); }); // SCAN-INDIETRO: il tasto Indietro chiude la fotocamera, non l'app
   const setAuto = (v) => { setAutoStato(v); try { localStorage.setItem(CHIAVE_AUTO, v ? '1' : '0'); } catch { /* facoltativo */ } };
@@ -38,7 +39,8 @@ export function Fotocamera({ onScatto, onFine, onGalleria, onNonDisponibile, pag
     occupata.current = true; setLampo((n) => n + 1);
     try {
       let blob = null;
-      const traccia = flusso.current?.getVideoTracks?.()[0], angoli = angoliVisti.current;
+      // SCAN-BORDI: gli angoli dell'ultimo fotogramma (non smussati, senza ritardo) se recenti.
+      const traccia = flusso.current?.getVideoTracks?.()[0], angoli = performance.now() - grezzo.current.t < 300 ? grezzo.current.q : angoliVisti.current;
       // Foto alla risoluzione piena del sensore se il browser lo permette e ha le stesse proporzioni del
       // video (così gli angoli trovati dal vivo valgono anche per la foto); altrimenti il fotogramma.
       if (globalThis.ImageCapture && traccia) {
@@ -82,14 +84,17 @@ export function Fotocamera({ onScatto, onFine, onGalleria, onNonDisponibile, pag
             const c = analisi.current || (analisi.current = document.createElement('canvas'));
             if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
             const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.drawImage(vv, 0, 0, w, h);
-            let q = null; try { q = trovaAngoli(ctx.getImageData(0, 0, w, h).data, w, h); } catch { q = null; }
-            angoliVisti.current = smussaAngoli(angoliVisti.current, q);
+            const ora = performance.now(), recente = ora - grezzo.current.t < TIENI_MS ? grezzo.current.q : null;
+            // SCAN-BORDI: con il foglio del fotogramma prima si riagganciano solo i lati (veloce).
+            let q = null; try { q = trovaAngoli(ctx.getImageData(0, 0, w, h).data, w, h, { vicino: recente }); } catch { q = null; }
+            if (q) grezzo.current = { q, t: ora };
+            angoliVisti.current = q ? smussaAngoli(angoliVisti.current, q) : (recente ? angoliVisti.current : null);
             setAngoli(angoliVisti.current);
             const r = passoScatto(stato.current, q, performance.now(), { auto: autoRef.current });
             stato.current = r.st; setFase(autoRef.current || r.fase !== 'fermo' ? r.fase : 'manuale'); setAvanzamento(autoRef.current ? r.avanzamento : 0);
             if (r.fase === 'scatta') void scattaRef.current();
           }
-          timer = setTimeout(ciclo, 110);
+          timer = setTimeout(ciclo, 80);
         };
         ciclo();
       } catch (e) { if (vivo) onNonDisponibile?.(e); }

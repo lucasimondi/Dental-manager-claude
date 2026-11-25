@@ -182,7 +182,7 @@ export function PaginaScansione({ ctx, sostituisci, opzioni = {}, files: initial
         if (t === 'pdf') nuove.push({ id: prossimoId, tipo: 'pdf', file });
         else if (t === 'immagine') {
           // SCAN-VIVO: la foto dalla fotocamera dal vivo porta gli angoli già trovati nell'inquadratura.
-          const r = await elaboraPagina(file, { modo, angoli: file.angoliScan || (auto ? 'auto' : null), peso });
+          const r = await elaboraPagina(file, { modo, angoli: file.angoliScan || (auto ? 'auto' : null), peso, rifinisci: Boolean(file.angoliScan) });
           nuove.push({ id: prossimoId, tipo: 'foto', file, rotazione: 0, ritaglio: null, ...r, rilevati: r.angoli });
         }
       }

@@ -13,7 +13,7 @@ test('scanner: distanza, area e contorno smussato (salti grandi ripartono dal nu
   assert.ok(Math.abs(distanzaAngoli(Q(), Q(0.01)) - 0.01) < 1e-9);
   assert.ok(Math.abs(areaAngoli(Q()) - 0.42) < 1e-9);
   const m = smussaAngoli(Q(), Q(0.1));
-  assert.ok(Math.abs(m.tl.x - (0.2 + 0.045)) < 1e-9, 'si avvicina del 45%');
+  assert.ok(Math.abs(m.tl.x - (0.2 + 0.1 * SCATTO.smussa)) < 1e-9, 'si avvicina della quota di smussatura');
   assert.deepEqual(smussaAngoli(Q(), Q(0.3)), Q(0.3));
   assert.equal(smussaAngoli(Q(), null), null);
 });

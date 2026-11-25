@@ -5065,3 +5065,10 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 ## Note — PR #349 merged with master after #348 (2026-11-25, Claude Code)
 - PO «Mergia» on #349 could not be executed: conflicts with #348 (merged 09:46) and head changed by another session (9a4db39, scope reduced on PO decision). PO then asked «Controlla perché non c'è ancora nulla»: production = master 741d3b6 (#347 + #348), windows missing because #349 was unmerged.
 - Merged origin/master into the branch, resolved App.jsx, Barra.jsx, barra.css, lib/barra.js, current-task.md (kept both sides); fixed taskbar ownership for #348 apps and the history bug in lib/indietro.js. Validation in current-task.md. Next: CI green → merge #349 (PO «Mergia» refers to this PR).
+## Handoff — SCAN-BORDI: rilevamento del foglio più robusto (2026-11-25, Claude Code)
+- Task SCAN-BORDI; previous agent: none (new PO bug report); branch `ccr-47cc5da1-n7p7fe` from master 741d3b6.
+- Objective: the scanner finds documents reliably. Completed: see current-task.md SCAN-BORDI.
+- Files: `personal/src/lib/prospettiva.js`, `personal/src/lib/scansione.js`, `personal/src/lib/scannerVivo.js`, `personal/src/scan/Fotocamera.jsx`, `personal/src/Aggiungi.jsx`, tests `scannerBordi.test.mjs` (new), `scannerScene.mjs` (new, synthetic scenes), `scannerVivo.test.mjs`.
+- DB changes: none. Tests: npm test 1981/1981 PASS; build:personal PASS; visual scan-vivo, scan-hub, personal-scan PASS.
+- Unresolved: real-phone check with real documents. Risks: full search cost on slow phones (~3–5× desktop) only while the sheet is not yet found; tracking keeps it fast afterwards.
+- Next action: PO tries the preview on the phone; "Mergia" or feedback (ideally a photo where it still fails).
