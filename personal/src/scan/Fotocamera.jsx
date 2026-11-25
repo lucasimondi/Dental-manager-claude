@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { usePortale, useInFinestra } from '../lib/portale.js';
 import { trovaAngoli } from '../lib/prospettiva.js';
 import { smussaAngoli, passoScatto, MESSAGGI_FASE } from '../lib/scannerVivo.js';
 import { IconaFoto, IconaChiudi } from '../Icone.jsx';
@@ -22,6 +23,7 @@ export function Fotocamera({ onScatto, onFine, onGalleria, onNonDisponibile, pag
   const [auto, setAutoStato] = useState(leggiAuto), autoRef = useRef(auto); autoRef.current = auto;
   const [torcia, setTorcia] = useState(null), [lampo, setLampo] = useState(0), [pronta, setPronta] = useState(false), [rett, setRett] = useState(null);
   const occupata = useRef(false), grezzo = useRef({ q: null, t: -Infinity });
+  const portale = usePortale();
   useIndietro(true, () => { onFine(); }); // SCAN-INDIETRO: il tasto Indietro chiude la fotocamera, non l'app
   const setAuto = (v) => { setAutoStato(v); try { localStorage.setItem(CHIAVE_AUTO, v ? '1' : '0'); } catch { /* facoltativo */ } };
 
@@ -135,5 +137,5 @@ export function Fotocamera({ onScatto, onFine, onGalleria, onNonDisponibile, pag
         <span>Fine</span>
       </button>
     </div>
-  </div>, document.body);
+  </div>, portale || document.body);
 }

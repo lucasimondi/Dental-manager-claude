@@ -26,7 +26,8 @@ test('sezioni: App.jsx è solo la cornice, senza viste né pagine delle sezioni'
   assert.ok(app.split('\n').length < 200, 'App.jsx resta piccolo');
   assert.doesNotMatch(app, /function (Vista|Pagina)\w+\(/);
   assert.doesNotMatch(app, /from '\.\/sezioni\/(?!index\.js')/, 'App usa solo il registro delle sezioni');
-  assert.match(app, /pagina\(p\.tipo\)\?\.render\(p, \{ ctx, chiudi: indietro, sostituisci, email \}\)/);
+  // PERSONAL-FINESTRE: ogni pagina si apre in una finestra del desktop (chiudi = chiude quella finestra).
+  assert.match(app, /pagina\(p\.tipo\)\?\.render\(p, \{ ctx: \{ \.\.\.ctx, indietro: chiudi \}, chiudi, sostituisci: nellaStessa, email \}\)/);
 });
 
 test('sezioni: una sezione usa le altre solo attraverso il loro index.jsx', () => {

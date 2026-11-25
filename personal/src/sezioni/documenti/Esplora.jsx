@@ -42,6 +42,7 @@ import { aggiornaCentro, daGestireDa, statoCentro, ascoltaCentro } from '../../l
 import { preparaFile, comeFile, condividi, scaricaDocumento } from '../../lib/condividi.js';
 import { preparaVoci, scaricaFile, creaZip, MAX_FILE_ZIP } from '../../lib/pacchetto.js';
 import { titoloDoc, tokenSessione } from '../../ui.jsx';
+import { consegnaDocumenti } from '../../lib/portale.js';
 import { useTrascina } from './Trascina.jsx';
 import { miniatura } from '../../lib/miniature.js';
 import { comeAprireCon, caricaAppPredefinite, estensioneDi } from '../../lib/apertura.js';
@@ -78,7 +79,10 @@ function Miniatura({ doc, size }) {
 }
 
 /* ---------- Esplora ---------- */
-export function PaginaEsplora({ ctx, iniziale = RADICE }) {
+// PERSONAL-FINESTRE: documenti consegnati a un'altra finestra (trascinati lì, o scelti con «Aggiungi»).
+const consegnaA = consegnaDocumenti;
+// scegliPer: chiave della finestra che ha chiesto i documenti (es. lo Scan): compare la barra «Aggiungi».
+export function PaginaEsplora({ ctx, iniziale = RADICE, scegliPer = null, perNome = 'Scan', chiudi = null }) {
   const { apri, fascicoli = [] } = ctx;
   const [dati, setDati] = useState(null); // { cartelle, posizioni, titoli }
   const [daGestire, setDaGestire] = useState(new Map());
@@ -104,6 +108,9 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
   const visitate = useRef(new Map()); // cartella → { t, giro } (cache delle cartelle visitate)
   const timerCerca = useRef(null);
   const [cache, setCache] = useState(() => new Map()); // id documento → documento
+  // PERSONAL-FINESTRE: dentro una finestra i fogli `fixed` sono relativi al corpo della finestra.
+  const radiceRef = useRef(null);
+  const origine = () => { const r = radiceRef.current?.closest?.('.pf-corpo')?.getBoundingClientRect(); return r ? { x: r.left, y: r.top, l: r.width, a: r.height } : { x: 0, y: 0 }; };
   const [lista, setLista] = useState(null); // cartelle virtuali: { nodo, documenti, prossimo, finito }
   const [caricando, setCaricando] = useState(false);
   const [menu, setMenu] = useState(null); // { cosa, sorgenti, x, y, titolo }
@@ -563,6 +570,8 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     const altrove = [ACCESSO_RAPIDO, HOME, PREFERITI, RECENTI].includes(nodo) || !!datiCerca(nodo);
     return { tipo: 'doc', id, da: altrove ? (documentiNelNodo(posizioni, RADICE).includes(id) ? RADICE : posizioni.find((p) => p.doc === id)?.nodo || DA_CATALOGARE) : nodo, clinico: cache.get(id)?.fascicolo === CLINICO };
   };
+  // Documenti (non clinici, con il file su Drive) di una selezione: quelli che un'altra finestra può ricevere.
+  const documentiDa = (src) => src.filter((x) => x.tipo === 'doc').map((x) => cache.get(x.id)).filter((d) => d?.drive_file_id && d.fascicolo !== CLINICO).map((d) => ({ ...d, titolo: titoloDi(d.id) }));
   const sorgentiPer = (k) => (scelti.has(k) && scelti.size > 1 ? [...scelti].map(sorgenteDi) : [sorgenteDi(k)]);
 
   /* ---------- apertura ---------- */
@@ -635,12 +644,14 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
     attesa: PRESSIONE_MS, vibrazione: 10,
     valido: (s, b) => {
       if (b?.tipo === 'app') { const src = sorgentiPer(s.chiave); return src.length === 1 && src[0].tipo === 'doc' && accettaFile(b.id); }
+      if (b?.tipo === 'finestra') return documentiDa(sorgentiPer(s.chiave)).length > 0; // PERSONAL-FINESTRE
       if (b?.tipo === 'scheda') return true; // passandoci sopra la scheda si attiva; lasciando lì si sposta nella sua cartella
       const d = destDi(b); return !!d && destinazioneValida(sorgentiPer(s.chiave), d, opz);
     },
     onLascia: (s, b) => {
       const src = sorgentiPer(s.chiave);
       if (b.tipo === 'app') { apriConApp(b.id, src); return; }
+      if (b.tipo === 'finestra') { const docs = documentiDa(src); consegnaA(b.id, docs); mostraAvviso(docs.length === 1 ? 'Documento lasciato nella finestra' : `${docs.length} documenti lasciati nella finestra`); return; }
       const dest = b.tipo === 'scheda' ? nodoScheda(tabs.schede.find((t) => t.id === b.id)) : destDi(b);
       if (!dest || eVirtuale(dest)) return;
       // Ctrl premuto = copia (il documento compare anche lì, decisione del PO); altrimenti sposta.
@@ -677,7 +688,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
   // L'icona della barra sotto il puntatore si accende (la barra è fuori da Esplora: classe sul nodo).
   useEffect(() => {
     document.body.classList.toggle('pb-trascina', !!presa);
-    const el = sopra?.startsWith('app:') ? document.querySelector(`[data-bersaglio="${sopra}"]`) : null;
+    const el = sopra?.startsWith('app:') || sopra?.startsWith('finestra:') ? document.querySelector(`[data-bersaglio="${sopra}"]`) : null;
     el?.classList.add('pb-sopra');
     return () => { el?.classList.remove('pb-sopra'); };
   }, [!!presa, sopra]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1248,7 +1259,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
   ) : null);
 
   return (
-    <div className={`esp esp-${disp}${presa ? ' trascinando' : ''}${mobile ? ' esp-mobile' : ''}${lavoro ? ' lavoro' : ''}${riquadro && !mobile ? ' con-riquadro' : ''}${basso ? ' esp-basso' : ''}`} style={{ '--esp-colonne': colonne }}
+    <div ref={radiceRef} className={`esp esp-${disp}${presa ? ' trascinando' : ''}${mobile ? ' esp-mobile' : ''}${lavoro ? ' lavoro' : ''}${riquadro && !mobile ? ' con-riquadro' : ''}${basso ? ' esp-basso' : ''}`} style={{ '--esp-colonne': colonne }}
       onTouchStart={(e) => { const t = e.touches[0]; swipe.inizio = { x: t.clientX, y: t.clientY }; e.currentTarget.dataset.swx = t.clientX; e.currentTarget.dataset.swy = t.clientY; }}
       onTouchEnd={(e) => { const t = e.changedTouches[0]; const d = e.currentTarget.dataset; if (mobile && !presa && swipeApre({ x: Number(d.swx), y: Number(d.swy) }, { x: t.clientX, y: t.clientY })) setCassetto(true); }}
       // PR #337 §6: file trascinati dal computer dentro la finestra = caricamento su Drive (nella cartella sotto il puntatore).
@@ -1345,7 +1356,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
       )}
 
       {presa && (
-        <div className={`esp-fantasma${presa.bersaglio ? ' valido' : ''}${ctrlGiu ? ' copia' : ''}`} style={{ left: presa.x, top: presa.y }} aria-hidden="true">
+        <div className={`esp-fantasma${presa.bersaglio ? ' valido' : ''}${ctrlGiu ? ' copia' : ''}`} style={{ left: presa.x - origine().x, top: presa.y - origine().y }} aria-hidden="true">
           {scelti.size > 1 && scelti.has(presa.sorgente.chiave) && <span className="esp-fantasma-numero">{scelti.size}</span>}
           {ctrlGiu && <span className="esp-fantasma-piu">+</span>}{tracciaSopra}
         </div>
@@ -1353,7 +1364,14 @@ export function PaginaEsplora({ ctx, iniziale = RADICE }) {
       {rettangolo && <div className="esp-rettangolo" style={{ left: rettangolo.left, top: rettangolo.top, width: rettangolo.right - rettangolo.left, height: rettangolo.bottom - rettangolo.top }} aria-hidden="true" />}
       {dropFile && <div className="esp-drop-file" aria-hidden="true"><strong>Carica su Drive in «{nomeNodo(dropFile.dest, nomi)}»</strong></div>}
 
-      {menu && struttura && <MenuContestuale menu={menu} struttura={struttura} mobile={mobile} schermo={schermo} onScegli={sceltaMenu} onChiudi={() => setMenu(null)} />}
+      {menu && struttura && <MenuContestuale menu={{ ...menu, x: menu.x - origine().x, y: menu.y - origine().y }} struttura={struttura} mobile={mobile} schermo={origine().l ? { l: origine().l, a: origine().a } : schermo} onScegli={sceltaMenu} onChiudi={() => setMenu(null)} />}
+      {scegliPer && (
+        <div className="esp-scegli" role="region" aria-label={`Scegli per ${perNome}`}>
+          <span>{documentiDa(scelteSorgenti).length ? `${documentiDa(scelteSorgenti).length} da aggiungere a ${perNome}` : `Seleziona i documenti per ${perNome}, oppure trascinali nella sua finestra`}</span>
+          <button type="button" className="esp-scegli-annulla" onClick={() => chiudi?.()}>Annulla</button>
+          <button type="button" className="esp-scegli-ok" disabled={!documentiDa(scelteSorgenti).length} onClick={() => { consegnaA(scegliPer, documentiDa(scelteSorgenti)); chiudi?.(); }}>Aggiungi</button>
+        </div>
+      )}
 
       {(foglio?.tipo === 'sposta' || foglio?.tipo === 'duplica') && (
         <FoglioSpostaIn disp={disp} titolo={foglio.tipo === 'duplica' ? 'Copia in…' : 'Sposta in…'}

@@ -5051,6 +5051,20 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - DB: none (reads only existing tables/RPC under RLS). Tests: see current-task.md. Risk: `backdrop-filter` cost on old phones (degrades to translucent without blur).
 - Next action: PO tries the preview; "Mergia" or more feedback.
 
+## Handoff — PERSONAL-FINESTRE (2026-11-24, Claude Code)
+- Task PERSONAL-FINESTRE; branch `ccr-3ece708c-bx0vaq` from master ec14cc6 (PR #347 merged on "Mergia"). Details and validation in current-task.md.
+- Files: `personal/src/{App.jsx,Desktop.jsx,Finestra.jsx,IconeFinestre.jsx,Barra.jsx,barra.css,Aggiungi.jsx,pro.css}`, `personal/src/lib/{finestre.js,portale.js,indietro.js,barra.js}`, `personal/src/scan/{Scan.jsx,ScanHome.jsx,Fotocamera.jsx,ScegliPoliedron.jsx}`, `personal/src/pdf/{GestorePdf.jsx,useIngressoPdf.js}`, `personal/src/sezioni/documenti/{Esplora.jsx,index.jsx,DocumentoIntero.jsx}`, tests.
+- DB: none. Risks: major UI change in Personal (every page is now a window); `transform` containment changes `position: fixed` inside windows (handled for Esplora ghost/menus; other fixed overlays inside pages now sit in the window). Rollback: revert the PR.
+- Next action: PO tries the preview on phone and computer; "Mergia" or feedback.
+
+## Handoff — PERSONAL-FINESTRE scope reduction (2026-11-25, Claude Code)
+- Same task/branch/PR #349. PO: "Scan deve essere Scan e gestore deve essere gestore" → the embedded Scan app is removed from this PR; Start «Scan» opens the scanner page as a window. Files: `personal/src/{App.jsx,Desktop.jsx,barra.css}`, `personal/src/lib/barra.js`, `personal/src/sezioni/documenti/index.jsx`; `scan/Scan.jsx`, `scan/ScanHome.jsx`, `pdf/useIngressoPdf.js`, `pro.css` reverted to master; tests `personalFinestre`, `scannerVivo`, `personalScan`, visual `personal-finestre`.
+- DB: none. Tests: see current-task.md. Rollback: revert the PR.
+- Next action: SCAN-PDF-SEPARATI in its own PR on top of this branch.
+
+## Note — PR #349 merged with master after #348 (2026-11-25, Claude Code)
+- PO «Mergia» on #349 could not be executed: conflicts with #348 (merged 09:46) and head changed by another session (9a4db39, scope reduced on PO decision). PO then asked «Controlla perché non c'è ancora nulla»: production = master 741d3b6 (#347 + #348), windows missing because #349 was unmerged.
+- Merged origin/master into the branch, resolved App.jsx, Barra.jsx, barra.css, lib/barra.js, current-task.md (kept both sides); fixed taskbar ownership for #348 apps and the history bug in lib/indietro.js. Validation in current-task.md. Next: CI green → merge #349 (PO «Mergia» refers to this PR).
 ## Handoff — SCAN-BORDI: rilevamento del foglio più robusto (2026-11-25, Claude Code)
 - Task SCAN-BORDI; previous agent: none (new PO bug report); branch `ccr-47cc5da1-n7p7fe` from master 741d3b6.
 - Objective: the scanner finds documents reliably. Completed: see current-task.md SCAN-BORDI.

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { usePortale, useInFinestra } from '../lib/portale.js';
 import { archivioDb } from '../lib/supabasePersonal.js';
 import { caricaCartelleMie } from '../lib/cartelleMie.js';
 import { RADICE, CLINICO, CAMPI_ESPLORA, sottocartelle, documentiCartellaEsplora } from '../lib/esplora.js';
@@ -24,6 +25,7 @@ export function ScegliPoliedron({ onScegli, onChiudi, max = 20 }) {
   const [elenco, setElenco] = useState(null), [errore, setErrore] = useState('');
   const [scelti, setScelti] = useState(new Map()), [testo, setTesto] = useState(''), [cerco, setCerco] = useState(''), [scarico, setScarico] = useState('');
   const qui = percorso[percorso.length - 1];
+  const portale = usePortale();
   const su = () => { if (cerco) { setCerco(''); setTesto(''); return true; } if (percorso.length > 1) { setPercorso((p) => p.slice(0, -1)); return true; } onChiudi(); return false; };
   useIndietro(true, su);
   useEffect(() => { caricaCartelleMie(archivioDb, { ancheArchiviate: false }).then(setCartelle).catch((e) => setErrore(e.message)); }, []);
@@ -78,5 +80,5 @@ export function ScegliPoliedron({ onScegli, onChiudi, max = 20 }) {
       <span>{scarico || (scelti.size ? `${scelti.size} ${scelti.size === 1 ? 'documento scelto' : 'documenti scelti'}` : 'Tocca i PDF o le foto da aggiungere')}</span>
       <button className="scan-vetro-primario" disabled={!scelti.size || !!scarico} onClick={conferma}>Aggiungi</button>
     </footer>
-  </div>, document.body);
+  </div>, portale || document.body);
 }

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { usePortale, useInFinestra } from '../lib/portale.js';
 import * as pdfjs from 'pdfjs-personal/build/pdf.mjs';
 import workerUrl from 'pdfjs-personal/build/pdf.worker.min.mjs?url';
 import { EventBus, PDFViewer, PDFLinkService, PDFFindController } from 'pdfjs-personal/web/pdf_viewer.mjs';
@@ -64,7 +65,12 @@ function FirmaPagina({ signature, pageView, onChange, onRemove, onEdit, editable
   </div>, host);
 }
 
-export function GestorePdf({ file: initialFile, files: initialFiles, onClose, onArchive, onSave, onInfo, title, strumento, onEsporta, ctx, origine, onApriDocumento }) {
+export function GestorePdf(props) {
+  // PERSONAL-FINESTRE: dentro una finestra il gestore resta nella finestra (la barra resta usabile).
+  const portale = usePortale(), inFinestra = useInFinestra();
+  return <GestorePdfInterno {...props} portale={portale} inFinestra={inFinestra} />;
+}
+function GestorePdfInterno({ portale, inFinestra, file: initialFile, files: initialFiles, onClose, onArchive, onSave, onInfo, title, strumento, onEsporta, ctx, origine, onApriDocumento }) {
   const root = useRef(null), container = useRef(null), pagesElement = useRef(null), runtime = useRef(null);
   const chooser = useRef(null), merger = useRef(null), alive = useRef(true), dirtyRef = useRef(false);
   const [source, setSource] = useState(null), [name, setName] = useState(initialFile?.name || 'Documento.pdf');
@@ -88,11 +94,11 @@ export function GestorePdf({ file: initialFile, files: initialFiles, onClose, on
   const requestClose = () => { if (dirtyRef.current) setConfirmClose(true); else closeRef.current(); };
   const requestCloseRef = useRef(requestClose); requestCloseRef.current = requestClose;
   // SCAN-INDIETRO: Indietro del telefono = Chiudi (se ci sono modifiche chiede conferma e resta aperto).
-  useIndietro(true, () => { if (dirtyRef.current) { setConfirmClose(true); return true; } closeRef.current(); return false; });
+  useIndietro(!inFinestra, () => { if (dirtyRef.current) { setConfirmClose(true); return true; } closeRef.current(); return false; });
   useEffect(() => {
     alive.current = true;
-    const app = document.querySelector('.pp-app'), oldFocus = document.activeElement, overflow = document.body.style.overflow;
-    if (app) app.inert = true; document.body.style.overflow = 'hidden'; root.current?.querySelector('button')?.focus();
+    const app = inFinestra ? null : document.querySelector('.pp-app'), oldFocus = document.activeElement, overflow = document.body.style.overflow;
+    if (app) app.inert = true; if (!inFinestra) document.body.style.overflow = 'hidden'; root.current?.querySelector('button')?.focus();
     const key = e => {
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); requestCloseRef.current(); }
       if (e.key === 'Tab') { const els = [...root.current.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),[contenteditable="true"],a[href]')].filter(el => el.getClientRects().length); const first = els[0], last = els.at(-1); if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); } }
@@ -269,5 +275,5 @@ export function GestorePdf({ file: initialFile, files: initialFiles, onClose, on
     {rename !== null && <div className="pdf-scrim"><form className="pdf-sheet" onSubmit={e => { e.preventDefault(); try { setName(nomeDocumento(rename)); setRenamed(true); markDirty(); setRename(null); } catch (e) { setError(e.message); } }}><h2>Rinomina PDF</h2><input aria-label="Nuovo nome PDF" value={rename} onChange={e => setRename(e.target.value)} autoFocus required /><button className="pdf-primary" type="submit">Applica nome</button><button type="button" onClick={() => setRename(null)}>Annulla</button></form></div>}
     {confirmClose && <div className="pdf-scrim"><section className="pdf-sheet" role="alertdialog" aria-label="Modifiche non salvate"><h2>Chiudere il documento?</h2><p>Le modifiche non esportate andranno perse. L’originale non cambia.</p><button onClick={() => setConfirmClose(false)}>Continua a lavorare</button><button onClick={() => { dirtyRef.current=false; closeRef.current(); }}>Chiudi senza salvare</button></section></div>}
     {password && <div className="pdf-scrim"><form className="pdf-sheet" onSubmit={e=>{ e.preventDefault(); password.update(passwordText); setPassword(null); setPasswordText(''); }}><h2>Password del PDF</h2>{password.wrong && <p>Password errata, riprova.</p>}<input aria-label="Password PDF" type="password" value={passwordText} onChange={e=>setPasswordText(e.target.value)} autoFocus /><button type="submit">Apri</button><button type="button" onClick={()=>{ void runtime.current?.task.destroy(); setPassword(null); setBusy(''); setError('Apertura annullata.'); }}>Annulla</button></form></div>}
-  </div>, document.body);
+  </div>, portale || document.body);
 }
