@@ -60,13 +60,19 @@ try {
     await page.screenshot({ path: `${out}/tel-4-attivita.png` });
     await tocca(vista.getByRole('button', { name: 'Nuovo desktop' }));
     assert.equal(await vista.locator('.pv-scrivania').count(), 2);
-    await tocca(vista.getByRole('button', { name: /^Desktop 1/ }));
+    // le scrivanie mostrano le loro finestre in miniatura
+    assert.equal(await vista.locator('.pv-scrivania').first().locator('.pv-mini-finestra').count(), 2, 'Desktop 1: due finestre in miniatura');
+    // dito tenuto premuto su Desktop 1 = in alto le sue finestre (senza aprirla)
+    const d1 = await centro(vista.getByRole('button', { name: /^Desktop 1/ }));
+    await tocco('touchStart', d1); await page.waitForTimeout(600); await tocco('touchEnd'); await page.waitForTimeout(250);
+    assert.ok(await vista.isVisible(), 'tenuto premuto: resta nella Visualizzazione attività');
     await tocca(vista.getByRole('button', { name: /^Sposta Esplora file/ }));
     await tocca(vista.locator('.pv-menu').getByRole('menuitem', { name: 'Desktop 2' }));
     assert.equal(await vista.locator('.pv-scheda').count(), 1, 'in Desktop 1 resta lo Scan');
-    await tocca(vista.getByRole('button', { name: /^Desktop 2/ }));
+    assert.equal(await vista.locator('.pv-scrivania').nth(1).locator('.pv-mini-finestra').count(), 1, 'Desktop 2 ora mostra Esplora');
     await page.screenshot({ path: `${out}/tel-5-desktop2.png` });
-    await tocca(vista.getByRole('button', { name: /^Apri Esplora file/ }));
+    // un tocco su Desktop 2 la apre
+    await tocca(vista.getByRole('button', { name: /^Desktop 2/ }));
     await vista.waitFor({ state: 'detached' });
     assert.ok(await esp.isVisible() && !(await scan.isVisible()), 'in Desktop 2 si vede solo Esplora');
     assert.match(await barra.getByRole('button', { name: /^Visualizzazione attività/ }).getAttribute('aria-label'), /2 scrivanie/);
@@ -118,14 +124,43 @@ try {
     await barra.getByRole('button', { name: /^Visualizzazione attività/ }).click();
     const vista = page.getByRole('dialog', { name: 'Visualizzazione attività' }); await vista.waitFor();
     await vista.getByRole('button', { name: 'Nuovo desktop' }).click(); await vista.getByRole('button', { name: 'Nuovo desktop' }).click();
-    await vista.getByRole('button', { name: /^Desktop 1/ }).click(); await page.waitForTimeout(300);
+    await vista.getByRole('button', { name: /^Desktop 1/ }).hover(); await page.waitForTimeout(300); // mouse sopra = anteprima delle sue finestre
+    assert.equal(await vista.locator('.pv-scheda').count(), 2);
     await page.screenshot({ path: `${out}/pc-5-attivita.png` });
     // trascina la scheda dello Scan su Desktop 3
     const sch = await centro(vista.locator('.pv-scheda', { hasText: 'Poliedron Scan' }).locator('.pv-scheda-corpo')), d3 = await centro(vista.getByRole('button', { name: /^Desktop 3/ }));
     await page.mouse.move(sch.x, sch.y); await page.mouse.down(); await page.mouse.move(sch.x + 20, sch.y + 20, { steps: 3 }); await page.mouse.move(d3.x, d3.y, { steps: 12 }); await page.mouse.up();
-    assert.equal(await vista.locator('.pv-scheda', { hasText: 'Poliedron Scan' }).count(), 0, 'Scan spostato in Desktop 3');
     assert.match(await vista.getByRole('button', { name: /^Desktop 3/ }).getAttribute('aria-label'), /1 finestre/);
-    await page.keyboard.press('Escape'); await vista.locator('.pv-scrivanie').click({ position: { x: 5, y: 5 } }).catch(() => {});
+    await vista.getByRole('button', { name: /^Desktop 1/ }).hover(); await page.waitForTimeout(200);
+    assert.equal(await vista.locator('.pv-scheda', { hasText: 'Poliedron Scan' }).count(), 0, 'Scan spostato in Desktop 3');
+    // un clic su Desktop 1 la apre
+    await vista.getByRole('button', { name: /^Desktop 1/ }).click(); await vista.waitFor({ state: 'detached' });
+    assert.ok(await esp.isVisible() && !(await scan.isVisible()));
+    // trascinare da Esplora: sul gestore PDF (vuoto = si apre; poi «Aggiungi in fondo») e sul desktop (= si apre)
+    await barra.getByRole('button', { name: 'Start' }).click(); await page.getByRole('dialog', { name: 'Start' }).locator('.pb-app[aria-label^="Scan"]').click();
+    const scan3 = page.locator('.pf-finestra[aria-label^="Poliedron Scan"]:not([hidden])'); await scan3.locator('.scan-hero-pdf').click(); // dal desktop 1: Scan nuovo → «PDF e firma»
+    const pdf = finestra(page, 'Gestore PDF'); await pdf.locator('.pdf-empty').waitFor();
+    await scan3.locator('.pf-titolo').getByRole('button', { name: /^Riduci/ }).click();
+    await barra.getByRole('button', { name: /^Esplora file/ }).click(); // avanti
+    await esp.locator('.pf-titolo').getByRole('button', { name: /^Ingrandisci/ }).click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Metà sinistra' }).click();
+    await page.getByRole('dialog', { name: 'Scegli la finestra da affiancare' }).getByRole('button', { name: /Gestore PDF/ }).click();
+    const tile = esp.locator('.esp-contenuto [data-elemento][aria-label="Polizza auto"]');
+    const trascinaFile = async (a) => { const da = await centro(tile); await page.mouse.move(da.x, da.y); await page.mouse.down(); await page.mouse.move(da.x + 12, da.y + 6, { steps: 3 }); await page.mouse.move(a.x, a.y, { steps: 14 }); await page.waitForTimeout(150); await page.mouse.up(); };
+    await trascinaFile(await centro(pdf.locator('.pf-corpo')));
+    await pdf.locator('.pdfViewer .page').first().waitFor({ timeout: 15000 });
+    await trascinaFile(await centro(pdf.locator('.pf-corpo')));
+    const foglio = page.getByRole('dialog', { name: 'Documento lasciato qui' }); await foglio.waitFor();
+    await page.screenshot({ path: `${out}/pc-6-lasciato-nel-pdf.png` });
+    await foglio.getByRole('button', { name: 'Aggiungi in fondo come pagine' }).click();
+    await page.waitForFunction(() => document.querySelectorAll('.pf-finestra[aria-label^="Gestore PDF"] .pdfViewer .page').length === 2, null, { timeout: 15000 });
+    await page.screenshot({ path: `${out}/pc-7-pagine-aggiunte.png` });
+    // sul desktop (fuori dalle finestre): si apre in una nuova finestra
+    await pdf.locator('.pf-titolo').getByRole('button', { name: /^Riduci/ }).click();
+    const prima = await page.locator('.pf-finestra').count();
+    await trascinaFile({ x: 1100, y: 420 });
+    await page.waitForFunction((n) => document.querySelectorAll('.pf-finestra').length === n + 1, prima, { timeout: 8000 });
+    await page.screenshot({ path: `${out}/pc-8-aperto-dal-desktop.png` });
     assert.deepEqual(T.errors, []);
     await T.context.close();
   }

@@ -12,7 +12,7 @@ import { apriFinestra, attiva, inPrimoPiano, riduci, chiudi, ingrandisciRipristi
 import { aggancia, stacca, zonaDaPunto, rettangoloZona, zoneLibere, schemi, coppiaAgganciata, spostaDivisore, riadattaAgganciate, SCRIVANIE_INIZIALI, nuovaScrivania, vaiAScrivania, chiudiScrivania, rinominaScrivania, spostaInScrivania, nellaScrivania } from './lib/multitasking.js';
 
 // Finestre che accettano documenti trascinati da un'altra finestra (Esplora → Scan, PDF, Archivia).
-export const ACCETTANO_FILE = new Set(['scansione', 'pdf', 'carica', 'scanner']); // 'scanner' = lo scanner dello Scan dentro Personal (PR #348)
+export const ACCETTANO_FILE = new Set(['scansione', 'pdf', 'pdfStrumento', 'carica', 'scanner']); // + gestore PDF dello Scan (PERSONAL-MULTITASK) // 'scanner' = lo scanner dello Scan dentro Personal (PR #348)
 
 export function useFinestre({ onErrore = () => {} } = {}) {
   const [pagine, setPagine] = useState([]);
@@ -66,6 +66,8 @@ export function useFinestre({ onErrore = () => {} } = {}) {
     const st = pagineRef.current, a = attiva(diQui(st)); if (!a) return false; const n = riduci(st, a.chiave); setPagine(n); return diQui(n).some((f) => f.stato !== 'ridotta');
   });
   useEffect(() => { document.body.classList.toggle('pp-con-pagina', visibili.length > 0); }, [visibili.length]);
+  // PERSONAL-MULTITASK: un file trascinato da Esplora e lasciato sul desktop (fuori dalle finestre) si apre.
+  useEffect(() => { document.body.dataset.bersaglio = 'desktop:apri'; return () => { delete document.body.dataset.bersaglio; }; }, []);
   return { pagine, mie, visibili, inPrimo, area, desktop, apri, indietro, sostituisci, azioni, scrivanie, vista };
 }
 

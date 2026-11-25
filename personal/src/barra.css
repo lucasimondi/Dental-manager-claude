@@ -438,3 +438,20 @@ body.pp-tastiera .pf-desktop { bottom: 0; }
 @media (prefers-reduced-motion: reduce) { .pv-vista, .pv-scheda, .pf-anteprima-snap { animation: none; transition: none; } }
 /* telefono stretto: la ricerca resta nello Start (come Windows 11 tablet), così c'è posto per le attività */
 @media (max-width: 440px) { .pb-icone > .pb-voce[aria-label="Cerca"] { display: none; } }
+/* file da Esplora sopra il desktop (fuori dalle finestre): si aprirà in una nuova finestra */
+body.pb-sopra .pp-app > .pp-contenuto { outline: 3px dashed var(--pb-accento, #0067c0); outline-offset: -10px; border-radius: 14px; background: color-mix(in srgb, var(--pb-accento, #0067c0) 5%, transparent); }
+/* PERSONAL-MULTITASK: scrivanie con le finestre in miniatura (dove sono davvero) */
+.pv-titolo { position: relative; margin: 14px 16px 0; font-size: 15px; font-weight: 650; }
+.pv-scrivania-anteprima { position: relative; width: 150px; height: 94px; padding: 0; overflow: hidden; display: block; }
+@media (max-width: 440px) { .pv-scrivania-anteprima { width: 128px; height: 82px; } .pv-nuova { width: 96px; height: 82px; } }
+.pv-mini-finestra { position: absolute; box-sizing: border-box; display: grid; place-items: center; overflow: hidden; border-radius: 3px; color: #0067c0;
+  background: rgba(255, 255, 255, .92); border: 1px solid rgba(0, 0, 0, .12); box-shadow: 0 2px 6px rgba(0, 0, 0, .25); }
+.pv-mini-finestra i { position: absolute; left: 0; right: 0; top: 0; height: 11px; display: flex; align-items: center; gap: 2px; padding: 0 3px; font-style: normal; background: linear-gradient(180deg, #eef3fa, #dde7f4); color: #10151e; border-bottom: 1px solid rgba(0, 0, 0, .08); }
+.pv-mini-finestra b { font-size: 7px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pv-mini-ridotte { position: absolute; left: 4px; right: 4px; bottom: 3px; height: 13px; display: flex; justify-content: center; gap: 3px; padding: 1px 4px; border-radius: 3px; background: rgba(255, 255, 255, .7); color: #0067c0; }
+.pv-scrivania-nome { display: flex; align-items: center; gap: 2px; }
+.pv-scrivania-nome small { font-weight: 500; opacity: .75; }
+.pv-scrivania-matita { border: 0; background: transparent; cursor: pointer; font-size: 13px; width: 26px; height: 26px; border-radius: 5px; color: inherit; }
+.pv-scrivania-matita:hover, .pv-scrivania-matita:active { background: rgba(0, 0, 0, .08); }
+.pv-rinomina { width: 140px; }
+.pv-nuova { height: 94px; margin-bottom: 30px; }

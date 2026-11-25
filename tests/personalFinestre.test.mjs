@@ -69,7 +69,7 @@ test('desktop: App usa le finestre, barra con le finestre aperte e «Mostra desk
   for (const n of ['Riduci a icona', 'Ingrandisci', 'Ripristina', 'Chiudi']) assert.match(fin, new RegExp(n));
   assert.match(fin, /data-bersaglio=\{accetta \? `finestra:\$\{f\.chiave\}`/);
   assert.match(desk, /useIndietro\(visibili\.length > 0 \|\| vista,/); assert.match(desk, /const n = riduci\(st, a\.chiave\)/, 'Indietro riduce la finestra in primo piano (o chiude la Visualizzazione attività)');
-  assert.match(desk, /ACCETTANO_FILE = new Set\(\['scansione', 'pdf', 'carica', 'scanner'\]\)/);
+  assert.match(desk, /ACCETTANO_FILE = new Set\(\['scansione', 'pdf', 'pdfStrumento', 'carica', 'scanner'\]\)/);
 });
 
 test('desktop: lo scanner come finestra (non l\'app Scan intera), Esplora sceglie per un\'altra finestra, trascinare tra finestre', () => {
@@ -79,7 +79,7 @@ test('desktop: lo scanner come finestra (non l\'app Scan intera), Esplora scegli
   // dopo PR #348: Start → Scan apre la pagina `scan` (sezioni/scan), che nel desktop è una finestra
   assert.match(bar, /\{ id: 'scan', nome: 'Scan', azione: \{ apri: \{ tipo: 'scan' \} \} \}/);
   assert.doesNotMatch(scan, /esterno|incorporato|finestra=scan/);
-  assert.match(esp, /if \(b\?\.tipo === 'finestra'\) return documentiDa\(sorgentiPer\(s\.chiave\)\)\.length > 0/);
+  assert.match(esp, /if \(b\?\.tipo === 'finestra' \|\| b\?\.tipo === 'desktop'\) return documentiDa\(sorgentiPer\(s\.chiave\)\)\.length > 0/);
   assert.match(esp, /d\.fascicolo !== CLINICO/);
   assert.match(esp, /className="esp-scegli-ok"/);
   assert.match(port, /e\.detail\?\.finestra === String\(fin\.chiave\)/);

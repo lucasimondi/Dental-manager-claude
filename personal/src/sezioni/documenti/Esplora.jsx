@@ -644,13 +644,15 @@ export function PaginaEsplora({ ctx, iniziale = RADICE, scegliPer = null, perNom
     attesa: PRESSIONE_MS, vibrazione: 10,
     valido: (s, b) => {
       if (b?.tipo === 'app') { const src = sorgentiPer(s.chiave); return src.length === 1 && src[0].tipo === 'doc' && accettaFile(b.id); }
-      if (b?.tipo === 'finestra') return documentiDa(sorgentiPer(s.chiave)).length > 0; // PERSONAL-FINESTRE
+      if (b?.tipo === 'finestra' || b?.tipo === 'desktop') return documentiDa(sorgentiPer(s.chiave)).length > 0; // PERSONAL-FINESTRE / MULTITASK
       if (b?.tipo === 'scheda') return true; // passandoci sopra la scheda si attiva; lasciando lì si sposta nella sua cartella
       const d = destDi(b); return !!d && destinazioneValida(sorgentiPer(s.chiave), d, opz);
     },
     onLascia: (s, b) => {
       const src = sorgentiPer(s.chiave);
       if (b.tipo === 'app') { apriConApp(b.id, src); return; }
+      // PERSONAL-MULTITASK: lasciato sul desktop (fuori dalle finestre) = si apre in una nuova finestra
+      if (b.tipo === 'desktop') { for (const d of documentiDa(src).slice(0, 4)) apri(/pdf/i.test(d.mime_type || d.nome_file_originale || '') ? { tipo: 'pdf', doc: d, titolo: d.titolo } : { tipo: 'documento', id: d.id }); return; }
       if (b.tipo === 'finestra') { const docs = documentiDa(src); consegnaA(b.id, docs); mostraAvviso(docs.length === 1 ? 'Documento lasciato nella finestra' : `${docs.length} documenti lasciati nella finestra`); return; }
       const dest = b.tipo === 'scheda' ? nodoScheda(tabs.schede.find((t) => t.id === b.id)) : destDi(b);
       if (!dest || eVirtuale(dest)) return;
@@ -688,7 +690,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE, scegliPer = null, perNom
   // L'icona della barra sotto il puntatore si accende (la barra è fuori da Esplora: classe sul nodo).
   useEffect(() => {
     document.body.classList.toggle('pb-trascina', !!presa);
-    const el = sopra?.startsWith('app:') || sopra?.startsWith('finestra:') ? document.querySelector(`[data-bersaglio="${sopra}"]`) : null;
+    const el = sopra?.startsWith('app:') || sopra?.startsWith('finestra:') || sopra?.startsWith('desktop:') ? document.querySelector(`[data-bersaglio="${sopra}"]`) : null;
     el?.classList.add('pb-sopra');
     return () => { el?.classList.remove('pb-sopra'); };
   }, [!!presa, sopra]); // eslint-disable-line react-hooks/exhaustive-deps

@@ -66,3 +66,17 @@ test('interfaccia: otto maniglie, staccare trascinando, schemi dal tasto Ingrand
   assert.match(barra, /Visualizzazione attività/); assert.match(barra, /\{v\.id === 'cerca' && bottoneVista/);
   assert.match(vista, /aria-label="Nuovo desktop"/); assert.match(vista, /data-scrivania=\{d\.id\}/); assert.match(vista, /azioni\.inScrivania\(g\.k, id\)/);
 });
+
+test('trascinare da Esplora: nel gestore PDF (si apre o si aggiunge in fondo) e sul desktop (si apre); scrivanie in miniatura', () => {
+  const ges = readFileSync('personal/src/pdf/GestorePdf.jsx', 'utf8'), esp = readFileSync('personal/src/sezioni/documenti/Esplora.jsx', 'utf8');
+  const desk = readFileSync('personal/src/Desktop.jsx', 'utf8'), fin = readFileSync('personal/src/Finestra.jsx', 'utf8'), vista = readFileSync('personal/src/VistaAttivita.jsx', 'utf8');
+  assert.match(ges, /useDocumentiInFinestra\(\(docs\) => arrivo\.current\?\.\(docs\)\)/);
+  assert.match(ges, /if \(!source\) await importFiles\(fs\); else setArrivati\(fs\)/);
+  assert.match(ges, /unisciPdf\(\[await bytesWithEdits\(\), \.\.\.nuovi\]\)/);
+  assert.match(ges, /aria-label="Documento lasciato qui"/);
+  assert.match(desk, /document\.body\.dataset\.bersaglio = 'desktop:apri'/);
+  assert.match(fin, /data-bersaglio=\{`altra:\$\{f\.chiave\}`/, 'una finestra che non accetta file fa da barriera');
+  assert.match(esp, /if \(b\.tipo === 'desktop'\) \{ for \(const d of documentiDa\(src\)\.slice\(0, 4\)\) apri\(/);
+  assert.match(vista, /className="pv-mini-finestra"/); assert.match(vista, /azioni\.scrivania\(id\); onChiudi\(\)/, 'un tocco sulla scrivania la apre');
+  assert.match(vista, /aria-label=\{`Rinomina \$\{d\.nome\}`\}/);
+});

@@ -48,7 +48,7 @@ export function Finestra({ f, titolo, icona, area, attiva, nascosta = false, acc
   const stile = f.stato === 'ingrandita' ? { left: 0, top: 0, width: area.w, height: area.h } : { left: f.x, top: f.y, width: f.w, height: f.h };
   return (
     <section ref={radice} className={`pf-finestra pf-${f.stato}${f.aggancio ? ` pf-agganciata pf-z-${f.aggancio}` : ''}${attiva ? ' pf-attiva' : ''}`} style={{ ...stile, zIndex: 40 + (f.z || 0) }}
-      hidden={f.stato === 'ridotta' || nascosta} role="dialog" aria-label={titolo} data-finestra={f.chiave} onPointerDownCapture={() => { if (!attiva) onPrimoPiano(); }}>
+      hidden={f.stato === 'ridotta' || nascosta} role="dialog" aria-label={titolo} data-finestra={f.chiave} data-bersaglio={`altra:${f.chiave}` /* una finestra che non accetta file non lascia passare al desktop */} onPointerDownCapture={() => { if (!attiva) onPrimoPiano(); }}>
       <header className="pf-titolo" style={{ height: BARRA_TITOLO }} onPointerDown={inizia('sposta')} onPointerMove={muovi} onPointerUp={fine} onPointerCancel={fine} onClick={doppio}>
         <span className="pf-icona" aria-hidden="true">{icona}</span>
         <span className="pf-nome">{titolo}</span>
