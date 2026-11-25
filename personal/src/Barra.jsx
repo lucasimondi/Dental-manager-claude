@@ -13,20 +13,22 @@ import { elencoRecenti, fileRecente } from './lib/recenti.js';
 import { scaricaDocumento } from './lib/condividi.js';
 import {
   voceAttiva, vociAperte, badgeBarra, vociStart, numeroNotifiche, oraData, nomeUtente, consigliati, etichettaNumero, accettaFile, APP_PER_FILE,
-  AGGIUNTE, normalizzaStart, spostaAggiunta, togliAggiunta, cambiaDock, nelDock, vociBarra, appTrovate, scadenzeImminenti,
+  AGGIUNTE, cartellaStart, normalizzaStart, spostaAggiunta, togliAggiunta, cambiaDock, nelDock, vociBarra, appTrovate, scadenzeImminenti,
 } from './lib/barra.js';
-import { caricaPreferiti } from './lib/esplora.js';
+import { caricaPreferiti, creaFileDrive, linkNuovoFile, NUOVI_FILE, RADICE } from './lib/esplora.js';
+import { aggiungiAScrivania } from './lib/cartelleMie.js';
+import { IconaApp } from './IconeApp.jsx';
 import { statoCentro, ascoltaCentro, aggiornaCentro, conteggiCentro, leggiPosticipate, notificheDa, nuoveDaAvvisare, leggiViste, salvaViste } from './lib/centroNotifiche.js';
 import { CentroNotifiche, ToastNotifiche } from './CentroNotifiche.jsx';
 import { PannelloTrasferimenti } from './PannelloTrasferimenti.jsx';
 import { statoDrive, ascoltaStatoDrive, attesaDrive, testoStatoDrive } from './lib/statoDrive.js';
 import { sectionDestination } from '../../shared/agenda/navigation.js';
 import { IconaCartellaW11, IconaFileW11 } from './IconeW11.jsx';
-import { titoloDoc } from './ui.jsx';
+import { titoloDoc, tokenSessione } from './ui.jsx';
 import { IconaDock } from './IconeDock.jsx';
 import {
   IconaOggi, IconaChat, IconaPerTe, IconaCerca, IconaDocumenti, IconaEuro, IconaPratiche, IconaPortafoglio, IconaNote,
-  IconaLucchetto, IconaFoto, IconaImpostazioni, IconaEsci, IconaCalendario,
+  IconaLucchetto, IconaFoto, IconaImpostazioni, IconaEsci, IconaCalendario, IconaScansiona,
 } from './Icone.jsx';
 import gemmaPoliedron from '../../src/assets/icon-poliedra-gem.png';
 import './barra.css';
@@ -34,7 +36,8 @@ import './barra.css';
 const ICONE_START = {
   oggi: IconaOggi, agenda: IconaCalendario, documenti: IconaDocumenti, dafare: IconaPerTe, conti: IconaEuro, legal: IconaPratiche,
   pratiche: IconaPratiche, personali: IconaPortafoglio, diario: IconaNote, note: IconaNote, password: IconaLucchetto, foto: IconaFoto,
-  concordato: IconaPratiche, studio: (p) => <IconaDock n="brief" s={p.size} />, impostazioni: IconaImpostazioni,
+  concordato: IconaPratiche, scan: IconaScansiona,
+  google: (p) => <IconaApp tipo="google" size={p.size + 2} />, office: (p) => <IconaApp tipo="office" size={p.size + 2} />, studio: (p) => <IconaDock n="brief" s={p.size} />, impostazioni: IconaImpostazioni,
 };
 const Numero = ({ n, classe = '' }) => { const t = etichettaNumero(n); return t ? <span className={`pb-pallino ${classe}`} aria-hidden="true">{t}</span> : null; };
 
@@ -98,6 +101,7 @@ function IconaVoce({ id }) {
 
 export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, apri, onEsci, onCentro, centroAperto = false }) {
   const [start, setStart] = useState(false); // false | 'start' | 'cerca'
+  const [cartellaIniziale, setCartellaIniziale] = useState(null); // SCAN-GOOGLE-OFFICE: Google/Office fissati nel dock
   const [impStart, setImpStart] = useState(() => normalizzaStart());
   useEffect(() => {
     let vivo = true;
@@ -134,11 +138,12 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
 
   // Indietro chiude Start: una voce nella cronologia finché Start è aperto.
   const chiudi = useCallback(() => {
-    setStart(false);
+    setStart(false); setCartellaIniziale(null);
     if (window.history.state?.pbStart) window.history.back();
   }, []);
   const apriStart = (modo = 'start') => {
     if (!window.history.state?.pbStart) window.history.pushState({ ...(window.history.state || {}), pbStart: true }, '');
+    if (modo === 'cerca') setCartellaIniziale(null);
     setStart(modo);
   };
   // Tasto Win (premuto e lasciato da solo) o Ctrl+Esc: apre e chiude Start.
@@ -165,6 +170,7 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
   const tocca = (v) => {
     setCentro(false);
     if (v.id === 'start' || v.id === 'cerca') { if (start === v.id) chiudi(); else apriStart(v.id); return; }
+    if (v.azione?.cartella) { const c = v.azione.cartella; if (start === 'start') setCartellaIniziale(c); else { apriStart('start'); setCartellaIniziale(c); } return; }
     if (start) chiudi();
     if (v.azione) { esegui(v.azione); return; }
     if (v.pagina) apri({ tipo: v.pagina }); else vai(v.vista);
@@ -183,7 +189,7 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
       {centro && <CentroNotifiche mobile={mobile} apri={apri} onChiudi={() => setCentro(false)} />}
       <ToastNotifiche toast={toast} onChiudi={(k) => setToast((t) => t.filter((x) => x.chiave !== k))}
         onApri={(n) => (n.documento_id ? apri({ tipo: 'documento', id: n.documento_id }) : n.pratica ? apri({ tipo: 'pratica', p: n.pratica }) : null)} />
-      {start && <Start modo={start} conteggi={conteggi} email={email} onAzione={esegui} onChiudi={chiudi} apri={apri} onEsci={onEsci} imp={impStart} onImp={salvaStart} />}
+      {start && <Start modo={start} cartellaIniziale={cartellaIniziale} conteggi={conteggi} email={email} onAzione={esegui} onChiudi={chiudi} apri={apri} onEsci={onEsci} imp={impStart} onImp={salvaStart} />}
       <nav className="pb-barra" aria-label="Barra delle applicazioni">
         <span className="pb-lato" aria-hidden="true" />
         <div className="pb-icone">
@@ -219,7 +225,33 @@ export function BarraApplicazioni({ vista, pagine, conteggi = {}, email, vai, ap
   );
 }
 
-function Start({ modo = 'start', conteggi, email, onAzione, onChiudi, apri, onEsci, imp, onImp }) {
+function Start({ modo = 'start', cartellaIniziale = null, conteggi, email, onAzione, onChiudi, apri, onEsci, imp, onImp }) {
+  // SCAN-GOOGLE-OFFICE: cartella di app aperta dentro Start (Google, Office), come in Windows 11.
+  const [cartella, setCartella] = useState(cartellaIniziale);
+  useEffect(() => { setCartella(cartellaIniziale); }, [cartellaIniziale]);
+  const [avviso, setAvviso] = useState(null);
+  const [creo, setCreo] = useState(null);
+  // Nuovo file Google o Office in «Personale» (Archivio personale su Drive), aperto in una nuova scheda.
+  const creaEApri = async (tipo) => {
+    if (creo) return;
+    const finestra = window.open('', '_blank');
+    setCreo(tipo); setAvviso(null);
+    try {
+      const r = await creaFileDrive({ token: await tokenSessione(), tipo, nome: NUOVI_FILE[tipo].nome, cartella: RADICE });
+      await aggiungiAScrivania(archivioDb, [r.id]).catch(() => {});
+      const url = linkNuovoFile(r);
+      if (finestra) finestra.location.href = url; else window.open(url, '_blank', 'noopener');
+      onChiudi();
+    } catch (e) {
+      finestra?.close();
+      setAvviso(`Non creato: ${e.message}`);
+    } finally { setCreo(null); }
+  };
+  const apriInCartella = (v) => {
+    if (v.href) { window.open(v.href, '_blank', 'noopener'); onChiudi(); }
+    else if (v.crea) creaEApri(v.crea);
+    else if (v.apri) onAzione({ apri: v.apri });
+  };
   const [testo, setTesto] = useState('');
   const [suggeriti, setSuggeriti] = useState(null);
   const [trovati, setTrovati] = useState(null); // documenti trovati mentre si scrive
@@ -278,7 +310,7 @@ function Start({ modo = 'start', conteggi, email, onAzione, onChiudi, apri, onEs
   const aggiunte = [...imp.aggiunte, ...fissateCartelle.map((c) => ({ tipo: 'cartella', id: c.id }))];
   const voceDi = (x) => (x.tipo === 'app' ? { ...AGGIUNTE.find((a) => a.id === x.id), n: n[x.id] || 0 } : { id: x.id, nome: x.nome || (x.id === 'radice' ? 'Personale' : 'Cartella'), azione: { apri: { tipo: 'esplora', nodo: x.id } }, cartella: true });
   const nomiCartelle = useNomiCartelle(aggiunte.filter((x) => x.tipo === 'cartella').map((x) => x.id));
-  const apriVoce = (v) => onAzione(v.azione);
+  const apriVoce = (v) => { if (v.azione?.cartella) { setCartella(v.azione.cartella); setAvviso(null); } else if (v.azione) onAzione(v.azione); else apriInCartella(v); };
   // Riordino col mouse: trascina un'icona sopra un'altra posizione.
   const premiApp = (e, i) => {
     if (e.button !== 0 || e.pointerType === 'touch') return;
@@ -317,8 +349,8 @@ function Start({ modo = 'start', conteggi, email, onAzione, onChiudi, apri, onEs
               <div className="pb-consigliati pb-risultati">
                 {appQui.map((a) => (
                   <button key={`a:${a.id}`} type="button" className="pb-consigliato" onClick={() => apriVoce(a)}>
-                    <span className="pb-app-icona pb-icona-piccola">{(() => { const I = ICONE_START[a.id]; return a.id === 'esplora' ? <IconaCartellaW11 size={26} /> : I ? <I size={22} /> : null; })()}</span>
-                    <span><strong>{a.nome}</strong><small>App</small></span>
+                    <span className="pb-app-icona pb-icona-piccola">{(() => { const I = ICONE_START[a.id]; return a.icona ? <IconaApp tipo={a.icona === 'esplora' ? 'office' : a.icona} size={24} /> : a.id === 'esplora' ? <IconaCartellaW11 size={26} /> : I ? <I size={22} /> : null; })()}</span>
+                    <span><strong>{a.nome}</strong><small>{a.cartella ? `App · ${a.cartella}` : 'App'}</small></span>
                   </button>
                 ))}
                 {trovati === null && testo.trim().length >= 2 && <p className="pb-nota">Cerco…</p>}
@@ -332,6 +364,26 @@ function Start({ modo = 'start', conteggi, email, onAzione, onChiudi, apri, onEs
               </div>
               <button type="button" className="pb-tutti" onClick={cerca}>Cerca «{testo.trim()}» in tutto l’archivio ›</button>
             </>
+          ) : cartellaStart(cartella) ? (
+            <div className="pb-cartella-app" role="group" aria-label={`Cartella ${cartellaStart(cartella).nome}`}>
+              <div className="pb-cartella-testa">
+                <button type="button" className="pb-cartella-indietro" onClick={() => { setCartella(null); setAvviso(null); }} aria-label="Torna ad Aggiunte">‹</button>
+                <h2>{cartellaStart(cartella).nome}</h2>
+              </div>
+              <div className="pb-aggiunte">
+                {cartellaStart(cartella).voci.map((v) => (
+                  <button key={v.id} type="button" className={`pb-app${creo && creo === v.crea ? ' presa' : ''}`} onClick={() => apriInCartella(v)} disabled={Boolean(creo)}
+                    aria-label={v.crea ? `${v.nome} (in Personale)` : v.nome}>
+                    <span className="pb-app-icona">{v.icona === 'esplora' ? <IconaCartellaW11 size={32} /> : <IconaApp tipo={v.icona} size={30} />}</span>
+                    <span className="pb-app-nome">{creo && creo === v.crea ? 'Creo…' : v.nome}</span>
+                  </button>
+                ))}
+              </div>
+              {avviso && <p className="pb-nota pb-avviso" role="alert">{avviso}</p>}
+              <p className="pb-nota">{cartella === 'office'
+                ? 'I file nuovi nascono in «Personale» e si aprono in Google modalità Office. Da Esplora file: Apri con › Word, Excel, PowerPoint del telefono.'
+                : 'Le app Google si aprono in una nuova scheda (sul telefono nelle app Google, se installate). I file nuovi nascono in «Personale».'}</p>
+            </div>
           ) : (
             <>
               <h2>Aggiunte</h2>

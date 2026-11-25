@@ -53,7 +53,7 @@ test('scanner: via le ombre — la carta diventa bianca anche nella parte in omb
 });
 
 test('scanner: «Scatta» apre la fotocamera dal vivo (con ripiego), le foto arrivano in coda', () => {
-  const aggiungi = readFileSync('personal/src/Aggiungi.jsx', 'utf8'), scan = readFileSync('personal/src/scan/Scan.jsx', 'utf8'), cam = readFileSync('personal/src/scan/Fotocamera.jsx', 'utf8');
+  const aggiungi = readFileSync('personal/src/Aggiungi.jsx', 'utf8'), scan = readFileSync('personal/src/scan/strumenti.js', 'utf8'), cam = readFileSync('personal/src/scan/Fotocamera.jsx', 'utf8');
   assert.match(aggiungi, /if \(fotocameraDisponibile\(\)\) setCamera\(true\); else scatto\.current\.click\(\)/);
   assert.match(aggiungi, /if \(inCorso\.current\) \{ attesa\.current\.push\(\.\.\.elenco\); return; \}/);
   assert.match(aggiungi, /onNonDisponibile=/);

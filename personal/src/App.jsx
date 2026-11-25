@@ -18,6 +18,7 @@ import { archivioDb } from './lib/supabasePersonal.js';
 import { conteggiFascicoli } from './lib/archivio.js';
 import { segnaPagato, annullaPagato } from './lib/automatismi.js';
 import { impostaToken } from './lib/miniature.js';
+import { ricordaFile } from './lib/recenti.js';
 import { CHAT_VUOTA } from './lib/chat.js';
 import { IMPOSTAZIONI_PREDEFINITE, salvaImpostazioni } from './lib/impostazioni.js';
 import { saluto, VISTA_KEY, leggiVista, tokenSessione } from './ui.jsx';
@@ -46,6 +47,7 @@ function Archivio({ email }) {
   const [toast, setToast] = useState(null);
   const [occupato, setOccupato] = useState(0);
   const [versione, setVersione] = useState(0);
+  const [versioneRecenti, setVersioneRecenti] = useState(0); // SCAN-APP: Recenti di Scan aperto in Personal
   const [fascicoli, setFascicoli] = useState([]);
   const [foglio, setFoglio] = useState(false);
   const [chat, setChat] = useState(CHAT_VUOTA);
@@ -115,6 +117,9 @@ function Archivio({ email }) {
 
   const ctx = {
     esegui, aggiorna, mostra, versione, impostazioni, salvaImp, salvaEtichette, fascicoli, apri, vai, aggiungi, sotto, apriChat, chat, setChat, indietro,
+    // SCAN-APP: i file creati, condivisi o scaricati da Scan restano nei Recenti di questo telefono.
+    ricorda: (files) => { ricordaFile(files).then(() => setVersioneRecenti((n) => n + 1)).catch(() => {}); },
+    versioneRecenti,
     apriAggiungi: () => setFoglio(true), // PERSONALE-HOME: il + della Home personale apre lo stesso foglio del tasto +
     // Pagato da un elenco: spesa e prossimo fisso si creano da soli, Annulla li toglie (POL-VITA-021).
     pagato: (s) => esegui(async () => {

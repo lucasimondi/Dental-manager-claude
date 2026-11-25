@@ -221,7 +221,7 @@ try {
     assert.ok(await page.locator('.esp-casella.attiva').count() >= 1, 'casella di selezione');
     await page.screenshot({ path: `${out}/telefono-menu.png` });
     await sceltaMenu(page, 'Apri con');
-    assert.deepEqual(await page.locator('.esp-foglio-menu .esp-menu-voce:not(.esp-menu-indietro) .esp-menu-nome').allInnerTexts(), ['Anteprima Poliedra', 'Visualizzatore Google Drive', 'Google Documenti / Fogli', 'Nuova scheda del browser', 'Scarica', 'Altra app… (condividi)', 'Scegli app predefinita…']);
+    assert.deepEqual(await page.locator('.esp-foglio-menu .esp-menu-voce:not(.esp-menu-indietro) .esp-menu-nome').allInnerTexts(), ['Anteprima Poliedra', 'Visualizzatore Google Drive', 'Google Documenti / Fogli / Presentazioni', 'Nuova scheda del browser', 'Scarica', 'Altra app… (condividi)', 'Word, Excel, PowerPoint del telefono', 'Scegli app predefinita…']);
     await page.locator('.esp-menu-indietro').tap();
     await sceltaMenu(page, 'Sposta in…');
     await page.locator('.esp-sposta').waitFor(); await page.waitForTimeout(300);

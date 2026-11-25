@@ -49,9 +49,9 @@ try {
     assert.equal(Math.round(g.bottom), 0);
     assert.equal(g.w, g.vw);
     assert.equal(g.filtro, 'blur(30px) saturate(1.5)');
-    assert.equal(g.gap, '4px');
-    assert.deepEqual(g.voci.map((v) => v.label), ['Start', 'Cerca', 'Oggi, 1 urgenti', 'Agenda', 'Esplora file, 2 da gestire', 'Assistente', 'Personale']);
-    for (const v of g.voci) { assert.equal(v.w, 40); assert.equal(v.h, 40); assert.equal(v.raggio, '6px'); }
+    assert.equal(g.gap, g.vw <= 440 ? '2px' : '4px');
+    assert.deepEqual(g.voci.map((v) => v.label), ['Start', 'Cerca', 'Oggi, 1 urgenti', 'Agenda', 'Esplora file, 2 da gestire', 'Scan', 'Assistente', 'Personale']);
+    for (const v of g.voci) { assert.equal(v.w, g.vw <= 440 ? 36 : 40); assert.equal(v.h, 40); assert.equal(v.raggio, '6px'); }
     assert.ok(Math.abs(g.centro - g.vw / 2) < 2, `icone centrate (${g.centro} su ${g.vw})`);
     assert.equal(g.sisVisibile, true, 'area di sistema (su mobile solo la campanella)');
     assert.equal(await page.locator('.pb-campanella').isVisible(), !desktop, 'campanella solo su mobile');
@@ -85,6 +85,16 @@ try {
     assert.equal(Math.round(pagina), altezza, 'la pagina finisce sopra la barra');
     await page.screenshot({ path: `${out}/${nome}-esplora.png` });
 
+    // SCAN-APP: Scan dalla barra, aperto come app dentro Personal (Home di Scan con gli strumenti)
+    await barra.getByRole('button', { name: 'Scan' }).click();
+    await page.locator('.pp-scan-in-personal .scan-hero-grande').waitFor();
+    await page.waitForTimeout(350);
+    assert.equal(await page.locator('.pb-voce.attiva').getAttribute('aria-label'), 'Scan');
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Scan senza scorrimento orizzontale');
+    await page.screenshot({ path: `${out}/${nome}-scan.png` });
+    await page.locator('.pp-pagina:not([hidden]) .pp-indietro').click();
+    await page.waitForTimeout(350);
+
     // Start: apre, dentro lo schermo, 4 colonne; si chiude con un tocco fuori, con Indietro e col logo
     const start = barra.getByRole('button', { name: 'Start' });
     await start.click();
@@ -96,6 +106,18 @@ try {
     assert.equal(await page.locator('.pb-app[aria-label="Esplora, 2"] .pb-pallino').textContent(), '2');
     assert.equal(await page.locator('.pb-app[aria-label="Oggi, 1"] .pb-pallino').textContent(), '1');
     await page.screenshot({ path: `${out}/${nome}-start.png` });
+    // SCAN-GOOGLE-OFFICE: cartelle «Google» e «Office» in Start, aperte dentro Start
+    await page.locator('.pb-app[aria-label="Google"]').scrollIntoViewIfNeeded();
+    await page.locator('.pb-app[aria-label="Google"]').click();
+    await page.getByRole('group', { name: 'Cartella Google' }).waitFor();
+    assert.deepEqual(await page.locator('.pb-cartella-app .pb-app-nome').allInnerTexts(), ['Documenti', 'Fogli', 'Presentazioni', 'Moduli', 'Drive', 'Gmail', 'Calendar', 'Nuovo documento', 'Nuovo foglio', 'Nuova presentazione', 'Nuovo modulo']);
+    assert.ok(await dentro(page, '.pb-start'), 'Start con la cartella dentro lo schermo');
+    await page.screenshot({ path: `${out}/${nome}-start-google.png` });
+    await page.getByRole('button', { name: 'Torna ad Aggiunte' }).click();
+    await page.locator('.pb-app[aria-label="Office"]').click();
+    assert.deepEqual(await page.locator('.pb-cartella-app .pb-app-nome').allInnerTexts(), ['Nuovo Word', 'Nuovo Excel', 'Nuovo PowerPoint', 'File Office']);
+    await page.screenshot({ path: `${out}/${nome}-start-office.png` });
+    await page.getByRole('button', { name: 'Torna ad Aggiunte' }).click();
     await page.mouse.click(5, 5);
     await page.getByRole('dialog', { name: 'Start' }).waitFor({ state: 'detached' });
     await start.click(); await page.getByRole('dialog', { name: 'Start' }).waitFor();

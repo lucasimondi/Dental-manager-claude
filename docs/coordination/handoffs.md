@@ -5021,6 +5021,15 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Screen Personale → «Riordino». Nothing moved or renamed on Drive. Phase 3 (execution in batches of 100 with `log_spostamenti` and «Annulla lotto») only after Luca approves rows.
 - Known weak spot: «12 Lavoro e professione/Studio Cuneo» still collects some documents of other subjects (bank, legal, housing); 99 at 9.7% (target 5%).
 
+## Handoff — PERSONAL-APP-SCAN-GOOGLE-OFFICE (2026-11-24, Claude Code)
+- Task: Scan as an app in the Personal dock; Google apps and Office inside Personal (PO 2026-11-24, plan approved «Sì procedi con tutte e tre le fasi»). Branch `ccr-6c8288d9-yt2p7s` from master 494aeac.
+- Completed: phase 1 (Scan in dock/Start, opened inside Personal), phases 2–3 (Start folders Google/Office, Esplora Nuovo ▸ 7 file types, Apri con ▸ Word/Excel/PowerPoint del telefono, App predefinite `office`, script `nuovo_file`). Details in current-task.md.
+- Files: `personal/src/{App.jsx,Barra.jsx,barra.css,IconeApp.jsx (new)}`, `personal/src/lib/{barra.js,esplora.js,apertura.js}`, `personal/src/scan/{Scan.jsx,pagineScan.jsx (new),strumenti.js (new)}`, `personal/src/sezioni/{index.js,scan/* (new),altro/Personale.jsx,documenti/Esplora.jsx}`, `poliedron/archivio/{Code.gs,CLAUDE.md}`, tests `esplora`, `esploraFinestra`, `esploraDrive`, `personalScan`, `personalSezioni`, `personaleHome`, `scanHub`, visual `personal-barra`, `personal-esplora`, `personal-personale`.
+- Database: none.
+- Tests: npm test 1950/1950; build:personal PASS; visuals PASS (see current-task).
+- Unresolved/risks: script not published (Nuovo shows «script da aggiornare» until then); Google Form creation via Drive API not tried live; on phones ≤ 440 px the bar buttons are 36 px wide (8 icons); Office editing without OneDrive is in Google Office mode or the phone apps (PO choice).
+- Rollback: revert the branch commits; script: redeploy the previous web app version.
+- Next exact action: Luca tries the preview on the phone; «Pubblica» for the script; «Mergia» for the PR.
 ## Handoff — FIRMA-BIRO-2 (2026-11-24, Claude Code)
 - Task FIRMA-BIRO-2; previous agent: none (new task from the PO plan on Drive «piano-poliedron-documenti-android.md»); branch `ccr-3ece708c-bx0vaq` from master 494aeac.
 - Objective: more realistic ballpoint stroke (plan §1). Completed: see current-task.md FIRMA-BIRO-2.

@@ -53,7 +53,8 @@ test('Scan: scorciatoie di Personal e app senza dock', () => {
   }
   const app = readFileSync('personal/src/App.jsx', 'utf8');
   assert.match(app, /eScan\(\) \? <Scan/);
-  const scan = readFileSync('personal/src/scan/Scan.jsx', 'utf8');
+  // SCAN-APP: le pagine e gli strumenti di Scan sono condivisi con Personal (scan/pagineScan.jsx, scan/strumenti.js).
+  const scan = ['Scan.jsx', 'pagineScan.jsx', 'strumenti.js'].map((f) => readFileSync(`personal/src/scan/${f}`, 'utf8')).join('\n');
   assert.match(scan, /PaginaScansione/); assert.match(scan, /tipo: 'pdf'/);
   assert.doesNotMatch(scan, /pp-schede|pp-fab/);
   assert.match(readFileSync('personal/index.html', 'utf8'), /scan\(/);

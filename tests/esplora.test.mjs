@@ -175,7 +175,7 @@ test('Taglia / Incolla', () => {
   const menu = vociMenu('vuoto', { nodo: 'auto', appunti: app, opz });
   // PR #337 §5: spazio vuoto = Visualizza ▸, Ordina per ▸, Raggruppa per ▸, Nuovo ▸, Incolla, Aggiorna, Proprietà della cartella
   assert.deepEqual(menu.map((v) => [v.nome, v.attiva]), [['Visualizza', true], ['Ordina per', true], ['Raggruppa per', true], ['Nuovo', true], ['Incolla «Contratto»', true], ['Aggiorna', true], ['Seleziona tutto', true], ['Proprietà della cartella', true]]);
-  assert.deepEqual(menu.find((v) => v.id === 'nuovo').sotto.filter((x) => !x.separatore).map((x) => x.nome), ['Cartella', 'Documento Google', 'Foglio Google', 'Carica file…']);
+  assert.deepEqual(menu.find((v) => v.id === 'nuovo').sotto.filter((x) => !x.separatore).map((x) => x.nome), ['Cartella', 'Documento Google', 'Foglio Google', 'Presentazione Google', 'Modulo Google', 'Documento Word', 'Foglio Excel', 'Presentazione PowerPoint', 'Carica file…']);
   assert.equal(vociMenu('vuoto', { nodo: 'casa', appunti: app, opz }).find((v) => v.id === 'incolla').attiva, false);
   assert.equal(vociMenu('vuoto', { nodo: DA_CATALOGARE, appunti: app, opz }).find((v) => v.id === 'nuovo').attiva, false);
 });
@@ -192,7 +192,7 @@ test('menu Win11: riga rapida, sottomenu, scorciatoie; voci non applicabili disa
   const m = menuContestuale('file', { selezione: [{ tipo: 'doc', id: 'd1', da: 'casa' }], ambiente: 'condividi', convertibile: true });
   assert.deepEqual(m.rapide.map((x) => x.nome), ['Taglia', 'Copia', 'Rinomina', 'Condividi', 'Elimina']);
   assert.deepEqual(m.voci.filter((x) => !x.separatore).map((x) => x.nome), ['Apri', 'Apri con', 'Condividi', 'Aggiungi ai Preferiti', 'Taglia', 'Copia', 'Duplica', 'Copia percorso', 'Rinomina', 'Sposta in…', 'Copia in…', 'Comprimi in ZIP', 'Estrai tutto', 'Scarica', 'Mostra nella cartella', 'Proprietà', 'Elimina']);
-  assert.deepEqual(m.voci.find((x) => x.id === 'apri-con').sotto.filter((x) => !x.separatore).map((x) => x.nome), ['Anteprima Poliedra', 'Visualizzatore Google Drive', 'Google Documenti / Fogli', 'Nuova scheda del browser', 'Scarica', 'Altra app… (condividi)', 'Scegli app predefinita…']);
+  assert.deepEqual(m.voci.find((x) => x.id === 'apri-con').sotto.filter((x) => !x.separatore).map((x) => x.nome), ['Anteprima Poliedra', 'Visualizzatore Google Drive', 'Google Documenti / Fogli / Presentazioni', 'Nuova scheda del browser', 'Scarica', 'Altra app… (condividi)', 'Word, Excel, PowerPoint del telefono', 'Scegli app predefinita…']);
   // Estrai tutto solo per gli ZIP; Mostra nella cartella solo fuori dalla cartella (ricerca, Recenti…)
   assert.equal(m.voci.find((x) => x.id === 'estrai').attiva, false);
   assert.equal(menuContestuale('file', { selezione: [{ tipo: 'doc', id: 'z' }], zip: true }).voci.find((x) => x.id === 'estrai').attiva, true);
@@ -449,4 +449,23 @@ test('barra PR #337: trattino 16 px attiva / 6 px aperta non in primo piano, bad
   inizioDrive(); fineDrive(); assert.equal(statoDrive().stato, 'ok');
   attesaDrive(3); assert.equal(statoDrive().stato, 'sync'); assert.match(testoStatoDrive(), /3 file al prossimo giro/);
   attesaDrive(0); assert.equal(testoStatoDrive(), 'Drive sincronizzato');
+});
+
+// SCAN-GOOGLE-OFFICE (PO 2026-11-24)
+import { NUOVI_FILE, vociNuovoFile, linkNuovoFile, eOffice } from '../personal/src/lib/esplora.js';
+test('Nuovo: app Google poi Office; Office si apre in Google modalità Office; Word/Excel/PowerPoint del telefono solo per file Office', () => {
+  const v = vociNuovoFile(true);
+  assert.deepEqual(v.filter((x) => !x.separatore).map((x) => x.nome), ['Documento Google', 'Foglio Google', 'Presentazione Google', 'Modulo Google', 'Documento Word', 'Foglio Excel', 'Presentazione PowerPoint']);
+  assert.equal(v.findIndex((x) => x.separatore), 4);
+  assert.ok(vociNuovoFile(false).filter((x) => x.id).every((x) => x.attiva === false));
+  assert.equal(Object.keys(NUOVI_FILE).length, 7);
+  assert.equal(linkNuovoFile({ mime_type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', drive_file_id: 'x1', url: 'https://drive/x1' }), 'https://docs.google.com/spreadsheets/d/x1/edit');
+  assert.equal(linkNuovoFile({ mime_type: 'application/vnd.google-apps.presentation', drive_file_id: 'x2', url: 'https://docs.google.com/presentation/d/x2/edit' }), 'https://docs.google.com/presentation/d/x2/edit');
+  assert.equal(linkNuovoFile({ mime_type: 'application/vnd.google-apps.form', drive_file_id: 'x3', url: 'https://docs.google.com/forms/d/x3/edit' }), 'https://docs.google.com/forms/d/x3/edit');
+  assert.equal(eOffice({ mime_type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }), true);
+  assert.equal(eOffice({ nome_file_originale: 'vecchio.XLS' }), true);
+  assert.equal(eOffice({ mime_type: 'application/pdf', nome_file_originale: 'a.pdf' }), false);
+  const m = menuContestuale('file', { selezione: [{ tipo: 'doc', id: 'd1', da: 'casa' }], ambiente: 'condividi', office: true });
+  assert.equal(m.voci.find((x) => x.id === 'apri-con').sotto.find((x) => x.id === 'con:office').attiva, true);
+  assert.equal(menuContestuale('file', { selezione: [{ tipo: 'doc', id: 'd1', da: 'casa' }], ambiente: 'condividi' }).voci.find((x) => x.id === 'apri-con').sotto.find((x) => x.id === 'con:office').attiva, false);
 });

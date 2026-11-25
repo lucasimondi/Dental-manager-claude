@@ -302,7 +302,7 @@ export function nomeNuovaCartella(esistenti, base = 'Nuova cartella') {
 // rapide = la riga di icone in alto (Taglia, Copia, Rinomina, Condividi, Elimina);
 // voci = { id, nome, tasto?, attiva, sotto?: [...] } oppure { separatore: true }.
 // `selezione` = elementi su cui agisce (uno o più); le voci non applicabili restano visibili, disattivate.
-export function menuContestuale(cosa, { nodo, appunti = null, opz = {}, selezione = [], preferiti = [], ambiente = 'scarica', convertibile = false, conFile = true, vista = 'grandi', ordine = { chiave: 'nome', verso: 'su' }, gruppo = '', altrove = false, zip = false, cestino = false } = {}) {
+export function menuContestuale(cosa, { nodo, appunti = null, opz = {}, selezione = [], preferiti = [], ambiente = 'scarica', convertibile = false, office = false, conFile = true, vista = 'grandi', ordine = { chiave: 'nome', verso: 'su' }, gruppo = '', altrove = false, zip = false, cestino = false } = {}) {
   const sep = { separatore: true };
   const segno = (si, nome) => `${si ? '✓ ' : ''}${nome}`;
   if (cosa === 'vuoto') {
@@ -315,8 +315,7 @@ export function menuContestuale(cosa, { nodo, appunti = null, opz = {}, selezion
       sep,
       { id: 'nuovo', nome: 'Nuovo', attiva: vero, sotto: [
         { id: 'nuova', nome: 'Cartella', tasto: 'Ctrl+Maiusc+N', attiva: vero },
-        { id: 'nuovo:doc', nome: 'Documento Google', attiva: vero },
-        { id: 'nuovo:foglio', nome: 'Foglio Google', attiva: vero },
+        ...vociNuovoFile(vero, sep), // SCAN-GOOGLE-OFFICE: Google e Office
         sep,
         { id: 'carica', nome: 'Carica file…', attiva: vero },
       ] },
@@ -376,10 +375,12 @@ export function menuContestuale(cosa, { nodo, appunti = null, opz = {}, selezion
     { id: 'apri-con', nome: 'Apri con', attiva: !piu && conFile, sotto: [
       { id: 'con:anteprima', nome: 'Anteprima Poliedra', attiva: true },
       { id: 'con:drive', nome: 'Visualizzatore Google Drive', attiva: true },
-      { id: 'con:docs', nome: 'Google Documenti / Fogli', attiva: convertibile },
+      { id: 'con:docs', nome: 'Google Documenti / Fogli / Presentazioni', attiva: convertibile },
       { id: 'con:scheda', nome: 'Nuova scheda del browser', attiva: true },
       { id: 'con:scarica', nome: 'Scarica', attiva: true },
       { id: 'con:altra', nome: ambiente === 'capacitor' ? 'Altra app…' : 'Altra app… (condividi)', attiva: ambiente !== 'scarica' },
+      // SCAN-GOOGLE-OFFICE: Word / Excel / PowerPoint del telefono (file Office: si passa il file all'app)
+      { id: 'con:office', nome: 'Word, Excel, PowerPoint del telefono', attiva: office && ambiente !== 'scarica' },
       sep,
       { id: 'con:predefinita', nome: 'Scegli app predefinita…', attiva: true },
     ] },
@@ -557,7 +558,25 @@ async function chiamaScriptNuovo(corpo, fetchImpl) {
     throw e;
   }
 }
-export const creaFileDrive = ({ token, tipo, nome, cartella }, fetchImpl = fetch) => chiamaScriptNuovo({ token, azione: 'crea_file', tipo, nome, cartella: cartella && cartella !== RADICE ? cartella : null }, fetchImpl);
+// SCAN-GOOGLE-OFFICE (PO 2026-11-24): i file che Esplora sa creare su Drive (azione `crea_file` dello script).
+export const NUOVI_FILE = {
+  doc: { nome: 'Nuovo documento', voce: 'Documento Google', etichetta: 'Documento Google', gruppo: 'google' },
+  foglio: { nome: 'Nuovo foglio', voce: 'Foglio Google', etichetta: 'Foglio Google', gruppo: 'google' },
+  presentazione: { nome: 'Nuova presentazione', voce: 'Presentazione Google', etichetta: 'Presentazione Google', gruppo: 'google' },
+  modulo: { nome: 'Nuovo modulo', voce: 'Modulo Google', etichetta: 'Modulo Google', gruppo: 'google' },
+  word: { nome: 'Nuovo documento', voce: 'Documento Word', etichetta: 'Documento Word', gruppo: 'office' },
+  excel: { nome: 'Nuovo foglio', voce: 'Foglio Excel', etichetta: 'Foglio Excel', gruppo: 'office' },
+  powerpoint: { nome: 'Nuova presentazione', voce: 'Presentazione PowerPoint', etichetta: 'Presentazione PowerPoint', gruppo: 'office' },
+};
+// Voci del menu Nuovo: prima le app Google, poi Office (separatore in mezzo).
+export function vociNuovoFile(attiva, sep = { separatore: true }) {
+  const voce = ([k, v]) => ({ id: `nuovo:${k}`, nome: v.voce, attiva });
+  const tutti = Object.entries(NUOVI_FILE);
+  return [...tutti.filter(([, v]) => v.gruppo === 'google').map(voce), sep, ...tutti.filter(([, v]) => v.gruppo === 'office').map(voce)];
+}
+// Dove si apre un file appena creato: Google nel suo editor, Office in Google modalità Office.
+export const linkNuovoFile = (r = {}) => linkDocs({ mime_type: r.mime_type, drive_file_id: r.drive_file_id, drive_url: r.url }) || r.url || null;
+export const creaFileDrive = ({ token, tipo, nome, cartella }, fetchImpl = fetch) => chiamaScriptNuovo({ token, azione: 'nuovo_file', tipo, nome, cartella: cartella && cartella !== RADICE ? cartella : null }, fetchImpl);
 // Duplica = vera copia del file su Drive (decisione del PO del 2026-11-22), registrata come documento nuovo.
 export const duplicaFileDrive = ({ token, id, cartella }, fetchImpl = fetch) => chiamaScriptNuovo({ token, azione: 'duplica_file', id, cartella: cartella || null }, fetchImpl);
 export const ripristinaFileDrive = ({ token, ids }, fetchImpl = fetch) => chiamaScriptNuovo({ token, azione: 'ripristina_file', ids }, fetchImpl);
@@ -812,6 +831,8 @@ export function linkDocs(d = {}) {
   const t = OFFICE_DOCS.find(([re]) => re.test(m))?.[1];
   return t && d.drive_file_id ? `https://docs.google.com/${t}/d/${encodeURIComponent(d.drive_file_id)}/edit` : null;
 }
+// File Office (Word, Excel, PowerPoint): si possono passare alle app Microsoft del telefono.
+export const eOffice = (d = {}) => /wordprocessingml|msword|spreadsheetml|ms-excel|presentationml|ms-powerpoint/.test(String(d.mime_type || '').toLowerCase()) || /\.(docx?|xlsx?|pptx?)$/i.test(String(d.nome_file_originale || ''));
 /** Doppio clic / tocco: anteprima per PDF, immagini, video, audio; Drive per Google/Office ed email; altrimenti scarica. */
 export function comeAprire(d = {}) {
   const m = String(d.mime_type || '').toLowerCase();
