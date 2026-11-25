@@ -1,3 +1,14 @@
+# Current task — SCAN-BORDI (2026-11-25)
+- OWNER Claude Code; branch `ccr-47cc5da1-n7p7fe` (from master 741d3b6 = PR #348 merged). Bug fix on the scanner shipped in PR #347.
+- REQUEST PO 2026-11-25 (verbatim): "Lo scanner non funziona bene, non prende bene i documenti".
+- DIAGNOSIS: `trovaAngoli` (`personal/src/lib/prospettiva.js`) used one global Otsu brightness threshold + extreme points. On a 12-scene synthetic bench (`tests/scannerScene.mjs`) it found only 6/12: failed with shadow across the sheet, uneven light, white desk + ivory paper, a bright reflection on the desk, sheets rotated 25°/45°.
+- FIX: new detector, same API. Candidates from multi-level Otsu on brightness and on «whiteness» (bright, low colour), flood fill from the centre stopped by strong edges, extreme points, and Hough straight lines (corners hidden by a reflection/finger/object); each candidate's sides snapped to the real edge at up to 560 px (line fit on max-contrast points, outliers removed, corners = line intersections); winner = best edge support with the same contrast direction on all four sides; plausibility (convex, area ≥ 10%, angles 35–145°) else null. Live mode `{ vicino }`: re-snaps the previous frame's sides (~10 ms) and does the full search only when the sheet is lost. Camera: analysis 480 px, every 80 ms, outline kept 450 ms on a missed frame, smoothing 60%, capture uses the latest raw corners, message «Inquadra tutto il foglio». Photo: `elaboraPagina({ rifinisci })` re-snaps the live corners on the full-resolution photo (kept only if within 5%).
+- RESULT bench: 12/12, corner error ≤ 1 px on 640 px images (before 6/12, errors up to 380 px); no sheet invented on wood, grey, gradient, checkerboard, full-frame. Full search ~60 ms desktop Node (slower on phones, only while searching).
+- DB: none. DEPLOY: Vercel only (web).
+- VALIDATION: npm test 1981/1981 (new tests/scannerBordi.test.mjs); build:personal PASS; visual scan-vivo, scan-hub, personal-scan PASS.
+- NOT VERIFIED: real phone with real documents (synthetic scenes only).
+- ROLLBACK: revert the PR (prospettiva.js, scansione.js, Fotocamera.jsx, scannerVivo.js, Aggiungi.jsx, tests).
+
 # Current task — PERSONAL-APP-SCAN-GOOGLE-OFFICE (2026-11-24)
 - OWNER Claude Code; branch `ccr-6c8288d9-yt2p7s` (from master 494aeac = PR #345 merged; no overlap with POL-AI-GEMINI).
 - REQUEST PO 2026-11-24: "Poliedron Scan deve essere anche una app, quindi va nel dock di personal come fosse software win graficamente, così come dobbiamo poter avere dentro poliedron personale anche le app di Google per creare gestire altri file ed aprire da lì (anche office)". Plan proposed by Claude Code (3 phases) and approved: "Sì procedi con tutte e tre le fasi". Office without OneDrive (editing in Google Office mode or the Word/Excel apps of the phone).

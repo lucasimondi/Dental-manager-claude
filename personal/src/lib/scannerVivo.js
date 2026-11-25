@@ -4,7 +4,7 @@
 // soli. Qui solo la logica pura (smussatura, stabilità, avanzamento dello scatto), testabile in Node.
 const ORDINE = ['tl', 'tr', 'br', 'bl'];
 
-export const SCATTO = { fermoMs: 900, tolleranza: 0.018, persoMs: 700, smussa: 0.45, attesaDopo: 1600 };
+export const SCATTO = { fermoMs: 900, tolleranza: 0.018, persoMs: 700, smussa: 0.6, attesaDopo: 1600 };
 
 // Distanza massima fra angoli corrispondenti (frazioni dell'inquadratura).
 export function distanzaAngoli(a, b) {
@@ -12,7 +12,8 @@ export function distanzaAngoli(a, b) {
   return Math.max(...ORDINE.map((k) => Math.hypot(a[k].x - b[k].x, a[k].y - b[k].y)));
 }
 
-// Contorno morbido sullo schermo: ogni fotogramma si avvicina del 45% al nuovo (niente tremolio).
+// Contorno morbido sullo schermo: ogni fotogramma si avvicina del 60% al nuovo (SCAN-BORDI: bordi
+// più precisi, quindi meno ritardo) (niente tremolio).
 // Se il salto è grande (foglio diverso) si riparte dal nuovo.
 export function smussaAngoli(prima, nuovi, k = SCATTO.smussa) {
   if (!nuovi) return null;
@@ -45,7 +46,7 @@ export function passoScatto(st, angoli, ora, { auto = true } = {}) {
 }
 
 export const MESSAGGI_FASE = {
-  cerca: 'Inquadra il foglio su un piano scuro',
+  cerca: 'Inquadra tutto il foglio',
   avvicina: 'Avvicinati al foglio',
   fermo: 'Tieni fermo il telefono…',
   scatta: 'Scattata!',

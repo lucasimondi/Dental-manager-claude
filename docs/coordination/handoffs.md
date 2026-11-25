@@ -5050,3 +5050,11 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Same task/branch/PR. Files: `personal/src/pro.css`, `personal/src/personal.css`, `personal/src/scan/{ScegliPoliedron.jsx,ScanHome.jsx,Fotocamera.jsx}`, `personal/src/lib/indietro.js`, `personal/src/Angoli.jsx`, `personal/src/Aggiungi.jsx`, `personal/src/pdf/GestorePdf.jsx`, `personal/src/Icone.jsx` (IconaCartella), tests `scannerVivo`, visual `scan-vivo`.
 - DB: none (reads only existing tables/RPC under RLS). Tests: see current-task.md. Risk: `backdrop-filter` cost on old phones (degrades to translucent without blur).
 - Next action: PO tries the preview; "Mergia" or more feedback.
+
+## Handoff — SCAN-BORDI: rilevamento del foglio più robusto (2026-11-25, Claude Code)
+- Task SCAN-BORDI; previous agent: none (new PO bug report); branch `ccr-47cc5da1-n7p7fe` from master 741d3b6.
+- Objective: the scanner finds documents reliably. Completed: see current-task.md SCAN-BORDI.
+- Files: `personal/src/lib/prospettiva.js`, `personal/src/lib/scansione.js`, `personal/src/lib/scannerVivo.js`, `personal/src/scan/Fotocamera.jsx`, `personal/src/Aggiungi.jsx`, tests `scannerBordi.test.mjs` (new), `scannerScene.mjs` (new, synthetic scenes), `scannerVivo.test.mjs`.
+- DB changes: none. Tests: npm test 1981/1981 PASS; build:personal PASS; visual scan-vivo, scan-hub, personal-scan PASS.
+- Unresolved: real-phone check with real documents. Risks: full search cost on slow phones (~3–5× desktop) only while the sheet is not yet found; tracking keeps it fast afterwards.
+- Next action: PO tries the preview on the phone; "Mergia" or feedback (ideally a photo where it still fails).
