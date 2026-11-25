@@ -5072,3 +5072,11 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - DB changes: none. Tests: npm test 1981/1981 PASS; build:personal PASS; visual scan-vivo, scan-hub, personal-scan PASS.
 - Unresolved: real-phone check with real documents. Risks: full search cost on slow phones (~3–5× desktop) only while the sheet is not yet found; tracking keeps it fast afterwards.
 - Next action: PO tries the preview on the phone; "Mergia" or feedback (ideally a photo where it still fails).
+
+## Handoff — MIEI-DATI: «I miei dati» (2026-11-25, Claude Code)
+- Task MIEI-DATI; previous agent: none (new PO request); branch `ccr-37961e26-uuxdla` from master 72e7f26.
+- Objective: section with Luca's and his companies' billing data, contacts, bank and consultants, ready to copy, editable, extendable.
+- Files: `personal/src/sezioni/dati/{index.jsx,MieiDati.jsx}` (new), `personal/src/lib/mieiDati.js` (new), `personal/src/sezioni/{index.js,altro/index.jsx,altro/Personale.jsx}`, `personal/src/{Barra.jsx,lib/barra.js,personal.css}`, migration `20261125120000_miei_dati.sql`, tests `mieiDati.test.mjs` (new), `personalSezioni.test.mjs`, migration list test, visual `personal-miei-dati.*` (new).
+- DB: table `miei_dati` created in production (additive, owner RLS) and 6 cards inserted from archive data. Tests: npm test 1993/1993, build:personal PASS, visual PASS.
+- Risks: values typed in quick succession on two cards save separately (per-card debounce); data extracted from documents may be outdated (notes say what to verify).
+- Next action: PO checks the data in the preview and fills the empty fields; "Mergia" or feedback.
