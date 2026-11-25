@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { archivioDb } from '../lib/supabasePersonal.js';
 import {
   ambito as datiAmbito, archiviaCosa, caricaCose, campiDi, CAMPI_CONTATTO, COLORI, creaCosa, daCompilare, dataBreve, dataIso, euro, filtra,
-  FOTO_MASSIMA, numero, nuovaCosa, ordinaRegistro, PASSI_FOTO, salvaCosa, scadenzeDi, scadenzeTutte, testoContatto, testoCosa, testoScadenza, TIPI_CAMPO, totaleRegistro,
+  FOTO_MASSIMA, numero, nuovaCosa, registroDi, ordinaRegistro, PASSI_FOTO, salvaCosa, scadenzeDi, scadenzeTutte, testoContatto, testoCosa, testoScadenza, TIPI_CAMPO, totaleRegistro,
 } from '../lib/mieCose.js';
 import { Conferma, Vuoto } from '../ui.jsx';
 import { IconaApp } from './IconeCose.jsx';
@@ -124,7 +124,7 @@ export function AppCose({ ambito: idAmbito, ctx, aParte = false }) {
       {!visibili.length && cerca && <div className="pp-md-scheda pp-md-vuota">Nessuna scheda contiene «{cerca}».</div>}
       <div className="pp-md-scheda pp-md-nuova" data-scheda="nuova">
         <strong>{schede.length ? 'Aggiungi' : `Inizia: aggiungi ${idAmbito === 'auto' ? 'il tuo primo veicolo' : idAmbito === 'casa' ? 'la tua casa' : 'una persona'}`}</strong>
-        <span>{idAmbito === 'auto' ? 'Auto, moto, barca o altro mezzo: poi metti la foto, la polizza e le scadenze.' : idAmbito === 'casa' ? 'Casa, studio, box o terreno: utenze, catasto, assicurazione e manutenzioni.' : 'Tu, un familiare o un animale: medico, tessera sanitaria, allergie e controlli.'}</span>
+        <span>{idAmbito === 'auto' ? 'Auto, moto, barca o altro mezzo: poi metti la foto, la polizza e le scadenze. Le multe di altri veicoli vanno in «Multe e pedaggi».' : idAmbito === 'casa' ? 'Casa, studio, box o terreno: utenze, catasto, assicurazione e manutenzioni.' : 'Tu, un familiare o un animale: medico, tessera sanitaria, allergie e controlli.'}</span>
         {a.tipi.map(([t, n]) => <button key={t} type="button" className="pp-bottone pp-bottone-chiaro" onClick={() => aggiungi(t)}>+ {n}</button>)}
       </div>
     </div>
@@ -164,7 +164,8 @@ function Campo({ s, c, metti, togli, modifica, mostra }) {
   </div>;
 }
 
-function Registro({ s, a, cambia, modifica }) {
+function Registro({ s, a: app, cambia, modifica }) {
+  const a = { ...app, registro: registroDi(s) || app.registro };
   const [nuovo, setNuovo] = useState(null);
   const righe = ordinaRegistro(s.registro || []);
   const anno = new Date().getFullYear(), speso = totaleRegistro(s.registro, anno);
@@ -192,7 +193,7 @@ function Registro({ s, a, cambia, modifica }) {
       {r.importo && <span className="pp-ac-riga-euro">{numero(r.importo) != null ? euro(numero(r.importo)) : r.importo}</span>}
       {modifica && <button type="button" className="pp-md-x" aria-label="Togli riga" onClick={() => cambia({ registro: (s.registro || []).filter((_, j) => j !== i) }, true)}>✕</button>}
     </div>; })}
-    {!righe.length && !nuovo && <p className="pp-md-mancano">Ancora niente: aggiungi {a.id === 'auto' ? 'l’ultimo tagliando' : a.id === 'casa' ? 'l’ultimo lavoro' : 'l’ultima visita'}.</p>}
+    {!righe.length && !nuovo && <p className="pp-md-mancano">Ancora niente: aggiungi {s.tipo === 'multe' ? 'una multa o un pedaggio da pagare' : a.id === 'auto' ? 'l’ultimo tagliando' : a.id === 'casa' ? 'l’ultimo lavoro' : 'l’ultima visita'}.</p>}
     {nuovo ? <div className="pp-ac-nuovo">
       <input type="date" value={nuovo.data} onChange={(e) => setNuovo({ ...nuovo, data: e.target.value })} aria-label="Data" />
       <input list={`ac-voci-${s.id}`} value={nuovo.voce} placeholder={a.registro.voci[0]} onChange={(e) => setNuovo({ ...nuovo, voce: e.target.value })} aria-label="Cosa" />

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { AMBITI, campiCosa, campiDi, dataIso, daGuardare, filtra, nuovaCosa, ordinaRegistro, scadenzeDi, scadenzeTutte, testoCosa, testoScadenza, totaleRegistro } from '../personal/src/lib/mieCose.js';
+import { AMBITI, registroDi, campiCosa, campiDi, dataIso, daGuardare, filtra, nuovaCosa, ordinaRegistro, scadenzeDi, scadenzeTutte, testoCosa, testoScadenza, totaleRegistro } from '../personal/src/lib/mieCose.js';
 import { appCosaDaIndirizzo, indirizzoAppCosa, manifestAppCosa } from '../personal/src/lib/appCose.js';
 
 const OGGI = new Date('2026-11-25T10:00:00');
@@ -29,6 +29,11 @@ test('ogni app ha gruppi, tipi, registro e contatti; i campi base stanno nei gru
   assert.equal(nuovaCosa('casa', 'box').campi.some((c) => c.gruppo === 'utenze'), false);
   assert.ok(nuovaCosa('salute', 'persona').campi.some((c) => c.etichetta === 'Tessera sanitaria: scadenza' && c.avviso));
   assert.equal(nuovaCosa('auto', 'boh').tipo, 'auto');
+  // «Multe e pedaggi»: le multe non legate a un veicolo, registro senza km.
+  const multe = nuovaCosa('auto', 'multe');
+  assert.equal(registroDi(multe).titolo, 'Multe e pedaggi'); assert.equal(registroDi(multe).km, false);
+  assert.equal(registroDi(nuovaCosa('auto', 'auto')).km, true);
+  assert.ok(multe.campi.some((c) => c.avviso));
   assert.throws(() => nuovaCosa('boh'), /Ambito/);
 });
 

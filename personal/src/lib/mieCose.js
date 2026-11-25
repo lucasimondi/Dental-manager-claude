@@ -27,16 +27,18 @@ export const AMBITI = {
     id: 'auto', nome: 'Auto e motori', breve: 'Auto', colore: '#C46A1B', cosa: 'veicolo',
     sotto: 'Foto, assicurazione, bollo, revisione, tagliandi',
     gruppi: [['veicolo', 'Veicolo'], ['assicurazione', 'Assicurazione'], ['scadenze', 'Bollo e revisione'], ['manutenzione', 'Tagliandi e gomme'], ['altro', 'Altro']],
-    tipi: [['auto', 'Auto'], ['moto', 'Moto'], ['barca', 'Barca'], ['altro', 'Altro']],
+    // PO 2026-11-25: «le multe non inerenti bisogna metterle in sezione multe» → scheda «Multe e pedaggi».
+    tipi: [['auto', 'Auto'], ['moto', 'Moto'], ['barca', 'Barca'], ['multe', 'Multe e pedaggi'], ['altro', 'Altro']],
     base: {
       auto: VEICOLO,
       moto: VEICOLO,
       barca: [C('veicolo', 'Modello'), C('veicolo', 'Nome'), C('veicolo', 'Sigla iscrizione'), C('veicolo', 'Motori'), C('veicolo', 'Ore motore', 'n'), C('veicolo', 'Posto barca'),
         C('assicurazione', 'Compagnia'), C('assicurazione', 'Numero polizza'), C('assicurazione', 'Scadenza assicurazione', 'da'),
         C('scadenze', 'Certificato di sicurezza', 'da'), C('manutenzione', 'Ultimo tagliando motori', 'd'), C('manutenzione', 'Prossimo tagliando', 'da')],
+      multe: [C('altro', 'Prossimo pagamento entro', 'da'), C('altro', 'Come pagare')],
       altro: [C('veicolo', 'Descrizione'), C('veicolo', 'Targa / matricola'), C('assicurazione', 'Scadenza assicurazione', 'da')],
     },
-    registro: { titolo: 'Tagliandi e interventi', voci: ['Tagliando', 'Cambio gomme', 'Revisione', 'Riparazione', 'Carrozzeria', 'Bollo', 'Assicurazione', 'Altro'], km: true, aggiungi: 'tagliando o intervento' },
+    registro: { titolo: 'Tagliandi e interventi', voci: ['Tagliando', 'Cambio gomme', 'Revisione', 'Riparazione', 'Carrozzeria', 'Bollo', 'Assicurazione', 'Multa', 'Altro'], km: true, aggiungi: 'tagliando o intervento' },
     contatti: { titolo: 'Officina e contatti', ruoli: ['Meccanico', 'Gommista', 'Carrozziere', 'Assicurazione', 'Concessionario', 'Soccorso stradale'] },
     nuovo: 'Nuovo veicolo',
   },
@@ -80,6 +82,9 @@ export const AMBITI = {
 AMBITI.casa.base.ufficio = AMBITI.casa.base.casa;
 AMBITI.casa.base.box = AMBITI.casa.base.casa.filter((c) => !['utenze', 'manutenzione'].includes(c.gruppo));
 export const ambito = (id) => AMBITI[id] || null;
+// Il registro di una scheda: per «Multe e pedaggi» le righe sono multe (senza km).
+export const REGISTRO_MULTE = { titolo: 'Multe e pedaggi', voci: ['Multa', 'Pedaggio', 'Sollecito', 'Preavviso di ruolo', 'Altro'], km: false, aggiungi: 'multa o pedaggio' };
+export const registroDi = (s) => (s.ambito === 'auto' && s.tipo === 'multe' ? REGISTRO_MULTE : ambito(s.ambito)?.registro);
 export const ID_AMBITI = Object.keys(AMBITI);
 
 export function nuovaCosa(idAmbito, tipo, nome = '', ordine = 0) {
