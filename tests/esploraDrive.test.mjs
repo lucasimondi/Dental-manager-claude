@@ -191,7 +191,7 @@ test('doPost PR #337 §5: crea_file, ripristina_file, ripristina_versione dopo i
   const i = codice.indexOf('function doPost(');
   const corpo = codice.slice(i, codice.indexOf('\n}\n', i));
   const controllo = corpo.indexOf('Accesso non autorizzato');
-  for (const a of ['crea_file', 'ripristina_file', 'ripristina_versione']) assert.ok(corpo.indexOf(`'${a}'`) > controllo, a);
+  for (const a of ['crea_file', 'nuovo_file', 'ripristina_file', 'ripristina_versione']) assert.ok(corpo.indexOf(`'${a}'`) > controllo, a);
   // il nuovo file nasce nella gemella, si registra e non va mai a un modello
   const f = codice.slice(codice.indexOf('function creaFileEsplora_'), codice.indexOf('function ripristinaFileEsplora_'));
   assert.match(f, /cartellaDriveDi_\(idCartella\)/);
@@ -232,4 +232,36 @@ test('duplica_file: copia vera su Drive accanto all\'originale, registrata con l
   const i = codice.indexOf('function doPost(');
   const corpo = codice.slice(i, codice.indexOf('\n}\n', i));
   assert.ok(corpo.indexOf("'duplica_file'") > corpo.indexOf('Accesso non autorizzato'));
+});
+
+// SCAN-GOOGLE-OFFICE (PO 2026-11-24): Nuovo ▸ Presentazione / Modulo Google e Word / Excel / PowerPoint.
+test('crea_file: Google (anche Presentazione e Modulo) e Office dal servizio Drive già autorizzato; Office via copia temporanea nel Cestino', () => {
+  const s = scriptFinto();
+  const creati = []; const cestinati = []; const registrati = []; const export_ = [];
+  s.ctx.CONFIG = { ...(s.ctx.CONFIG || {}), FUSO: 'Europe/Rome' };
+  s.ctx.Utilities.getUuid = () => 'u';
+  s.ctx.ScriptApp = { getOAuthToken: () => 'tok' };
+  s.ctx.Drive.Files = { create: (r, blob) => { const id = `nuovo${creati.length}`; creati.push({ ...r, blob: blob ? blob.tipo : null }); return { id }; } };
+  s.ctx.UrlFetchApp = { fetch: (url) => { export_.push(url); return { getResponseCode: () => 200, getBlob: () => ({ tipo: 'office', setContentType(m) { this.tipo = m; return this; }, getBytes: () => [1, 2, 3] }) }; } };
+  const vecchio = s.ctx.DriveApp.getFileById;
+  s.ctx.DriveApp.getFileById = (id) => ({ ...vecchio(id), setTrashed: (v) => cestinati.push([id, v]) });
+  s.ctx.sb_ = (p, o = {}) => { if (p === 'rpc/registra_documento') { registrati.push(o.body.p); return { documento_id: `d${registrati.length}` }; } return null; };
+  const p = s.ctx.creaFileEsplora_({ tipo: 'presentazione', nome: '', cartella: 'radice' });
+  assert.equal(p.ok, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(creati[0])), { name: 'Nuova presentazione', mimeType: 'application/vnd.google-apps.presentation', parents: ['radice-drive'], blob: null });
+  assert.equal(registrati[0].tipo_documento, 'Presentazione');
+  assert.equal(registrati[0].analisi_contenuto, false);
+  assert.equal(s.ctx.creaFileEsplora_({ tipo: 'modulo' }).mime_type, 'application/vnd.google-apps.form');
+  const w = s.ctx.creaFileEsplora_({ tipo: 'word', nome: 'Lettera.docx' });
+  // copia temporanea Google, esportata in .docx e messa nel Cestino; il file vero nasce nella cartella
+  assert.equal(creati[2].mimeType, 'application/vnd.google-apps.document');
+  assert.match(export_[0], /\/export\?mimeType=application%2Fvnd\.openxmlformats-officedocument\.wordprocessingml\.document$/);
+  assert.deepEqual(cestinati, [['nuovo2', true]], 'solo la copia temporanea va nel Cestino');
+  assert.deepEqual([creati[3].name, creati[3].mimeType, creati[3].blob], ['Lettera.docx', w.mime_type, w.mime_type]);
+  assert.deepEqual([registrati[2].nome_file_originale, registrati[2].titolo, registrati[2].dimensione_byte], ['Lettera.docx', 'Lettera', 3]);
+  assert.equal(s.ctx.creaFileEsplora_({ tipo: 'excel' }).titolo, 'Nuovo foglio');
+  assert.equal(creati.at(-1).name, 'Nuovo foglio.xlsx');
+  assert.equal(s.ctx.creaFileEsplora_({ tipo: 'powerpoint' }).mime_type, 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+  assert.equal(s.ctx.creaFileEsplora_({ tipo: 'inventato' }).mime_type, 'application/vnd.google-apps.document', 'tipo sconosciuto → Documento Google');
+  assert.doesNotMatch(codice.slice(codice.indexOf('const NUOVI_FILE_'), codice.indexOf('function ripristinaFileEsplora_')), /FormApp|SlidesApp|analizza_\(|gemini_\(|modello_\(/, 'nessun permesso nuovo, nessun modello');
 });

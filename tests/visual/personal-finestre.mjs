@@ -34,12 +34,17 @@ try {
     assert.ok(Math.abs(fb.y + fb.height - bb.y) < 1.5, 'la finestra arriva alla barra, la barra resta visibile');
     for (const n of ['Riduci a icona', 'Ripristina', 'Chiudi']) assert.ok(await esp.locator('.pf-titolo').getByRole('button', { name: new RegExp(`^${n}`) }).isVisible(), n);
     await page.screenshot({ path: `${out}/tel-1-esplora.png` });
-    // Scan dallo Start: seconda finestra con la sua icona nella barra
+    // Scan dallo Start (PR #348: app fissata nella barra): la sua finestra usa l'icona «Scan» della barra
     await tocca(barra.getByRole('button', { name: 'Start' }));
     await page.getByRole('dialog', { name: 'Start' }).locator('.pb-app[aria-label^="Scan"]').click();
-    const scan = finestra(page, 'Scansiona'); await scan.locator('.pp-sorgenti-rapide').waitFor();
-    assert.equal(await page.locator('.pb-finestre .pb-finestra[aria-label^="Scansiona"]').count(), 1, 'icona dello Scan nella barra');
-    assert.equal(await page.locator('.pb-finestre .pb-finestra[aria-label^="Esplora"]').count(), 0, 'Esplora usa la sua icona fissata (niente doppioni)');
+    const scanHome = finestra(page, 'Poliedron Scan'); await scanHome.locator('.scan-hero-grande').waitFor();
+    assert.ok(await barra.getByRole('button', { name: 'Scan', exact: true }).evaluate((e) => e.classList.contains('attiva')), 'icona Scan accesa');
+    assert.equal(await page.locator('.pb-finestre .pb-finestra').count(), 0, 'Esplora e Scan usano le loro icone fissate (niente doppioni)');
+    // lo scanner dello Scan: un'altra finestra della stessa app
+    await tocca(scanHome.locator('.scan-hero-grande'));
+    const scan = finestra(page, 'Scanner'); await page.waitForTimeout(1600);
+    if (await page.locator('.scan-camera-tondo[aria-label="Chiudi scanner"]').count()) await page.locator('.scan-camera-tondo[aria-label="Chiudi scanner"]').click({ timeout: 3000 }).catch(() => {});
+    await scan.locator('.pp-sorgenti-rapide').waitFor();
     assert.ok(!(await largo(page)), 'nessuno sforamento');
     await page.screenshot({ path: `${out}/tel-2-scan.png` });
     // tocco su Esplora: avanti; di nuovo: ridotta
@@ -52,8 +57,8 @@ try {
     assert.ok(await scan.evaluate((e) => e.hidden), 'Home riduce lo Scan');
     assert.ok(await page.locator('.pp-app > .pp-contenuto').first().isVisible());
     await page.screenshot({ path: `${out}/tel-3-home.png` });
-    await tocca(page.locator('.pb-finestre .pb-finestra[aria-label^="Scansiona"]'));
-    assert.ok(await scan.isVisible(), 'dalla barra lo Scan torna');
+    await tocca(barra.getByRole('button', { name: 'Scan', exact: true }));
+    assert.ok(await scan.isVisible(), 'dalla barra lo Scan torna (la sua ultima finestra)');
     // Ripristina sul telefono: finestra libera (a scelta), poi di nuovo ingrandita
     await tocca(scan.locator('.pf-titolo').getByRole('button', { name: /^Ripristina/ }));
     assert.ok(await scan.evaluate((e) => e.classList.contains('pf-normale')));
@@ -91,7 +96,11 @@ try {
     assert.ok(await esp.evaluate((e) => e.classList.contains('pf-normale')), 'sul computer libera');
     await barra.getByRole('button', { name: 'Start' }).click();
     await page.getByRole('dialog', { name: 'Start' }).locator('.pb-app[aria-label^="Scan"]').click();
-    const scan = finestra(page, 'Scansiona'); await scan.locator('.pp-sorgenti-rapide').waitFor();
+    const scanHome = finestra(page, 'Poliedron Scan'); await scanHome.locator('.scan-hero-grande').click();
+    const scan = finestra(page, 'Scanner'); await page.waitForTimeout(1600);
+    if (await page.locator('.scan-camera-tondo[aria-label="Chiudi scanner"]').count()) await page.locator('.scan-camera-tondo[aria-label="Chiudi scanner"]').click({ timeout: 3000 }).catch(() => {});
+    await scan.locator('.pp-sorgenti-rapide').waitFor();
+    await scanHome.locator('.pf-titolo').getByRole('button', { name: /^Riduci/ }).click().catch(() => {});
     // trascina le finestre affiancate dalla barra del titolo e ridimensiona
     // afferra la barra del titolo accanto all'icona e porta l'angolo della finestra in (x, y)
     const porta = async (fin, x, y) => { const b = await fin.boundingBox(); await page.mouse.move(b.x + 60, b.y + 20); await page.mouse.down(); await page.mouse.move(x + 60, y + 20, { steps: 8 }); await page.mouse.up(); };

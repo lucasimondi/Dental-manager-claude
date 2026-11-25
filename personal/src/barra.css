@@ -98,7 +98,9 @@ body.pb-trascina .pb-voce:not([data-bersaglio]) { opacity: .45; }
   .pb-campanella { display: grid; }
   .pb-campanella .pb-pallino { top: -6px; right: -8px; }
 }
-@media (max-width: 380px) { .pb-icone { gap: 2px; } }
+/* SCAN-APP: con Scan nel dock le icone sono 8; sui telefoni stretti pulsanti 36 px (icona sempre 24 px,
+   altezza 40) e spazio 2 px, così restano centrate fra i due lati della barra. */
+@media (max-width: 440px) { .pb-icone { gap: 2px; } .pb-icone .pb-voce { width: 36px; } }
 
 /* Start */
 .pb-velo { position: fixed; inset: 0; z-index: 44; background: transparent; }
@@ -143,6 +145,13 @@ body.pb-trascina .pb-voce:not([data-bersaglio]) { opacity: .45; }
 
 /* ===== PR #337 §7: Start ===== */
 .pb-app { position: relative; touch-action: manipulation; }
+.pb-cartella-testa { display: flex; align-items: center; gap: 6px; }
+.pb-cartella-testa h2 { margin: 0; }
+.pb-cartella-indietro { width: 32px; height: 32px; border-radius: 6px; font-size: 22px; line-height: 1; color: var(--pb-testo); }
+.pb-cartella-indietro:hover { background: var(--pb-hover); }
+.pb-cartella-app .pb-nota { margin-top: 10px; }
+.pb-avviso { color: var(--pb-pallino); }
+.pb-app:disabled { opacity: .6; }
 .pb-app.presa { background: var(--pb-hover); outline: 1.5px dashed var(--pb-accento); }
 .pb-app-dock { position: absolute; bottom: 4px; left: 50%; width: 6px; height: 3px; border-radius: 2px; background: var(--pb-accento); transform: translateX(-50%); }
 .pb-icona-piccola { width: 30px; height: 30px; }
@@ -318,3 +327,5 @@ body.pp-tastiera .pf-desktop { bottom: 0; }
   .pb-icone::-webkit-scrollbar { display: none; }
   .pb-finestre { max-width: none; overflow: visible; }
 }
+/* SCAN-GOOGLE-OFFICE: nelle cartelle di app i nomi vanno su due righe («Nuova presentazione»). */
+.pb-cartella-app .pb-app-nome { white-space: normal; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }

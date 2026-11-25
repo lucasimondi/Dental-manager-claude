@@ -25,7 +25,7 @@ import {
   VISTE_ESPLORA, leggiViste, salvaVista, vistaDi, vistaConRotella, COLONNE_DETTAGLI, cambiaColonna, GRUPPI, raggruppa, leggiCartelle, salvaCartella, impostazioniDi, conMiniatura, righeDettagli, ordinaRighe, ordinaSuColonna, dimensioneLeggibile, dataLeggibile, tipoLeggibile,
   comeAprire, linkDrive, linkDocs, linkEmail, linkWhatsApp, ambienteApertura, seleziona, caricaPreferiti, salvaPreferiti, cambiaPreferito,
   HOME, PREFERITI, RECENTI, CESTINO, nodoCerca, datiCerca, FUORI,
-  creaFileDrive, duplicaFileDrive, ripristinaFileDrive, segnaCestino, conCestino, nelCestino, documentiNelCestino, eZip,
+  creaFileDrive, NUOVI_FILE, vociNuovoFile, linkNuovoFile, eOffice, duplicaFileDrive, ripristinaFileDrive, segnaCestino, conCestino, nelCestino, documentiNelCestino, eZip,
 } from '../../lib/esplora.js';
 import { eseguiInCoda } from '../../lib/trasferimenti.js';
 import { SceltaAppPredefinite } from '../../AppPredefinite.jsx';
@@ -475,18 +475,21 @@ export function PaginaEsplora({ ctx, iniziale = RADICE, scegliPer = null, perNom
     else mostraAvviso(r.fatti.length === 1 ? `Copia creata: «${r.fatti[0].titolo}»` : `${r.fatti.length} copie create`);
   };
 
-  // Nuovo ▸ Documento Google / Foglio Google: creato su Drive nella cartella, poi aperto in una nuova scheda.
+  // Nuovo ▸ Documento / Foglio / Presentazione / Modulo Google e Word / Excel / PowerPoint (SCAN-GOOGLE-OFFICE):
+  // creato su Drive nella cartella, poi aperto in una nuova scheda (Office: in Google modalità Office).
   const creaGoogle = async (tipo) => {
+    const t = NUOVI_FILE[tipo] || NUOVI_FILE.doc;
     const dest = eVirtuale(nodo) ? RADICE : nodo;
     const finestraNuova = window.open('', '_blank');
     setLavoro((n) => n + 1); inizioDrive();
     try {
-      const r = await creaFileDrive({ token: await tokenSessione(), tipo, nome: tipo === 'foglio' ? 'Nuovo foglio' : 'Nuovo documento', cartella: dest });
+      const r = await creaFileDrive({ token: await tokenSessione(), tipo, nome: t.nome, cartella: dest });
       if (dest === RADICE) await aggiungiAScrivania(archivioDb, [r.id]);
       fineDrive();
-      if (finestraNuova) finestraNuova.location.href = r.url; else window.open(r.url, '_blank', 'noopener');
+      const url = linkNuovoFile(r) || r.url;
+      if (finestraNuova) finestraNuova.location.href = url; else window.open(url, '_blank', 'noopener');
       cambiato.current = true; setRinfresca((n) => n + 1);
-      mostraAvviso(`${tipo === 'foglio' ? 'Foglio' : 'Documento'} Google creato in «${nomeNodo(dest, nomi)}»`);
+      mostraAvviso(`${t.etichetta} creato in «${nomeNodo(dest, nomi)}»`);
     } catch (e) {
       finestraNuova?.close(); fineDrive(e.message);
       mostraAvviso(`Non creato: ${e.message}`, { tipo: 'errore', azione: { nome: 'Riprova', fai: () => creaGoogle(tipo) } });
@@ -824,8 +827,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE, scegliPer = null, perNom
     ] };
     if (menu.cosa === 'nuovo') return { rapide: [], voci: [
       { id: 'nuova', nome: 'Cartella', tasto: 'Ctrl+Maiusc+N', attiva: !eVirtuale(nodo) },
-      { id: 'nuovo:doc', nome: 'Documento Google', attiva: !eVirtuale(nodo) },
-      { id: 'nuovo:foglio', nome: 'Foglio Google', attiva: !eVirtuale(nodo) },
+      ...vociNuovoFile(!eVirtuale(nodo), sep),
       sep,
       { id: 'carica', nome: 'Carica file…', attiva: true },
     ] };
@@ -842,7 +844,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE, scegliPer = null, perNom
     const d = una?.tipo === 'doc' ? cache.get(una.id) : null;
     return menuContestuale(menu.cosa, {
       nodo: menu.cosa === 'vuoto' ? nodo : una?.id, appunti, opz, selezione: menu.sorgenti, preferiti,
-      ambiente: ambienteApertura(), convertibile: !!(d && linkDocs(d)), conFile: !!d?.drive_file_id,
+      ambiente: ambienteApertura(), convertibile: !!(d && linkDocs(d)), office: !!(d && eOffice(d)), conFile: !!d?.drive_file_id,
       vista, ordine, gruppo, zip: !!d && eZip(d), cestino: nodo === CESTINO && menu.cosa !== 'vuoto',
       altrove: [HOME, PREFERITI, RECENTI, ACCESSO_RAPIDO].includes(nodo) || !!datiCerca(nodo),
     });
@@ -891,7 +893,7 @@ export function PaginaEsplora({ ctx, iniziale = RADICE, scegliPer = null, perNom
         break;
       }
       case 'estrai': if (d) estrai(d, una); break;
-      case 'nuovo:doc': case 'nuovo:foglio': creaGoogle(id === 'nuovo:foglio' ? 'foglio' : 'doc'); break;
+      case 'con:office': if (d) altraApp(d); break; // SCAN-GOOGLE-OFFICE: Word / Excel / PowerPoint del telefono
       case 'carica': inputCarica.current?.click(); break;
       case 'elimina-definitivo': setFoglio({ tipo: 'elimina', sorgenti: sorgenti.filter((x) => x.tipo === 'doc') }); break;
       case 'sposta': setFoglio({ tipo: 'sposta', sorgenti }); break;
@@ -912,7 +914,8 @@ export function PaginaEsplora({ ctx, iniziale = RADICE, scegliPer = null, perNom
       case 'cond:whatsapp': if (d) window.open(linkWhatsApp(titoloDi(d.id), linkDrive(d)), '_blank', 'noopener'); break;
       case 'cond:accesso': if (d) setFoglio({ tipo: 'accesso', doc: d }); break;
       default:
-        if (id.startsWith('vista:')) { const v = id.slice(6); setViste(salvaVista(nodo, v)); }
+        if (id.startsWith('nuovo:') && NUOVI_FILE[id.slice(6)]) creaGoogle(id.slice(6));
+        else if (id.startsWith('vista:')) { const v = id.slice(6); setViste(salvaVista(nodo, v)); }
         else if (id.startsWith('riquadro:')) { const r = id.slice(9); setRiquadro((x) => (x === r ? null : r)); }
         else if (id.startsWith('ordina:')) setOrdine((o) => ({ ...o, chiave: id.slice(7) }));
         else if (id.startsWith('verso:')) setOrdine((o) => ({ ...o, verso: id.slice(6) }));

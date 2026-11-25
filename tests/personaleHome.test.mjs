@@ -17,7 +17,7 @@ test('Home personale: Da fare, Conti, Documenti, Scan, Il tuo spazio, Recenti', 
   const h = read('personal/src/sezioni/altro/Personale.jsx');
   for (const t of ['Da fare', 'Conti', 'Documenti', 'Scan', 'Il tuo spazio', 'Recenti', 'Cerca nelle tue cose', 'Impostazioni e account']) assert.match(h, new RegExp(t));
   for (const v of ["'personali', 'Identità'", "'foto', 'Foto'", "'note', 'Note'", "'legal', 'Pratiche'", "'diario', 'Diario'", "'didattica', 'Biblioteca'", "'password', 'Password'", "'oggi', 'Oggi'"]) assert.ok(h.includes(v), v);
-  assert.match(h, /href=\{indirizzoScan\(\)\}/);
+  assert.match(h, /apri\(\{ tipo: 'scan' \}\)/); // SCAN-APP: Scan come app dentro Personal
   assert.match(h, /onClick=\{ctx\.apriAggiungi\}/);
   assert.match(read('personal/src/App.jsx'), /apriAggiungi: \(\) => setFoglio\(true\)/);
 });

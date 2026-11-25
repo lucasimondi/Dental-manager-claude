@@ -12,12 +12,13 @@ export const APP_APERTURA = [
   ['browser', 'Nuova scheda del browser'],
   ['scarica', 'Scarica'],
   ['altra', 'Altra app…'],
+  ['office', 'Word, Excel, PowerPoint del telefono'], // SCAN-GOOGLE-OFFICE: il file passa all'app Microsoft
 ];
 export const nomeApp = (id) => APP_APERTURA.find(([k]) => k === id)?.[1] || 'Automatica';
 // Le estensioni mostrate nelle Impostazioni (più quelle già scelte da Luca).
 export const ESTENSIONI_COMUNI = ['pdf', 'jpg', 'png', 'heic', 'mp4', 'mp3', 'docx', 'xlsx', 'pptx', 'txt', 'zip', 'xml', 'eml'];
 const DA_MIME = [[/pdf/, 'pdf'], [/jpe?g/, 'jpg'], [/png/, 'png'], [/heic/, 'heic'], [/gif/, 'gif'], [/webp/, 'webp'], [/mp4/, 'mp4'], [/mpeg|mp3/, 'mp3'],
-  [/wordprocessingml/, 'docx'], [/msword/, 'doc'], [/spreadsheetml/, 'xlsx'], [/ms-excel/, 'xls'], [/presentationml/, 'pptx'], [/google-apps\.document/, 'gdoc'],
+  [/wordprocessingml/, 'docx'], [/msword/, 'doc'], [/spreadsheetml/, 'xlsx'], [/ms-excel/, 'xls'], [/presentationml/, 'pptx'], [/ms-powerpoint/, 'ppt'], [/google-apps\.document/, 'gdoc'],
   [/google-apps\.spreadsheet/, 'gsheet'], [/rfc822/, 'eml'], [/zip/, 'zip'], [/xml/, 'xml'], [/^text\/plain/, 'txt']];
 
 export function estensioneDi(d = {}) {
@@ -38,6 +39,7 @@ export function comeAprireCon(d = {}, predefinite = {}) {
   if (app === 'drive') return { modo: 'link', url: linkDrive(d) };
   if (app === 'docs') return { modo: 'link', url: linkDocs(d) || linkDrive(d) };
   if (app === 'browser' || app === 'scarica' || app === 'altra') return { modo: app };
+  if (app === 'office') return { modo: 'altra' };
   return auto;
 }
 export const appAutomatica = (d = {}) => {

@@ -69,14 +69,15 @@ test('desktop: App usa le finestre, barra con le finestre aperte e «Mostra desk
   for (const n of ['Riduci a icona', 'Ingrandisci', 'Ripristina', 'Chiudi']) assert.match(fin, new RegExp(n));
   assert.match(fin, /data-bersaglio=\{accetta \? `finestra:\$\{f\.chiave\}`/);
   assert.match(desk, /useIndietro\(visibili\.length > 0, \(\) => \{[^}]*riduci\(st, a\.chiave\)/);
-  assert.match(desk, /ACCETTANO_FILE = new Set\(\['scansione', 'pdf', 'carica'\]\)/);
+  assert.match(desk, /ACCETTANO_FILE = new Set\(\['scansione', 'pdf', 'carica', 'scanner'\]\)/);
 });
 
 test('desktop: lo scanner come finestra (non l\'app Scan intera), Esplora sceglie per un\'altra finestra, trascinare tra finestre', () => {
   const doc = readFileSync('personal/src/sezioni/documenti/index.jsx', 'utf8'), esp = readFileSync('personal/src/sezioni/documenti/Esplora.jsx', 'utf8');
   const scan = readFileSync('personal/src/scan/Scan.jsx', 'utf8'), port = readFileSync('personal/src/lib/portale.js', 'utf8'), bar = readFileSync('personal/src/lib/barra.js', 'utf8');
   assert.doesNotMatch(doc, /ScanNelDesktop/, 'l\'app Scan non si incorpora nel desktop');
-  assert.match(bar, /\{ id: 'scan', nome: 'Scan', azione: \{ apri: \{ tipo: 'scansione', opzioni: \{ destinazione: true \} \} \} \}/);
+  // dopo PR #348: Start → Scan apre la pagina `scan` (sezioni/scan), che nel desktop è una finestra
+  assert.match(bar, /\{ id: 'scan', nome: 'Scan', azione: \{ apri: \{ tipo: 'scan' \} \} \}/);
   assert.doesNotMatch(scan, /esterno|incorporato|finestra=scan/);
   assert.match(esp, /if \(b\?\.tipo === 'finestra'\) return documentiDa\(sorgentiPer\(s\.chiave\)\)\.length > 0/);
   assert.match(esp, /d\.fascicolo !== CLINICO/);

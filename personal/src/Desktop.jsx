@@ -8,7 +8,7 @@ import { useIndietro } from './lib/indietro.js';
 import { apriFinestra, attiva, inPrimoPiano, riduci, chiudi, ingrandisciRipristina, mostraDesktop, sposta, toccaIcona, sostituisciIn, riadatta, preferenzaTipo, ricordaTipo } from './lib/finestre.js';
 
 // Finestre che accettano documenti trascinati da un'altra finestra (Esplora → scanner, PDF, Archivia).
-export const ACCETTANO_FILE = new Set(['scansione', 'pdf', 'carica']);
+export const ACCETTANO_FILE = new Set(['scansione', 'pdf', 'carica', 'scanner']); // 'scanner' = lo scanner dello Scan dentro Personal (PR #348)
 
 export function useFinestre({ onErrore = () => {} } = {}) {
   const [pagine, setPagine] = useState([]);

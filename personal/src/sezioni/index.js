@@ -23,8 +23,9 @@ import { poliedron } from './poliedron/index.jsx';
 import { impostazioni } from './impostazioni/index.jsx';
 import { dafare } from './dafare/index.jsx';
 import { riordino } from './riordino/index.jsx';
+import { scan } from './scan/index.jsx'; // SCAN-APP: Scan come app di Personal (solo pagine)
 
-export const SEZIONI = [altro, dafare, oggi, note, password, documenti, agenda, conti, personali, foto, legal, concordato, diario, didattica, poliedron, impostazioni, riordino];
+export const SEZIONI = [altro, dafare, oggi, note, password, documenti, agenda, conti, personali, foto, legal, concordato, diario, didattica, poliedron, impostazioni, riordino, scan];
 // DOCK-PER-TE (PO 2026-11-08): Agenda · Documenti · Poliedron · Studio · Per te.
 // App aggiunge Poliedron al centro, Studio (la pagina Studio dell'app) e Per te (sezione «altro»).
 export const DOCK = [agenda, documenti];
