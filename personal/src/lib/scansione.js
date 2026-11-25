@@ -116,7 +116,9 @@ export function migliora(px, modo, larghezza = 0, altezza = 0) {
 // MIA-SALUTE: `ritaglio` ({x, y, w, h} da 0 a 1, sull'immagine già ruotata) taglia i bordi.
 // SCAN-PDF-MANAGER: `angoli` ('auto' oppure { tl, tr, br, bl } da 0 a 1) raddrizza il foglio;
 // con 'auto' gli angoli si cercano nella foto e vengono restituiti (null se non trovati).
-export async function elaboraPagina(file, { modo = 'documento', rotazione = 0, ritaglio = null, angoli = null, peso = 'normale' } = {}) {
+// SCAN-BORDI: `rifinisci` (angoli presi dalla fotocamera dal vivo) riaggancia i lati sulla foto vera,
+// a piena risoluzione; se lì il foglio non si ritrova restano gli angoli dell'inquadratura.
+export async function elaboraPagina(file, { modo = 'documento', rotazione = 0, ritaglio = null, angoli = null, peso = 'normale', rifinisci = false } = {}) {
   const { lato, qualita } = PESI[peso] || PESI.normale;
   const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
   const scala = Math.min(1, LATO_MAX / Math.max(bitmap.width, bitmap.height));
@@ -136,7 +138,11 @@ export async function elaboraPagina(file, { modo = 'documento', rotazione = 0, r
   let angoliUsati = null;
   if (angoli) {
     const dati = c.getImageData(0, 0, canvas.width, canvas.height);
-    const q = angoli === 'auto' ? trovaAngoli(dati.data, canvas.width, canvas.height) : angoli;
+    let q = angoli === 'auto' ? trovaAngoli(dati.data, canvas.width, canvas.height) : angoli;
+    if (rifinisci && angoliValidi(angoli)) {
+      let fine = null; try { fine = trovaAngoli(dati.data, canvas.width, canvas.height, { vicino: angoli }); } catch { fine = null; }
+      if (fine && ['tl', 'tr', 'br', 'bl'].every((k) => Math.hypot(fine[k].x - angoli[k].x, fine[k].y - angoli[k].y) < 0.05)) q = fine;
+    }
     if (q && angoliValidi(q) && !angoliInteri(q)) {
       const { w: ow, h: oh } = misureRaddrizzate(q, canvas.width, canvas.height, lato);
       tela = document.createElement('canvas');
