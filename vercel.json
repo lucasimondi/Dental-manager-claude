@@ -89,6 +89,22 @@
       "destination": "/personal/index.html"
     },
     {
+      "source": "/poliedron/rubrica",
+      "destination": "/personal/index.html"
+    },
+    {
+      "source": "/poliedron/rubrica/",
+      "destination": "/personal/index.html"
+    },
+    {
+      "source": "/rubrica",
+      "destination": "/personal/index.html"
+    },
+    {
+      "source": "/rubrica/",
+      "destination": "/personal/index.html"
+    },
+    {
       "source": "/poliedron/archivio",
       "destination": "/archivio/index.html"
     },

@@ -59,10 +59,10 @@ export default defineConfig({
         // The Poliedron phone app has its own page (icon + manifest). Without
         // this, the studio app's service worker answered /poliedron/ with the
         // studio's index.html, so "Installa" installed Poliedra, not Poliedron.
-        navigateFallbackDenylist: [/^\/poliedron/, /^\/personal/, /^\/scan(\/|$)/, /^\/(auto|casa|salute)(\/|$)/, /^\/archivio/, /^\/oauth\/consent\/?$/],
+        navigateFallbackDenylist: [/^\/poliedron/, /^\/personal/, /^\/scan(\/|$)/, /^\/(auto|casa|salute|rubrica)(\/|$)/, /^\/archivio/, /^\/oauth\/consent\/?$/],
         runtimeCaching: [
           {
-            urlPattern: ({ request, url }) => request.mode === 'navigate' && (url.pathname.startsWith('/poliedron') || url.pathname.startsWith('/personal') || /^\/scan(\/|$)/.test(url.pathname) || /^\/(auto|casa|salute)(\/|$)/.test(url.pathname) || url.pathname.startsWith('/archivio')),
+            urlPattern: ({ request, url }) => request.mode === 'navigate' && (url.pathname.startsWith('/poliedron') || url.pathname.startsWith('/personal') || /^\/scan(\/|$)/.test(url.pathname) || /^\/(auto|casa|salute|rubrica)(\/|$)/.test(url.pathname) || url.pathname.startsWith('/archivio')),
             handler: 'NetworkFirst',
             options: { cacheName: 'poliedron-app-shell', networkTimeoutSeconds: 4 },
           },

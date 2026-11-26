@@ -1,5 +1,5 @@
-// APP-AUTO-CASA-SALUTE: icone PNG e manifest delle app a sé Auto, Casa, Salute (Home del telefono).
-// Uso: node scripts/icone-app-cose.mjs  → public/{auto,casa,salute}-{180,192,512,maskable-512}.png e i manifest.
+// APP-AUTO-CASA-SALUTE (e RUBRICA): icone PNG e manifest delle app a sé Auto, Casa, Salute, Rubrica (Home del telefono).
+// Uso: node scripts/icone-app-cose.mjs  → public/{auto,casa,salute,rubrica}-{180,192,512,maskable-512}.png e i manifest.
 import { chromium } from 'playwright';
 import { writeFile } from 'node:fs/promises';
 import { DISEGNI, SFONDI } from './icone-app-cose-dati.mjs';
@@ -8,6 +8,7 @@ const APP = {
   auto: { nome: 'Poliedron Auto', breve: 'Auto', descrizione: 'Auto e motori: foto, assicurazione, bollo, revisione, tagliandi' },
   casa: { nome: 'Poliedron Casa', breve: 'Casa', descrizione: 'Casa: utenze, catasto, assicurazione, manutenzioni e contatti' },
   salute: { nome: 'Poliedron Salute', breve: 'Salute', descrizione: 'Salute: medico, tessera sanitaria, allergie, controlli, visite ed esami' },
+  rubrica: { nome: 'Poliedron Rubrica', breve: 'Rubrica', descrizione: 'Rubrica: professionisti da chiamare, note e promemoria (gomme, stufa, caldaia)' },
 };
 const svg = (id, maskable) => {
   const [a, b] = SFONDI[id];

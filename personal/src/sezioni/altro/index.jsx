@@ -17,6 +17,8 @@ export const PER_TE = [
   ['auto', 'Auto e motori', 'auto', 'media', 'Foto, assicurazione, bollo, revisione, tagliandi'],
   ['casa', 'Casa', 'home', 'media', 'Utenze, catasto, assicurazione, manutenzioni'],
   ['salute', 'Salute', 'salute', 'media', 'Medico, tessera, allergie, controlli, esami'],
+  // RUBRICA (2026-11-26): chi chiamare (idraulico, stufa, gommista…), note e promemoria.
+  ['rubrica', 'Rubrica', 'rubrica', 'media', 'Idraulico, elettricista, stufa, gommista: chi chiamare, promemoria'],
   ['personali', 'Documenti personali', 'personali', 'media', "Carta d'identità, patente, codice fiscale"],
   ['foto', 'Foto', 'foto', 'media'],
   ['note', 'Note', 'nota', 'piccola'], ['diario', 'Diario', 'diario', 'piccola'], ['legal', 'Pratiche', 'pratiche', 'piccola'],
