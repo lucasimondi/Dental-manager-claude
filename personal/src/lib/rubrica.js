@@ -180,10 +180,18 @@ export async function caricaRubrica(db) {
 }
 export const creaContatto = async (db, c) => esito(await db.from('rubrica').insert(campiContatto(c)).select(COLONNE).single());
 export const salvaContatto = async (db, id, patch) => esito(await db.from('rubrica').update(campiContatto(patch)).eq('id', id).select('id, modificato_il').single());
-// Mai cancellazioni: il contatto si archivia (i suoi promemoria restano, senza contatto).
+// Archiviare toglie dall'elenco senza cancellare. Eliminare (PO 2026-11-26: "devono poter essere cancellabili e
+// modificabili") cancella davvero, solo dopo la conferma nell'app; con `conPromemoria` anche i promemoria del
+// contatto, altrimenti restano senza contatto (on delete set null).
 export const archiviaContatto = async (db, id) => esito(await db.from('rubrica').update({ archiviato_il: new Date().toISOString() }).eq('id', id).select('id').single());
 export const creaPromemoria = async (db, p) => esito(await db.from('rubrica_promemoria').insert(campiPromemoria(p)).select(COLONNE_P).single());
 export const salvaPromemoria = async (db, id, patch) => esito(await db.from('rubrica_promemoria').update(campiPromemoria(patch)).eq('id', id).select(COLONNE_P).single());
+export async function eliminaContatto(db, id, conPromemoria = false) {
+  if (!id) throw new Error('Contatto mancante');
+  if (conPromemoria) esito(await db.from('rubrica_promemoria').delete().eq('contatto_id', id).select('id'));
+  return esito(await db.from('rubrica').delete().eq('id', id).select('id').single());
+}
+export const eliminaPromemoria = async (db, id) => { if (!id) throw new Error('Promemoria mancante'); return esito(await db.from('rubrica_promemoria').delete().eq('id', id).select('id').single()); };
 export const archiviaPromemoria = async (db, id) => esito(await db.from('rubrica_promemoria').update({ archiviato_il: new Date().toISOString() }).eq('id', id).select('id').single());
 
 // «Fatto»: se si ripete va alla data seguente, se no si archivia. Cosa scrivere nel database.
