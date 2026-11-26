@@ -156,7 +156,7 @@ function Archivio({ email }) {
         render={(p, { chiudi, sostituisci: nellaStessa }) => pagina(p.tipo)?.render(p, { ctx: { ...ctx, indietro: chiudi }, chiudi, sostituisci: nellaStessa, email }) ?? null} />
       {/* PERSONAL-ESPLORA-WIN11 fase 3: barra stile Windows 11 (Start · Oggi · Agenda · Esplora file · Assistente ·
           Personale, a destra ora, data e notifiche). Stesse viste e stessi percorsi del dock di prima. */}
-      <BarraApplicazioni vista={vista} pagine={visibili} finestre={pagine} inPrimo={inPrimo?.chiave} onFinestra={fs.azioni.icona} onDesktop={fs.azioni.desktop} conteggi={conteggi} email={email} vai={vai} apri={apri}
+      <BarraApplicazioni vista={vista} pagine={visibili} finestre={pagine} inPrimo={inPrimo?.chiave} onFinestra={fs.azioni.icona} onChiudiFinestra={fs.azioni.chiudi} onDesktop={fs.azioni.desktop} conteggi={conteggi} email={email} vai={vai} apri={apri}
         onEsci={() => archivioDb.auth.signOut()} />
       {!sopra && !attuale.senzaPiu && <TastoAcquisisci className="pp-acquisisci" onClick={() => apri({ tipo: 'scansione', opzioni: { destinazione: true } })} />}
       {!sopra && !attuale.senzaPiu && <button className="pp-fab" onClick={() => setFoglio(true)} aria-label="Aggiungi"><IconaPiu size={26} /></button>}

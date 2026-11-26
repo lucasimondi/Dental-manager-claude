@@ -104,6 +104,27 @@ export const CARTELLE_START = {
 };
 export const cartellaStart = (id) => CARTELLE_START[id] || null;
 
+// ICONE-START (PO 2026-11-26): «Tutte le app» in Start, a gruppi, come le app del telefono. Ogni app nuova aggiunta
+// ad AGGIUNTE compare da sola (senza gruppo assegnato va in «Le tue app»). Google e Office mostrano le loro app.
+const GRUPPO_APP = {
+  auto: 'cose', casa: 'cose', salute: 'cose', rubrica: 'cose', dati: 'cose', conti: 'cose', personali: 'cose',
+  studio: 'lavoro', legal: 'lavoro', pratiche: 'lavoro', concordato: 'lavoro',
+  impostazioni: 'sistema', google: null, office: null, // le cartelle diventano i gruppi Google e Office
+};
+const SOLO_DOCK = [{ id: 'poliedron', nome: 'Assistente', azione: { vai: 'poliedron' } }, { id: 'altro', nome: 'Personale', azione: { vai: 'altro' } }];
+export function gruppiStart(conteggi = {}) {
+  const voci = [...vociStart(conteggi).filter((v) => v.id !== 'pratiche'), ...SOLO_DOCK.map((v) => ({ ...v, n: 0 }))];
+  const di = (g) => voci.filter((v) => (v.id in GRUPPO_APP ? GRUPPO_APP[v.id] : 'app') === g);
+  return [
+    { id: 'app', nome: 'Le tue app', voci: di('app') },
+    { id: 'cose', nome: 'Le mie cose', voci: di('cose') },
+    { id: 'lavoro', nome: 'Studio e lavoro', voci: di('lavoro') },
+    { id: 'google', nome: 'Google', voci: CARTELLE_START.google.voci.map((v) => ({ ...v, inCartella: true })) },
+    { id: 'office', nome: 'Office', voci: CARTELLE_START.office.voci.map((v) => ({ ...v, inCartella: true })) },
+    { id: 'sistema', nome: 'Sistema', voci: di('sistema') },
+  ].filter((g) => g.voci.length);
+}
+
 export const vociStart = (conteggi = {}) => AGGIUNTE.map((v) => ({ ...v, n: v.conteggio ? Number(conteggi[v.conteggio]) || 0 : 0 }));
 
 // Il numero accanto all'ora: i promemoria «Da fare» aperti (gli stessi delle notifiche sul telefono).

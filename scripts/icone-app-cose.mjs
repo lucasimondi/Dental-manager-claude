@@ -2,7 +2,8 @@
 // Uso: node scripts/icone-app-cose.mjs  → public/{auto,casa,salute,rubrica}-{180,192,512,maskable-512}.png e i manifest.
 import { chromium } from 'playwright';
 import { writeFile } from 'node:fs/promises';
-import { DISEGNI, SFONDI } from './icone-app-cose-dati.mjs';
+import { SFONDI } from './icone-app-cose-dati.mjs';
+import { DISEGNI_COLORE } from '../personal/src/lib/iconeColore.js';
 
 const APP = {
   auto: { nome: 'Poliedron Auto', breve: 'Auto', descrizione: 'Auto e motori: foto, assicurazione, bollo, revisione, tagliandi' },
@@ -10,11 +11,11 @@ const APP = {
   salute: { nome: 'Poliedron Salute', breve: 'Salute', descrizione: 'Salute: medico, tessera sanitaria, allergie, controlli, visite ed esami' },
   rubrica: { nome: 'Poliedron Rubrica', breve: 'Rubrica', descrizione: 'Rubrica: professionisti da chiamare, note e promemoria (gomme, stufa, caldaia)' },
 };
+// ICONE-START (PO 2026-11-26): l'icona a colori di Personal (stile Esplora file) su fondo bianco.
 const svg = (id, maskable) => {
-  const [a, b] = SFONDI[id];
-  const k = maskable ? 0.52 : 0.64, o = (24 - 24 * k) / 2;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="512" height="512"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs>`
-    + `<rect width="24" height="24" ${maskable ? '' : 'rx="5.4"'} fill="url(#g)"/><g transform="translate(${o} ${o}) scale(${k})"><path d="${DISEGNI[id]}" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></g></svg>`;
+  const k = maskable ? 0.6 : 0.74, o = (48 - 48 * k) / 2;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="512" height="512">`
+    + `<rect width="48" height="48" ${maskable ? '' : 'rx="10.8"'} fill="#FFFFFF"/><g transform="translate(${o} ${o}) scale(${k})">${DISEGNI_COLORE[id]}</g></svg>`;
 };
 const manifest = (id, base) => ({
   name: APP[id].nome, short_name: APP[id].breve, description: APP[id].descrizione,

@@ -1,5 +1,5 @@
 // PERSONAL-ESPLORA-WIN11 fase 3 (sostituisce DOCK-UGUALE): synthetic data only, the whole Personal app.
-// Taskbar 64 px in portrait / 48 px in landscape, centered 44×44 icons, active line, clock + notifications,
+// Taskbar 64 px in portrait / 48 px in landscape, icons from the left (ICONE-START, was centered), active line, clock + notifications,
 // Esplora from the bar, Start (inside the screen, closes with tap outside / Back / logo), real archive search.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
@@ -43,7 +43,7 @@ try {
       const sis = document.querySelector('.pb-sistema').getBoundingClientRect();
       const voci = [...document.querySelectorAll('.pb-voce')].map((e) => { const b = e.getBoundingClientRect(); return { w: b.width, h: b.height, label: e.getAttribute('aria-label'), raggio: getComputedStyle(e).borderRadius }; });
       const stile = getComputedStyle(document.querySelector('nav.pb-barra'));
-      return { h: r.height, bottom: innerHeight - r.bottom, w: r.width, vw: innerWidth, centro: ic.left + ic.width / 2, icDestra: ic.right, sisSinistra: sis.left, sisVisibile: sis.width > 0, voci, filtro: stile.backdropFilter || stile.webkitBackdropFilter, gap: getComputedStyle(document.querySelector('.pb-icone')).columnGap };
+      return { h: r.height, bottom: innerHeight - r.bottom, w: r.width, vw: innerWidth, icSinistra: ic.left, icDestra: ic.right, sisSinistra: sis.left, sisVisibile: sis.width > 0, voci, filtro: stile.backdropFilter || stile.webkitBackdropFilter, gap: getComputedStyle(document.querySelector('.pb-icone')).columnGap };
     });
     assert.equal(g.h, altezza, `altezza ${g.h}`);
     assert.equal(Math.round(g.bottom), 0);
@@ -52,7 +52,9 @@ try {
     assert.equal(g.gap, g.vw <= 440 ? '2px' : '4px');
     assert.deepEqual(g.voci.map((v) => v.label), ['Start', 'Cerca', 'Oggi, 1 urgenti', 'Agenda', 'Esplora file, 2 da gestire', 'Scan', 'Assistente', 'Personale']);
     for (const v of g.voci) { assert.equal(v.w, g.vw <= 440 ? 36 : 40); assert.equal(v.h, 40); assert.equal(v.raggio, '6px'); }
-    assert.ok(Math.abs(g.centro - g.vw / 2) < 2, `icone centrate (${g.centro} su ${g.vw})`);
+    assert.ok(g.icSinistra <= 10, `ICONE-START: Start e icone partono da sinistra (${g.icSinistra})`);
+    assert.equal(await page.locator('.pb-voce').first().getAttribute('aria-label'), 'Start');
+    assert.equal(await page.locator('.pb-voce[aria-label="Agenda"] svg.pp-icona-colore').count(), 1, 'icone a colori nel dock');
     assert.equal(g.sisVisibile, true, 'area di sistema (su mobile solo la campanella)');
     assert.equal(await page.locator('.pb-campanella').isVisible(), !desktop, 'campanella solo su mobile');
     assert.equal(await page.locator('.pb-ora').isVisible(), desktop, 'ora e data solo su desktop');
@@ -103,7 +105,19 @@ try {
     await page.getByRole('dialog', { name: 'Start' }).waitFor();
     await page.waitForTimeout(250);
     assert.ok(await dentro(page, '.pb-start'), 'Start dentro lo schermo');
-    assert.equal(await page.locator('.pb-aggiunte').evaluate((g) => getComputedStyle(g).gridTemplateColumns.split(' ').length), 4);
+    // ICONE-START: sul computer Start in basso a sinistra su «Aggiunte» (6 colonne); sul telefono a tutto schermo su «Tutte le app» (4 colonne)
+    const rs = await page.locator('.pb-start').evaluate((e) => { const r = e.getBoundingClientRect(); return { l: r.left, t: r.top, w: r.width }; });
+    if (desktop) assert.ok(rs.l <= 10, `Start a sinistra (${rs.l})`); else assert.deepEqual([Math.round(rs.l), Math.round(rs.t), Math.round(rs.w)], [0, 0, viewport.width], 'Start a tutto schermo');
+    assert.equal(await page.locator('.pb-aggiunte').first().evaluate((g) => getComputedStyle(g).gridTemplateColumns.split(' ').length), desktop ? 6 : 4);
+    if (!desktop) {
+      assert.deepEqual(await page.locator('.pb-gruppo h3').allInnerTexts(), ['Le tue app', 'Le mie cose', 'Studio e lavoro', 'Google', 'Office', 'Sistema']);
+      assert.equal(await page.locator('.pb-gruppo[aria-label="Sistema"] .pb-app-nome').innerText(), 'Impostazioni');
+      assert.equal(await page.locator('.pb-gruppo[aria-label="Office"] .pb-app').count(), 4);
+      await page.screenshot({ path: `${out}/${nome}-start-tutte.png` });
+      await page.getByRole('button', { name: /^Aggiunte/ }).click();
+    } else {
+      await page.screenshot({ path: `${out}/${nome}-start-aggiunte.png` });
+    }
     assert.equal(await page.locator('.pb-voce.attiva').getAttribute('aria-label'), 'Start');
     assert.equal(await page.locator('.pb-app[aria-label="Esplora, 2"] .pb-pallino').textContent(), '2');
     assert.equal(await page.locator('.pb-app[aria-label="Oggi, 1"] .pb-pallino').textContent(), '1');
@@ -120,8 +134,34 @@ try {
     assert.deepEqual(await page.locator('.pb-cartella-app .pb-app-nome').allInnerTexts(), ['Nuovo Word', 'Nuovo Excel', 'Nuovo PowerPoint', 'File Office']);
     await page.screenshot({ path: `${out}/${nome}-start-office.png` });
     await page.getByRole('button', { name: 'Torna ad Aggiunte' }).click();
-    await page.mouse.click(5, 5);
+    // ICONE-START: «Tutte le app» sul computer (6 colonne, gruppi)
+    if (desktop) {
+      await page.getByRole('button', { name: /^Tutte le app/ }).click();
+      await page.locator('.pb-gruppo[aria-label="Le mie cose"]').waitFor();
+      await page.screenshot({ path: `${out}/${nome}-start-tutte.png` });
+    }
+    if (desktop) await page.mouse.click(1200, 5); else await start.click(); // sul telefono Start copre lo schermo: si chiude dal logo
     await page.getByRole('dialog', { name: 'Start' }).waitFor({ state: 'detached' });
+    // un'app da «Tutte le app» si apre come finestra (a tutto schermo sul telefono)
+    await start.click(); await page.getByRole('dialog', { name: 'Start' }).waitFor();
+    if (desktop) await page.getByRole('button', { name: /^Tutte le app/ }).click();
+    await page.locator('.pb-gruppo .pb-app[aria-label="Rubrica"]').click();
+    await page.getByRole('dialog', { name: 'Start' }).waitFor({ state: 'detached' });
+    await page.locator('.pf-finestra.pf-attiva').waitFor(); await page.waitForTimeout(350);
+    assert.match(await page.locator('.pf-finestra.pf-attiva .pf-titolo').innerText(), /Rubrica/);
+    // ICONE-START: «App aperte» tenendo premuto Start (tasto destro sul computer); × chiude l'app
+    if (desktop) await start.click({ button: 'right' });
+    else { await start.dispatchEvent('touchstart', { touches: [{ identifier: 1, clientX: 20, clientY: viewport.height - 20 }] }); await page.waitForTimeout(650); await start.dispatchEvent('touchend', {}); }
+    const rec = page.getByRole('dialog', { name: 'App aperte' });
+    await rec.waitFor();
+    await rec.getByRole('button', { name: /^Rubrica.*apri$/ }).waitFor();
+    await page.screenshot({ path: `${out}/${nome}-app-aperte.png` });
+    await rec.getByRole('button', { name: /^Chiudi Rubrica/ }).click();
+    await rec.getByRole('button', { name: /^Rubrica.*apri$/ }).waitFor({ state: 'detached' });
+    assert.equal(await rec.getByRole('button', { name: /^Esplora file.*apri$/ }).count(), 1, 'Esplora resta aperta');
+    await page.keyboard.press('Escape');
+    await rec.waitFor({ state: 'detached' });
+    assert.equal(await page.locator('.pf-finestra .pf-titolo', { hasText: 'Rubrica' }).count(), 0, 'Rubrica chiusa');
     await start.click(); await page.getByRole('dialog', { name: 'Start' }).waitFor();
     await page.goBack();
     await page.getByRole('dialog', { name: 'Start' }).waitFor({ state: 'detached' });

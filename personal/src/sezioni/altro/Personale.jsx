@@ -14,6 +14,7 @@ import { GrigliaPratiche } from '../documenti/index.jsx';
 // APP-AUTO-CASA-SALUTE: le app in evidenza, con la prossima scadenza (RUBRICA: il prossimo promemoria).
 import { scadenzeHome, testoScadenza, AMBITI } from '../../lib/mieCose.js';
 import { IconaApp } from '../../cose/IconeCose.jsx';
+import { IconaColore } from '../../IconeColore.jsx';
 import { rubricaHome, testoPromemoria } from '../../lib/rubrica.js'; // RUBRICA
 
 const APP_COSE = [['auto', 'auto'], ['casa', 'casa'], ['salute', 'saluteApp'], ['rubrica', 'rubrica']];
@@ -28,6 +29,9 @@ const SPAZIO = [
   ['legal', 'Pratiche', 'pratiche', 'viola'], ['concordato', 'Concordato', 'controllo', 'ambra'], ['diario', 'Diario', 'diario', 'blu'], ['didattica', 'Biblioteca', 'biblioteca', 'smeraldo'],
   ['password', 'Password', 'password', 'oro'], ['oggi', 'Oggi', 'oggi', 'lilla'], ['riordino', 'Riordino', 'documenti', 'blu'],
 ];
+
+// ICONE-START (PO 2026-11-26): le tessere usano le stesse icone a colori di Start (Biblioteca resta col suo disegno).
+const COLORE_SPAZIO = { personali: 'portafoglio', dati: 'dati', foto: 'foto', note: 'note', legal: 'pratiche', concordato: 'concordato', diario: 'diario', password: 'password', oggi: 'oggi', riordino: 'documenti' };
 
 function Icona({ d, tono, grande = false }) {
   return (
@@ -166,7 +170,7 @@ export function VistaPersonale({ ctx }) {
             <div className="pps-griglia">
               {SPAZIO.map(([id, n, icona, tono]) => (
                 <button key={id} type="button" className="pps-tessera" onClick={() => apriSezione(id)}>
-                  <Icona d={ICONE_ALTRO[icona]} tono={tono} />
+                  {COLORE_SPAZIO[id] ? <span className="pps-icona pps-colore" aria-hidden="true"><IconaColore id={COLORE_SPAZIO[id]} size={40} /></span> : <Icona d={ICONE_ALTRO[icona]} tono={tono} />}
                   <span>{n}</span>
                 </button>
               ))}
