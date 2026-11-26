@@ -90,7 +90,7 @@ test('app a sé: indirizzi /poliedron/auto/ e /auto/ sul dominio personale, mani
   assert.equal(indirizzoAppCosa('casa', altro), '/poliedron/casa/');
   assert.equal(manifestAppCosa('salute', dominio), '/salute-dominio.webmanifest');
   const vercel = JSON.parse(readFileSync('vercel.json', 'utf8')).rewrites;
-  for (const id of ['auto', 'casa', 'salute']) {
+  for (const id of ['auto', 'casa', 'salute', 'rubrica']) {
     for (const [file, base] of [[`${id}.webmanifest`, '/poliedron/'], [`${id}-dominio.webmanifest`, '/']]) {
       const m = JSON.parse(readFileSync(`public/${file}`, 'utf8'));
       assert.equal(m.start_url, `${base}${id}/`); assert.equal(m.scope, `${base}${id}/`); assert.equal(m.display, 'standalone');
@@ -98,7 +98,7 @@ test('app a sé: indirizzi /poliedron/auto/ e /auto/ sul dominio personale, mani
     }
     for (const s of [`/poliedron/${id}`, `/poliedron/${id}/`, `/${id}`, `/${id}/`]) assert.ok(vercel.some((r) => r.source === s && r.destination === '/personal/index.html'), s);
   }
-  assert.match(readFileSync('personal/index.html', 'utf8'), /\(auto\|casa\|salute\)/);
+  assert.match(readFileSync('personal/index.html', 'utf8'), /\(auto\|casa\|salute\|rubrica\)/);
 });
 
 test('migrazione: tabella del proprietario, solo aggiunte, nessuna cancellazione né dato vero', () => {
@@ -116,8 +116,8 @@ test('migrazione: tabella del proprietario, solo aggiunte, nessuna cancellazione
 
 test('app a sé: il service worker dello Studio non risponde su /auto/, /casa/, /salute/', () => {
   const cfg = readFileSync('vite.config.js', 'utf8');
-  assert.match(cfg.match(/navigateFallbackDenylist: \[(.*)\]/)[1], /\(auto\|casa\|salute\)/);
-  assert.match(cfg, /\/\^\\\/\(auto\|casa\|salute\)\(\\\/\|\$\)\/\.test\(url\.pathname\)/);
+  assert.match(cfg.match(/navigateFallbackDenylist: \[(.*)\]/)[1], /\(auto\|casa\|salute\|rubrica\)/);
+  assert.match(cfg, /\/\^\\\/\(auto\|casa\|salute\|rubrica\)\(\\\/\|\$\)\/\.test\(url\.pathname\)/);
 });
 
 test('documenti della scheda: tag cosa/allegato, chiavi per trovarli in archivio', async () => {

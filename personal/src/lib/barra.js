@@ -72,6 +72,7 @@ export const AGGIUNTE = [
   { id: 'auto', nome: 'Auto e motori', azione: { apri: { tipo: 'auto' } } },
   { id: 'casa', nome: 'Casa', azione: { apri: { tipo: 'casa' } } },
   { id: 'salute', nome: 'Salute', azione: { apri: { tipo: 'saluteApp' } } },
+  { id: 'rubrica', nome: 'Rubrica', azione: { apri: { tipo: 'rubrica' } } }, // RUBRICA
   { id: 'studio', nome: 'Studio', azione: { href: 'studio' } },
   { id: 'impostazioni', nome: 'Impostazioni', azione: { apri: { tipo: 'impostazioni' } } },
 ];

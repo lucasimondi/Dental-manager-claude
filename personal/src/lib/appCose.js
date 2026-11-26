@@ -5,8 +5,9 @@ export const APP_COSE = {
   auto: { titolo: 'Poliedron Auto', breve: 'Auto', colore: '#B4561A' },
   casa: { titolo: 'Poliedron Casa', breve: 'Casa', colore: '#1F56B8' },
   salute: { titolo: 'Poliedron Salute', breve: 'Salute', colore: '#A3194B' },
+  rubrica: { titolo: 'Poliedron Rubrica', breve: 'Rubrica', colore: '#0B6F66' }, // RUBRICA (PO 2026-11-26)
 };
-const PERCORSO = /^\/(poliedron\/)?(auto|casa|salute)(\/|$)/;
+const PERCORSO = /^\/(poliedron\/)?(auto|casa|salute|rubrica)(\/|$)/;
 
 export function appCosaDaIndirizzo(path = globalThis.location?.pathname || '') {
   return path.match(PERCORSO)?.[2] || null;

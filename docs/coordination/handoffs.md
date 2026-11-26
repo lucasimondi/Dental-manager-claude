@@ -1,5 +1,11 @@
 # Handoffs
 
+## 2026-11-26 — CLAUDE — RUBRICA
+- TASK: RUBRICA. BRANCH: `ccr-cc867a0d-nn7s5q` from `master@fc14a09`. OBJECTIVE: Personal app «Rubrica» (professionals by category, notes, reminders), also standalone on the phone Home.
+- FILES: `personal/src/lib/rubrica.js`, `personal/src/rubrica/{AppRubrica.jsx,rubrica.css}`, `personal/src/sezioni/rubrica/index.jsx`, registry, `lib/appCose.js`, `cose/{AppSola,IconeCose}.jsx`, `IconeFinestre.jsx`, `lib/barra.js`, Personale Home + `personale.css`, PER_TE, `shared/altro/AltroPage.jsx` (icon), `personal/index.html`, `vite.config.js`, `vercel.json`, `public/rubrica*`, `scripts/icone-app-cose*.mjs`, migration `20261126100000_rubrica.sql`, tests (`rubrica.test.mjs`, visual `personal-rubrica.*`).
+- DATABASE: migration written, NOT applied (PO gate). TESTS: 2017/2017, builds PASS, visual PASS.
+- NEXT ACTION: PO OK → apply the migration to `archivio-documenti` (Supabase MCP) → PR → «Mergia» → Vercel deploy → add real contacts.
+
 ## 2026-11-25 — CLAUDE — APP-AUTO-CASA-SALUTE
 - TASK: APP-AUTO-CASA-SALUTE. BRANCH: `ccr-f99036ef-v0b9t6` from `master@da34001`. OBJECTIVE: Auto e motori, Casa, Salute as Personal apps (Home, Start, sections) and as standalone Home-screen apps.
 - FILES: `personal/src/lib/mieCose.js`, `personal/src/lib/appCose.js`, `personal/src/cose/{AppCose,AppSola,IconeCose}.jsx`, `cose.css`, `personal/src/sezioni/{auto,casa,salute}/index.jsx`, registry, Barra/Start, Personale Home, `IconeFinestre.jsx`, `App.jsx`, `main.jsx`, `personal/index.html`, `vercel.json`, `vite.config.js`, `public/{auto,casa,salute}*`, `scripts/icone-app-cose*.mjs`, `shared/altro/AltroPage.jsx` (2 icon paths), tests.

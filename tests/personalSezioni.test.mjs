@@ -12,7 +12,7 @@ const sorgenti = fileDi(RADICE).filter((f) => /\.(jsx?|mjs)$/.test(f));
 const leggi = (f) => readFileSync(f, 'utf8');
 
 test('sezioni: una cartella con index.jsx per ogni sezione, tutte nel registro', () => {
-  assert.deepEqual(cartelle.sort(), ['agenda', 'altro', 'auto', 'casa', 'concordato', 'conti', 'dafare', 'dati', 'diario', 'didattica', 'documenti', 'foto', 'impostazioni', 'legal', 'note', 'oggi', 'password', 'personali', 'poliedron', 'riordino', 'salute', 'scan']);
+  assert.deepEqual(cartelle.sort(), ['agenda', 'altro', 'auto', 'casa', 'concordato', 'conti', 'dafare', 'dati', 'diario', 'didattica', 'documenti', 'foto', 'impostazioni', 'legal', 'note', 'oggi', 'password', 'personali', 'poliedron', 'riordino', 'rubrica', 'salute', 'scan']);
   const registro = leggi(join(SEZIONI, 'index.js'));
   for (const c of cartelle) {
     const indice = leggi(join(SEZIONI, c, 'index.jsx'));

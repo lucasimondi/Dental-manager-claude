@@ -11,11 +11,12 @@ import { saluto, dataBreve } from '../../ui.jsx';
 import { PER_TE } from './index.jsx';
 import { caricaCartellePratiche } from '../../lib/praticheCartelle.js';
 import { GrigliaPratiche } from '../documenti/index.jsx';
-// APP-AUTO-CASA-SALUTE: le tre app in evidenza, con la prossima scadenza.
+// APP-AUTO-CASA-SALUTE: le app in evidenza, con la prossima scadenza (RUBRICA: il prossimo promemoria).
 import { scadenzeHome, testoScadenza, AMBITI } from '../../lib/mieCose.js';
 import { IconaApp } from '../../cose/IconeCose.jsx';
+import { rubricaHome, testoPromemoria } from '../../lib/rubrica.js'; // RUBRICA
 
-const APP_COSE = [['auto', 'auto'], ['casa', 'casa'], ['salute', 'saluteApp']];
+const APP_COSE = [['auto', 'auto'], ['casa', 'casa'], ['salute', 'saluteApp'], ['rubrica', 'rubrica']];
 
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const SCAN = 'M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16';
@@ -67,6 +68,8 @@ export function VistaPersonale({ ctx }) {
   const apriSezione = (id) => (id === 'personali' ? vai('documenti', 'personali') : appCosa[id] ? apri({ tipo: appCosa[id] }) : vai(id));
   const [cose, setCose] = useState(null);
   useEffect(() => { let vivo = true; scadenzeHome(archivioDb).then((r) => { if (vivo) setCose(r); }).catch(() => { if (vivo) setCose(undefined); }); return () => { vivo = false; }; }, [versione]);
+  const [rub, setRub] = useState(null);
+  useEffect(() => { let vivo = true; rubricaHome(archivioDb).then((r) => { if (vivo) setRub(r); }).catch(() => { if (vivo) setRub(undefined); }); return () => { vivo = false; }; }, [versione]);
   const trovate = useMemo(() => (cerca ? PER_TE.filter(([, nome, , , sotto]) => norm(`${nome} ${sotto || ''}`).includes(norm(cerca))) : []), [cerca]);
 
   return (
@@ -140,6 +143,14 @@ export function VistaPersonale({ ctx }) {
             <h2 className="pps-titoletto">Le tue app</h2>
             <div className="pps-app">
               {APP_COSE.map(([id, pagina]) => {
+                if (id === 'rubrica') {
+                  const p = rub?.prossimo;
+                  return <button key={id} type="button" className="pps-app-voce" onClick={() => apri({ tipo: pagina })}>
+                    <IconaApp ambito={id} size={38} />
+                    <strong>Rubrica</strong>
+                    <span className={p && p.stato !== 'ok' ? p.stato : ''}>{p ? `${p.cosa}: ${testoPromemoria(p).split(' · ').pop()}` : rub?.n ? `${rub.n} ${rub.n === 1 ? 'contatto' : 'contatti'}` : 'Chi chiamare'}</span>
+                  </button>;
+                }
                 const r = cose?.[id], p = r?.prossima;
                 return <button key={id} type="button" className="pps-app-voce" onClick={() => apri({ tipo: pagina })}>
                   <IconaApp ambito={id} size={38} />

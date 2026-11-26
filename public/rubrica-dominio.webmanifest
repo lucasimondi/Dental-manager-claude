@@ -1,0 +1,30 @@
+{
+  "name": "Poliedron Rubrica",
+  "short_name": "Rubrica",
+  "description": "Rubrica: professionisti da chiamare, note e promemoria (gomme, stufa, caldaia)",
+  "id": "/rubrica/",
+  "start_url": "/rubrica/",
+  "scope": "/rubrica/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f2f4f7",
+  "theme_color": "#0B6F66",
+  "icons": [
+    {
+      "src": "/rubrica-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/rubrica-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/rubrica-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

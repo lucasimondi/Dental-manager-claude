@@ -8,7 +8,7 @@ const PER_TIPO = {
   pdf: 'pdf', pdfStrumento: 'pdf', scansione: 'scan', scan: 'scan', scanner: 'scan', carica: 'doc', 'modifica-immagine': 'foto',
   impostazioni: 'imp', evento: 'cal', impegno: 'cal', spesa: 'conti', pagamento: 'conti', nota: 'note', password: 'pass', salute: 'salute', foto: 'foto',
 };
-const APP_COSE = { auto: 'auto', casa: 'casa', saluteApp: 'salute' };
+const APP_COSE = { auto: 'auto', casa: 'casa', saluteApp: 'salute', rubrica: 'rubrica' };
 export function IconaFinestra({ tipo, size = 18 }) {
   if (APP_COSE[tipo]) return <IconaApp ambito={APP_COSE[tipo]} size={size} />;
   const k = PER_TIPO[tipo] || 'altro';
