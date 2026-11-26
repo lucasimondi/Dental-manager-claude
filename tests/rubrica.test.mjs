@@ -96,6 +96,10 @@ test('app a sé /rubrica/ e migrazione: del proprietario, solo aggiunte, mai can
   assert.match(sql, /revoke all on rubrica, rubrica_promemoria from anon/);
   assert.match(sql, /on delete set null/);
   assert.doesNotMatch(sql, /drop table|delete from|truncate rubrica/i);
-  const codice = readFileSync('personal/src/lib/rubrica.js', 'utf8') + readFileSync('personal/src/rubrica/AppRubrica.jsx', 'utf8');
-  assert.doesNotMatch(codice, /\.delete\(/, 'i contatti e i promemoria si archiviano');
+  // PO 2026-11-26: contatti e promemoria si possono eliminare, solo dall'app e dopo una conferma.
+  const lib = readFileSync('personal/src/lib/rubrica.js', 'utf8'), vista = readFileSync('personal/src/rubrica/AppRubrica.jsx', 'utf8');
+  assert.equal((lib.match(/\.delete\(\)/g) || []).length, 3, 'solo eliminaContatto (con i suoi promemoria) ed eliminaPromemoria');
+  assert.doesNotMatch(vista, /\.delete\(/, 'la vista passa dalle funzioni della libreria');
+  assert.match(vista, /Eliminare definitivamente «\{c\.nome\}»\? Non si può annullare\./);
+  assert.match(vista, /Eliminare «\{p\.cosa\}»\?/);
 });

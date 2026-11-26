@@ -37,6 +37,7 @@ try {
         const body = req.postData() ? JSON.parse(req.postData()) : null;
         if (!['GET', 'HEAD'].includes(req.method())) scritture.push({ metodo: req.method(), tabella: u.pathname.split('/').pop(), q: u.search, body });
         const t = u.pathname.split('/').pop();
+        if (req.method() === 'DELETE') return route.fulfill({ json: u.searchParams.get('id') ? { id: u.searchParams.get('id').replace('eq.', '') } : [] });
         if (t === 'rubrica') {
           if (req.method() === 'PATCH') return route.fulfill({ json: { id: 'x', modificato_il: new Date().toISOString() } });
           if (req.method() === 'POST') return route.fulfill({ status: 201, json: { id: 'nuovo', interventi: [], ...body } });
@@ -108,6 +109,23 @@ try {
     await page.getByRole('button', { name: '+ Revisione caldaia' }).click();
     assert.equal(await page.getByLabel('Cosa').inputValue(), 'Revisione caldaia');
     assert.equal(await page.getByLabel('Chi chiamare').inputValue(), 'r2', `${nome}: propone chi fa la stufa`);
+    // eliminazione con conferma: promemoria, poi contatto con i suoi promemoria
+    await page.getByRole('button', { name: 'Annulla' }).click();
+    await page.locator('.pp-rb-prom', { hasText: 'Manutenzione stufa' }).getByRole('button', { name: 'Modifica' }).click();
+    await page.locator('.pp-rb-prom', { hasText: 'Manutenzione stufa' }).getByRole('button', { name: 'Elimina' }).click();
+    await page.screenshot({ path: `${out}/${nome}-elimina-promemoria.png`, fullPage: true });
+    await page.locator('.pp-rb-prom', { hasText: 'Manutenzione stufa' }).getByRole('button', { name: 'Elimina' }).click(); await page.waitForTimeout(500);
+    assert.ok(scritture.some((w) => w.tabella === 'rubrica_promemoria' && w.metodo === 'DELETE' && w.q.includes('id=eq.p2')), `${nome}: promemoria eliminato`);
+    assert.equal(await page.locator('.pp-rb-prom', { hasText: 'Manutenzione stufa' }).count(), 0);
+    await page.getByRole('tab', { name: /Contatti/ }).click();
+    await page.getByRole('button', { name: /Gomme di prova/ }).click();
+    await page.getByRole('button', { name: 'Elimina contatto' }).click();
+    assert.ok(await page.getByText('Eliminare definitivamente «Gomme di prova»? Non si può annullare.').isVisible(), `${nome}: chiede conferma`);
+    await page.screenshot({ path: `${out}/${nome}-elimina-contatto.png`, fullPage: true });
+    await page.locator('.pp-rb-elimina').getByRole('button', { name: 'Elimina' }).click(); await page.waitForTimeout(500);
+    assert.ok(scritture.some((w) => w.tabella === 'rubrica_promemoria' && w.metodo === 'DELETE' && w.q.includes('contatto_id=eq.r5')), `${nome}: anche i suoi promemoria`);
+    assert.ok(scritture.some((w) => w.tabella === 'rubrica' && w.metodo === 'DELETE' && w.q.includes('id=eq.r5')), `${nome}: contatto eliminato`);
+    assert.equal(await page.getByRole('button', { name: /Gomme di prova/ }).count(), 0, `${nome}: sparito dall'elenco`);
     // app a sé
     await page.goto('http://127.0.0.1:5188/tests/visual/personal-rubrica.html?sola=1');
     await page.getByRole('link', { name: 'Apri Personal' }).waitFor();
