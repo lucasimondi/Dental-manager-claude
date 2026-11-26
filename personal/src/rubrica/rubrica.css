@@ -24,7 +24,7 @@
 .pp-rb-barra .pp-md-cerca { flex: 1; min-height: 44px; font-size: 15px; }
 .pp-rb-barra .pp-bottone, .pp-rb-nuovo-prom { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; background: var(--rb); }
 .pp-rb-nuovo-prom { justify-self: start; }
-.pp-rb .pp-bottone:not(.pp-bottone-chiaro) { background: var(--rb); border-color: var(--rb); }
+.pp-rb .pp-bottone:not(.pp-bottone-chiaro):not(.pp-bottone-rosso) { background: var(--rb); border-color: var(--rb); }
 
 .pp-rb-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
 .pp-rb-chips::-webkit-scrollbar { display: none; }
@@ -162,3 +162,9 @@
 .pp-rb-suggeriti .pp-rb-cat button { border-color: color-mix(in srgb, var(--rb) 40%, transparent); color: var(--rb); }
 
 /* App a sé: lo stesso contenitore di Auto, Casa, Salute (cose.css) */
+
+/* Eliminazione con conferma (PO 2026-11-26: «devono poter essere cancellabili») */
+.pp-rb-elimina { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pp-rb-elimina > span { flex: 1 1 100%; }
+.pp-rb-spunta { flex: 1 1 100%; display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.pp-rb-tenue { color: var(--pp-grigio) !important; }

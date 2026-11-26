@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { archivioDb } from '../lib/supabasePersonal.js';
 import {
-  archiviaContatto, archiviaPromemoria, AVVISI, CATEGORIE, categoria, categorieUsate, caricaRubrica, cerca as cercaContatti, creaContatto, creaPromemoria,
+  archiviaContatto, archiviaPromemoria, AVVISI, CATEGORIE, categoria, categorieUsate, caricaRubrica, cerca as cercaContatti, creaContatto, creaPromemoria, eliminaContatto, eliminaPromemoria,
   dataBreve, dataIso, dataSuggerita, euro, iniziali, mappa, nomeCategoria, numero, oggiIso, ordinaInterventi, ordinaPromemoria, perCategoria, RIPETI,
   salvaContatto, salvaPromemoria, segnaFatto, sitoWeb, SUGGERITI, telefonoChiamabile, testoDaCopiare, testoPromemoria, testoRipeti, totaleInterventi, whatsapp,
 } from '../lib/rubrica.js';
@@ -93,6 +93,17 @@ export function AppRubrica({ ctx }) {
       if (c) cambia(c.id, { interventi: [...(c.interventi || []), { data: oggiIso(), voce: p.cosa }] }, true);
       setDati((d) => ({ ...d, promemoria: p.ripeti === 'mai' ? d.promemoria.filter((x) => x.id !== p.id) : d.promemoria.map((x) => (x.id === p.id ? pr : x)) }));
       ctx.mostra?.(p.ripeti === 'mai' ? 'Fatto' : `Fatto: il prossimo è il ${dataBreve(pr.data)}`);
+    }),
+    eliminaContatto: (id, conPromemoria) => ctx.esegui(async () => {
+      clearTimeout(timer.current[id]); delete inAttesa.current[id];
+      await eliminaContatto(archivioDb, id, conPromemoria);
+      setDati((d) => ({ contatti: d.contatti.filter((c) => c.id !== id),
+        promemoria: conPromemoria ? d.promemoria.filter((p) => p.contatto_id !== id) : d.promemoria.map((p) => (p.contatto_id === id ? { ...p, contatto_id: null } : p)) }));
+      ctx.mostra?.('Contatto eliminato'); setVista({ tab: 'contatti' });
+    }),
+    eliminaPromemoria: (id) => ctx.esegui(async () => {
+      await eliminaPromemoria(archivioDb, id);
+      setDati((d) => ({ ...d, promemoria: d.promemoria.filter((x) => x.id !== id) })); ctx.mostra?.('Promemoria eliminato');
     }),
     archiviaPromemoria: (id) => ctx.esegui(async () => {
       await archiviaPromemoria(archivioDb, id);
@@ -227,7 +238,7 @@ function CampiPromemoria({ p, setP, contatti }) {
 }
 
 function Scheda({ c, promemoria, cambia, azioni, mostra, indietro, nuovoPromemoria }) {
-  const [modifica, setModifica] = useState(false), [chiedi, setChiedi] = useState(false), [nuovo, setNuovo] = useState(null);
+  const [modifica, setModifica] = useState(false), [chiedi, setChiedi] = useState(false), [nuovo, setNuovo] = useState(null), [conProm, setConProm] = useState(true);
   const tel = telefonoChiamabile(c.telefono), tel2 = telefonoChiamabile(c.telefono2), wa = whatsapp(c.telefono || c.telefono2), mp = mappa(c.indirizzo), web = sitoWeb(c.sito);
   const interventi = ordinaInterventi(c.interventi || []), speso = totaleInterventi(c.interventi || []);
   const metti = (k) => (e) => cambia({ [k]: e.target.value });
@@ -303,15 +314,22 @@ function Scheda({ c, promemoria, cambia, azioni, mostra, indietro, nuovoPromemor
 
     <div className="pp-rb-riga-bottoni">
       <button type="button" className="pp-bottone pp-bottone-chiaro" onClick={() => copia(testoDaCopiare(c), mostra, 'Contatto copiato')}>Copia contatto</button>
-      {modifica && !chiedi && <button type="button" className="pp-md-archivia" onClick={() => setChiedi(true)}>Archivia contatto</button>}
+      {!chiedi && <button type="button" className="pp-md-archivia" onClick={() => setChiedi('elimina')}>Elimina contatto</button>}
+      {modifica && !chiedi && <button type="button" className="pp-md-archivia pp-rb-tenue" onClick={() => setChiedi('archivia')}>Archivia</button>}
     </div>
-    {chiedi && <Conferma testo="Archiviare il contatto? Non si cancella, sparisce solo dalla rubrica." etichetta="Archivia" onSi={() => azioni.archiviaContatto(c.id)} onNo={() => setChiedi(false)} />}
+    {chiedi === 'archivia' && <Conferma testo="Archiviare il contatto? Sparisce dalla rubrica ma resta salvato." etichetta="Archivia" onSi={() => azioni.archiviaContatto(c.id)} onNo={() => setChiedi(false)} />}
+    {chiedi === 'elimina' && <div className="pp-conferma pp-rb-elimina" role="alertdialog">
+      <span>Eliminare definitivamente «{c.nome}»? Non si può annullare.</span>
+      {promemoria.length > 0 && <label className="pp-rb-spunta"><input type="checkbox" checked={conProm} onChange={(e) => setConProm(e.target.checked)} />Elimina anche {promemoria.length === 1 ? 'il suo promemoria' : `i suoi ${promemoria.length} promemoria`}</label>}
+      <button type="button" className="pp-bottone pp-bottone-rosso" onClick={() => azioni.eliminaContatto(c.id, conProm)}>Elimina</button>
+      <button type="button" className="pp-bottone pp-bottone-chiaro" onClick={() => setChiedi(false)}>Annulla</button>
+    </div>}
   </article>;
 }
 
 function Promemoria({ lista, contatti, contatto, azioni, apriScheda, nuovo: iniziale }) {
   const [nuovo, setNuovo] = useState(iniziale ? { cosa: '', data: '', ripeti: '1a', avviso_giorni: 30, note: '', ...iniziale } : null);
-  const [aperto, setAperto] = useState(null);
+  const [aperto, setAperto] = useState(null), [togli, setTogli] = useState(null);
   const vicini = lista.filter((p) => p.stato !== 'ok'), avanti = lista.filter((p) => p.stato === 'ok');
   const salvaNuovo = async () => { const r = await azioni.nuovoPromemoria(nuovo); if (r) setNuovo(null); };
   const usate = new Set(lista.map((p) => p.cosa));
@@ -339,7 +357,11 @@ function Promemoria({ lista, contatti, contatto, azioni, apriScheda, nuovo: iniz
         <div className="pp-rb-riga-bottoni">
           <button type="button" className="pp-bottone" onClick={async () => { await azioni.salvaPromemoria(p.id, { cosa: aperto.cosa, data: aperto.data, ripeti: aperto.ripeti, avviso_giorni: aperto.avviso_giorni, contatto_id: aperto.contatto_id, note: aperto.note }); setAperto(null); }}>Salva</button>
           <button type="button" className="pp-bottone pp-bottone-chiaro" onClick={() => setAperto(null)}>Annulla</button>
-          <button type="button" className="pp-md-archivia" onClick={() => azioni.archiviaPromemoria(p.id)}>Archivia</button>
+          {togli === p.id ? <>
+            <span className="pp-rb-aiuto">Eliminare «{p.cosa}»?</span>
+            <button type="button" className="pp-bottone pp-bottone-rosso" onClick={() => azioni.eliminaPromemoria(p.id)}>Elimina</button>
+            <button type="button" className="pp-rb-link" onClick={() => setTogli(null)}>No</button>
+          </> : <button type="button" className="pp-md-archivia" onClick={() => setTogli(p.id)}>Elimina</button>}
         </div>
       </div>}
     </div>;
