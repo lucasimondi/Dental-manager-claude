@@ -211,3 +211,84 @@
 /* ICONE-START: tessere con l'icona a colori (senza riquadro colorato) */
 .pps-icona.pps-colore { background: none; box-shadow: none; }
 .pps-icona.pps-colore svg { width: 40px; height: 40px; }
+
+/* ---------- HOME-TELEFONO (PO 2026-11-26, proposta E): Home del telefono stile desktop ----------
+   Sfondo da desktop (blu con due onde), ricerca grande, riquadri «vetro», icone a colori su tessere chiare.
+   Solo sulla Home del telefono (.ppt): il computer non cambia. */
+html:has(.ppt) body, .pp-app:has(.ppt) { background: #0e3560; }
+.pp-app:has(.ppt) { position: relative; isolation: isolate; }
+.ppt::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 390 844' preserveAspectRatio='none'%3E%3Cpath d='M-40 620C80 480 220 520 430 380V844H-40Z' fill='%2314497f'/%3E%3Cpath d='M120 844C200 700 300 690 430 600V844Z' fill='%231a5a98'/%3E%3C/svg%3E") center bottom / 100% 100% no-repeat, #0e3560; }
+.ppt { --ppt-vetro: rgba(255, 255, 255, .14); --ppt-bordo: rgba(255, 255, 255, .22); color: #fff; display: flex; flex-direction: column; gap: 14px; padding: calc(16px + env(safe-area-inset-top)) 0 24px; }
+.ppt-testa { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.ppt-data { display: block; font-size: 13px; font-weight: 500; color: #cfe0f5; }
+.ppt-testa h1 { margin: 0; font-size: 26px; font-weight: 750; letter-spacing: -.01em; }
+.ppt-ora { font-size: 34px; font-weight: 300; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+
+.ppt-cerca { display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 6px 0 16px; border-radius: 26px; background: #fff; box-shadow: 0 6px 18px rgba(0, 0, 0, .25); color: #17212b; }
+.ppt-cerca label { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
+.ppt-cerca label svg { width: 20px; height: 20px; flex: none; fill: none; stroke: #0f6cbd; stroke-width: 2; stroke-linecap: round; }
+.ppt-cerca input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 16px; color: #17212b; }
+.ppt-cerca input::-webkit-search-cancel-button { display: none; }
+.ppt-cerca-aperta .ppt-cerca { box-shadow: 0 0 0 2px #6aa8ff, 0 6px 18px rgba(0, 0, 0, .25); }
+.ppt-tondo { width: 40px; height: 40px; flex: none; border: 0; border-radius: 50%; display: grid; place-items: center; background: #0f6cbd; cursor: pointer; }
+.ppt-tondo svg { width: 20px; height: 20px; fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; }
+.ppt-tondo-chiaro { background: #eef2f7; }
+.ppt-tondo-chiaro svg { stroke: #1d2b3a; stroke-width: 2; }
+
+.ppt-vetro { background: var(--ppt-vetro); border: 1px solid var(--ppt-bordo); border-radius: 18px; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.ppt-dafare { display: flex; align-items: center; gap: 12px; padding: 10px 14px; color: #fff; text-align: left; font: inherit; cursor: pointer; }
+.ppt-dafare i { font-style: normal; font-size: 24px; opacity: .85; }
+.ppt-testi { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ppt-testi strong { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ppt-dafare .ppt-testi strong { font-size: 16px; }
+.ppt-testi > span { font-size: 13px; color: #d6e6f8; }
+.ppt-testi .ppt-presto, .ppt-testi .ppt-scaduta { color: #ffd28a; font-weight: 600; }
+.ppt-testi .ppt-scaduta { color: #ffb3a8; }
+
+.ppt-titolo { display: flex; align-items: center; justify-content: space-between; margin: 2px 0 6px; }
+.ppt-titolo h2 { margin: 0; font-size: 15px; font-weight: 650; }
+.ppt-pillola { min-height: 36px; padding: 0 12px; border: 0; border-radius: 10px; background: rgba(255, 255, 255, .18); color: #fff; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+.ppt-griglia { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px 6px; }
+.ppt-app { display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 86px; padding: 4px 0; border: 0; border-radius: 12px; background: none; color: #fff; font: inherit; font-size: 12px; font-weight: 500; text-shadow: 0 1px 2px rgba(0, 0, 0, .55); cursor: pointer; }
+.ppt-app:active .ppt-tessera { transform: scale(.94); }
+.ppt-tessera { width: 58px; height: 58px; border-radius: 16px; display: grid; place-items: center; background: rgba(255, 255, 255, .94); box-shadow: 0 4px 12px rgba(0, 0, 0, .25); transition: transform .12s; flex: none; }
+.ppt-tessera-piccola { width: 44px; height: 44px; border-radius: 12px; }
+
+.ppt-consigliati { display: flex; flex-direction: column; padding: 2px 0; }
+.ppt-cons { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 12px; border: 0; background: none; color: #fff; text-align: left; font: inherit; cursor: pointer; }
+.ppt-cons + .ppt-cons { border-top: 1px solid rgba(255, 255, 255, .16); }
+.ppt-formato { width: 30px; height: 36px; flex: none; border-radius: 5px; display: grid; place-items: center; background: #e3edf9; color: #0f6cbd; font-size: 10px; font-weight: 800; }
+.ppt-formato.pdf { background: #fde3e3; color: #b3261e; }
+
+/* Ricerca: risultati su un foglio chiaro sopra lo sfondo. */
+.ppt-risultati { margin: 0 calc(-1 * max(16px, env(safe-area-inset-left))); padding: 8px 12px 16px; border-radius: 20px 20px 0 0; background: #f3f6fa; color: #17212b; min-height: calc(100dvh - 110px); }
+.ppt-risultati h2 { margin: 12px 4px 6px; font-size: 12px; font-weight: 650; color: #4f5f72; text-transform: uppercase; letter-spacing: .04em; }
+.ppt-nota { margin: 6px 4px; font-size: 13px; color: #4f5f72; }
+.ppt-gruppo { border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; background: #fff; }
+.ppt-riga { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 56px; border: 0; background: #fff; color: inherit; font: inherit; text-align: left; }
+.ppt-riga + .ppt-riga { border-top: 1px solid #edf1f6; }
+.ppt-riga-apri { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ppt-riga-apri > span:last-child { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ppt-riga-apri strong { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ppt-riga-apri > span:last-child > span { font-size: 12px; color: #4f5f72; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ppt-riga-apri .ppt-presto, .ppt-riga-apri .ppt-scaduta { color: #a35a00 !important; font-weight: 600; }
+.ppt-riga-apri .ppt-scaduta { color: #b3261e !important; }
+.ppt-campanella { width: 30px; height: 30px; flex: none; border-radius: 50%; display: grid; place-items: center; background: #fff4e0; color: #a35a00; font-weight: 800; }
+.ppt-chiama { width: 44px; height: 44px; flex: none; margin-right: 8px; border-radius: 50%; display: grid; place-items: center; background: #0b6f66; }
+.ppt-chiama svg { width: 20px; height: 20px; fill: none; stroke: #fff; stroke-width: 1.9; stroke-linejoin: round; }
+.ppt-chiedi { width: 100%; min-height: 46px; margin-top: 14px; border: 1px solid #cfd9e6; border-radius: 12px; background: #fff; color: #0f6cbd; font: inherit; font-size: 14px; font-weight: 650; cursor: pointer; }
+
+@media (prefers-color-scheme: dark) {
+  .ppt-risultati { background: #0f1622; color: #f2f4f7; }
+  .ppt-gruppo, .ppt-riga, .ppt-chiedi { background: #161b26; border-color: #252c3b; }
+  .ppt-riga + .ppt-riga { border-color: #252c3b; }
+  .ppt-risultati h2, .ppt-nota, .ppt-riga-apri > span:last-child > span { color: #98a2b3; }
+  .ppt-chiedi { color: #8cc0ff; }
+  .ppt-riga-apri .ppt-presto { color: #ffc46b !important; }
+  .ppt-riga-apri .ppt-scaduta { color: #ff9b8f !important; }
+}
+.ppt-destra { display: flex; align-items: center; gap: 10px; }
+.ppt-impostazioni { width: 44px; height: 44px; background: var(--ppt-vetro); }
+.ppt-impostazioni svg { fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }

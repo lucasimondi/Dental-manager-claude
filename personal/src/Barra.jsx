@@ -155,6 +155,12 @@ export function BarraApplicazioni({ vista, pagine, finestre = [], inPrimo = null
     window.addEventListener('keydown', giu); window.addEventListener('keyup', su);
     return () => { window.removeEventListener('keydown', giu); window.removeEventListener('keyup', su); };
   });
+  // HOME-TELEFONO: «Tutte le app ›» della Home del telefono apre Start.
+  useEffect(() => {
+    const daHome = () => apriStart('start');
+    window.addEventListener('poliedra:apri-start', daHome);
+    return () => window.removeEventListener('poliedra:apri-start', daHome);
+  });
   useEffect(() => {
     if (!start) return undefined;
     const indietro = () => setStart(false);

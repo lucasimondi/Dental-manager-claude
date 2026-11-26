@@ -16,6 +16,8 @@ import { scadenzeHome, testoScadenza, AMBITI } from '../../lib/mieCose.js';
 import { IconaApp } from '../../cose/IconeCose.jsx';
 import { IconaColore } from '../../IconeColore.jsx';
 import { rubricaHome, testoPromemoria } from '../../lib/rubrica.js'; // RUBRICA
+import { HomeTelefono } from './HomeTelefono.jsx'; // HOME-TELEFONO
+import { telefono } from '../../lib/finestre.js';
 
 const APP_COSE = [['auto', 'auto'], ['casa', 'casa'], ['salute', 'saluteApp'], ['rubrica', 'rubrica']];
 
@@ -43,7 +45,15 @@ function Icona({ d, tono, grande = false }) {
 
 const quanti = (n, uno, molti) => `${n} ${n === 1 ? uno : molti}`;
 
+// HOME-TELEFONO (PO 2026-11-26, proposta E): sul telefono la Home nuova; sul computer quella di sempre.
+const eTelefono = () => typeof window !== 'undefined' && telefono({ w: window.innerWidth, h: window.innerHeight });
 export function VistaPersonale({ ctx }) {
+  const [tel, setTel] = useState(eTelefono);
+  useEffect(() => { const f = () => setTel(eTelefono()); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f); }, []);
+  return tel ? <HomeTelefono ctx={ctx} /> : <HomeComputer ctx={ctx} />;
+}
+
+function HomeComputer({ ctx }) {
   const { vai, apri, versione } = ctx;
   const [cerca, setCerca] = useState('');
   const [daFare, setDaFare] = useState(null);
