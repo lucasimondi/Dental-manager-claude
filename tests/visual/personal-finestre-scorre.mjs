@@ -24,7 +24,7 @@ try {
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await page.waitForTimeout(500);
   };
   const tocca = async (loc) => { const b = await loc.boundingBox(); const p = { x: b.x + b.width / 2, y: b.y + b.height / 2 }; await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [p] }); await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); };
-  await tocca(page.locator('.pps-app-voce').first());
+  await tocca(page.locator('.ppt-app', { hasText: 'Auto' })); // HOME-TELEFONO: Home del telefono
   await page.locator('.pf-finestra.pf-attiva .pp-ac-scheda h3').first().waitFor();
   const scorre = page.locator('.pf-finestra.pf-attiva .pf-scorre');
   await trascina(200, 300, 100); assert.ok(await scorre.evaluate((e) => e.scrollTop) > 100, 'la finestra dell’app scorre (dito sulla testata)');
@@ -33,7 +33,7 @@ try {
   await scorre.evaluate((e) => { e.scrollTop = 0; }); await page.waitForTimeout(200);
   await trascina(300, 600, 590, -200); assert.ok(await page.locator('.pf-finestra.pf-attiva .pp-md-striscia').evaluate((e) => e.scrollLeft) > 100, 'le schede scorrono di lato');
   await page.evaluate(() => document.querySelector('.pf-finestra.pf-attiva .pf-chiudi')?.click()); await page.waitForTimeout(800);
-  await tocca(page.locator('.pps-profilo')); await page.waitForTimeout(2000);
+  await tocca(page.locator('.ppt-impostazioni')); await page.waitForTimeout(2000);
   const imp = page.locator('.pf-finestra.pf-attiva .pf-scorre');
   await trascina(200, 700, 300); assert.ok(await imp.evaluate((e) => e.scrollTop) > 100, 'anche Impostazioni scorre');
   console.log('personal-finestre-scorre: PASS');

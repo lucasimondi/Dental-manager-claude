@@ -5108,3 +5108,11 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - DB: none. Tests: npm test 2021/2021; build:personal PASS; visual PASS (personal-personale pre-existing failure also on master).
 - Risks: on the phone Start now covers the screen (close with the logo, Back or Esc); long press on Start relies on touch events (contextmenu as fallback).
 - Next action: PO tries the preview on the phone; "Mergia" or feedback.
+
+## Handoff — HOME-TELEFONO: Home di Personal sul telefono, proposta E (2026-11-26, Claude Code)
+- Task HOME-TELEFONO; previous agent: none (new PO request); branch `ccr-4f63f466-ntk6g0` stacked on PR #358 (`ccr-36db47ef-qomj78`, 27767f8).
+- Objective: phone Home in Windows-desktop style chosen by the PO (mockup E = A + B with search bar); computer unchanged.
+- Files: `personal/src/sezioni/altro/{HomeTelefono.jsx (new),Personale.jsx}`, `personal/src/{Barra.jsx,personale.css}`, tests `tests/visual/personal-home-telefono.mjs` (new), `personal-personale.mjs`, `personal-barra.mjs`, `personal-finestre-scorre.mjs`.
+- DB: none. Tests: see current-task.md (all PASS).
+- Risks: depends on #358 (merge it first); real phone not checked; search fires 3 reads per typed query (debounced 250 ms).
+- Next action: PO tries the preview on the phone; "Mergia" (after #358) or feedback.

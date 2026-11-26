@@ -26,13 +26,14 @@ try {
   for (let i = 0; i < 100; i++) { try { if ((await fetch('http://127.0.0.1:5181')).ok) break; } catch {} await new Promise((r) => setTimeout(r, 100)); }
   browser = await chromium.launch({ ...(process.env.CHROMIUM_EXECUTABLE ? { executablePath: process.env.CHROMIUM_EXECUTABLE } : {}), args: ['--no-sandbox', '--disable-dev-shm-usage'] });
   for (const tema of ['light', 'dark']) {
-    const context = await browser.newContext({ ...devices['Pixel 7'], colorScheme: tema }); const page = await context.newPage(); const errors = []; const scritture = [];
+    // HOME-TELEFONO: questa è la Home del computer (sul telefono c'è HomeTelefono, test personal-home-telefono).
+    const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, colorScheme: tema }); const page = await context.newPage(); const errors = []; const scritture = [];
     page.on('pageerror', (e) => errors.push(e.message));
     await page.route('**/*', async (route) => {
       const req = route.request(); const u = new URL(req.url());
       if (u.hostname === '127.0.0.1') return route.continue();
       if (u.hostname.endsWith('supabase.co')) {
-        if (req.method() !== 'GET') scritture.push(u.pathname);
+        if (!['GET', 'HEAD'].includes(req.method())) scritture.push(u.pathname); // HEAD = conteggio (Rubrica), è una lettura
         if (u.pathname.endsWith('/promemoria_azioni')) return route.fulfill({ json: PROMEMORIA });
         if (u.pathname.endsWith('/v_pratiche')) return route.fulfill({ json: [{ id: 'p1', titolo: 'Pratica di prova – recupero', fascicolo: 'legale', stato: 'aperta', n_documenti: 3 }] });
         if (u.pathname.endsWith('/documenti')) return route.fulfill({ json: DOCS });

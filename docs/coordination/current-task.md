@@ -1,3 +1,14 @@
+# Current task — HOME-TELEFONO (2026-11-26)
+- OWNER Claude Code; branch `ccr-4f63f466-ntk6g0`, started from the head of PR #358 ICONE-START (27767f8, not yet merged) because the Home uses its colour icons. Merge #358 first; this PR then contains only its own commit.
+- REQUEST PO 2026-11-26 (verbatim): "La home di Personal proponimi tre proposte grafiche stile descktop win, poi migliora il descktop per utilizzo mobile , sviluppiamo per telefono , per PC lasciamo lì come e" → mockup (artifact, A/B/C) → "C" → "Prendi la pr 358 e proponimi una ulteriore grafica con le icone delle 358" → D → "Fammi ancora una a misto b e con barra ricerca" → E → "Ok e".
+- DONE (phone only: width < 768 or height < 460, same rule as the windows; the computer keeps the old Home):
+  - `personal/src/sezioni/altro/HomeTelefono.jsx`: desktop wallpaper, date/greeting/clock, Impostazioni, big search bar with +, «Da fare» card, «Aggiunte» (12 apps with the #358 colour icons on light tiles; «Tutte le app ›» opens Start via event `poliedra:apri-start`, handled in `Barra.jsx`), «Consigliati» (nearest scadenza of Auto/Casa/Salute, next Rubrica promemoria, last document).
+  - Search while typing: Rubrica contacts (with Chiama) and promemoria, apps/sections (PER_TE), pratiche, documents (`cercaDocumenti`); clinical patient documents excluded; «Chiedi all'Assistente».
+  - `Personale.jsx`: `VistaPersonale` chooses HomeTelefono / HomeComputer (old Home, unchanged). Styles `.ppt-*` in `personale.css`.
+- DB: none (read-only, existing tables/RPC under RLS). DEPLOY: Vercel only.
+- VALIDATION: npm test 2021/2021; build + build:personal PASS; visual PASS: new personal-home-telefono (Pixel 7 light/dark + desktop), personal-personale (now desktop; HEAD count no longer counted as a write — the pre-existing «solo letture» failure), personal-barra and personal-finestre-scorre (updated for the new phone Home), personal-finestre, personal-rubrica.
+- NOT VERIFIED: real phone. ROLLBACK: revert the PR.
+
 # Current task — ICONE-START (2026-11-26)
 - OWNER Claude Code; branch `ccr-36db47ef-qomj78` (from master 7675258 = PR #355 RUBRICA merged).
 - REQUEST PO 2026-11-26 (verbatim): "Le icone di personal nel dock non sono coordinate con esplora risorse , il tema di icone esplora risorse mi piace , proponi come cambiare le altre , inoltre voglio uno start in basso a sinistra con tutte le app che andiamo a creare , le impostazioni, le app di Google office , tutte apribili come fosse sistema operativo telefono" → mockup (artifact, 4 artboards: icons now/proposal, Start on computer, Start on phone, app open on phone) → PO: "Vai".

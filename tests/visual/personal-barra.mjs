@@ -35,7 +35,7 @@ try {
     await page.goto('http://127.0.0.1:5183/tests/visual/personal-dock.html');
     const barra = page.locator('nav.pb-barra');
     await barra.waitFor();
-    await page.getByRole('heading', { name: 'Personale' }).waitFor();
+    await page.locator('h1').first().waitFor(); // HOME-TELEFONO: sul telefono la Home ha il saluto, sul computer «Personale»
     await page.locator('.pb-voce[aria-label^="Esplora file, 2"]').waitFor(); // conteggi caricati dopo il primo disegno
     const g = await page.evaluate(() => {
       const r = document.querySelector('nav.pb-barra').getBoundingClientRect();
