@@ -1,5 +1,5 @@
 # Current task — HOME-TELEFONO (2026-11-26)
-- OWNER Claude Code; branch `ccr-4f63f466-ntk6g0`, started from the head of PR #358 ICONE-START (27767f8, not yet merged) because the Home uses its colour icons. Merge #358 first; this PR then contains only its own commit.
+- OWNER Claude Code; branch `ccr-4f63f466-ntk6g0`, started from PR #358 ICONE-START (its colour icons); #358 merged on master as 2ceb1f9, master merged back in.
 - REQUEST PO 2026-11-26 (verbatim): "La home di Personal proponimi tre proposte grafiche stile descktop win, poi migliora il descktop per utilizzo mobile , sviluppiamo per telefono , per PC lasciamo lì come e" → mockup (artifact, A/B/C) → "C" → "Prendi la pr 358 e proponimi una ulteriore grafica con le icone delle 358" → D → "Fammi ancora una a misto b e con barra ricerca" → E → "Ok e".
 - DONE (phone only: width < 768 or height < 460, same rule as the windows; the computer keeps the old Home):
   - `personal/src/sezioni/altro/HomeTelefono.jsx`: desktop wallpaper, date/greeting/clock, Impostazioni, big search bar with +, «Da fare» card, «Aggiunte» (12 apps with the #358 colour icons on light tiles; «Tutte le app ›» opens Start via event `poliedra:apri-start`, handled in `Barra.jsx`), «Consigliati» (nearest scadenza of Auto/Casa/Salute, next Rubrica promemoria, last document).
