@@ -6,7 +6,8 @@
 - DATABASE: migration APPLIED to `archivio-documenti` and verified (RLS, owner policy, anon revoked). TESTS: 2017/2017, builds PASS, visual PASS.
 - MERGED: PR #355 (squash 7675258), Vercel production READY.
 - FOLLOW-UP same day: confirmed deletion of contacts and reminders (PO request), visual test extended; contact proposals listed to the PO.
-- NEXT ACTION: PO picks the proposed contacts → Claude inserts them; PO reviews the deletion PR → «Mergia»; verify on the real phone.
+- FOLLOW-UP 2: ITAS contact inserted (DB only); PR #356 merged (b85df1c). «Sincronizza con telefono e Google» = .vcf export (list and card), tests 2018/2018, visual PASS.
+- NEXT ACTION: PO «Mergia» on the vCard PR; try the .vcf on the phone (choose the Google account); decide whether to add automatic Google Contacts sync (new Apps Script scope).
 
 ## 2026-11-25 — CLAUDE — APP-AUTO-CASA-SALUTE
 - TASK: APP-AUTO-CASA-SALUTE. BRANCH: `ccr-f99036ef-v0b9t6` from `master@da34001`. OBJECTIVE: Auto e motori, Casa, Salute as Personal apps (Home, Start, sections) and as standalone Home-screen apps.
