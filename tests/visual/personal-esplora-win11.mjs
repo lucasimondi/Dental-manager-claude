@@ -52,7 +52,7 @@ try {
       await page.getByRole('dialog', { name: 'Start' }).waitFor(); await page.waitForTimeout(300);
       assert.ok(await dentro(page, '.pb-start'));
       await foto(page, '02-start');
-      await page.mouse.click(4, 4); await page.getByRole('dialog', { name: 'Start' }).waitFor({ state: 'detached' });
+      await tocca(T, await centro(page.locator('.pb-voce[aria-label="Start"]'))); await page.getByRole('dialog', { name: 'Start' }).waitFor({ state: 'detached' }); // ICONE-START: sul telefono Start copre lo schermo
 
       // Centro notifiche
       await tocca(T, await centro(page.locator('.pb-area')));

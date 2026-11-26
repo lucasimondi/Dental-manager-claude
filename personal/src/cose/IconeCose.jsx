@@ -1,6 +1,8 @@
 // APP-AUTO-CASA-SALUTE (e RUBRICA): le icone delle app (quadrato colorato con il disegno bianco, come le icone sulla Home
 // del telefono). `piatta` = solo il disegno, per lo spazio della foto vuota. Gli stessi disegni stanno nelle
 // icone PNG dei manifest (public/auto-*.png, casa-*, salute-*: scripts/icone-app-cose.mjs).
+import { IconaColore, haIconaColore } from '../IconeColore.jsx';
+
 export const DISEGNI = {
   auto: 'M5 16.5h14M6.5 16.5v2M17.5 16.5v2M4 16.5v-3.2l1.8-4.6A2 2 0 0 1 7.7 7.4h8.6a2 2 0 0 1 1.9 1.3l1.8 4.6v3.2M4.3 13.2h15.4M7.5 14.8h.01M16.5 14.8h.01',
   casa: 'M3.5 11 12 4l8.5 7M5.5 9.5V20h13V9.5M10 20v-5.5h4V20',
@@ -10,6 +12,8 @@ export const DISEGNI = {
 export const SFONDI = { auto: ['#E2852F', '#B4561A'], casa: ['#4A8BEA', '#1F56B8'], salute: ['#E0507F', '#A3194B'], rubrica: ['#1FB3A4', '#0B6F66'] };
 
 export function IconaApp({ ambito, size = 40, piatta = false }) {
+  // ICONE-START (PO 2026-11-26): fuori dallo spazio della foto, l'icona a colori stile Esplora file (senza riquadro).
+  if (!piatta && haIconaColore(ambito)) return <IconaColore id={ambito} size={size} className="pp-ac-icona" />;
   const [a, b] = SFONDI[ambito] || ['#667085', '#475467'];
   const disegno = <path d={DISEGNI[ambito] || DISEGNI.casa} fill="none" stroke={piatta ? 'currentColor' : '#fff'} strokeWidth={piatta ? 1.4 : 1.8} strokeLinecap="round" strokeLinejoin="round" />;
   if (piatta) return <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">{disegno}</svg>;

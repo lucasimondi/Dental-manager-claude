@@ -5102,3 +5102,11 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - DB: table `miei_dati` created in production (additive, owner RLS) and 6 cards inserted from archive data. Tests: npm test 1993/1993, build:personal PASS, visual PASS.
 - Risks: values typed in quick succession on two cards save separately (per-card debounce); data extracted from documents may be outdated (notes say what to verify).
 - Next action: PO checks the data in the preview and fills the empty fields; "Mergia" or feedback.
+
+## Handoff — ICONE-START: icone a colori e Start con tutte le app (2026-11-26, Claude Code)
+- Task ICONE-START; previous agent: none (new PO request); branch `ccr-36db47ef-qomj78` from master 7675258.
+- Objective: icons coordinated with Esplora file; Start bottom-left with every app, Impostazioni, Google and Office, opened like a phone OS. Details in current-task.md.
+- Files: `personal/src/{IconeColore.jsx,Recenti.jsx}` (new), `personal/src/lib/iconeColore.js` (new), `personal/src/{Barra.jsx,App.jsx,IconeFinestre.jsx,barra.css,personale.css}`, `personal/src/cose/{IconeCose.jsx,cose.css}`, `personal/src/sezioni/altro/Personale.jsx`, `personal/src/lib/barra.js`, `scripts/icone-app-cose.mjs`, `public/{auto,casa,salute,rubrica}-*.png`, tests `iconeStart.test.mjs` (new), visual `personal-barra.mjs`, `personal-esplora-win11.mjs`.
+- DB: none. Tests: npm test 2021/2021; build:personal PASS; visual PASS (personal-personale pre-existing failure also on master).
+- Risks: on the phone Start now covers the screen (close with the logo, Back or Esc); long press on Start relies on touch events (contextmenu as fallback).
+- Next action: PO tries the preview on the phone; "Mergia" or feedback.

@@ -7,7 +7,7 @@
 .pp-ac-testa > div { flex: 1; min-width: 0; }
 .pp-ac-testa h2 { margin: 0; font-size: 21px; }
 .pp-ac-testa p { margin: 2px 0 0; color: var(--pp-grigio); font-size: 13.5px; }
-.pp-ac-icona { flex: none; border-radius: 12px; box-shadow: 0 3px 10px color-mix(in srgb, var(--ac) 35%, transparent); }
+.pp-ac-icona { flex: none; } /* ICONE-START: icona a colori senza riquadro */
 
 .pp-ac-prossime { display: grid; gap: 6px; padding: 12px; border-radius: var(--pp-raggio); background: var(--pp-superficie); box-shadow: var(--pp-ombra); }
 .pp-ac-prossime h3 { margin: 0 0 2px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--pp-grigio); }

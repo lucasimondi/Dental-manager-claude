@@ -13,7 +13,7 @@ import { elencoRecenti, fileRecente } from './lib/recenti.js';
 import { scaricaDocumento } from './lib/condividi.js';
 import {
   voceAttiva, vociAperte, badgeBarra, vociStart, numeroNotifiche, oraData, nomeUtente, consigliati, etichettaNumero, accettaFile, APP_PER_FILE,
-  AGGIUNTE, cartellaStart, normalizzaStart, spostaAggiunta, togliAggiunta, cambiaDock, nelDock, vociBarra, appTrovate, scadenzeImminenti, appDellaPagina,
+  AGGIUNTE, cartellaStart, gruppiStart, normalizzaStart, spostaAggiunta, togliAggiunta, cambiaDock, nelDock, aggiungiAggiunta, vociBarra, appTrovate, scadenzeImminenti, appDellaPagina,
 } from './lib/barra.js';
 import { caricaPreferiti, creaFileDrive, linkNuovoFile, NUOVI_FILE, RADICE } from './lib/esplora.js';
 import { aggiungiAScrivania } from './lib/cartelleMie.js';
@@ -25,24 +25,16 @@ import { statoDrive, ascoltaStatoDrive, attesaDrive, testoStatoDrive } from './l
 import { sectionDestination } from '../../shared/agenda/navigation.js';
 import { IconaCartellaW11, IconaFileW11 } from './IconeW11.jsx';
 import { titoloDoc, tokenSessione } from './ui.jsx';
-import { IconaDock } from './IconeDock.jsx';
-import {
-  IconaOggi, IconaChat, IconaPerTe, IconaCerca, IconaDocumenti, IconaEuro, IconaPratiche, IconaPortafoglio, IconaNote,
-  IconaLucchetto, IconaFoto, IconaImpostazioni, IconaEsci, IconaCalendario, IconaScansiona,
-} from './Icone.jsx';
+import { IconaPerTe, IconaCerca, IconaImpostazioni, IconaEsci } from './Icone.jsx';
 import gemmaPoliedron from '../../src/assets/icon-poliedra-gem.png';
 import './barra.css';
 import { IconaFinestra } from './IconeFinestre.jsx';
-import { IconaApp as IconaAppCosa } from './cose/IconeCose.jsx'; // APP-AUTO-CASA-SALUTE
+import { IconaColore, haIconaColore } from './IconeColore.jsx'; // ICONE-START
+import { Recenti } from './Recenti.jsx';
 import { titoloPagina } from './sezioni/index.js';
 
-const ICONE_START = {
-  oggi: IconaOggi, agenda: IconaCalendario, documenti: IconaDocumenti, dafare: IconaPerTe, conti: IconaEuro, legal: IconaPratiche,
-  pratiche: IconaPratiche, personali: IconaPortafoglio, diario: IconaNote, note: IconaNote, password: IconaLucchetto, foto: IconaFoto,
-  concordato: IconaPratiche, dati: IconaPortafoglio, scan: IconaScansiona,
-  auto: (p) => <IconaAppCosa ambito="auto" size={p.size + 2} />, casa: (p) => <IconaAppCosa ambito="casa" size={p.size + 2} />, salute: (p) => <IconaAppCosa ambito="salute" size={p.size + 2} />,
-  google: (p) => <IconaApp tipo="google" size={p.size + 2} />, office: (p) => <IconaApp tipo="office" size={p.size + 2} />, studio: (p) => <IconaDock n="brief" s={p.size} />, impostazioni: IconaImpostazioni,
-};
+// ICONE-START (PO 2026-11-26): app di Start e della barra con le icone a colori stile Esplora file.
+const IconaStart = ({ id, size = 24 }) => (haIconaColore(id) ? <IconaColore id={id} size={size} /> : <IconaPerTe size={size} />);
 const Numero = ({ n, classe = '' }) => { const t = etichettaNumero(n); return t ? <span className={`pb-pallino ${classe}`} aria-hidden="true">{t}</span> : null; };
 
 // Pallini della barra e di Start: stessi criteri di Esplora, Da fare e Documenti (nessun conteggio nuovo
@@ -94,17 +86,13 @@ function IconaVoce({ id }) {
   if (id === 'drive-errore') return <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M6 15.5h8.5a3.2 3.2 0 0 0 .4-6.4A4.8 4.8 0 0 0 5.6 8 3.8 3.8 0 0 0 6 15.5Z" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="M10 9v2.6M10 13.3v.1" stroke="#C42B1C" strokeWidth="1.6" strokeLinecap="round" /></svg>;
   if (id === 'cerca') return <IconaCerca size={24} />;
   if (id === 'campanella') return <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M10 3a4.5 4.5 0 0 0-4.5 4.5v3L4 13.5h12l-1.5-3v-3A4.5 4.5 0 0 0 10 3ZM8.2 15.5a1.9 1.9 0 0 0 3.6 0" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" strokeLinecap="round" /></svg>;
-  if (id === 'oggi') return <IconaOggi size={24} />;
-  if (id === 'agenda') return <IconaDock n="cal" s={24} />;
-  if (id === 'esplora') return <IconaCartellaW11 size={24} />;
-  if (id === 'poliedron') return <IconaChat size={24} />;
-  if (id === 'altro') return <IconaPerTe size={24} />;
-  const Icona = ICONE_START[id];
-  return Icona ? <Icona size={24} /> : <IconaPerTe size={24} />;
+  return <IconaStart id={id} size={24} />;
 }
 
-export function BarraApplicazioni({ vista, pagine, finestre = [], inPrimo = null, onFinestra, onDesktop, conteggi = {}, email, vai, apri, onEsci, onCentro, centroAperto = false }) {
+export function BarraApplicazioni({ vista, pagine, finestre = [], inPrimo = null, onFinestra, onChiudiFinestra, onDesktop, conteggi = {}, email, vai, apri, onEsci, onCentro, centroAperto = false }) {
   const [start, setStart] = useState(false); // false | 'start' | 'cerca'
+  const [recenti, setRecenti] = useState(false); // ICONE-START: app aperte (pressione lunga / tasto destro su Start)
+  const lungoStart = useRef({ t: null, fatto: false });
   const [cartellaIniziale, setCartellaIniziale] = useState(null); // SCAN-GOOGLE-OFFICE: Google/Office fissati nel dock
   const [impStart, setImpStart] = useState(() => normalizzaStart());
   useEffect(() => {
@@ -178,6 +166,8 @@ export function BarraApplicazioni({ vista, pagine, finestre = [], inPrimo = null
 
   const tocca = (v) => {
     setCentro(false);
+    if (v.id === 'start' && lungoStart.current.fatto) { lungoStart.current.fatto = false; return; } // era una pressione lunga
+    if (recenti) setRecenti(false);
     if (v.id === 'start' || v.id === 'cerca') { if (start === v.id) chiudi(); else apriStart(v.id); return; }
     if (v.azione?.cartella) { const c = v.azione.cartella; if (start === 'start') setCartellaIniziale(c); else { apriStart('start'); setCartellaIniziale(c); } return; }
     if (start) chiudi();
@@ -201,6 +191,8 @@ export function BarraApplicazioni({ vista, pagine, finestre = [], inPrimo = null
       {centro && <CentroNotifiche mobile={mobile} apri={apri} onChiudi={() => setCentro(false)} />}
       <ToastNotifiche toast={toast} onChiudi={(k) => setToast((t) => t.filter((x) => x.chiave !== k))}
         onApri={(n) => (n.documento_id ? apri({ tipo: 'documento', id: n.documento_id }) : n.pratica ? apri({ tipo: 'pratica', p: n.pratica }) : null)} />
+      {recenti && <Recenti finestre={finestre} inPrimo={inPrimo} onEsci={() => setRecenti(false)}
+        onApri={(k) => { setRecenti(false); if (inPrimo !== k) onFinestra?.(k); }} onChiudiFinestra={onChiudiFinestra} />}
       {start && <Start modo={start} cartellaIniziale={cartellaIniziale} conteggi={conteggi} email={email} onAzione={esegui} onChiudi={chiudi} apri={apri} onEsci={onEsci} imp={impStart} onImp={salvaStart} />}
       <nav className="pb-barra" aria-label="Barra delle applicazioni">
         <span className="pb-lato" aria-hidden="true" />
@@ -213,7 +205,14 @@ export function BarraApplicazioni({ vista, pagine, finestre = [], inPrimo = null
                 aria-label={etichetta} title={accettaFile(v.id) ? `${v.nome} · trascina qui un file: ${APP_PER_FILE[v.id].toLowerCase()}` : v.nome}
                 aria-current={attiva === v.id && v.id !== 'start' && v.id !== 'cerca' ? 'page' : undefined}
                 aria-expanded={v.id === 'start' || v.id === 'cerca' ? start === v.id : undefined}
-                data-bersaglio={accettaFile(v.id) ? `app:${v.id}` : undefined}>
+                data-bersaglio={accettaFile(v.id) ? `app:${v.id}` : undefined}
+                {...(v.id === 'start' ? {
+                  onContextMenu: (e) => { e.preventDefault(); if (start) chiudi(); setRecenti(true); },
+                  onTouchStart: () => { clearTimeout(lungoStart.current.t); lungoStart.current.fatto = false; lungoStart.current.t = setTimeout(() => { lungoStart.current.fatto = true; navigator.vibrate?.(10); if (start) chiudi(); setRecenti(true); }, 500); },
+                  onPointerDown: () => { lungoStart.current.fatto = false; }, // un tocco nuovo: non è più la pressione lunga
+                  onTouchMove: () => clearTimeout(lungoStart.current.t),
+                  onTouchEnd: () => { clearTimeout(lungoStart.current.t); if (lungoStart.current.fatto) setTimeout(() => { lungoStart.current.fatto = false; }, 600); }, // solo il clic subito dopo è ignorato
+                } : {})}>
                 <IconaVoce id={v.id} />
                 <Numero n={n} />
               </button>
@@ -290,6 +289,8 @@ function Start({ modo = 'start', cartellaIniziale = null, conteggi, email, onAzi
   const campo = useRef(null);
   const griglia = useRef(null);
   const tocco = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
+  // ICONE-START: sul telefono Start si apre su «Tutte le app» (come le app del telefono), sul computer su «Aggiunte».
+  const [elenco, setElenco] = useState(() => (tocco || (typeof window !== 'undefined' && window.innerWidth < 768) ? 'tutte' : 'aggiunte'));
   useEffect(() => {
     let vivo = true;
     Promise.all([elencoRecenti().catch(() => []), documentiRecenti(archivioDb, 6).catch(() => []), scadenzeAperte(archivioDb, 14).catch(() => []), caricaPreferiti(archivioDb).catch(() => [])])
@@ -377,7 +378,7 @@ function Start({ modo = 'start', cartellaIniziale = null, conteggi, email, onAzi
               <div className="pb-consigliati pb-risultati">
                 {appQui.map((a) => (
                   <button key={`a:${a.id}`} type="button" className="pb-consigliato" onClick={() => apriVoce(a)}>
-                    <span className="pb-app-icona pb-icona-piccola">{(() => { const I = ICONE_START[a.id]; return a.icona ? <IconaApp tipo={a.icona === 'esplora' ? 'office' : a.icona} size={24} /> : a.id === 'esplora' ? <IconaCartellaW11 size={26} /> : I ? <I size={22} /> : null; })()}</span>
+                    <span className="pb-app-icona pb-icona-piccola">{a.icona ? (a.icona === 'esplora' ? <IconaColore id="esplora" size={26} /> : <IconaApp tipo={a.icona} size={24} />) : <IconaStart id={a.id} size={26} />}</span>
                     <span><strong>{a.nome}</strong><small>{a.cartella ? `App · ${a.cartella}` : 'App'}</small></span>
                   </button>
                 ))}
@@ -402,7 +403,7 @@ function Start({ modo = 'start', cartellaIniziale = null, conteggi, email, onAzi
                 {cartellaStart(cartella).voci.map((v) => (
                   <button key={v.id} type="button" className={`pb-app${creo && creo === v.crea ? ' presa' : ''}`} onClick={() => apriInCartella(v)} disabled={Boolean(creo)}
                     aria-label={v.crea ? `${v.nome} (in Personale)` : v.nome}>
-                    <span className="pb-app-icona">{v.icona === 'esplora' ? <IconaCartellaW11 size={32} /> : <IconaApp tipo={v.icona} size={30} />}</span>
+                    <span className="pb-app-icona">{v.icona === 'esplora' ? <IconaColore id="esplora" size={32} /> : <IconaApp tipo={v.icona} size={30} />}</span>
                     <span className="pb-app-nome">{creo && creo === v.crea ? 'Creo…' : v.nome}</span>
                   </button>
                 ))}
@@ -412,14 +413,37 @@ function Start({ modo = 'start', cartellaIniziale = null, conteggi, email, onAzi
                 ? 'I file nuovi nascono in «Personale» e si aprono in Google modalità Office. Da Esplora file: Apri con › Word, Excel, PowerPoint del telefono.'
                 : 'Le app Google si aprono in una nuova scheda (sul telefono nelle app Google, se installate). I file nuovi nascono in «Personale».'}</p>
             </div>
+          ) : elenco === 'tutte' ? (
+            <>
+              <div className="pb-titolo-riga"><h2>Tutte le app</h2><button type="button" className="pb-cambia" onClick={() => setElenco('aggiunte')}>Aggiunte</button></div>
+              {gruppiStart(conteggi).map((g) => (
+                <div key={g.id} className="pb-gruppo" role="group" aria-label={g.nome}>
+                  <h3>{g.nome}</h3>
+                  <div className="pb-aggiunte">
+                    {g.voci.map((v) => (
+                      <button key={v.id} type="button" className={`pb-app${creo && creo === v.crea ? ' presa' : ''}`} disabled={Boolean(creo) && v.inCartella}
+                        onClick={() => (v.inCartella ? apriInCartella(v) : apriVoce(v))}
+                        onContextMenu={v.inCartella ? undefined : (e) => menuSu(e, { tipo: 'app', id: v.id, tutte: true }, -1)}
+                        onTouchStart={v.inCartella ? undefined : (e) => { const t = e.currentTarget; clearTimeout(lungo.current); lungo.current = setTimeout(() => { navigator.vibrate?.(10); menuSu({ preventDefault() {}, currentTarget: t }, { tipo: 'app', id: v.id, tutte: true }, -1); }, 500); }}
+                        onTouchMove={() => clearTimeout(lungo.current)} onTouchEnd={() => clearTimeout(lungo.current)}
+                        aria-label={v.n ? `${v.nome}, ${v.n}` : v.crea ? `${v.nome} (in Personale)` : v.nome}>
+                        <span className="pb-app-icona">{v.inCartella ? (v.icona === 'esplora' ? <IconaColore id="esplora" size={32} /> : <IconaApp tipo={v.icona} size={30} />) : <IconaStart id={v.id} size={32} />}<Numero n={v.n} /></span>
+                        <span className="pb-app-nome">{creo && creo === v.crea ? 'Creo…' : v.nome}</span>
+                        {!v.inCartella && nelDock(imp.dock, v.id) && <span className="pb-app-dock" aria-hidden="true" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {avviso && <p className="pb-nota pb-avviso" role="alert">{avviso}</p>}
+            </>
           ) : (
             <>
-              <h2>Aggiunte</h2>
+              <div className="pb-titolo-riga"><h2>Aggiunte</h2><button type="button" className="pb-cambia" onClick={() => setElenco('tutte')}>Tutte le app</button></div>
               <div className="pb-aggiunte" ref={griglia} role="list" aria-label="App e cartelle aggiunte (trascina per riordinare)">
                 {ordine.map((x, i) => {
                   const v = voceDi(x);
                   if (!v?.nome) return null;
-                  const Icona = ICONE_START[v.id];
                   const nome = x.tipo === 'cartella' ? (nomiCartelle[x.id] || v.nome) : v.nome;
                   return (
                     <button key={`${x.tipo}:${x.id}`} type="button" role="listitem" data-i={i} className={`pb-app${presa && presa.a === i ? ' presa' : ''}`}
@@ -428,7 +452,7 @@ function Start({ modo = 'start', cartellaIniziale = null, conteggi, email, onAzi
                       onTouchStart={(e) => { const t = e.currentTarget; clearTimeout(lungo.current); lungo.current = setTimeout(() => { navigator.vibrate?.(10); menuSu({ preventDefault() {}, currentTarget: t }, x, i); }, 500); }}
                       onTouchMove={() => clearTimeout(lungo.current)} onTouchEnd={() => clearTimeout(lungo.current)}
                       aria-label={v.n ? `${nome}, ${v.n}` : nome}>
-                      <span className="pb-app-icona">{v.cartella || v.id === 'esplora' ? <IconaCartellaW11 size={32} /> : Icona ? <Icona size={26} /> : null}<Numero n={v.n} /></span>
+                      <span className="pb-app-icona">{v.cartella ? <IconaCartellaW11 size={32} /> : <IconaStart id={v.id} size={32} />}<Numero n={v.n} /></span>
                       <span className="pb-app-nome">{nome}</span>
                       {nelDock(imp.dock, x.id) && x.tipo === 'app' && <span className="pb-app-dock" aria-hidden="true" />}
                     </button>
@@ -459,15 +483,21 @@ function Start({ modo = 'start', cartellaIniziale = null, conteggi, email, onAzi
           </span>
         </footer>
         {menuApp && (
-          <div className="pb-menu-app" role="menu" aria-label={voceDi(menuApp.voce)?.nome} style={{ left: menuApp.x, top: menuApp.y }} onClick={(e) => e.stopPropagation()}>
+          <div className="pb-menu-app" role="menu" aria-label={menuApp.voce.tutte ? (AGGIUNTE.find((a) => a.id === menuApp.voce.id)?.nome || 'App') : voceDi(menuApp.voce)?.nome} style={{ left: menuApp.x, top: menuApp.y }} onClick={(e) => e.stopPropagation()}>
             {menuApp.voce.tipo === 'app' && (
               <button type="button" role="menuitem" onClick={() => { onImp({ ...imp, dock: cambiaDock(imp.dock, menuApp.voce.id) }); setMenuApp(null); }}>
                 {nelDock(imp.dock, menuApp.voce.id) ? 'Togli dal dock' : 'Aggiungi al dock'}
               </button>
             )}
+            {menuApp.voce.tutte ? (AGGIUNTE.some((a) => a.id === menuApp.voce.id) && (
+              <button type="button" role="menuitem" onClick={() => { const x = { tipo: 'app', id: menuApp.voce.id }; onImp({ ...imp, aggiunte: aggiunte.some((y) => y.tipo === 'app' && y.id === x.id) ? togliAggiunta(aggiunte, x) : aggiungiAggiunta(aggiunte, x) }); setMenuApp(null); }}>
+                {aggiunte.some((y) => y.tipo === 'app' && y.id === menuApp.voce.id) ? 'Rimuovi da Aggiunte' : 'Aggiungi ad Aggiunte'}
+              </button>
+            )) : <>
             <button type="button" role="menuitem" disabled={menuApp.i === 0} onClick={() => { onImp({ ...imp, aggiunte: spostaAggiunta(aggiunte, menuApp.i, menuApp.i - 1) }); setMenuApp(null); }}>Sposta prima</button>
             <button type="button" role="menuitem" disabled={menuApp.i >= aggiunte.length - 1} onClick={() => { onImp({ ...imp, aggiunte: spostaAggiunta(aggiunte, menuApp.i, menuApp.i + 1) }); setMenuApp(null); }}>Sposta dopo</button>
             <button type="button" role="menuitem" onClick={() => { onImp({ ...imp, aggiunte: togliAggiunta(aggiunte, menuApp.voce) }); setMenuApp(null); }}>Rimuovi da Start</button>
+            </>}
           </div>
         )}
       </section>
