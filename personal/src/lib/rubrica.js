@@ -214,3 +214,28 @@ export async function rubricaHome(db, oggi = new Date()) {
   return { n: count || 0, prossimo: lista[0] || null, daGuardare: lista.filter((p) => p.stato !== 'ok').length };
 }
 export const testoPromemoria = (p) => `${dataBreve(p.data)} · ${p.quando}`;
+
+/* ---------- rubrica del telefono e Google Contatti (PO 2026-11-26: "il tastino che sincronizza su rubrica telefono e Google") ---------- */
+// Un file vCard (.vcf): aperto sul telefono aggiunge i contatti alla rubrica (su Android scegli l'account Google e
+// finiscono anche in Google Contatti); da computer si importa in contacts.google.com › Importa. Il gruppo
+// «Rubrica Poliedron» e l'UID fisso aiutano Google a riconoscere i doppioni a una nuova importazione.
+const esc = (t) => String(t ?? '').replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/([,;])/g, '\\$1');
+const piega = (riga) => { const out = []; let r = riga; while (r.length > 74) { out.push(r.slice(0, 74)); r = ` ${r.slice(74)}`; } out.push(r); return out.join('\r\n'); };
+export function vcard(c) {
+  const nome = pulito(c.nome);
+  const nota = [c.categorie?.length && `Categoria: ${c.categorie.join(', ')}`, c.referente && `Referente: ${pulito(c.referente)}`, c.orari && `Orari: ${pulito(c.orari)}`, String(c.note || '').trim()].filter(Boolean).join('\n');
+  const righe = ['BEGIN:VCARD', 'VERSION:3.0', `UID:poliedron-rubrica-${c.id}`, `N:${esc(nome)};;;;`, `FN:${esc(nome)}`, `ORG:${esc(nome)}`,
+    c.categorie?.length && `TITLE:${esc(c.categorie.join(', '))}`,
+    c.telefono && `TEL;TYPE=CELL:${telefonoChiamabile(c.telefono) || esc(c.telefono)}`,
+    c.telefono2 && `TEL;TYPE=WORK:${telefonoChiamabile(c.telefono2) || esc(c.telefono2)}`,
+    c.email && `EMAIL;TYPE=INTERNET:${esc(pulito(c.email))}`,
+    c.indirizzo && `ADR;TYPE=WORK:;;${esc(pulito(c.indirizzo))};;;;`,
+    c.sito && `URL:${esc(sitoWeb(c.sito))}`,
+    `CATEGORIES:Rubrica Poliedron${(c.categorie || []).map((n) => `,${esc(n)}`).join('')}`,
+    nota && `NOTE:${esc(nota)}`, 'END:VCARD'].filter(Boolean);
+  return righe.map(piega).join('\r\n');
+}
+export const vcardTutti = (contatti) => `${contatti.map(vcard).join('\r\n')}\r\n`;
+export const nomeVcf = (contatti, d = new Date()) => (contatti.length === 1
+  ? `${norm(contatti[0].nome).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'contatto'}.vcf`
+  : `rubrica-poliedron-${d.toISOString().slice(0, 10)}.vcf`);

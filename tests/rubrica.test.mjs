@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   campiContatto, campiPromemoria, categoria, categorieUsate, cerca, dataSuggerita, dopoFatto, iniziali, perCategoria, piuMesi, prossimaData,
-  statoPromemoria, ordinaPromemoria, telefonoChiamabile, testoDaCopiare, whatsapp, mappa, sitoWeb, totaleInterventi,
+  statoPromemoria, ordinaPromemoria, vcard, vcardTutti, nomeVcf, telefonoChiamabile, testoDaCopiare, whatsapp, mappa, sitoWeb, totaleInterventi,
 } from '../personal/src/lib/rubrica.js';
 import { appCosaDaIndirizzo, indirizzoAppCosa } from '../personal/src/lib/appCose.js';
 
@@ -102,4 +102,24 @@ test('app a sé /rubrica/ e migrazione: del proprietario, solo aggiunte, mai can
   assert.doesNotMatch(vista, /\.delete\(/, 'la vista passa dalle funzioni della libreria');
   assert.match(vista, /Eliminare definitivamente «\{c\.nome\}»\? Non si può annullare\./);
   assert.match(vista, /Eliminare «\{p\.cosa\}»\?/);
+});
+
+test('vCard per la rubrica del telefono e Google Contatti', () => {
+  const v = vcard({ id: 'r1', nome: 'Idraulica; Rossi, Cuneo', categorie: ['Idraulico'], referente: 'Mario', telefono: '+39 333 123 4567', telefono2: '0171 000000',
+    email: 'info@esempio.it', indirizzo: 'Via Esempio 1, Cuneo', sito: 'esempio.it', note: 'Riga uno\nRiga due' });
+  const righe = v.split('\r\n');
+  assert.equal(righe[0], 'BEGIN:VCARD'); assert.equal(righe[1], 'VERSION:3.0'); assert.equal(righe.at(-1), 'END:VCARD');
+  assert.ok(righe.includes('UID:poliedron-rubrica-r1'));
+  assert.ok(righe.includes('FN:Idraulica\\; Rossi\\, Cuneo'), 'virgole e punti e virgola protetti');
+  assert.ok(righe.includes('TEL;TYPE=CELL:+393331234567'));
+  assert.ok(righe.includes('TEL;TYPE=WORK:0171000000'));
+  assert.ok(righe.includes('URL:https://esempio.it'));
+  assert.ok(righe.includes('CATEGORIES:Rubrica Poliedron,Idraulico'));
+  assert.match(v, /NOTE:Categoria: Idraulico\\nReferente: Mario\\nRiga uno\\nRiga due/);
+  assert.ok(righe.every((r) => r.length <= 75), 'righe piegate a 75 caratteri');
+  const lungo = vcard({ id: 'x', nome: 'X', note: 'a'.repeat(300) });
+  assert.equal(lungo.replace(/\r\n /g, '').match(/NOTE:(a+)/)[1].length, 300, 'la piegatura non perde caratteri');
+  assert.equal(vcardTutti([{ id: 'a', nome: 'A' }, { id: 'b', nome: 'B' }]).match(/BEGIN:VCARD/g).length, 2);
+  assert.equal(nomeVcf([{ nome: 'Gomme Èsempio srl' }]), 'gomme-esempio-srl.vcf');
+  assert.equal(nomeVcf([{}, {}], new Date('2026-11-26T10:00:00Z')), 'rubrica-poliedron-2026-11-26.vcf');
 });

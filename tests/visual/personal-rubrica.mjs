@@ -28,7 +28,7 @@ try {
   { const p = await (await browser.newContext()).newPage(); await p.route('**/*', (r) => (new URL(r.request().url()).hostname === '127.0.0.1' ? r.continue() : r.fulfill({ json: [] })));
     await p.goto('http://127.0.0.1:5188/tests/visual/personal-rubrica.html'); await p.waitForTimeout(5000); await p.context().close(); }
   for (const [nome, opz] of [['phone-light', { ...devices['Pixel 7'], colorScheme: 'light' }], ['phone-dark', { ...devices['Pixel 7'], colorScheme: 'dark' }], ['desktop', { viewport: { width: 1280, height: 800 } }]]) {
-    const context = await browser.newContext({ ...opz, permissions: ['clipboard-read', 'clipboard-write'] }); const page = await context.newPage(); const errors = []; const scritture = [];
+    const context = await browser.newContext({ ...opz, acceptDownloads: true, permissions: ['clipboard-read', 'clipboard-write'] }); const page = await context.newPage(); const errors = []; const scritture = [];
     page.on('pageerror', (e) => errors.push(e.message));
     await page.route('**/*', async (route) => {
       const req = route.request(), u = new URL(req.url());
@@ -67,8 +67,18 @@ try {
     await page.locator('.pp-rb-chips').getByRole('button', { name: /Gommista/ }).click();
     assert.deepEqual(await page.locator('.pp-rb-riga strong').allInnerTexts(), ['Gomme di prova'], `${nome}: filtro Gommista`);
     await page.locator('.pp-rb-chips').getByRole('button', { name: /Tutti/ }).click();
+    // sincronizza con telefono e Google: un file .vcf con tutti i contatti
+    await page.getByRole('button', { name: 'Sincronizza con telefono e Google' }).click();
+    await page.screenshot({ path: `${out}/${nome}-sincronizza.png`, fullPage: true });
+    const [scarico] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Salva sul telefono' }).click()]);
+    const vcf = await (await import('node:fs/promises')).readFile(await scarico.path(), 'utf8');
+    assert.equal((vcf.match(/BEGIN:VCARD/g) || []).length, RUBRICA.length, `${nome}: tutti i contatti nel file`);
+    assert.match(vcf, /FN:Idraulica di prova\r\n/); assert.match(scarico.suggestedFilename(), /^rubrica-poliedron-\d{4}-\d{2}-\d{2}\.vcf$/);
+    await page.getByRole('button', { name: 'Sincronizza con telefono e Google' }).click();
     // scheda
     await page.getByRole('button', { name: /Idraulica di prova/ }).click();
+    const [uno] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'In rubrica' }).click()]);
+    assert.equal(uno.suggestedFilename(), 'idraulica-di-prova.vcf', `${nome}: un contatto in rubrica`);
     assert.equal(await page.getByRole('link', { name: 'Chiama' }).first().getAttribute('href'), 'tel:0000000001');
     assert.ok(await page.getByRole('link', { name: 'WhatsApp' }).isVisible(), `${nome}: WhatsApp`);
     await page.screenshot({ path: `${out}/${nome}-scheda.png`, fullPage: true });

@@ -168,3 +168,8 @@
 .pp-rb-elimina > span { flex: 1 1 100%; }
 .pp-rb-spunta { flex: 1 1 100%; display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .pp-rb-tenue { color: var(--pp-grigio) !important; }
+
+/* Sincronizza con la rubrica del telefono e Google Contatti (file .vcf) */
+.pp-rb-sync-apri { justify-self: start; min-height: 36px; font-size: 14px; }
+.pp-rb-sync ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; line-height: 1.45; }
+.pp-rb-sync .pp-bottone { text-decoration: none; }
