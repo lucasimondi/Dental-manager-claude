@@ -7,7 +7,7 @@ import { archivioDb } from '../lib/supabasePersonal.js';
 import {
   archiviaContatto, archiviaPromemoria, AVVISI, CATEGORIE, categoria, categorieUsate, caricaRubrica, cerca as cercaContatti, creaContatto, creaPromemoria, eliminaContatto, eliminaPromemoria,
   dataBreve, dataIso, dataSuggerita, euro, iniziali, mappa, nomeCategoria, numero, oggiIso, ordinaInterventi, ordinaPromemoria, perCategoria, RIPETI,
-  salvaContatto, salvaPromemoria, segnaFatto, sitoWeb, SUGGERITI, telefonoChiamabile, testoDaCopiare, testoPromemoria, testoRipeti, totaleInterventi, whatsapp,
+  nomeVcf, salvaContatto, salvaPromemoria, vcardTutti, segnaFatto, sitoWeb, SUGGERITI, telefonoChiamabile, testoDaCopiare, testoPromemoria, testoRipeti, totaleInterventi, whatsapp,
 } from '../lib/rubrica.js';
 import { Conferma, Vuoto } from '../ui.jsx';
 import { IconaApp } from '../cose/IconeCose.jsx';
@@ -23,10 +23,23 @@ const I = {
   campana: 'M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0',
   indietro: 'M15 6l-6 6 6 6',
   piu: 'M12 5v14M5 12h14',
+  sync: 'M20 11a8 8 0 0 0-14.6-4.5L3 9M4 13a8 8 0 0 0 14.6 4.5L21 15M3 4v5h5M21 20v-5h-5',
+  rubrica: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM19 8v6M22 11h-6',
   stella: 'M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z',
 };
 const Svg = ({ d, size = 20, piena = false }) => <svg width={size} height={size} viewBox="0 0 24 24" fill={piena ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>;
 const Avatar = ({ c, size = 44 }) => <span className={`pp-rb-avatar pp-rb-c-${categoria(c.categorie?.[0] || 'Altro').colore}`} style={{ width: size, height: size }} aria-hidden="true">{iniziali(c.nome)}</span>;
+
+// RUBRICA (PO 2026-11-26: "il tastino che sincronizza su rubrica telefono e Google"): un file .vcf da aprire sul
+// telefono (Contatti › account Google = anche Google Contatti) o da importare in contacts.google.com.
+function salvaVcf(contatti, mostra) {
+  if (!contatti.length) { mostra?.('Nessun contatto da salvare'); return; }
+  const blob = new Blob([vcardTutti(contatti)], { type: 'text/vcard;charset=utf-8' });
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = nomeVcf(contatti); document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 120000);
+  mostra?.(contatti.length === 1 ? 'Contatto pronto: aprilo per salvarlo nella rubrica' : `${contatti.length} contatti pronti: apri il file per salvarli nella rubrica`);
+}
 
 async function copia(testo, mostra, cosa = 'Copiato') {
   try { await navigator.clipboard.writeText(testo); mostra?.(cosa); }
@@ -127,12 +140,12 @@ export function AppRubrica({ ctx }) {
       : vista.nuovo ? <NuovoContatto contatti={dati.contatti} chiudi={() => setVista({ tab: 'contatti' })} salva={azioni.nuovoContatto} />
         : scheda ? <Scheda c={scheda} promemoria={promemoria.filter((p) => p.contatto_id === scheda.id)} cambia={(p, subito) => cambia(scheda.id, p, subito)} azioni={azioni} mostra={ctx.mostra}
           indietro={() => { salvaOra(scheda.id); setVista({ tab: 'contatti' }); }} nuovoPromemoria={() => setVista({ tab: 'promemoria', nuovo: { contatto_id: scheda.id } })} />
-          : <Elenco contatti={dati.contatti} urgenti={daGuardare} apriScheda={apriScheda} nuovo={() => setVista({ tab: 'contatti', nuovo: true })} vaiPromemoria={() => setVista({ tab: 'promemoria' })} />}
+          : <Elenco mostra={ctx.mostra} contatti={dati.contatti} urgenti={daGuardare} apriScheda={apriScheda} nuovo={() => setVista({ tab: 'contatti', nuovo: true })} vaiPromemoria={() => setVista({ tab: 'promemoria' })} />}
   </div>;
 }
 
-function Elenco({ contatti, urgenti, apriScheda, nuovo, vaiPromemoria }) {
-  const [q, setQ] = useState(''), [cat, setCat] = useState(null);
+function Elenco({ contatti, urgenti, apriScheda, nuovo, vaiPromemoria, mostra }) {
+  const [q, setQ] = useState(''), [cat, setCat] = useState(null), [sync, setSync] = useState(false);
   const usate = useMemo(() => categorieUsate(contatti), [contatti]);
   const trovati = useMemo(() => cercaContatti(contatti, q, cat), [contatti, q, cat]);
   const gruppi = useMemo(() => (q.trim() ? null : perCategoria(trovati).filter((g) => !cat || g.nome === cat)), [trovati, q, cat]);
@@ -150,6 +163,19 @@ function Elenco({ contatti, urgenti, apriScheda, nuovo, vaiPromemoria }) {
       <button type="button" aria-pressed={!cat} onClick={() => setCat(null)}>Tutti <span>{contatti.length}</span></button>
       {usate.map((u) => <button key={u.nome} type="button" aria-pressed={cat === u.nome} onClick={() => setCat(cat === u.nome ? null : u.nome)}>{u.nome} <span>{u.n}</span></button>)}
     </div>}
+    {contatti.length > 0 && <button type="button" className="pp-rb-link pp-rb-sync-apri" aria-expanded={sync} onClick={() => setSync(!sync)}><Svg d={I.sync} size={17} /> Sincronizza con telefono e Google</button>}
+    {sync && <section className="pp-rb-box pp-rb-sync" aria-label="Sincronizza">
+      <h4 className="pp-rb-box-titolo">Rubrica del telefono e Google Contatti</h4>
+      <ol>
+        <li><strong>Sul telefono:</strong> tocca «Salva sul telefono», apri il file scaricato e scegli il tuo <strong>account Google</strong>: i contatti vanno nella rubrica del telefono e, da soli, anche in Google Contatti.</li>
+        <li><strong>Dal computer:</strong> scarica il file e importalo in Google Contatti (Importa).</li>
+      </ol>
+      <p className="pp-rb-aiuto">{cat || q.trim() ? `Salva i ${trovati.length} contatti mostrati ora` : `Salva tutti i ${contatti.length} contatti`}, nel gruppo «Rubrica Poliedron». Se un contatto c'è già, Google propone di unire i doppioni.</p>
+      <div className="pp-rb-riga-bottoni">
+        <button type="button" className="pp-bottone" onClick={() => salvaVcf(cat || q.trim() ? trovati : contatti, mostra)}>Salva sul telefono</button>
+        <a className="pp-bottone pp-bottone-chiaro" href="https://contacts.google.com/" target="_blank" rel="noreferrer" onClick={() => salvaVcf(cat || q.trim() ? trovati : contatti, mostra)}>Importa in Google Contatti</a>
+      </div>
+    </section>}
     {!contatti.length && <div className="pp-rb-vuoto">
       <strong>La tua rubrica dei professionisti</strong>
       <span>Idraulico, elettricista, chi fa la manutenzione della stufa, il gommista, il cartongessista… Aggiungili qui con le tue note: quando hai un problema cerchi il problema e trovi chi chiamare.</span>
@@ -268,6 +294,7 @@ function Scheda({ c, promemoria, cambia, azioni, mostra, indietro, nuovoPromemor
         {c.email && <a href={`mailto:${c.email}`}><Svg d={I.mail} />Email</a>}
         {mp && <a href={mp} target="_blank" rel="noreferrer"><Svg d={I.mappa} />Mappa</a>}
         {web && <a href={web} target="_blank" rel="noreferrer"><Svg d={I.sito} />Sito</a>}
+        <button type="button" onClick={() => salvaVcf([c], mostra)}><Svg d={I.rubrica} />In rubrica</button>
       </div>}
 
     <section className="pp-rb-box pp-rb-dettagli">
