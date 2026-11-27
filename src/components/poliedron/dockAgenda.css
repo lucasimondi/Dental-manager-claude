@@ -1,0 +1,10 @@
+/* AGENDA-TASTI (PO 2026-11-27): sull'Agenda comune la barra del telefono ha solo Personale · Poliedron · Studio,
+   solo icone (PO: "Togli le scritte deve essere più pulito solo con icone"), proposta C ("Fammi la C"): Personale
+   come casa e Studio come dente pieno, ognuno su un riquadro bianco con ombra. Le altre pagine non cambiano. */
+.poliedron-mobile-dock.poliedron-mobile-dock--agenda { width: min(calc(100vw - 24px), 232px); grid-template-columns: repeat(3, minmax(44px, 1fr)); }
+.poliedron-mobile-dock--agenda .poliedron-mobile-dock__spazio { width: 52px; height: 52px; border: 0; border-radius: 16px; background: transparent; }
+.poliedron-mobile-dock__riquadro { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; background: #fff; box-shadow: 0 3px 10px rgba(20, 40, 70, .22), 0 0 0 1px #e3e9f1; }
+.poliedron-mobile-dock__spazio:active .poliedron-mobile-dock__riquadro { transform: scale(.94); }
+.poliedron-mobile-dock__spazio svg { flex: none; }
+/* Il posto di Poliedron (vuoto: la gemma è sopra, a parte) non deve spingere giù la riga: tasti centrati in verticale. */
+.poliedron-mobile-dock--agenda .poliedron-mobile-dock__hero-slot { height: 52px; }

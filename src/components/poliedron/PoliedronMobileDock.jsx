@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import Ic from '../ui/Ic.jsx';
 import PoliedronOrb from './PoliedronOrb.jsx';
+import './dockAgenda.css'; // AGENDA-TASTI
 
 /* POL-UI-015 §9-10: `set` (Impostazioni) no longer has a dock slot — it
    moved to the central Poliedron panel's default suggestions (see
@@ -42,18 +43,33 @@ export const MOBILE_DOCK_ITEMS = Object.freeze([
   { id: 'studio', label: 'Studio', icon: 'brief' },
   { id: 'perte', label: 'Personale', icon: 'user' }, // PERSONALE-HOME (PO 2026-11-16)
 ]);
-export const mobileDockItems = ({ archivio = true } = {}) => MOBILE_DOCK_ITEMS.map((item) => (
+/* AGENDA-TASTI (PO 2026-11-27: "si parte da agenda che è comune, su agenda deve esserci semplicemente la possibilità
+   di andare a personale o studio" → mockup N1 → "va bene agenda con i tasti personal e studio, quindi facciamo solo
+   tasti agenda"): sull'Agenda comune la barra ha solo Personale · Poliedron · Studio, solo icone (PO: "Togli le scritte deve essere più pulito solo con icone").
+   Nelle altre pagine la barra resta quella di prima. */
+export const AGENDA_DOCK_ITEMS = Object.freeze([
+  { id: 'perte', label: 'Personale', icon: 'user' },
+  { id: '__poliedron__', label: 'Poliedron', icon: null },
+  { id: 'studio', label: 'Studio', icon: 'brief' },
+]);
+export const mobileDockItems = ({ archivio = true, page = null } = {}) => (page === 'agenda' ? AGENDA_DOCK_ITEMS : MOBILE_DOCK_ITEMS.map((item) => (
   item.id === 'archivio' && !archivio ? { id: 'paz', label: 'Pazienti', icon: 'pz' } : item
-));
+)));
+// Disegni a colori dei due tasti dell'Agenda (stessi di Personal, PR #358): costanti del codice, mai testo dell'utente.
+const DISEGNO_AGENDA = {
+  // Proposta C (PO 2026-11-27 "Fammi la C"): Personale come casa, Studio come dente pieno, su riquadro bianco.
+  perte: '<path d="M9 22v20h30V22L24 9z" fill="#F3F3F3" stroke="#C8C8C8" stroke-width="1.5"/><path d="M4 24 24 7l20 17" fill="none" stroke="#C42B1C" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><rect x="19" y="29" width="10" height="13" rx="1.5" fill="#0F6CBD"/>',
+  studio: '<path d="M15 5c-6 0-9 4.7-9 11 0 8 3.8 11 5.2 19S13.4 46 17 46s3.6-11 7-11 3.4 11 7 11 4.4-3 5.8-11S42 24 42 16c0-6.3-3-11-9-11-4.4 0-6 2.5-9 2.5S19.4 5 15 5z" fill="#2ec4cf" stroke="#038387" stroke-width="2"/><path d="M14 11c-3 .5-4.4 2.8-4.4 6" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/>',
+};
 
 export default function PoliedronMobileDock({ page, setPage, open, onToggle, panelId, positionLocked, archivio = true }) {
   return (
     <nav
-      className={`poliedron-mobile-dock${open ? ' is-receded' : ''}`}
+      className={`poliedron-mobile-dock${page === 'agenda' ? ' poliedron-mobile-dock--agenda' : ''}${open ? ' is-receded' : ''}`}
       aria-label="Navigazione principale"
       aria-hidden={open ? 'true' : undefined}
     >
-      {mobileDockItems({ archivio }).map((item) => {
+      {mobileDockItems({ archivio, page }).map((item) => {
         if (item.id === '__poliedron__') {
           return (
             <div key={item.id} className="poliedron-mobile-dock__hero-slot" data-slot="poliedron">
@@ -62,6 +78,14 @@ export default function PoliedronMobileDock({ page, setPage, open, onToggle, pan
                 document.body
               )}
             </div>
+          );
+        }
+
+        if (page === 'agenda') {
+          return (
+            <button key={item.id} type="button" className="poliedron-mobile-dock__item poliedron-mobile-dock__spazio" aria-label={item.label} tabIndex={open ? -1 : 0} onClick={() => setPage(item.id)}>
+              <span className="poliedron-mobile-dock__riquadro"><svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true" focusable="false" dangerouslySetInnerHTML={{ __html: DISEGNO_AGENDA[item.id] }} /></span>
+            </button>
           );
         }
 

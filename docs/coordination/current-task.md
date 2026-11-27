@@ -1,3 +1,12 @@
+# Current task — AGENDA-TASTI (2026-11-27)
+- OWNER Claude Code; branch `ccr-4f63f466-ntk6g0` (PR #360), from master b2d0792 (= PR #359 HOME-TELEFONO merged).
+- HISTORY: the PR first carried STUDIO-TELEFONO fase 1 (Studio phone Home, 7-slot bar, Start, colour icons) and NAVIGAZIONE N4 (switch Studio | Personale). PO 2026-11-27 (verbatim): "No no va bene così , va bene agenda con i tasti personal e studio , quindi facciamo solo tasti agenda poi facciamo il resto dopo correggendo" → scope reduced to the Agenda buttons only. Everything else was restored to master in a new commit (no history rewrite); the full work stays at commit 8ede4b9 on this branch for «il resto dopo».
+- REQUEST PO 2026-11-27 (verbatim): "si parte da agenda che è comune , su agenda deve esserci semplicemente la possibiktia di andare a personale o studio".
+- DONE (phone only; the dock exists only on the phone): on the shared Agenda (Studio's agenda page; on the phone Personal's agenda already leads there, AGENDA-UNICA) the Studio dock shows only Personale · Poliedron · Studio — icons only (PO 2026-11-27 verbatim: "Togli le scritte deve essere più pulito solo con icone"), proposal C from the mockup («Icone dei tasti dell'Agenda», PO "Fammi la C": Personale = house, Studio = filled tooth, each on a white tile), compact bar, Poliedron unchanged in the centre (`AGENDA_DOCK_ITEMS` in `PoliedronMobileDock.jsx`, `poliedron/dockAgenda.css`). Every other page keeps the dock exactly as before.
+- DB: none. DEPLOY: Vercel only.
+- VALIDATION: see the latest handoff.
+- NOT VERIFIED: real phone. ROLLBACK: revert the PR.
+
 # Current task — HOME-TELEFONO (2026-11-26)
 - OWNER Claude Code; branch `ccr-4f63f466-ntk6g0`, started from PR #358 ICONE-START (its colour icons); #358 merged on master as 2ceb1f9, master merged back in.
 - REQUEST PO 2026-11-26 (verbatim): "La home di Personal proponimi tre proposte grafiche stile descktop win, poi migliora il descktop per utilizzo mobile , sviluppiamo per telefono , per PC lasciamo lì come e" → mockup (artifact, A/B/C) → "C" → "Prendi la pr 358 e proponimi una ulteriore grafica con le icone delle 358" → D → "Fammi ancora una a misto b e con barra ricerca" → E → "Ok e".
