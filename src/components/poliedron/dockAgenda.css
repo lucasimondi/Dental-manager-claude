@@ -1,14 +1,6 @@
 /* AGENDA-TASTI (PO 2026-11-27): sull'Agenda comune la barra del telefono ha solo Personale · Poliedron · Studio,
-   due tasti larghi con il disegno a colori e il nome, Poliedron al centro. Le altre pagine non cambiano. */
-.poliedron-mobile-dock.poliedron-mobile-dock--agenda { width: min(calc(100vw - 24px), 380px); grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr); padding: 6px; }
-.poliedron-mobile-dock--agenda .poliedron-mobile-dock__spazio {
-  width: 100%; min-width: 0; height: 48px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 8px; box-sizing: border-box;
-  border-radius: 999px; border-color: var(--border-medium); background: var(--surface-interactive); color: var(--text-primary);
-}
+   solo icone a colori (PO: "Togli le scritte deve essere più pulito solo con icone"), Poliedron al centro.
+   Le altre pagine non cambiano. */
+.poliedron-mobile-dock.poliedron-mobile-dock--agenda { width: min(calc(100vw - 24px), 232px); grid-template-columns: repeat(3, minmax(44px, 1fr)); }
+.poliedron-mobile-dock--agenda .poliedron-mobile-dock__spazio { width: 48px; height: 48px; border-radius: 50%; }
 .poliedron-mobile-dock__spazio svg { flex: none; }
-.poliedron-mobile-dock__spazio span { font-size: 15px; font-weight: 650; }
-@media (max-width: 359px) {
-  .poliedron-mobile-dock--agenda .poliedron-mobile-dock__spazio { flex-direction: column; gap: 1px; height: 52px; padding: 2px 4px; border-radius: 16px; }
-  .poliedron-mobile-dock__spazio svg { width: 22px; height: 22px; }
-  .poliedron-mobile-dock__spazio span { font-size: 12px; }
-}

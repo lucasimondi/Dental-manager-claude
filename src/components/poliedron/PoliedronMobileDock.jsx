@@ -45,7 +45,7 @@ export const MOBILE_DOCK_ITEMS = Object.freeze([
 ]);
 /* AGENDA-TASTI (PO 2026-11-27: "si parte da agenda che è comune, su agenda deve esserci semplicemente la possibilità
    di andare a personale o studio" → mockup N1 → "va bene agenda con i tasti personal e studio, quindi facciamo solo
-   tasti agenda"): sull'Agenda comune la barra ha solo Personale · Poliedron · Studio, tasti larghi con il nome.
+   tasti agenda"): sull'Agenda comune la barra ha solo Personale · Poliedron · Studio, solo icone (PO: "Togli le scritte deve essere più pulito solo con icone").
    Nelle altre pagine la barra resta quella di prima. */
 export const AGENDA_DOCK_ITEMS = Object.freeze([
   { id: 'perte', label: 'Personale', icon: 'user' },
@@ -83,8 +83,7 @@ export default function PoliedronMobileDock({ page, setPage, open, onToggle, pan
         if (page === 'agenda') {
           return (
             <button key={item.id} type="button" className="poliedron-mobile-dock__item poliedron-mobile-dock__spazio" aria-label={item.label} tabIndex={open ? -1 : 0} onClick={() => setPage(item.id)}>
-              <svg viewBox="0 0 48 48" width="28" height="28" aria-hidden="true" focusable="false" dangerouslySetInnerHTML={{ __html: DISEGNO_AGENDA[item.id] }} />
-              <span>{item.label}</span>
+              <svg viewBox="0 0 48 48" width="32" height="32" aria-hidden="true" focusable="false" dangerouslySetInnerHTML={{ __html: DISEGNO_AGENDA[item.id] }} />
             </button>
           );
         }

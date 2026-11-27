@@ -5132,4 +5132,4 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - PO: "va bene agenda con i tasti personal e studio, quindi facciamo solo tasti agenda poi facciamo il resto dopo correggendo". Studio phone Home, 7-slot bar, Start, colour icons and the Studio | Personale switch removed from the PR (restored to master in a new commit; full work kept at commit 8ede4b9 of this branch).
 - Files now changed vs master: `src/components/poliedron/PoliedronMobileDock.jsx`, `src/components/poliedron/dockAgenda.css` (new), `tests/visual/studio-agenda-tasti.{html,fixture.jsx,mjs}` (new), docs.
 - DB: none. Next action: PO tries the preview on the phone (Agenda → Personale / Studio); "Mergia" or feedback; then «il resto» (Studio style, bar, Start, switch) corrected in a new PR on PO request.
-
+- Addendum AGENDA-TASTI: PO "Togli le scritte deve essere più pulito solo con icone" → Agenda buttons are icons only (names kept as aria-label), compact bar. Visual studio-agenda-tasti asserts no text.

@@ -1,5 +1,5 @@
 // AGENDA-TASTI: synthetic only. On the shared Agenda the Studio phone dock has only Personale · Poliedron · Studio
-// (wide, named, inside the screen, 44 px); tapping Studio goes to the Studio Home and the dock is the usual one again.
+// (icons only, inside the screen, 44 px); tapping Studio goes to the Studio Home and the dock is the usual one again.
 // Pixel 7 and iPhone SE, light and dark.
 import { chromium, devices } from 'playwright';
 import { spawn } from 'node:child_process';
@@ -18,9 +18,10 @@ try {
     await page.goto(`http://127.0.0.1:5194/tests/visual/studio-agenda-tasti.html?tema=${tema}`);
     const barra = page.getByRole('navigation', { name: 'Navigazione principale' });
     await barra.waitFor();
-    const voci = await page.locator('.poliedron-mobile-dock__item').evaluateAll((b) => b.map((x) => { const r = x.getBoundingClientRect(); return { t: x.textContent.trim(), w: r.width, h: r.height }; }));
+    const voci = await page.locator('.poliedron-mobile-dock__item').evaluateAll((b) => b.map((x) => { const r = x.getBoundingClientRect(); return { t: x.getAttribute('aria-label'), testo: x.textContent.trim(), w: r.width, h: r.height }; }));
     assert.deepEqual(voci.map((v) => v.t), ['Personale', 'Studio'], `${nome}: sull'Agenda solo Personale e Studio`);
     for (const v of voci) assert.ok(v.w >= 44 && v.h >= 44, `${nome}: ${v.t} almeno 44 px`);
+    assert.ok(voci.every((v) => v.testo === ''), `${nome}: solo icone, nessuna scritta`);
     const fuori = await page.locator('.poliedron-mobile-dock__spazio').evaluateAll((b) => b.filter((x) => [...x.children].some((c) => { const r = c.getBoundingClientRect(), p = x.getBoundingClientRect(); return r.left < p.left - 1 || r.right > p.right + 1; })).map((x) => x.textContent));
     assert.deepEqual(fuori, [], `${nome}: icona e nome dentro il tasto`);
     assert.equal(await page.locator('[data-slot="poliedron"]').count(), 1, 'Poliedron al centro');
