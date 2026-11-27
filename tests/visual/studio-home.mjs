@@ -1,4 +1,5 @@
-// HOME-STUDIO: synthetic data only. Studio Home on Pixel 7 and iPhone SE, light and dark.
+// HOME-STUDIO: synthetic data only. Studio Home on the computer and a 768 px tablet (desktop shell), light and dark.
+// STUDIO-TELEFONO: on the phone the new Home is tested by studio-home-telefono.mjs.
 import { chromium, devices } from 'playwright';
 import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
@@ -9,7 +10,7 @@ let browser;
 try {
   for (let i = 0; i < 100; i++) { try { if ((await fetch('http://127.0.0.1:5183')).ok) break; } catch {} await new Promise((r) => setTimeout(r, 100)); }
   browser = await chromium.launch({ ...(process.env.CHROMIUM_EXECUTABLE ? { executablePath: process.env.CHROMIUM_EXECUTABLE } : {}), args: ['--no-sandbox', '--disable-dev-shm-usage'] });
-  for (const [nome, dev] of [['pixel7', devices['Pixel 7']], ['iphonese', devices['iPhone SE']]]) for (const tema of ['light', 'dark']) {
+  for (const [nome, dev] of [['computer', { viewport: { width: 1280, height: 800 } }], ['tablet', { viewport: { width: 768, height: 1024 } }]]) for (const tema of ['light', 'dark']) {
     const context = await browser.newContext({ ...dev, deviceScaleFactor: 1 }); const page = await context.newPage(); const errors = []; const scritture = [];
     page.on('pageerror', (e) => errors.push(e.message));
     await page.route('**/*', (route) => { const u = new URL(route.request().url()); if (u.hostname === '127.0.0.1') return route.continue(); if (route.request().method() !== 'GET') scritture.push(u.pathname); return route.fulfill({ json: [] }); });

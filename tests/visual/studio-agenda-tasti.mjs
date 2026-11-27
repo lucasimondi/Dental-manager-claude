@@ -1,5 +1,5 @@
 // AGENDA-TASTI: synthetic only. On the shared Agenda the Studio phone dock has only Personale · Poliedron · Studio
-// (icons only, inside the screen, 44 px); tapping Studio goes to the Studio Home and the dock is the usual one again.
+// (icons only, inside the screen, 44 px); tapping Studio goes to the Studio Home with the Studio bar (STUDIO-TELEFONO).
 // Pixel 7 and iPhone SE, light and dark.
 import { chromium, devices } from 'playwright';
 import { spawn } from 'node:child_process';
@@ -31,7 +31,7 @@ try {
     assert.ok(r.x >= 0 && r.x + r.width <= page.viewportSize().width, `${nome}: barra dentro lo schermo`);
     await page.screenshot({ path: `${out}/${nome}-${tema}-agenda.png` });
     await barra.getByRole('button', { name: 'Studio' }).click();
-    assert.deepEqual(await page.locator('.poliedron-mobile-dock__item').evaluateAll((b) => b.map((x) => x.getAttribute('aria-label'))), ['Agenda', 'Documenti', 'Studio', 'Personale'], `${nome}: fuori dall'Agenda la barra di prima`);
+    assert.deepEqual(await page.locator('.poliedron-mobile-dock__item').evaluateAll((b) => b.map((x) => x.getAttribute('aria-label'))), ['Agenda', 'Start', 'Pazienti', 'Documenti', 'Incassi', 'Studio'], `${nome}: fuori dall'Agenda la barra dello Studio`);
     await barra.getByRole('button', { name: 'Agenda' }).click();
     await barra.getByRole('button', { name: 'Personale' }).click();
     assert.deepEqual(await page.evaluate(() => window.studioTest.pagine), ['studio', 'agenda', 'perte']);

@@ -1,0 +1,5 @@
+/* NAVIGAZIONE N4: interruttore Studio | Personale sopra lo sfondo da desktop delle due Home del telefono. */
+.spz { display: flex; gap: 4px; padding: 4px; border-radius: 26px; background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .22); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.spz-voce { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 8px; height: 44px; border: 0; border-radius: 22px; background: none; color: #fff; font: inherit; font-size: 14px; font-weight: 650; cursor: pointer; transition: background .15s, color .15s; }
+.spz-attivo { background: #fff; color: #0b2f3a; box-shadow: 0 2px 8px rgba(0, 0, 0, .2); cursor: default; }
+.spz-voce:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }

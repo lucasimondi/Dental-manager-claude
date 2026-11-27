@@ -13,6 +13,9 @@ import { cercaPazienti } from '../lib/ricercaPazienti.js';
 import { riepilogoStudio } from '../lib/studioHome.js';
 import { loadHomeFinancialSnapshot } from '../lib/homeFinancialWidgets.js';
 import { ICONE_ALTRO } from '../../shared/altro/AltroPage.jsx';
+// STUDIO-TELEFONO (PO 2026-11-27): sul telefono la Home nuova (stile Personal); sul computer questa, invariata.
+import { useIsMobile } from '../lib/useIsMobile.js';
+import StudioHomeTelefono from './StudioHomeTelefono.jsx';
 
 const ICONE = {
   ...ICONE_ALTRO,
@@ -41,7 +44,12 @@ function Icona({ d, tono, classe = '' }) {
   return <span className={`sh-icona sh-${tono} ${classe}`} aria-hidden="true"><svg viewBox="0 0 24 24"><path d={d} /></svg></span>;
 }
 
-export default function StudioHome({
+export default function StudioHome(props) {
+  const isMobile = useIsMobile();
+  return isMobile ? <StudioHomeTelefono {...props} /> : <StudioHomeComputer {...props} />;
+}
+
+function StudioHomeComputer({
   patients = [], appointments = [], richiami = [], plans = [], payments = [],
   nav = [], managementControl = false, conSpese = false,
   vai, apriPaziente, azioni = {}, onImpostazioni,

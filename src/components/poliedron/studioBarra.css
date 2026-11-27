@@ -1,0 +1,11 @@
+/* STUDIO-TELEFONO (PO 2026-11-27): la barra in basso dello Studio sul telefono in stile Personal. */
+.poliedron-mobile-dock.studio-barra {
+  width: min(calc(100vw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)), 440px);
+  grid-template-columns: repeat(7, minmax(40px, 1fr));
+  padding: 4px 4px;
+  border-radius: 22px;
+}
+.studio-barra .poliedron-mobile-dock__item svg.st-icona-colore { width: 28px; height: 28px; }
+.studio-barra__start svg { width: 26px; height: 26px; fill: none; stroke: #0f6cbd; stroke-width: 1.9; stroke-linejoin: round; }
+body.studio-start-aperto .studio-barra__start { background: color-mix(in srgb, #0f6cbd 16%, transparent); }
+

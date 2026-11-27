@@ -13,6 +13,8 @@ import { caricaCartellePratiche } from '../../lib/praticheCartelle.js';
 import { IconaColore } from '../../IconeColore.jsx';
 import { saluto, dataBreve } from '../../ui.jsx';
 import { PER_TE } from './index.jsx';
+import InterruttoreSpazio from '../../../../shared/spazio/InterruttoreSpazio.jsx'; // NAVIGAZIONE N4
+import { sectionDestination } from '../../../../shared/agenda/navigation.js';
 import { ICONE_ALTRO } from '../../../../shared/altro/AltroPage.jsx';
 
 // Aggiunte: [id, nome, icona a colori, come si apre].
@@ -97,6 +99,7 @@ export function HomeTelefono({ ctx }) {
 
   return (
     <div className={`ppt${q ? ' ppt-cerca-aperta' : ''}`}>
+      {!q && <InterruttoreSpazio attivo="personale" onStudio={() => window.location.assign(sectionDestination('studio', 'studio'))} />}
       {!q && <header className="ppt-testa">
         <span><span className="ppt-data">{oggiLungo()}</span><h1>{saluto()}</h1></span>
         <span className="ppt-destra"><span className="ppt-ora" aria-hidden="true">{orario}</span>
