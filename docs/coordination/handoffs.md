@@ -5139,4 +5139,4 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 ## Handoff — STUDIO-TELEFONO ripresa (2026-11-27, Claude Code)
 - PO: "Ora riprendiamo studio su telefono". Branch `ccr-4f63f466-ntk6g0` from master 630be9a; saved work of commit 8ede4b9 restored; dock merged by hand (Agenda icons C kept, Studio 7-slot bar elsewhere). Files: see current-task.md. DB: none.
 - Next action: PO tries the preview on the phone and lists corrections.
-
+- Addendum SFONDI (same branch/PR #361): wallpaper and colour picker on both phone Homes, saved per device and per space. Files: `shared/spazio/{sfondi.js,SceltaSfondo.jsx,sceltaSfondo.css}` (new), `src/components/StudioHomeTelefono.{jsx,css}`, `personal/src/sezioni/altro/HomeTelefono.jsx`, `personal/src/personale.css`, `shared/spazio/interruttoreSpazio.css`, tests. DB: none.

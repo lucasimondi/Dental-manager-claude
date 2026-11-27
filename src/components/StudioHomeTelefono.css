@@ -109,3 +109,6 @@
 :root[data-theme="light"] .stt-risultati h2, :root[data-theme="light"] .stt-nota, :root[data-theme="light"] .stt-riga-apri > span:last-child > span { color: #4f5f72; }
 .stt-data { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 379px) { .stt-ora { display: none; } }
+/* SFONDI: in cima l'interruttore Studio | Personale, poi Sfondo e Impostazioni; sotto, saluto e ora su una riga. */
+.stt-cima { display: flex; align-items: center; gap: 8px; }
+.stt-cima .spz { flex: 1; min-width: 0; }

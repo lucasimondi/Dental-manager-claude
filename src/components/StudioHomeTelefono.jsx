@@ -12,6 +12,7 @@ import { riepilogoStudio } from '../lib/studioHome.js';
 import IconaColoreStudio from './IconaColoreStudio.jsx';
 import { apriStartStudio } from '../lib/startStudio.js';
 import InterruttoreSpazio from '../../shared/spazio/InterruttoreSpazio.jsx'; // NAVIGAZIONE N4
+import SceltaSfondo, { useSfondo } from '../../shared/spazio/SceltaSfondo.jsx'; // SFONDI
 
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const quanti = (n, uno, molti) => `${n} ${n === 1 ? uno : molti}`;
@@ -54,6 +55,7 @@ export default function StudioHomeTelefono({
 }) {
   const [q, setQ] = useState('');
   const [crea, setCrea] = useState(false);
+  const [sf, setSfondo] = useSfondo('studio'); // SFONDI: sfondo scelto su questo dispositivo
   const [orario, setOrario] = useState(oraAdesso);
   useEffect(() => { const t = setInterval(() => setOrario(oraAdesso()), 20000); return () => clearInterval(t); }, []);
   const oggi = today();
@@ -92,12 +94,15 @@ export default function StudioHomeTelefono({
   const aggiunte = ORDINE_AGGIUNTE.filter((id) => perId[id]).slice(0, 11).map((id) => perId[id]);
 
   return (
-    <div className={`stt${q ? ' stt-cerca-aperta' : ''}`}>
-      {!q && <InterruttoreSpazio attivo="studio" onPersonale={() => vai('perte')} />}
+    <div className={`stt${q ? ' stt-cerca-aperta' : ''}`} style={{ background: sf.css, backgroundAttachment: 'fixed', backgroundColor: sf.base }}>
+      {!q && <div className="stt-cima">
+        <InterruttoreSpazio attivo="studio" onPersonale={() => vai('perte')} />
+        <SceltaSfondo attuale={sf} onScegli={setSfondo} />
+        {onImpostazioni && <button type="button" className="stt-tondo stt-vetro" aria-label="Impostazioni" onClick={onImpostazioni}><IconaColoreStudio id="set" size={24} /></button>}
+      </div>}
       {!q && <header className="stt-testa">
         <span className="stt-testa-testi"><span className="stt-data">{oggiLungo()} · Studio</span><h1>{saluto()}</h1></span>
         <span className="stt-ora" aria-hidden="true">{orario}</span>
-        {onImpostazioni && <button type="button" className="stt-tondo stt-vetro" aria-label="Impostazioni" onClick={onImpostazioni}><IconaColoreStudio id="set" size={24} /></button>}
       </header>}
 
       <div className="stt-cerca">

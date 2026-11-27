@@ -3,3 +3,5 @@
 .spz-voce { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 8px; height: 44px; border: 0; border-radius: 22px; background: none; color: #fff; font: inherit; font-size: 14px; font-weight: 650; cursor: pointer; transition: background .15s, color .15s; }
 .spz-attivo { background: #fff; color: #0b2f3a; box-shadow: 0 2px 8px rgba(0, 0, 0, .2); cursor: default; }
 .spz-voce:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+/* Telefoni stretti (accanto a Sfondo e Impostazioni): solo i nomi. */
+@media (max-width: 379px) { .spz-voce svg { display: none; } .spz-voce { font-size: 13px; } }

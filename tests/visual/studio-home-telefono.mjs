@@ -33,6 +33,23 @@ try {
     const fuori = await page.locator('.stt-rapida, .stt-app').evaluateAll((b) => b.filter((x) => x.scrollWidth > x.clientWidth + 1).map((x) => x.textContent));
     assert.deepEqual(fuori, [], `${nome}: testo fuori dai tasti`);
     await page.screenshot({ path: `${out}/${nome}-${tema}-home.png`, fullPage: true });
+    // SFONDI: si sceglie dal tasto «Sfondo», si vede subito e resta dopo una nuova apertura.
+    const sfondoDi = () => page.locator('.stt').evaluate((e) => getComputedStyle(e).backgroundColor);
+    const prima = await sfondoDi();
+    await page.getByRole('button', { name: 'Sfondo' }).click();
+    const foglio = page.getByRole('dialog', { name: 'Sfondo' });
+    assert.ok(await foglio.getByRole('button', { name: 'Petrolio', exact: true }).first().getAttribute('aria-pressed') === 'true', `${nome}: parte da Petrolio`);
+    await page.screenshot({ path: `${out}/${nome}-${tema}-sfondi.png` });
+    await foglio.getByRole('button', { name: 'Aurora' }).click();
+    await foglio.getByRole('button', { name: 'Fatto' }).click();
+    assert.notEqual(await sfondoDi(), prima, `${nome}: lo sfondo cambia`);
+    await page.reload(); await page.evaluate(() => { window.startAperto = 0; window.addEventListener('studio:apri-start', () => { window.startAperto += 1; }); });
+    await page.getByRole('searchbox', { name: 'Cerca nello Studio' }).waitFor();
+    assert.equal(await sfondoDi(), 'rgb(18, 26, 51)', `${nome}: Aurora resta dopo la riapertura`);
+    await page.screenshot({ path: `${out}/${nome}-${tema}-aurora.png` });
+    await page.getByRole('button', { name: 'Sfondo' }).click();
+    await page.getByRole('dialog', { name: 'Sfondo' }).getByRole('button', { name: 'Petrolio', exact: true }).first().click();
+    await page.keyboard.press('Escape');
 
     await page.getByRole('button', { name: 'Tutte le app ›' }).click();
     assert.equal(await page.evaluate(() => window.startAperto), 1, `${nome}: «Tutte le app» apre Start`);

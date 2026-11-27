@@ -218,8 +218,8 @@
 html:has(.ppt) body, .pp-app:has(.ppt) { background: #0e3560; }
 .pp-app:has(.ppt) { position: relative; isolation: isolate; }
 .ppt::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 390 844' preserveAspectRatio='none'%3E%3Cpath d='M-40 620C80 480 220 520 430 380V844H-40Z' fill='%2314497f'/%3E%3Cpath d='M120 844C200 700 300 690 430 600V844Z' fill='%231a5a98'/%3E%3C/svg%3E") center bottom / 100% 100% no-repeat, #0e3560; }
+  /* SFONDI: lo sfondo scelto arriva da HomeTelefono.jsx (--ppt-sfondo); senza scelta, il blu con le onde di sempre. */
+  background: var(--ppt-sfondo, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 390 844' preserveAspectRatio='none'%3E%3Cpath d='M-40 620C80 480 220 520 430 380V844H-40Z' fill='%2314497f'/%3E%3Cpath d='M120 844C200 700 300 690 430 600V844Z' fill='%231a5a98'/%3E%3C/svg%3E") center bottom / 100% 100% no-repeat, #0e3560); }
 .ppt { --ppt-vetro: rgba(255, 255, 255, .14); --ppt-bordo: rgba(255, 255, 255, .22); color: #fff; display: flex; flex-direction: column; gap: 14px; padding: calc(16px + env(safe-area-inset-top)) 0 24px; }
 .ppt-testa { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
 .ppt-data { display: block; font-size: 13px; font-weight: 500; color: #cfe0f5; }
@@ -292,3 +292,6 @@ html:has(.ppt) body, .pp-app:has(.ppt) { background: #0e3560; }
 .ppt-destra { display: flex; align-items: center; gap: 10px; }
 .ppt-impostazioni { width: 44px; height: 44px; background: var(--ppt-vetro); }
 .ppt-impostazioni svg { fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+/* SFONDI: in cima l'interruttore Studio | Personale, poi Sfondo e Impostazioni. */
+.ppt-cima { display: flex; align-items: center; gap: 8px; }
+.ppt-cima .spz { flex: 1; min-width: 0; }
