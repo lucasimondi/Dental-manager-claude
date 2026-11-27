@@ -168,11 +168,13 @@ test('mobile Poliedron renders only the official standalone gem on a transparent
 // Product Owner revision — compact mobile dock and magnetic redock
 // ---------------------------------------------------------------------------
 
-// STUDIO-TELEFONO (PO 2026-11-27): Start a sinistra e Pazienti nella barra; Poliedron resta al centro (4° di 7).
-test('mobile dock has exactly START, AGENDA, PAZIENTI, POLIEDRON, DOCUMENTI, STUDIO, PERSONALE in that order (PO 2026-11-27 STUDIO-TELEFONO; Setup stays in Start and the Poliedron panel)', () => {
+// STUDIO-TELEFONO + NAVIGAZIONE N4 (PO 2026-11-27): nello Studio Agenda · Start · Pazienti · Poliedron · Documenti ·
+// Incassi · Studio; sull'Agenda comune solo Personale · Poliedron · Studio. Poliedron resta al centro.
+test('mobile dock: AGENDA, START, PAZIENTI, POLIEDRON, DOCUMENTI, INCASSI, STUDIO; on the shared Agenda only PERSONALE, POLIEDRON, STUDIO (PO 2026-11-27)', () => {
   const ids = [...mobileDockSource.matchAll(/\{ id: '([^']+)'/g)].map((match) => match[1]);
-  assert.deepEqual(ids.slice(0, 7), ['__start__', 'agenda', 'paz', '__poliedron__', 'archivio', 'studio', 'perte']);
-  assert.equal(ids.indexOf('__poliedron__'), 3, 'Poliedron stays in the centre slot');
+  assert.deepEqual(ids.slice(0, 7), ['agenda', '__start__', 'paz', '__poliedron__', 'archivio', 'paga', 'studio']);
+  assert.deepEqual(ids.slice(7, 10), ['perte', '__poliedron__', 'studio']);
+  assert.match(mobileDockSource, /page === 'agenda' \? AGENDA_DOCK_ITEMS/);
 });
 
 /* POL-CHAT-001 merge: PR #51 shipped the Chat dock slot as a PLACEHOLDER

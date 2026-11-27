@@ -38,31 +38,41 @@ import { apriStartStudio } from '../../lib/startStudio.js';
    Studio · Per te: consultare (Agenda, Documenti), chiedere (Poliedron al centro), lavoro dello
    studio (Studio) e vita personale (Per te: spese, documenti personali, foto, note, diario…). */
 /* STUDIO-TELEFONO (PO 2026-11-27: "Procedi con questo stile grafico per tutto il software studio", fase 1, solo
-   telefono): la barra prende lo stile di Personal. Icone a colori, Start a sinistra (apre «Tutte le app» a tutto
-   schermo, evento `studio:apri-start` gestito in App.jsx) e Pazienti; Poliedron resta al centro. Sette posti:
-   Start · Agenda · Pazienti · Poliedron · Documenti · Studio · Personale. */
+   telefono): la barra prende lo stile di Personal, icone a colori, Start (apre «Tutte le app» a tutto schermo,
+   evento `studio:apri-start` gestito in App.jsx).
+   NAVIGAZIONE N4 (PO 2026-11-27: "si parte da agenda che è comune, su agenda deve esserci semplicemente la
+   possibilità di andare a personale o studio, da personale e studio [...] muoversi da personale a studio" → mockup
+   → "N4"): sull'Agenda (comune) la barra ha solo Personale · Poliedron · Studio; nello Studio la barra è
+   Agenda · Start · Pazienti · Poliedron · Documenti · Incassi · Studio; il passaggio Studio ⇄ Personale è
+   l'interruttore in cima alle due Home. Poliedron resta al centro. */
 export const MOBILE_DOCK_ITEMS = Object.freeze([
-  { id: '__start__', label: 'Start', icon: null },
   { id: 'agenda', label: 'Agenda', icon: 'cal' },
+  { id: '__start__', label: 'Start', icon: null },
   { id: 'paz', label: 'Pazienti', icon: 'pz' },
   { id: '__poliedron__', label: 'Poliedron', icon: null },
   { id: 'archivio', label: 'Documenti', icon: 'folder' },
+  { id: 'paga', label: 'Incassi', icon: 'pay' },
   { id: 'studio', label: 'Studio', icon: 'brief' },
-  { id: 'perte', label: 'Personale', icon: 'user' }, // PERSONALE-HOME (PO 2026-11-16)
 ]);
-// Senza l'archivio documenti nel piano, quel posto va a Incassi (Pazienti è già nella barra).
-export const mobileDockItems = ({ archivio = true } = {}) => MOBILE_DOCK_ITEMS.map((item) => (
-  item.id === 'archivio' && !archivio ? { id: 'paga', label: 'Incassi', icon: 'pay' } : item
-));
+// Sull'Agenda comune: solo i due spazi, Poliedron in mezzo.
+export const AGENDA_DOCK_ITEMS = Object.freeze([
+  { id: 'perte', label: 'Personale', icon: 'user' }, // PERSONALE-HOME (PO 2026-11-16)
+  { id: '__poliedron__', label: 'Poliedron', icon: null },
+  { id: 'studio', label: 'Studio', icon: 'brief' },
+]);
+// Senza l'archivio documenti nel piano, quel posto va a Richiami (Pazienti e Incassi sono già nella barra).
+export const mobileDockItems = ({ archivio = true, page = null } = {}) => (page === 'agenda' ? AGENDA_DOCK_ITEMS : MOBILE_DOCK_ITEMS.map((item) => (
+  item.id === 'archivio' && !archivio ? { id: 'richiami', label: 'Richiami', icon: 'clk' } : item
+)));
 
 export default function PoliedronMobileDock({ page, setPage, open, onToggle, panelId, positionLocked, archivio = true }) {
   return (
     <nav
-      className={`poliedron-mobile-dock studio-barra${open ? ' is-receded' : ''}`}
+      className={`poliedron-mobile-dock studio-barra${page === 'agenda' ? ' studio-barra--agenda' : ''}${open ? ' is-receded' : ''}`}
       aria-label="Navigazione principale"
       aria-hidden={open ? 'true' : undefined}
     >
-      {mobileDockItems({ archivio }).map((item) => {
+      {mobileDockItems({ archivio, page }).map((item) => {
         if (item.id === '__poliedron__') {
           return (
             <div key={item.id} className="poliedron-mobile-dock__hero-slot" data-slot="poliedron">
@@ -96,6 +106,7 @@ export default function PoliedronMobileDock({ page, setPage, open, onToggle, pan
             }}
           >
             <IconaColoreStudio id={item.id} size={28} />
+            {page === 'agenda' && <span className="studio-barra__nome">{item.label}</span>}
           </button>
         );
       })}

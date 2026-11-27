@@ -23,10 +23,10 @@ try {
       const voci = [...document.querySelectorAll('.studio-barra .poliedron-mobile-dock__item')].map((b) => { const r = b.getBoundingClientRect(); return { label: b.getAttribute('aria-label'), w: r.width, h: r.height, colore: !!b.querySelector('svg.st-icona-colore') }; });
       return { left: nav.left, right: nav.right, vw: innerWidth, voci };
     });
-    assert.deepEqual(g.voci.map((v) => v.label), ['Start', 'Agenda', 'Pazienti', 'Documenti', 'Studio', 'Personale']);
+    assert.deepEqual(g.voci.map((v) => v.label), ['Agenda', 'Start', 'Pazienti', 'Documenti', 'Incassi', 'Studio']);
     assert.ok(g.left >= 0 && g.right <= g.vw, `${nome}: barra dentro lo schermo`);
     for (const v of g.voci) assert.ok(v.w >= 44 && v.h >= 44, `${nome}: ${v.label} almeno 44 px`);
-    assert.ok(g.voci.slice(1).every((v) => v.colore), `${nome}: icone a colori`);
+    assert.ok(g.voci.filter((v) => v.label !== 'Start').every((v) => v.colore), `${nome}: icone a colori`);
     assert.equal(await page.locator('[data-slot="poliedron"]').count(), 1);
     await page.screenshot({ path: `${out}/${nome}-${tema}-barra.png` });
     await barra.getByRole('button', { name: 'Pazienti' }).click();
@@ -55,7 +55,25 @@ try {
     await page.route('**/*', (route) => (new URL(route.request().url()).hostname === '127.0.0.1' ? route.continue() : route.fulfill({ json: [] })));
     await page.goto('http://127.0.0.1:5193/tests/visual/studio-start.html?archivio=no');
     const labels = await page.locator('.studio-barra .poliedron-mobile-dock__item').evaluateAll((b) => b.map((x) => x.getAttribute('aria-label')));
-    assert.deepEqual(labels, ['Start', 'Agenda', 'Pazienti', 'Incassi', 'Studio', 'Personale'], 'senza archivio: Incassi');
+    assert.deepEqual(labels, ['Agenda', 'Start', 'Pazienti', 'Richiami', 'Incassi', 'Studio'], 'senza archivio: Richiami');
     await context.close(); }
+  // NAVIGAZIONE N4: sull'Agenda comune solo Personale · Poliedron · Studio, con il nome; Studio porta alla barra dello Studio.
+  for (const [nome, dev] of [['pixel7', devices['Pixel 7']], ['iphonese', devices['iPhone SE']]]) {
+    const context = await browser.newContext({ ...dev }); const page = await context.newPage();
+    await page.route('**/*', (route) => (new URL(route.request().url()).hostname === '127.0.0.1' ? route.continue() : route.fulfill({ json: [] })));
+    await page.goto('http://127.0.0.1:5193/tests/visual/studio-start.html?pagina=agenda');
+    const barra = page.getByRole('navigation', { name: 'Navigazione principale' });
+    await barra.waitFor();
+    assert.deepEqual(await page.locator('.studio-barra .poliedron-mobile-dock__item').evaluateAll((b) => b.map((x) => x.textContent.trim())), ['Personale', 'Studio'], `${nome}: Agenda con solo Personale e Studio`);
+    assert.equal(await page.locator('[data-slot="poliedron"]').count(), 1);
+    const r = await page.locator('.studio-barra').boundingBox();
+    assert.ok(r.x >= 0 && r.x + r.width <= page.viewportSize().width, `${nome}: barra dentro lo schermo`);
+    await page.screenshot({ path: `${out}/${nome}-agenda.png` });
+    await barra.getByRole('button', { name: 'Personale' }).click();
+    await page.goto('http://127.0.0.1:5193/tests/visual/studio-start.html?pagina=agenda');
+    await barra.getByRole('button', { name: 'Studio' }).click();
+    assert.equal(await page.locator('.studio-barra .poliedron-mobile-dock__item').count(), 6, `${nome}: dallo Studio la barra completa`);
+    await context.close();
+  }
   console.log('studio-start PASS');
 } finally { await browser?.close(); server.kill(); }

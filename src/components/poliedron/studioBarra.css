@@ -8,3 +8,8 @@
 .studio-barra .poliedron-mobile-dock__item svg.st-icona-colore { width: 28px; height: 28px; }
 .studio-barra__start svg { width: 26px; height: 26px; fill: none; stroke: #0f6cbd; stroke-width: 1.9; stroke-linejoin: round; }
 body.studio-start-aperto .studio-barra__start { background: color-mix(in srgb, #0f6cbd 16%, transparent); }
+
+/* NAVIGAZIONE N4: sull'Agenda comune la barra ha solo Personale · Poliedron · Studio, tasti larghi con il nome. */
+.poliedron-mobile-dock.studio-barra.studio-barra--agenda { grid-template-columns: minmax(0, 1fr) 76px minmax(0, 1fr); width: min(calc(100vw - 24px), 380px); padding: 6px; }
+.studio-barra--agenda .poliedron-mobile-dock__item { width: 100%; height: 48px; display: flex; gap: 8px; border-radius: 16px; border-color: var(--border-medium); background: var(--surface-interactive); color: var(--text-primary); }
+.studio-barra__nome { font-size: 15px; font-weight: 650; }

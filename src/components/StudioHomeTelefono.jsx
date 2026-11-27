@@ -11,6 +11,7 @@ import { cercaPazienti } from '../lib/ricercaPazienti.js';
 import { riepilogoStudio } from '../lib/studioHome.js';
 import IconaColoreStudio from './IconaColoreStudio.jsx';
 import { apriStartStudio } from '../lib/startStudio.js';
+import InterruttoreSpazio from '../../shared/spazio/InterruttoreSpazio.jsx'; // NAVIGAZIONE N4
 
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const quanti = (n, uno, molti) => `${n} ${n === 1 ? uno : molti}`;
@@ -92,6 +93,7 @@ export default function StudioHomeTelefono({
 
   return (
     <div className={`stt${q ? ' stt-cerca-aperta' : ''}`}>
+      {!q && <InterruttoreSpazio attivo="studio" onPersonale={() => vai('perte')} />}
       {!q && <header className="stt-testa">
         <span className="stt-testa-testi"><span className="stt-data">{oggiLungo()} · Studio</span><h1>{saluto()}</h1></span>
         <span className="stt-ora" aria-hidden="true">{orario}</span>

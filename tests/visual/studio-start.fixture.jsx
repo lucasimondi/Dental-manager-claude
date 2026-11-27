@@ -11,7 +11,7 @@ if (new URLSearchParams(location.search).get('tema') === 'dark') document.docume
 const senzaArchivio = new URLSearchParams(location.search).get('archivio') === 'no';
 window.studioTest = { pagine: [] };
 function App() {
-  const [page, setPage] = useState('studio');
+  const [page, setPage] = useState(new URLSearchParams(location.search).get('pagina') || 'studio');
   const [start, setStart] = useState(false);
   useEffect(() => { const f = () => setStart((v) => !v); window.addEventListener(EVENTO_START, f); return () => window.removeEventListener(EVENTO_START, f); }, []);
   const vai = (p) => { window.studioTest.pagine.push(p); setPage(p); };

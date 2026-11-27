@@ -5126,4 +5126,5 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - DB: none. Tests: see current-task.md (all PASS).
 - Risks: dock order changed (PO decision replaces DOCK-PER-TE); Start not closed by the Android back button; real phone not checked.
 - Next action: PO tries the preview on the phone; "Mergia" or feedback; then fase 2 (sections in the same style) only on PO request.
+- Addendum NAVIGAZIONE N4 (same task/branch/PR #360): shared Agenda bar Personale · Poliedron · Studio; Studio bar Agenda · Start · Pazienti · Poliedron · Documenti · Incassi · Studio; switch Studio | Personale on both phone Homes. Files: `src/components/poliedron/{PoliedronMobileDock.jsx,studioBarra.css}`, `shared/spazio/{InterruttoreSpazio.jsx,interruttoreSpazio.css}` (new), `src/components/StudioHomeTelefono.jsx`, `personal/src/sezioni/altro/HomeTelefono.jsx`, tests. DB: none. Next action: PO tries the preview; "Mergia" or feedback.
 

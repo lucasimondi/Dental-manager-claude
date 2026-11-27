@@ -20,6 +20,8 @@ try {
     await page.evaluate(() => { window.startAperto = 0; window.addEventListener('studio:apri-start', () => { window.startAperto += 1; }); });
     await page.getByRole('searchbox', { name: 'Cerca nello Studio' }).waitFor();
     assert.equal(await page.locator('.sh').count(), 0, `${nome}: non la Home del computer`);
+    // NAVIGAZIONE N4: interruttore Studio | Personale in cima.
+    assert.equal(await page.getByRole('button', { name: 'Studio, sei qui' }).getAttribute('aria-pressed'), 'true');
     const rapide = await page.locator('.stt-rapida').evaluateAll((b) => b.map((x) => x.getAttribute('aria-label')));
     assert.deepEqual(rapide, ['Nuovo appuntamento', 'Nuovo paziente', 'Nuova ricetta', 'Nuovo preventivo', 'Nuovo incasso']);
     assert.match(await page.locator('.stt-oggi').innerText(), /Oggi · 2 appuntamenti[\s\S]*23:58[\s\S]*Esempio D\.[\s\S]*Da confermare/);
@@ -52,10 +54,11 @@ try {
     await page.locator('.stt-risultati').getByRole('button', { name: /Listino/ }).click();
     await page.getByRole('button', { name: 'Cancella la ricerca' }).click();
     await page.getByRole('button', { name: 'Impostazioni' }).click();
+    await page.getByRole('button', { name: 'Passa a Personale' }).click();
 
     const stato = await page.evaluate(() => window.studioTest);
     assert.deepEqual(stato.azioni, ['ricetta', 'acquisisci', 'appuntamento-1']);
-    assert.deepEqual(stato.vai, ['listino', 'paziente-1', 'listino', 'set']);
+    assert.deepEqual(stato.vai, ['listino', 'paziente-1', 'listino', 'set', 'perte']);
     assert.deepEqual(scritture, []); assert.deepEqual(errors, []);
     await context.close();
     console.log(`PASS ${nome} ${tema}`);
