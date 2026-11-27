@@ -65,8 +65,6 @@ const NotePage = lazyWithRetry(() => import('../shared/note/NotePage.jsx'), 'Not
 const PasswordPage = lazyWithRetry(() => import('../shared/password/PasswordPage.jsx'), 'PasswordPage');
 const AcquisisciDocumento = lazyWithRetry(() => import('./components/AcquisisciDocumento.jsx'), 'AcquisisciDocumento');
 const StudioHome = lazyWithRetry(() => import('./components/StudioHome.jsx'), 'StudioHome'); // HOME-STUDIO (PO 2026-11-17)
-const StartStudio = lazyWithRetry(() => import('./components/StartStudio.jsx'), 'StartStudio'); // STUDIO-TELEFONO (PO 2026-11-27)
-import { EVENTO_START } from './lib/startStudio.js';
 // PERSONALE-SUBITO (PO 2026-11-17): «Personale» del dock porta subito alla Home personale di
 // Personal (stessa app sul telefono: /poliedron/personal/). Dal dock resta la storia (Indietro torna
 // allo Studio); da un link ?sezione=perte la pagina si sostituisce, così Indietro non rimbalza.
@@ -181,14 +179,6 @@ export default function App() {
   // default view; App.jsx never reads it, only threads it through.
   const [archivioFiltroTipoHint, setArchivioFiltroTipoHint] = useState(null);
   const [poliedronBookingOpen, setPoliedronBookingOpen] = useState(false);
-  const [startAperto, setStartAperto] = useState(false); // STUDIO-TELEFONO: Start a tutto schermo (solo telefono)
-  // STUDIO-TELEFONO: la barra in basso e «Tutte le app» aprono Start (sul telefono); di nuovo = chiude.
-  useEffect(() => {
-    if (!isMobile) { setStartAperto(false); return undefined; }
-    const apri = () => setStartAperto((v) => !v);
-    window.addEventListener(EVENTO_START, apri);
-    return () => window.removeEventListener(EVENTO_START, apri);
-  }, [isMobile]);
   const [syncError, setSyncError] = useState(null);
   // POL-UI-029: a PWA installed to the home screen is usually resumed from
   // background, never a real reload — Product Owner reports of "il fix non
@@ -982,7 +972,6 @@ export default function App() {
               vai={setPage} apriPaziente={(p) => goSchedaPaz(p, 'info')} onImpostazioni={() => setPage('set')}
               azioni={{
                 appuntamento: () => setPoliedronBookingOpen(true),
-                appuntamentoPer: (p) => setPoliedronBookingOpen({ patientId: p.id }), // STUDIO-TELEFONO: dalla ricerca della Home
                 paziente: () => goNuovoElemento('paz'),
                 ricetta: () => openPrescription({}),
                 preventivo: () => goNuovoElemento('preventivi'),
@@ -1076,11 +1065,6 @@ export default function App() {
         onSearchRequestHandled={(id) => setPoliedronSearchRequest((current) => current?.id === id ? null : current)}
         chatHost={poliedronChatHost}
       />
-      {startAperto && isMobile && (
-        <Suspense fallback={null}>
-          <StartStudio nav={navVisibile} onApri={navigateFromPoliedron} onChiudi={() => setStartAperto(false)} />
-        </Suspense>
-      )}
       {poliedronBookingOpen && (
         <Suspense fallback={null}>
           <QuickBookingModal

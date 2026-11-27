@@ -52,9 +52,6 @@ try {
     await page.evaluate(() => { window.startAperto = 0; window.addEventListener('poliedra:apri-start', () => { window.startAperto += 1; }); });
     await page.getByRole('searchbox', { name: 'Cerca in Personal' }).waitFor();
     await page.getByText('2 cose da gestire').waitFor();
-    // NAVIGAZIONE N4: interruttore Studio | Personale in cima (Studio porta all'app Studio).
-    assert.equal(await page.getByRole('button', { name: 'Personale, sei qui' }).getAttribute('aria-pressed'), 'true');
-    assert.ok(await page.getByRole('button', { name: 'Passa a Studio' }).isVisible());
     for (const n of ['Conti', 'Documenti', 'Scan', 'Assistente', 'Auto', 'Casa', 'Salute', 'Rubrica', 'I miei dati', 'Identità', 'Note', 'Pratiche']) assert.ok(await page.locator('.ppt-app', { hasText: n }).isVisible(), `${nome}: ${n}`);
     assert.equal(await page.locator('.ppt-app svg.pp-icona-colore').count(), 12, `${nome}: icone a colori`);
     await page.locator('.ppt-cons', { hasText: 'Auto: Revisione' }).waitFor();

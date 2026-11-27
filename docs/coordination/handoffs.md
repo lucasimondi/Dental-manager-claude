@@ -5128,3 +5128,8 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Next action: PO tries the preview on the phone; "Mergia" or feedback; then fase 2 (sections in the same style) only on PO request.
 - Addendum NAVIGAZIONE N4 (same task/branch/PR #360): shared Agenda bar Personale · Poliedron · Studio; Studio bar Agenda · Start · Pazienti · Poliedron · Documenti · Incassi · Studio; switch Studio | Personale on both phone Homes. Files: `src/components/poliedron/{PoliedronMobileDock.jsx,studioBarra.css}`, `shared/spazio/{InterruttoreSpazio.jsx,interruttoreSpazio.css}` (new), `src/components/StudioHomeTelefono.jsx`, `personal/src/sezioni/altro/HomeTelefono.jsx`, tests. DB: none. Next action: PO tries the preview; "Mergia" or feedback.
 
+## Handoff — AGENDA-TASTI: scope of PR #360 reduced to the Agenda buttons (2026-11-27, Claude Code)
+- PO: "va bene agenda con i tasti personal e studio, quindi facciamo solo tasti agenda poi facciamo il resto dopo correggendo". Studio phone Home, 7-slot bar, Start, colour icons and the Studio | Personale switch removed from the PR (restored to master in a new commit; full work kept at commit 8ede4b9 of this branch).
+- Files now changed vs master: `src/components/poliedron/PoliedronMobileDock.jsx`, `src/components/poliedron/dockAgenda.css` (new), `tests/visual/studio-agenda-tasti.{html,fixture.jsx,mjs}` (new), docs.
+- DB: none. Next action: PO tries the preview on the phone (Agenda → Personale / Studio); "Mergia" or feedback; then «il resto» (Studio style, bar, Start, switch) corrected in a new PR on PO request.
+

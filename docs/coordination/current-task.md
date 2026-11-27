@@ -1,21 +1,11 @@
-# Current task — STUDIO-TELEFONO fase 1 (2026-11-27)
-- OWNER Claude Code; branch `ccr-4f63f466-ntk6g0` restarted from master b2d0792 (= PR #359 HOME-TELEFONO merged).
-- REQUEST PO 2026-11-27 (verbatim): "Adesso fammi proposte co n stesso stile per studio" → mockup (artifact, S1 / S2 / ricerca) → "Procedi con questo stile grafico per tutto il software studio".
-- PO DECISIONS (AskUserQuestion 2026-11-27): Home «Misto S1 + S2»; «Solo telefono» (PC unchanged); «Fase 1 subito» (fase 1 = Home, ricerca, barra in basso con Start e tutte le app, icone a colori; fase 2 later = section headers/cards in the same style).
-- HIGH-RISK UI CHANGE (AGENTS golden rollback): last PO-verified stable checkpoint remains `stable/2026-08-27-full-recovery`; reversible by reverting the PR. No DB change.
-- DONE (phone = existing `useIsMobile` shell rule; the computer keeps everything as before):
-  - Colour icons: `src/lib/iconeStudio.js` (Personal's #358 drawings + new Studio ones: pazienti, incassi, piani, preventivi, richiami, spese, controllo, listino, messaggi, chat, ricetta, nuovo appuntamento/paziente/incasso; every NAV id mapped), `src/components/IconaColoreStudio.jsx`.
-  - Home (`StudioHomeTelefono.jsx` + CSS; `StudioHome.jsx` picks phone/computer): teal desktop wallpaper, date/greeting/clock (clock hidden < 380 px), Impostazioni, big search with + (Crea sheet), 5 quick actions, «Oggi» agenda from the next appointment with Chiama, avvisi pills (richiami scaduti/oggi, da confermare, pagamenti scaduti — same riepilogoStudio), «Aggiunte» 11 apps + «Tutte le app». Search: patients (Chiama, Nuovo appuntamento → booking with that patient, `azioni.appuntamentoPer` in App.jsx), their next appointments, open plans, sections.
-  - Bottom bar (`PoliedronMobileDock.jsx`, `poliedron/studioBarra.css`): Start · Agenda · Pazienti · Poliedron (centre, unchanged orb) · Documenti (Incassi without the archive) · Studio · Personale, colour icons, 44 px targets.
-  - Start (`StartStudio.jsx` + CSS, `src/lib/startStudio.js`): full screen, search, apps in groups (Lavoro, Gestione, Comunicazione e assistente, Personale, Sistema) from `navVisibile` only (same plan/feature/role gates) + Home Studio and Personale; Esc/✕ closes; opened by event `studio:apri-start` from the bar and «Tutte le app», handled in App.jsx only on the phone.
-- TESTS changed for the PO decision: `appUnica` and `poliedronAdaptive` dock order (DOCK-PER-TE → STUDIO-TELEFONO), `studio-home.mjs` now on computer/tablet (desktop shell).
-- VALIDATION: npm test 2025/2025 (new tests/studioTelefono.test.mjs); build + build:personal PASS; visual PASS: new studio-home-telefono (Pixel 7, iPhone SE, light/dark), new studio-start (bar + Start, also without archive), studio-home (computer, tablet), personal-home-telefono. `tests/browser/poliedron-mobile.cjs` times out on «Chat con Poliedron» also on master (pre-existing, not in CI).
-- NAVIGAZIONE N4 (same PR) — REQUEST PO 2026-11-27 (verbatim): "Dobbiamo sistemare la cosa del dock , allora si parte da agenda che è comune , su agenda deve esserci semplicemente la possibiktia di andare a personale o studio , da personale e studio deve esserci poi la possibilità di muoversi da personale a studio fammi mockup" → mockup N1–N4 → "N4".
-  - Shared Agenda (Studio's agenda page; on the phone Personal's agenda already leads there, AGENDA-UNICA): bar = Personale · Poliedron · Studio, wide buttons with names (`AGENDA_DOCK_ITEMS`).
-  - Studio bar elsewhere: Agenda · Start · Pazienti · Poliedron · Documenti (Richiami without the archive) · Incassi · Studio.
-  - Switch «Studio | Personale» at the top of both phone Homes (`shared/spazio/InterruttoreSpazio.jsx`): Studio → `vai('perte')`; Personale → `sectionDestination('studio', 'studio')` (existing APP-UNICA links).
-  - Tests: appUnica, poliedronAdaptive (dock order), visual studio-start (Agenda bar), studio-home-telefono and personal-home-telefono (switch). npm test 2025/2025; build + build:personal PASS; visual studio-start, studio-home-telefono, studio-home, personal-home-telefono, personal-personale, personal-barra, personal-finestre-scorre PASS.
-- NOT VERIFIED: real phone; Android back button does not close Start (✕ / Esc / choosing an app do). ROLLBACK: revert the PR.
+# Current task — AGENDA-TASTI (2026-11-27)
+- OWNER Claude Code; branch `ccr-4f63f466-ntk6g0` (PR #360), from master b2d0792 (= PR #359 HOME-TELEFONO merged).
+- HISTORY: the PR first carried STUDIO-TELEFONO fase 1 (Studio phone Home, 7-slot bar, Start, colour icons) and NAVIGAZIONE N4 (switch Studio | Personale). PO 2026-11-27 (verbatim): "No no va bene così , va bene agenda con i tasti personal e studio , quindi facciamo solo tasti agenda poi facciamo il resto dopo correggendo" → scope reduced to the Agenda buttons only. Everything else was restored to master in a new commit (no history rewrite); the full work stays at commit 8ede4b9 on this branch for «il resto dopo».
+- REQUEST PO 2026-11-27 (verbatim): "si parte da agenda che è comune , su agenda deve esserci semplicemente la possibiktia di andare a personale o studio".
+- DONE (phone only; the dock exists only on the phone): on the shared Agenda (Studio's agenda page; on the phone Personal's agenda already leads there, AGENDA-UNICA) the Studio dock shows only Personale · Poliedron · Studio — two wide buttons with colour drawing and name, Poliedron unchanged in the centre (`AGENDA_DOCK_ITEMS` in `PoliedronMobileDock.jsx`, `poliedron/dockAgenda.css`; icon above name under 360 px). Every other page keeps the dock exactly as before.
+- DB: none. DEPLOY: Vercel only.
+- VALIDATION: see the latest handoff.
+- NOT VERIFIED: real phone. ROLLBACK: revert the PR.
 
 # Current task — HOME-TELEFONO (2026-11-26)
 - OWNER Claude Code; branch `ccr-4f63f466-ntk6g0`, started from PR #358 ICONE-START (its colour icons); #358 merged on master as 2ceb1f9, master merged back in.
