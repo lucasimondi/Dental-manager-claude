@@ -1,3 +1,13 @@
+# Current task — STUDIO-TELEFONO ripresa (2026-11-27)
+- OWNER Claude Code; branch `ccr-4f63f466-ntk6g0` restarted from master 630be9a (= PR #360 AGENDA-TASTI merged).
+- REQUEST PO 2026-11-27 (verbatim): "Ora riprendiamo studio su telefono" (after "facciamo solo tasti agenda poi facciamo il resto dopo correggendo").
+- DONE: the saved STUDIO-TELEFONO + N4 work (commit 8ede4b9) restored on top of master, keeping the merged Agenda bar (icons only, proposal C) unchanged:
+  - Studio phone Home mix S1+S2 with search (`StudioHomeTelefono.jsx`), Start full screen (`StartStudio.jsx`), colour icons (`iconeStudio.js`), switch Studio | Personale at the top of both phone Homes (`shared/spazio/InterruttoreSpazio.jsx`).
+  - Studio bar outside the Agenda: Agenda · Start · Pazienti · Poliedron · Documenti (Richiami without the archive) · Incassi · Studio, colour icons. On the Agenda: the merged Personale · Poliedron · Studio icons.
+- SFONDI — PO 2026-11-27 (verbatim): "Dammi la possibilita di variare gli sfondi , colori più alcuni sfondi belli tra cui quello" → `shared/spazio/sfondi.js` (8 drawn wallpapers: Petrolio and Blu = the current ones, Aurora, Tramonto, Montagne, Bosco, Vino, Ardesia; 8 plain colours; all dark so white text stays readable) + `SceltaSfondo.jsx` (tasto «Sfondo» → foglio Sfondi/Colori, applied at once). Choice saved on the device (localStorage), separate for Studio (default Petrolio) and Personale (default Blu). Top row of both phone Homes: switch Studio | Personale · Sfondo · Impostazioni; greeting and clock below. Tests: new tests/sfondi.test.mjs; visual studio-home-telefono (pick Aurora, stays after reload) and personal-home-telefono (pick Tramonto, Studio unchanged).
+- Waiting for PO corrections ("correggendo") on the preview.
+- DB: none. VALIDATION: npm test 2028/2028; build + build:personal PASS; visual studio-start, studio-agenda-tasti, studio-home-telefono, studio-home, personal-home-telefono, personal-personale, personal-barra PASS. NOT VERIFIED: real phone. ROLLBACK: revert the PR.
+
 # Current task — AGENDA-TASTI (2026-11-27)
 - OWNER Claude Code; branch `ccr-4f63f466-ntk6g0` (PR #360), from master b2d0792 (= PR #359 HOME-TELEFONO merged).
 - HISTORY: the PR first carried STUDIO-TELEFONO fase 1 (Studio phone Home, 7-slot bar, Start, colour icons) and NAVIGAZIONE N4 (switch Studio | Personale). PO 2026-11-27 (verbatim): "No no va bene così , va bene agenda con i tasti personal e studio , quindi facciamo solo tasti agenda poi facciamo il resto dopo correggendo" → scope reduced to the Agenda buttons only. Everything else was restored to master in a new commit (no history rewrite); the full work stays at commit 8ede4b9 on this branch for «il resto dopo».

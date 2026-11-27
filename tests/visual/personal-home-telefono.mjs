@@ -52,6 +52,9 @@ try {
     await page.evaluate(() => { window.startAperto = 0; window.addEventListener('poliedra:apri-start', () => { window.startAperto += 1; }); });
     await page.getByRole('searchbox', { name: 'Cerca in Personal' }).waitFor();
     await page.getByText('2 cose da gestire').waitFor();
+    // NAVIGAZIONE N4: interruttore Studio | Personale in cima (Studio porta all'app Studio).
+    assert.equal(await page.getByRole('button', { name: 'Personale, sei qui' }).getAttribute('aria-pressed'), 'true');
+    assert.ok(await page.getByRole('button', { name: 'Passa a Studio' }).isVisible());
     for (const n of ['Conti', 'Documenti', 'Scan', 'Assistente', 'Auto', 'Casa', 'Salute', 'Rubrica', 'I miei dati', 'Identità', 'Note', 'Pratiche']) assert.ok(await page.locator('.ppt-app', { hasText: n }).isVisible(), `${nome}: ${n}`);
     assert.equal(await page.locator('.ppt-app svg.pp-icona-colore').count(), 12, `${nome}: icone a colori`);
     await page.locator('.ppt-cons', { hasText: 'Auto: Revisione' }).waitFor();
@@ -60,6 +63,16 @@ try {
     assert.equal(await page.getByText('Referto paziente').count(), 0, `${nome}: niente documenti clinici`);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${nome}: niente scorrimento di lato`);
     await page.screenshot({ path: `${out}/${nome}-home.png`, fullPage: true });
+    // SFONDI: scelta dal tasto «Sfondo», separata da quella dello Studio.
+    await page.getByRole('button', { name: 'Sfondo' }).click();
+    const foglio = page.getByRole('dialog', { name: 'Sfondo' });
+    assert.equal(await foglio.getByRole('button', { name: 'Blu', exact: true }).first().getAttribute('aria-pressed'), 'true', `${nome}: parte da Blu`);
+    await foglio.getByRole('button', { name: 'Tramonto' }).click();
+    await foglio.getByRole('button', { name: 'Fatto' }).click();
+    assert.match(await page.locator('.ppt').evaluate((e) => e.style.getPropertyValue('--ppt-sfondo')), /linear-gradient/, `${nome}: Tramonto applicato`);
+    assert.equal(await page.evaluate(() => localStorage.getItem('poliedra-sfondo-personale-v1')), 'tramonto');
+    assert.equal(await page.evaluate(() => localStorage.getItem('poliedra-sfondo-studio-v1')), null, `${nome}: lo Studio non cambia`);
+    await page.screenshot({ path: `${out}/${nome}-tramonto.png` });
 
     await page.getByRole('button', { name: 'Tutte le app ›' }).click();
     assert.equal(await page.evaluate(() => window.startAperto), 1, `${nome}: «Tutte le app» apre Start`);

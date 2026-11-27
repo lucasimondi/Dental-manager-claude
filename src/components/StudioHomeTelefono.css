@@ -1,0 +1,114 @@
+/* STUDIO-TELEFONO (PO 2026-11-27): Home dello Studio sul telefono, stesso stile della Home di Personal
+   (sfondo da desktop, vetro, icone a colori su tessere chiare). Sfondo petrolio per distinguerla da Personal.
+   Esce dai margini del contenitore (#app-scroll: 15 px ai lati, area sicura in alto) per riempire lo schermo. */
+.stt {
+  --stt-vetro: rgba(255, 255, 255, .14); --stt-bordo: rgba(255, 255, 255, .22); --stt-tenue: #d6eef1;
+  position: relative; box-sizing: border-box; min-height: 100dvh;
+  margin: calc(-13px - env(safe-area-inset-top, 0px)) -15px 0;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 15px calc(110px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; gap: 14px;
+  color: #fff; font-family: 'Segoe UI', Inter, system-ui, -apple-system, sans-serif;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 390 844' preserveAspectRatio='none'%3E%3Cpath d='M-40 620C80 480 220 520 430 380V844H-40Z' fill='%230f4f5c'/%3E%3Cpath d='M120 844C200 700 300 690 430 600V844Z' fill='%23136472'/%3E%3C/svg%3E") center bottom / 100% 100dvh no-repeat fixed,
+    #0b3b47;
+}
+.stt button { font-family: inherit; }
+.stt-testa { display: flex; align-items: flex-end; gap: 10px; }
+.stt-testa-testi { flex: 1; min-width: 0; }
+.stt-data { display: block; font-size: 13px; font-weight: 500; color: #c9e6ea; }
+.stt-testa h1 { margin: 0; font-size: 26px; font-weight: 750; letter-spacing: -.01em; color: #fff; }
+.stt-ora { font-size: 34px; font-weight: 300; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+
+.stt-tondo { width: 44px; height: 44px; flex: none; border: 0; border-radius: 50%; display: grid; place-items: center; cursor: pointer; padding: 0; text-decoration: none; }
+.stt-tondo svg { width: 20px; height: 20px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.stt-vetro { background: var(--stt-vetro); border: 1px solid var(--stt-bordo); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.stt-tondo.stt-vetro { border-radius: 50%; }
+.stt-piu { width: 40px; height: 40px; background: #0f6cbd; }
+.stt-piu svg { stroke-width: 2.4; }
+.stt-tondo-chiaro { width: 40px; height: 40px; background: #eef2f7; }
+.stt-tondo-chiaro svg { stroke: #1d2b3a; }
+.stt-chiama { background: #0b6f66; }
+.stt-nuovo { background: #e8f0fb; }
+.stt-tondo svg.st-icona-colore { width: 24px; height: 24px; }
+
+.stt-cerca { display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 6px 0 16px; border-radius: 26px; background: #fff; box-shadow: 0 6px 18px rgba(0, 0, 0, .25); color: #17212b; }
+.stt-cerca label { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
+.stt-cerca label svg { width: 20px; height: 20px; flex: none; fill: none; stroke: #0f6cbd; stroke-width: 2; stroke-linecap: round; }
+.stt-cerca input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 16px; color: #17212b; }
+.stt-cerca input::-webkit-search-cancel-button { display: none; }
+.stt-cerca-aperta .stt-cerca { box-shadow: 0 0 0 2px #6fd3c1, 0 6px 18px rgba(0, 0, 0, .25); }
+
+.stt-tessera { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; background: rgba(255, 255, 255, .94); box-shadow: 0 4px 12px rgba(0, 0, 0, .25); transition: transform .12s; flex: none; }
+.stt-tessera-tonda { width: 48px; height: 48px; border-radius: 50%; }
+.stt-tessera-vetro { background: rgba(255, 255, 255, .2); border: 1px solid rgba(255, 255, 255, .3); box-shadow: none; }
+.stt-tessera-vetro svg { width: 24px; height: 24px; fill: #fff; }
+.stt-rapide { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.stt-rapida, .stt-app { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 2px 0; border: 0; border-radius: 12px; background: none; color: #fff; font-size: 12px; font-weight: 500; line-height: 1.2; text-align: center; text-shadow: 0 1px 2px rgba(0, 0, 0, .55); cursor: pointer; min-height: 72px; }
+.stt-rapida { font-size: 11px; }
+.stt-app { min-height: 84px; }
+.stt-rapida:active .stt-tessera, .stt-app:active .stt-tessera { transform: scale(.94); }
+
+.stt-oggi { border-radius: 18px; padding: 4px 0; display: flex; flex-direction: column; }
+.stt-oggi-testa { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px 4px; }
+.stt-oggi-testa strong { font-size: 15px; }
+.stt-pillola { min-height: 36px; padding: 0 12px; border: 0; border-radius: 10px; background: rgba(255, 255, 255, .18); color: #fff; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.stt-ora-riga { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 6px 10px 6px 12px; }
+.stt-ora-riga + .stt-ora-riga { border-top: 1px solid rgba(255, 255, 255, .16); }
+.stt-ora-riga time { width: 46px; flex: none; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stt-barretta { width: 4px; align-self: stretch; border-radius: 2px; background: #6fd3c1; flex: none; }
+.stt-barretta-conferma { background: #ffd28a; }
+.stt-ora-apri { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 4px 0; border: 0; background: none; color: #fff; text-align: left; cursor: pointer; }
+.stt-ora-apri strong { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stt-ora-apri span { font-size: 12px; color: var(--stt-tenue); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stt-ora-apri .stt-conferma { color: #ffd28a; font-weight: 600; }
+.stt-altri { margin: 0; padding: 4px 12px 8px; font-size: 12px; color: #c9e6ea; }
+
+.stt-avvisi { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.stt-avviso { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px 0 8px; border-radius: 22px; border: 1px solid var(--stt-bordo); background: var(--stt-vetro); color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; flex: none; }
+.stt-avviso b { min-width: 26px; height: 26px; border-radius: 13px; display: grid; place-items: center; font-size: 12px; }
+.stt-bollo-avviso { background: #ffe1d6; color: #a3330f; }
+.stt-bollo-info { background: #dceafb; color: #0f4f99; }
+
+.stt-titolo { display: flex; align-items: center; justify-content: space-between; margin: 0 0 6px; }
+.stt-titolo h2 { margin: 0; font-size: 15px; font-weight: 650; color: #fff; }
+.stt-griglia { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px 6px; }
+
+/* Ricerca: risultati su un foglio chiaro sopra lo sfondo. */
+.stt-risultati { margin: 0 -15px; padding: 8px 12px 16px; border-radius: 20px 20px 0 0; background: #f3f6fa; color: #17212b; min-height: calc(100dvh - 110px); }
+.stt-risultati h2 { margin: 12px 4px 6px; font-size: 12px; font-weight: 650; color: #4f5f72; text-transform: uppercase; letter-spacing: .04em; }
+.stt-nota { margin: 6px 4px; font-size: 13px; color: #4f5f72; }
+.stt-gruppo { border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; background: #fff; }
+.stt-riga { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 56px; padding-right: 8px; border: 0; background: #fff; color: inherit; text-align: left; box-sizing: border-box; }
+.stt-riga + .stt-riga { border-top: 1px solid #edf1f6; }
+.stt-riga-apri { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
+.stt-riga-apri > span:last-child { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.stt-riga-apri strong { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stt-riga-apri > span:last-child > span { font-size: 12px; color: #4f5f72; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stt-avatar { width: 36px; height: 36px; flex: none; border-radius: 50%; display: grid; place-items: center; background: #dceafb; color: #0f4f99; font-size: 13px; font-weight: 700; }
+
+/* Foglio «Crea». */
+.stt-foglio-sfondo { position: fixed; inset: 0; z-index: 1200; background: rgba(5, 20, 26, .45); display: flex; align-items: flex-end; }
+.stt-foglio { width: 100%; box-sizing: border-box; padding: 12px 16px calc(20px + env(safe-area-inset-bottom, 0px)); border-radius: 22px 22px 0 0; background: #f3f6fa; color: #17212b; }
+.stt-foglio-testa { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.stt-foglio-testa strong { font-size: 17px; }
+.stt-foglio-griglia { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 6px; }
+.stt-crea { display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 80px; padding: 8px 2px; border: 1px solid #e2e8f0; border-radius: 14px; background: #fff; color: #17212b; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+@media (prefers-color-scheme: dark) {
+  .stt-risultati, .stt-foglio { background: #0f1622; color: #f2f4f7; }
+  .stt-gruppo, .stt-riga, .stt-crea { background: #161b26; border-color: #252c3b; color: #f2f4f7; }
+  .stt-riga + .stt-riga { border-color: #252c3b; }
+  .stt-risultati h2, .stt-nota, .stt-riga-apri > span:last-child > span { color: #98a2b3; }
+  .stt-nuovo { background: #1d2a3d; }
+}
+:root[data-theme="dark"] .stt-risultati, :root[data-theme="dark"] .stt-foglio { background: #0f1622; color: #f2f4f7; }
+:root[data-theme="dark"] .stt-gruppo, :root[data-theme="dark"] .stt-riga, :root[data-theme="dark"] .stt-crea { background: #161b26; border-color: #252c3b; color: #f2f4f7; }
+:root[data-theme="dark"] .stt-risultati h2, :root[data-theme="dark"] .stt-nota, :root[data-theme="dark"] .stt-riga-apri > span:last-child > span { color: #98a2b3; }
+:root[data-theme="light"] .stt-risultati, :root[data-theme="light"] .stt-foglio { background: #f3f6fa; color: #17212b; }
+:root[data-theme="light"] .stt-gruppo, :root[data-theme="light"] .stt-riga, :root[data-theme="light"] .stt-crea { background: #fff; border-color: #e2e8f0; color: #17212b; }
+:root[data-theme="light"] .stt-risultati h2, :root[data-theme="light"] .stt-nota, :root[data-theme="light"] .stt-riga-apri > span:last-child > span { color: #4f5f72; }
+.stt-data { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 379px) { .stt-ora { display: none; } }
+/* SFONDI: in cima l'interruttore Studio | Personale, poi Sfondo e Impostazioni; sotto, saluto e ora su una riga. */
+.stt-cima { display: flex; align-items: center; gap: 8px; }
+.stt-cima .spz { flex: 1; min-width: 0; }

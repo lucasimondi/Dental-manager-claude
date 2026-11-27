@@ -5135,3 +5135,8 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Addendum AGENDA-TASTI: PO "Togli le scritte deve essere più pulito solo con icone" → Agenda buttons are icons only (names kept as aria-label), compact bar. Visual studio-agenda-tasti asserts no text.
 - Addendum AGENDA-TASTI: PO "L'icona dente era più bella nelle altre, e anche personal proponi come schermata" → mockup with 4 proposals → "Fammi la C": Personale = house, Studio = filled tooth, each on a white tile with shadow.
 - Addendum AGENDA-TASTI: PO "Le due icone sono da impaginare bene, non sono centrate verticalmente" → the empty Poliedron slot (64 px) pushed the row 5 px down; on the Agenda it is 52 px now. Visual studio-agenda-tasti asserts each tile is vertically centred in the bar (±1 px).
+
+## Handoff — STUDIO-TELEFONO ripresa (2026-11-27, Claude Code)
+- PO: "Ora riprendiamo studio su telefono". Branch `ccr-4f63f466-ntk6g0` from master 630be9a; saved work of commit 8ede4b9 restored; dock merged by hand (Agenda icons C kept, Studio 7-slot bar elsewhere). Files: see current-task.md. DB: none.
+- Next action: PO tries the preview on the phone and lists corrections.
+- Addendum SFONDI (same branch/PR #361): wallpaper and colour picker on both phone Homes, saved per device and per space. Files: `shared/spazio/{sfondi.js,SceltaSfondo.jsx,sceltaSfondo.css}` (new), `src/components/StudioHomeTelefono.{jsx,css}`, `personal/src/sezioni/altro/HomeTelefono.jsx`, `personal/src/personale.css`, `shared/spazio/interruttoreSpazio.css`, tests. DB: none.

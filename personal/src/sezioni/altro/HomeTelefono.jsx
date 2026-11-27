@@ -13,6 +13,9 @@ import { caricaCartellePratiche } from '../../lib/praticheCartelle.js';
 import { IconaColore } from '../../IconeColore.jsx';
 import { saluto, dataBreve } from '../../ui.jsx';
 import { PER_TE } from './index.jsx';
+import InterruttoreSpazio from '../../../../shared/spazio/InterruttoreSpazio.jsx'; // NAVIGAZIONE N4
+import { sectionDestination } from '../../../../shared/agenda/navigation.js';
+import SceltaSfondo, { useSfondo } from '../../../../shared/spazio/SceltaSfondo.jsx'; // SFONDI
 import { ICONE_ALTRO } from '../../../../shared/altro/AltroPage.jsx';
 
 // Aggiunte: [id, nome, icona a colori, come si apre].
@@ -73,6 +76,7 @@ export function HomeTelefono({ ctx }) {
 
   // Ricerca mentre scrivi: rubrica (caricata una volta), sezioni, pratiche e documenti (dopo 250 ms).
   const [q, setQ] = useState('');
+  const [sf, setSfondo] = useSfondo('personale'); // SFONDI: sfondo scelto su questo dispositivo
   const rubrica = useRef(null);
   const [trovati, setTrovati] = useState({ contatti: [], promemoria: [], pratiche: [], documenti: [], cerco: false });
   useEffect(() => {
@@ -96,11 +100,15 @@ export function HomeTelefono({ ctx }) {
   const lista = consigliati(cose, rub, recente);
 
   return (
-    <div className={`ppt${q ? ' ppt-cerca-aperta' : ''}`}>
+    <div className={`ppt${q ? ' ppt-cerca-aperta' : ''}`} style={{ '--ppt-sfondo': sf.css }}>
+      {!q && <div className="ppt-cima">
+        <InterruttoreSpazio attivo="personale" onStudio={() => window.location.assign(sectionDestination('studio', 'studio'))} />
+        <SceltaSfondo attuale={sf} onScegli={setSfondo} />
+        <button type="button" className="ppt-tondo ppt-vetro ppt-impostazioni" aria-label="Impostazioni" onClick={() => apri({ tipo: 'impostazioni' })}><svg viewBox="0 0 24 24" aria-hidden="true"><path d={ICONE_ALTRO.impostazioni} /></svg></button>
+      </div>}
       {!q && <header className="ppt-testa">
         <span><span className="ppt-data">{oggiLungo()}</span><h1>{saluto()}</h1></span>
-        <span className="ppt-destra"><span className="ppt-ora" aria-hidden="true">{orario}</span>
-          <button type="button" className="ppt-tondo ppt-vetro ppt-impostazioni" aria-label="Impostazioni" onClick={() => apri({ tipo: 'impostazioni' })}><svg viewBox="0 0 24 24" aria-hidden="true"><path d={ICONE_ALTRO.impostazioni} /></svg></button></span>
+        <span className="ppt-ora" aria-hidden="true">{orario}</span>
       </header>}
 
       <div className="ppt-cerca">

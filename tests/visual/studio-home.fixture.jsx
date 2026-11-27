@@ -17,10 +17,10 @@ const appointments = [
 const richiami = [{ stato: 'da_fare', dataScadenza: tra(-5) }, { stato: 'da_fare', dataScadenza: tra(-1) }, { stato: 'da_fare', dataScadenza: t }];
 const azione = (id) => () => window.studioTest.azioni.push(id);
 createRoot(document.getElementById('root')).render(
-  <div style={{ background: 'var(--pol-bg, #f4f6fa)', minHeight: '100vh' }}>
+  <div style={{ background: 'var(--pol-bg, #f4f6fa)', minHeight: '100vh', padding: '13px 15px 0', overflowX: 'hidden' }}>{/* come #app-scroll */}
     <StudioHome nav={NAV} patients={patients} appointments={appointments} richiami={richiami} plans={[]} payments={[]}
       managementControl={false} conSpese vai={(p) => window.studioTest.vai.push(p)} apriPaziente={(p) => window.studioTest.vai.push(`paziente-${p.id}`)}
       onImpostazioni={() => window.studioTest.vai.push('set')}
-      azioni={{ appuntamento: azione('appuntamento'), paziente: azione('paziente'), ricetta: azione('ricetta'), preventivo: azione('preventivo'), incasso: azione('incasso'), spesa: azione('spesa'), acquisisci: azione('acquisisci') }} />
+      azioni={{ appuntamento: azione('appuntamento'), appuntamentoPer: (p) => window.studioTest.azioni.push(`appuntamento-${p.id}`), paziente: azione('paziente'), ricetta: azione('ricetta'), preventivo: azione('preventivo'), incasso: azione('incasso'), spesa: azione('spesa'), acquisisci: azione('acquisisci') }} />
   </div>,
 );
