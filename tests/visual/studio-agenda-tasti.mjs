@@ -22,6 +22,8 @@ try {
     assert.deepEqual(voci.map((v) => v.t), ['Personale', 'Studio'], `${nome}: sull'Agenda solo Personale e Studio`);
     for (const v of voci) assert.ok(v.w >= 44 && v.h >= 44, `${nome}: ${v.t} almeno 44 px`);
     assert.ok(voci.every((v) => v.testo === ''), `${nome}: solo icone, nessuna scritta`);
+    const centri = await page.evaluate(() => { const m = (e) => { const r = e.getBoundingClientRect(); return (r.top + r.bottom) / 2; }; return { barra: m(document.querySelector('.poliedron-mobile-dock')), riquadri: [...document.querySelectorAll('.poliedron-mobile-dock__riquadro')].map(m) }; });
+    for (const c of centri.riquadri) assert.ok(Math.abs(c - centri.barra) <= 1, `${nome}: icona centrata in verticale (${c} vs ${centri.barra})`);
     const fuori = await page.locator('.poliedron-mobile-dock__spazio').evaluateAll((b) => b.filter((x) => [...x.children].some((c) => { const r = c.getBoundingClientRect(), p = x.getBoundingClientRect(); return r.left < p.left - 1 || r.right > p.right + 1; })).map((x) => x.textContent));
     assert.deepEqual(fuori, [], `${nome}: icona e nome dentro il tasto`);
     assert.equal(await page.locator('[data-slot="poliedron"]').count(), 1, 'Poliedron al centro');

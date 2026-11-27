@@ -6,3 +6,5 @@
 .poliedron-mobile-dock__riquadro { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; background: #fff; box-shadow: 0 3px 10px rgba(20, 40, 70, .22), 0 0 0 1px #e3e9f1; }
 .poliedron-mobile-dock__spazio:active .poliedron-mobile-dock__riquadro { transform: scale(.94); }
 .poliedron-mobile-dock__spazio svg { flex: none; }
+/* Il posto di Poliedron (vuoto: la gemma è sopra, a parte) non deve spingere giù la riga: tasti centrati in verticale. */
+.poliedron-mobile-dock--agenda .poliedron-mobile-dock__hero-slot { height: 52px; }
