@@ -37,10 +37,12 @@ test('il + apre «Crea» in Studio e in Personal; ogni voce apre subito il suo m
   assert.match(read('shared/password/PasswordPage.jsx'), /useState\(nuovaSubito\)/);
 });
 
-test('DOCK-PER-TE: Agenda · Documenti · Poliedron · Studio · Per te, in Studio e in Personal', () => {
+// STUDIO-TELEFONO (PO 2026-11-27): la barra dello Studio sul telefono prende lo stile di Personal:
+// Start · Agenda · Pazienti · Poliedron · Documenti · Studio · Personale.
+test('DOCK-PER-TE → STUDIO-TELEFONO: Start · Agenda · Pazienti · Poliedron · Documenti · Studio · Personale, in Studio e in Personal', () => {
   const dock = read('src/components/poliedron/PoliedronMobileDock.jsx');
   assert.doesNotMatch(dock, /__personal__|agendaDestination|id: 'altro'|id: 'note'/);
-  assert.match(dock, /\{ id: 'agenda'[^\n]*\n\s*\{ id: 'archivio'[^\n]*\n\s*\{ id: '__poliedron__'[^\n]*\n\s*\{ id: 'studio', label: 'Studio'[^\n]*\n\s*\{ id: 'perte', label: 'Personale'/);
+  assert.match(dock, /\{ id: '__start__'[^\n]*\n\s*\{ id: 'agenda'[^\n]*\n\s*\{ id: 'paz'[^\n]*\n\s*\{ id: '__poliedron__'[^\n]*\n\s*\{ id: 'archivio'[^\n]*\n\s*\{ id: 'studio', label: 'Studio'[^\n]*\n\s*\{ id: 'perte', label: 'Personale'/);
   // PERSONAL-ESPLORA-WIN11 fase 3 (PO 2026-11-21): in Personal il dock diventa la barra stile Windows 11;
   // Studio passa in Start («Aggiunte»), Personale resta nella barra con la stessa vista.
   const barra = read('personal/src/lib/barra.js');

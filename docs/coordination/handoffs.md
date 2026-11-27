@@ -5118,3 +5118,12 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - DB: none. Tests: see current-task.md (all PASS).
 - Risks: depends on #358 (merge it first); real phone not checked; search fires 3 reads per typed query (debounced 250 ms).
 - Next action: PO tries the preview on the phone; "Mergia" (after #358) or feedback.
+
+## Handoff — STUDIO-TELEFONO fase 1: Studio sul telefono nello stile di Personal (2026-11-27, Claude Code)
+- Task STUDIO-TELEFONO fase 1; previous agent: none; branch `ccr-4f63f466-ntk6g0` from master b2d0792.
+- Objective: Studio phone Home (mix S1+S2) with search, bottom bar with Start and all apps, colour icons; computer unchanged.
+- Files: `src/lib/{iconeStudio.js,startStudio.js}` (new), `src/components/{IconaColoreStudio.jsx,StudioHomeTelefono.jsx,StudioHomeTelefono.css,StartStudio.jsx,StartStudio.css}` (new), `src/components/poliedron/studioBarra.css` (new), `src/components/{StudioHome.jsx,poliedron/PoliedronMobileDock.jsx}`, `src/App.jsx`, tests `studioTelefono.test.mjs` (new), `appUnica`, `poliedronAdaptive`, visual `studio-home-telefono.mjs`, `studio-start.*` (new), `studio-home.mjs`/fixture.
+- DB: none. Tests: see current-task.md (all PASS).
+- Risks: dock order changed (PO decision replaces DOCK-PER-TE); Start not closed by the Android back button; real phone not checked.
+- Next action: PO tries the preview on the phone; "Mergia" or feedback; then fase 2 (sections in the same style) only on PO request.
+

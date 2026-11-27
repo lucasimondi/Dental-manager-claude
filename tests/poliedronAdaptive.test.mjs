@@ -168,10 +168,11 @@ test('mobile Poliedron renders only the official standalone gem on a transparent
 // Product Owner revision — compact mobile dock and magnetic redock
 // ---------------------------------------------------------------------------
 
-test('mobile dock has exactly AGENDA, DOCUMENTI, POLIEDRON, STUDIO, PER TE in that order (PO 2026-11-08 DOCK-PER-TE; Setup stays in the Poliedron panel)', () => {
+// STUDIO-TELEFONO (PO 2026-11-27): Start a sinistra e Pazienti nella barra; Poliedron resta al centro (4° di 7).
+test('mobile dock has exactly START, AGENDA, PAZIENTI, POLIEDRON, DOCUMENTI, STUDIO, PERSONALE in that order (PO 2026-11-27 STUDIO-TELEFONO; Setup stays in Start and the Poliedron panel)', () => {
   const ids = [...mobileDockSource.matchAll(/\{ id: '([^']+)'/g)].map((match) => match[1]);
-  assert.deepEqual(ids.slice(0, 5), ['agenda', 'archivio', '__poliedron__', 'studio', 'perte']);
-  assert.equal(ids.slice(0, 5).length, 5);
+  assert.deepEqual(ids.slice(0, 7), ['__start__', 'agenda', 'paz', '__poliedron__', 'archivio', 'studio', 'perte']);
+  assert.equal(ids.indexOf('__poliedron__'), 3, 'Poliedron stays in the centre slot');
 });
 
 /* POL-CHAT-001 merge: PR #51 shipped the Chat dock slot as a PLACEHOLDER
@@ -198,13 +199,14 @@ test('mobile dock carries no duplicate unread badge and mounts no second Poliedr
   assert.doesNotMatch(mobileDockSource, /<Poliedron\b/);
 });
 
-test('mobile dock exposes only four icon routes plus the central Poliedron hero slot', () => {
+test('mobile dock exposes Start, five icon routes and the central Poliedron hero slot', () => {
   assert.match(mobileDockSource, /data-slot="poliedron"/);
   // POL-CHAT-001 §FASE 9: every slot keeps its plain accessible name; the
   // unread count is announced by the bell, which owns it.
   assert.match(mobileDockSource, /aria-label=\{item\.label\}/);
   assert.match(mobileDockSource, /aria-current=\{active \? 'page'/);
-  assert.match(mobileDockSource, /s=\{22\}/);
+  assert.match(mobileDockSource, /<IconaColoreStudio id=\{item\.id\} size=\{28\} \/>/); // STUDIO-TELEFONO: icone a colori
+  assert.match(mobileDockSource, /onClick=\{apriStartStudio\}/);
   assert.match(premiumCss, /poliedron-mobile-dock__item\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*44px;/);
 });
 

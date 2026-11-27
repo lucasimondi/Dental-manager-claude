@@ -1,7 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import Ic from '../ui/Ic.jsx';
 import PoliedronOrb from './PoliedronOrb.jsx';
+import IconaColoreStudio from '../IconaColoreStudio.jsx';
+import './studioBarra.css';
+import { apriStartStudio } from '../../lib/startStudio.js';
 
 /* POL-UI-015 §9-10: `set` (Impostazioni) no longer has a dock slot — it
    moved to the central Poliedron panel's default suggestions (see
@@ -35,21 +37,28 @@ import PoliedronOrb from './PoliedronOrb.jsx';
 /* DOCK-PER-TE (PO 2026-11-08): «Altro» era troppo generico. Agenda · Documenti · Poliedron ·
    Studio · Per te: consultare (Agenda, Documenti), chiedere (Poliedron al centro), lavoro dello
    studio (Studio) e vita personale (Per te: spese, documenti personali, foto, note, diario…). */
+/* STUDIO-TELEFONO (PO 2026-11-27: "Procedi con questo stile grafico per tutto il software studio", fase 1, solo
+   telefono): la barra prende lo stile di Personal. Icone a colori, Start a sinistra (apre «Tutte le app» a tutto
+   schermo, evento `studio:apri-start` gestito in App.jsx) e Pazienti; Poliedron resta al centro. Sette posti:
+   Start · Agenda · Pazienti · Poliedron · Documenti · Studio · Personale. */
 export const MOBILE_DOCK_ITEMS = Object.freeze([
+  { id: '__start__', label: 'Start', icon: null },
   { id: 'agenda', label: 'Agenda', icon: 'cal' },
-  { id: 'archivio', label: 'Documenti', icon: 'folder' },
+  { id: 'paz', label: 'Pazienti', icon: 'pz' },
   { id: '__poliedron__', label: 'Poliedron', icon: null },
+  { id: 'archivio', label: 'Documenti', icon: 'folder' },
   { id: 'studio', label: 'Studio', icon: 'brief' },
   { id: 'perte', label: 'Personale', icon: 'user' }, // PERSONALE-HOME (PO 2026-11-16)
 ]);
+// Senza l'archivio documenti nel piano, quel posto va a Incassi (Pazienti è già nella barra).
 export const mobileDockItems = ({ archivio = true } = {}) => MOBILE_DOCK_ITEMS.map((item) => (
-  item.id === 'archivio' && !archivio ? { id: 'paz', label: 'Pazienti', icon: 'pz' } : item
+  item.id === 'archivio' && !archivio ? { id: 'paga', label: 'Incassi', icon: 'pay' } : item
 ));
 
 export default function PoliedronMobileDock({ page, setPage, open, onToggle, panelId, positionLocked, archivio = true }) {
   return (
     <nav
-      className={`poliedron-mobile-dock${open ? ' is-receded' : ''}`}
+      className={`poliedron-mobile-dock studio-barra${open ? ' is-receded' : ''}`}
       aria-label="Navigazione principale"
       aria-hidden={open ? 'true' : undefined}
     >
@@ -62,6 +71,14 @@ export default function PoliedronMobileDock({ page, setPage, open, onToggle, pan
                 document.body
               )}
             </div>
+          );
+        }
+
+        if (item.id === '__start__') {
+          return (
+            <button key={item.id} type="button" className="poliedron-mobile-dock__item studio-barra__start" aria-label={item.label} tabIndex={open ? -1 : 0} onClick={apriStartStudio}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12v9M12 12l8-4.5M12 12L4 7.5" /></svg>
+            </button>
           );
         }
 
@@ -78,7 +95,7 @@ export default function PoliedronMobileDock({ page, setPage, open, onToggle, pan
               setPage(item.id);
             }}
           >
-            <Ic n={item.icon} s={22} />
+            <IconaColoreStudio id={item.id} size={28} />
           </button>
         );
       })}
