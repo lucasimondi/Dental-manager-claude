@@ -5133,3 +5133,4 @@ Redeploy della versione precedente di `agente-assistente` (v31) e revert del com
 - Files now changed vs master: `src/components/poliedron/PoliedronMobileDock.jsx`, `src/components/poliedron/dockAgenda.css` (new), `tests/visual/studio-agenda-tasti.{html,fixture.jsx,mjs}` (new), docs.
 - DB: none. Next action: PO tries the preview on the phone (Agenda → Personale / Studio); "Mergia" or feedback; then «il resto» (Studio style, bar, Start, switch) corrected in a new PR on PO request.
 - Addendum AGENDA-TASTI: PO "Togli le scritte deve essere più pulito solo con icone" → Agenda buttons are icons only (names kept as aria-label), compact bar. Visual studio-agenda-tasti asserts no text.
+- Addendum AGENDA-TASTI: PO "L'icona dente era più bella nelle altre, e anche personal proponi come schermata" → mockup with 4 proposals → "Fammi la C": Personale = house, Studio = filled tooth, each on a white tile with shadow.

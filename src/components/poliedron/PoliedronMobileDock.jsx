@@ -57,8 +57,9 @@ export const mobileDockItems = ({ archivio = true, page = null } = {}) => (page 
 )));
 // Disegni a colori dei due tasti dell'Agenda (stessi di Personal, PR #358): costanti del codice, mai testo dell'utente.
 const DISEGNO_AGENDA = {
-  perte: '<circle cx="24" cy="24" r="20" fill="#DCEBFA"/><circle cx="24" cy="19" r="7.5" fill="#0F6CBD"/><path d="M10.5 38a14 14 0 0 1 27 0A19.9 19.9 0 0 1 24 44c-5.2 0-9.9-2.2-13.5-6z" fill="#0F6CBD"/>',
-  studio: '<path d="M15 5c-6 0-9 4.7-9 11 0 8 3.8 11 5.2 19S13.4 46 17 46s3.6-11 7-11 3.4 11 7 11 4.4-3 5.8-11S42 24 42 16c0-6.3-3-11-9-11-4.4 0-6 2.5-9 2.5S19.4 5 15 5z" fill="#fff" stroke="#038387" stroke-width="2.4"/>',
+  // Proposta C (PO 2026-11-27 "Fammi la C"): Personale come casa, Studio come dente pieno, su riquadro bianco.
+  perte: '<path d="M9 22v20h30V22L24 9z" fill="#F3F3F3" stroke="#C8C8C8" stroke-width="1.5"/><path d="M4 24 24 7l20 17" fill="none" stroke="#C42B1C" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><rect x="19" y="29" width="10" height="13" rx="1.5" fill="#0F6CBD"/>',
+  studio: '<path d="M15 5c-6 0-9 4.7-9 11 0 8 3.8 11 5.2 19S13.4 46 17 46s3.6-11 7-11 3.4 11 7 11 4.4-3 5.8-11S42 24 42 16c0-6.3-3-11-9-11-4.4 0-6 2.5-9 2.5S19.4 5 15 5z" fill="#2ec4cf" stroke="#038387" stroke-width="2"/><path d="M14 11c-3 .5-4.4 2.8-4.4 6" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/>',
 };
 
 export default function PoliedronMobileDock({ page, setPage, open, onToggle, panelId, positionLocked, archivio = true }) {
@@ -83,7 +84,7 @@ export default function PoliedronMobileDock({ page, setPage, open, onToggle, pan
         if (page === 'agenda') {
           return (
             <button key={item.id} type="button" className="poliedron-mobile-dock__item poliedron-mobile-dock__spazio" aria-label={item.label} tabIndex={open ? -1 : 0} onClick={() => setPage(item.id)}>
-              <svg viewBox="0 0 48 48" width="32" height="32" aria-hidden="true" focusable="false" dangerouslySetInnerHTML={{ __html: DISEGNO_AGENDA[item.id] }} />
+              <span className="poliedron-mobile-dock__riquadro"><svg viewBox="0 0 48 48" width="34" height="34" aria-hidden="true" focusable="false" dangerouslySetInnerHTML={{ __html: DISEGNO_AGENDA[item.id] }} /></span>
             </button>
           );
         }
